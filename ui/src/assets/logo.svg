@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="pmva-bg" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="0.55" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#e11d48"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#pmva-bg)"/>
+  <path d="M17.5 48V31a14.5 14.5 0 0 1 29 0v17" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M27.5 32.5 40 40 27.5 47.5Z" fill="#fff" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,163 @@
+# PMV Nexus settings (non-secret).
+#
+# This is the TEMPLATE. On first start the app copies it to config.yaml, which
+# is yours to edit and is not committed to git (.gitignore). Credentials are
+# entered in the app (Admin -> Server settings -> Credentials), never here. Settings changed in
+# the app are stored in data/settings_overrides.json on top of config.yaml.
+
+server:
+  # Where the app listens. Changing these needs a restart. Command-line options
+  # (run.py --host / --port) override them for one run.
+  host: "0.0.0.0"   # every network interface; "127.0.0.1" = this computer only
+  port: 8676
+
+sites:
+  # PMVHaven and its sister sites (porntubeai.com, hmvhaven.com) are built in
+  # (see DEFAULT_SITES in backend/config.py) -- same platform, login form and
+  # CDN. Add a block here only to change one of them or to add another site
+  # on the same platform, e.g.:
+  #   hmvhaven:
+  #     base_url: "https://hmvhaven.com"
+  #     cdn_base: "https://pmvhavencloud.s3.eu-west-par.io.cloud.ovh.net/"
+  #     login_path: "/login"
+  pmvhaven:
+    base_url: "https://pmvhaven.com"
+    cdn_base: "https://pmvhavencloud.s3.eu-west-par.io.cloud.ovh.net/"
+    login_path: "/login"
+
+download:
+  # Where finished files land, as {output_dir}/<creator>/<file>.
+  output_dir: "./data/videos"
+  # Small, frequently-polled files (thumbnails, preview clips, metadata JSON)
+  # live here instead of output_dir, so the frontend can load them fast
+  # without touching whatever disk/network the full videos sit on.
+  cache_dir: "./data/cache"
+  # Folder used for the persisted PMVHaven browser session (cookies/local storage).
+  session_dir: "./data/pmv_session"
+  # Legacy flat-file library store, kept only so it can be auto-migrated into
+  # SQLite the first time the app runs after upgrading. Renamed to
+  # library.json.migrated once that's done -- safe to ignore/delete after that.
+  library_file: "./data/library.json"
+  # Where library state is persisted between restarts (SQLite, replaces the JSON file above).
+  library_db_file: "./data/library.db"
+  max_concurrent_downloads: 1
+  min_free_percent: 10    # disk-space guard: downloads stop below this much free space (0 = off)
+  # PMVHaven and its sister sites are used through their API only: details from
+  # /api/videos/<id>, the file from the site's own /api/videos/<id>/download (only
+  # videos the site offers for download). true = also read a video's web page when
+  # the API can't help -- the old way; the site's terms forbid scraping, so it's off.
+  website_fallback: false
+  # Parallel metadata-scrape workers, independent of the download concurrency above.
+  max_concurrent_metadata_fetches: 3
+  # Retry attempts per file (video / funscript) before marking failed.
+  max_retries: 3
+  chunk_size_kb: 512
+  # Also fetch the .funscript file when the page has one.
+  download_funscripts: true
+  # Write a "<name>.json" metadata file next to every downloaded video.
+  save_metadata_json: true
+
+  generated_preview_num_clips: 5
+  generated_preview_clip_duration_seconds: 2.0
+  generated_preview_max_height: 480
+  generated_preview_fps: 24
+
+
+auth:
+  # How long the web UI's own login session stays valid (browser cookie), in hours.
+  session_ttl_hours: 720  # 30 days
+
+logging:
+  # Changed from Admin -> Server settings -> Logging (applied without a
+  # restart); values set there win. log_dir can only be set here.
+  log_dir: ./data/logs
+  enabled: true          # false = nothing is recorded anywhere
+  console: true          # the server window
+  file: true             # data/logs/backend.log
+  app_log: true          # Admin -> Logs
+  rotation: "1 month"    # new log file every "<n> day(s)/week(s)/month(s)" or at "<n> MB"
+  retention: "12 months" # keep old log files this long, or "forever"
+  level: INFO            # DEBUG | INFO | WARNING | ERROR
+  # Admin -> Logs keeps a searchable copy (data/logs/app_logs.db), pruned by
+  # whichever limit is reached first.
+  app_log_retention_days: 90
+  app_log_max_rows: 500000
+  # How client IP addresses appear in Admin -> Logs:
+  #   hashed (default) - a stable pseudonym like "ip-3f9a1c0b7d2e" (can follow one address, can't read it)
+  #   masked           - only the last part, e.g. "***.***.***.23"
+  #   full             - the real address
+  #   off              - not recorded
+  ip_mode: hashed
+
+performers:
+  # ThePornDB performer profiles -- Admin -> Server settings -> Performers
+  # (values set there win). The API key is a credential (Credentials tab).
+  merge_aliases: true   # show a performer's aliases (per ThePornDB) as her main name everywhere
+  refresh_days: 30      # re-read each profile this often
+
+proxy:
+  # Where the proxy is used -- Admin -> Server settings -> Proxy (values set
+  # there win). The proxy's address and login are credentials (Credentials tab).
+  site_mode: "off"        # off | split (downloads also run through the proxy, at the same time) | all
+  proxy_downloads: 1      # split: downloads through the proxy at once (plus download.max_concurrent_downloads direct)
+  telegram: false         # share uploads through the proxy
+  gofile: false
+  pixeldrain: false
+  check_before_use: true  # test the proxy (cached 5 min) before using it; nothing goes through it while it fails
+
+upload:
+  # Upload page: files browsers can't play are re-packed into MP4 when the
+  # picture can be kept as it is; otherwise they're re-encoded. Changed from
+  # Admin -> Server settings -> Uploads; values set there win.
+  convert_codec: "h264"  # h264 (x264, plays everywhere) | hevc | av1 -- the suggested/automatic choice
+  h264_crf: 20           # AVC quality, 0-51 (HEVC/AV1 use the reencode: values below)
+  h264_preset: "medium"  # AVC: ultrafast ... veryslow
+  virus_scan: "auto"     # auto (when Microsoft Defender / ClamAV is on the server) | required | off
+  hash_check: "off"      # VirusTotal fingerprint lookup (key in Credentials): off | on | required
+  max_size_gb: 50        # largest file accepted
+  max_waiting: 10        # unfinished uploads one person may have
+  auto_convert: false    # true = re-encode right away instead of asking the uploader
+
+features:
+  # Whole features that can be switched off (2.22.0): off = gone from every menu and
+  # page, and new requests are refused. Server settings -> Re-encode / Credentials.
+  reencode: true
+  share: true
+
+songs:
+  # Finding the songs in videos (Management -> Songs, a video's "Find songs", and the
+  # Scheduler job "Find songs in videos without music"). Shazam first; AudD (API token
+  # in Credentials) for samples Shazam missed. Changed from Management -> Songs.
+  interval: 30           # a 12-second sample every N seconds of the video
+  max_samples: 12        # per video
+  shazam_retry: true     # a sample Shazam missed is tried again 7 s later
+  audd_fallback: true
+  audd_max_samples: 4    # AudD lookups per video (AudD counts requests)
+  per_run: 20            # videos per Scheduler run (newest first)
+  rescan_days: 30        # listen again to a video still without music after N days (0 = never)
+
+playback:
+  # Converting while watching: the player's 720p button, and videos the browser
+  # can't play, stream an H.264 copy made on the fly (temp files in <cache>/.transcode).
+  # Changed from Admin -> Server settings -> Re-encode; values set there win.
+  live_convert: true
+  max_height: 720        # 720 | 480 -- smaller videos keep their size
+  cpu_percent: 50        # of the cores, per video being converted (low priority, pauses when far ahead)
+  max_sessions: 2        # videos converted at the same time (one per person)
+
+reencode:
+  # Changed from Admin -> Server settings -> Re-encode; values set there win.
+  codec: "hevc"          # hevc (x265) | av1 (SVT-AV1)
+  target_crf: 24         # HEVC quality, 0-51 (lower = better, bigger)
+  preset: "medium"       # HEVC: ultrafast ... veryslow
+  av1_crf: 32            # AV1 quality, 1-63
+  av1_preset: 8          # AV1: 0 (slowest, smallest) ... 13 (fastest)
+  warn_crf: true
+  copy_audio: true
+  downscale: true
+  cpu_limit_mode: "percent"   # off | cores | percent
+  cpu_limit_cores: 4
+  cpu_limit_percent: 70
+  remove_chapters: false
+  keep_original_file: false
+  ask_each_time: true      # Re-encode… asks for the codec and settings; false = straight away with these

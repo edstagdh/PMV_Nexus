@@ -1,0 +1,155 @@
+// What the panic keys show (2.24.4): an ordinary-looking article page from an
+// invented lifestyle site, with a few made-up (safe-for-work) ads. Every site,
+// brand and person here is fictional. One is picked at random each time.
+
+export const DECOY_PAGES = [
+  {
+    slug: "sourdough-starter-smells-like-nail-polish",
+    site: "The Slow Kitchen",
+    nav: ["Recipes", "Baking", "Techniques", "About"],
+    accent: "#c2410c",
+    section: "Baking", hero: "\u{1F35E}",
+    title: "Why Your Sourdough Starter Smells Like Nail Polish (and How to Fix It)",
+    author: "Maren Holt",
+    date: "Updated 3 days ago",
+    read: "6 min read",
+    body: [
+      ["p", "If you've lifted the lid on your starter and caught a sharp whiff of acetone, don't panic. That smell is one of the most common things new bakers notice, and it almost never means the starter is ruined. It usually means it's hungry."],
+      ["h2", "What the smell is telling you"],
+      ["p", "A starter is a little colony of wild yeast and bacteria living on flour and water. When the food runs low, the yeast and bacteria keep working and start producing more acidic by-products. Some of those smell sharp and solvent-like. A layer of grey liquid on top (often called “hooch”) is part of the same story."],
+      ["p", "In other words: the starter ate everything you gave it and has been waiting a while for the next meal."],
+      ["h2", "The fix: feed it more, and more often"],
+      ["p", "Pour off the liquid, discard all but a spoonful or two of starter, and feed it fresh flour and water in roughly equal weights. If the smell keeps coming back, try a bigger feed — for example one part starter to five parts flour and five parts water — or feed twice a day for a few days."],
+      ["p", "Temperature matters too. A warm kitchen speeds everything up, so a starter that was happy in winter can go hungry much faster in summer. A cooler spot on the counter, or a feed before bed instead of in the afternoon, can make a big difference."],
+      ["h2", "When to actually start over"],
+      ["p", "Pink or orange streaks, or fuzzy mould on the surface, are the real warning signs. In that case it's safest to throw it out, wash the jar well and begin again. A sharp smell on its own? Feed it, give it a day, and you'll most likely be back to that mild, yoghurt-like tang."],
+    ],
+    ads: [
+      { brand: "Fernhollow Tea Co.", line: "Loose-leaf blends for slow afternoons", cta: "15% off your first box", color: "#4d7c0f", icon: "\u{1F375}" },
+      { brand: "Copperline Cookware", line: "Heavy pans that last for decades", cta: "See the winter range", color: "#b45309", icon: "\u{1F373}" },
+      { brand: "Harbor Pantry", line: "Weekly boxes of seasonal produce", cta: "Pick your first box", color: "#0f766e", icon: "\u{1F955}" },
+    ],
+  },
+  {
+    slug: "houseplants-that-like-being-ignored",
+    site: "Leaf & Loam",
+    nav: ["Houseplants", "Garden", "Guides", "Shop"],
+    accent: "#15803d",
+    section: "Houseplants", hero: "\u{1FAB4}",
+    title: "Seven Houseplants That Actually Like Being Ignored",
+    author: "Jonah Pell",
+    date: "Updated last week",
+    read: "5 min read",
+    body: [
+      ["p", "Not everyone has the time to mist leaves and rotate pots every morning. The good news is that plenty of popular houseplants do best when you mostly leave them alone. Overwatering kills far more plants than forgetting does."],
+      ["h2", "1. Snake plant"],
+      ["p", "Stiff, upright leaves, happy in low light, and fine with water every few weeks. Let the soil dry out completely between drinks."],
+      ["h2", "2. ZZ plant"],
+      ["p", "Glossy leaves and thick roots that store water. It tolerates dim corners and irregular care better than almost anything else."],
+      ["h2", "3. Pothos"],
+      ["p", "Trailing vines that tell you when they're thirsty by drooping slightly. Water, and they perk up within hours."],
+      ["h2", "4–7. Cast iron plant, jade, ponytail palm and spider plant"],
+      ["p", "All four cope with the odd missed watering. Jade and ponytail palm in particular prefer to dry out, so a bright windowsill and a watering can you only remember on Sundays are a perfect match."],
+      ["h2", "A simple routine"],
+      ["p", "Check the soil with a finger once a week. If the top few centimetres are dry, water thoroughly and let the excess drain away. If not, walk on by. That's it — the plants will do the rest."],
+    ],
+    ads: [
+      { brand: "Terra & Twine", line: "Handmade clay pots, made to order", cta: "Browse the collection", color: "#9a3412", icon: "\u{1FAB4}" },
+      { brand: "Brightside Bikes", line: "Spring tune-ups, booked in minutes", cta: "Find a slot", color: "#1d4ed8", icon: "\u{1F6B2}" },
+      { brand: "Paperleaf Planners", line: "Plan your whole week in ten minutes", cta: "Try the free template", color: "#7c3aed", icon: "\u{1F4D3}" },
+    ],
+  },
+  {
+    slug: "beginners-guide-packing-a-day-hike-bag",
+    site: "Trailhead Weekly",
+    nav: ["Trails", "Gear", "Skills", "Newsletter"],
+    accent: "#0e7490",
+    section: "Skills", hero: "\u{1F97E}",
+    title: "A Beginner's Guide to Packing a Day-Hike Bag",
+    author: "Ruth Calloway",
+    date: "Updated 2 days ago",
+    read: "7 min read",
+    body: [
+      ["p", "The best day hikes feel effortless, and a lot of that comes down to what's on your back. You don't need much, but the few things you do bring should earn their place."],
+      ["h2", "Water first"],
+      ["p", "Plan on roughly half a litre per hour of walking in mild weather, more in heat or on steep ground. A bottle in an easy-to-reach side pocket means you'll actually drink it."],
+      ["h2", "Layers, not bulk"],
+      ["p", "Weather changes faster on a hill than in town. A light insulating layer and a packable rain jacket cover most surprises and weigh very little. Cotton stays wet for a long time, so leave the hoodie at home."],
+      ["h2", "Snacks you'll want to eat"],
+      ["p", "Something salty, something sweet, and something with a bit of protein. Eat little and often rather than waiting for a big lunch stop — it keeps your energy steady."],
+      ["h2", "The small essentials"],
+      ["p", "A charged phone with an offline map, a small first-aid kit, sun cream, a hat and a head torch in case you're out later than planned. Tell someone where you're going and when you expect to be back."],
+      ["p", "That's genuinely enough for most routes. Pack it the night before, and your morning starts with the walk instead of a hunt for your water bottle."],
+    ],
+    ads: [
+      { brand: "Cobble & Co.", line: "Walking shoes broken in from day one", cta: "Shop the new season", color: "#57534e", icon: "\u{1F45F}" },
+      { brand: "Northvale Outfitters", line: "Light layers for changeable weather", cta: "Up to 30% off", color: "#0369a1", icon: "\u{1F9E5}" },
+      { brand: "Fernhollow Tea Co.", line: "A flask of something warm for the summit", cta: "Discover our blends", color: "#4d7c0f", icon: "\u{1F375}" },
+    ],
+  },
+  {
+    slug: "home-desk-easier-on-your-back",
+    site: "Desk Notes",
+    nav: ["Work", "Setup", "Wellbeing", "Reviews"],
+    accent: "#4338ca",
+    section: "Setup", hero: "\u{1FA91}",
+    title: "Small Changes That Make a Home Desk Easier on Your Back",
+    author: "Theo Marsh",
+    date: "Updated yesterday",
+    read: "5 min read",
+    body: [
+      ["p", "Working from a kitchen table or a spare-room desk is convenient, but a few hours a day in an awkward position adds up. The good news is that most improvements are free or cheap."],
+      ["h2", "Raise the screen"],
+      ["p", "The top of the screen should sit roughly at eye level, about an arm's length away. A stack of sturdy books under a laptop stand or monitor does the job perfectly well."],
+      ["h2", "Feet flat, knees comfortable"],
+      ["p", "If your chair is too high for your feet to rest on the floor, a small box or footrest helps. Your hips should be roughly level with or a little above your knees."],
+      ["h2", "Bring the keyboard closer"],
+      ["p", "Reaching forward for a keyboard pulls the shoulders with it. Keep it close enough that your elbows stay by your sides, bent at around a right angle."],
+      ["h2", "Move more than you think you need to"],
+      ["p", "No position is perfect for eight hours. Stand up when you take a call, refill your glass of water often, and take a short walk at lunch. Your back will thank you far more than for any expensive chair."],
+    ],
+    ads: [
+      { brand: "Lumen & Lane", line: "Warm desk lamps for late reading", cta: "Free delivery this week", color: "#a16207", icon: "\u{1F4A1}" },
+      { brand: "Paperleaf Planners", line: "A calmer week starts on Sunday", cta: "Try the free template", color: "#7c3aed", icon: "\u{1F4D3}" },
+      { brand: "Harbor Pantry", line: "Healthy lunches delivered to your door", cta: "Pick your first box", color: "#0f766e", icon: "\u{1F957}" },
+    ],
+  },
+  {
+    slug: "twenty-minute-sunday-habit-grocery-bills",
+    site: "Pocket Ledger",
+    nav: ["Budgeting", "Saving", "Home", "Tools"],
+    accent: "#047857",
+    section: "Budgeting", hero: "\u{1F6D2}",
+    title: "The 20-Minute Sunday Habit That Keeps Grocery Bills in Check",
+    author: "Ivy Brennan",
+    date: "Updated 4 days ago",
+    read: "6 min read",
+    body: [
+      ["p", "Food is one of the easiest places to overspend without noticing, a few small top-up shops at a time. A short weekly routine can trim that without turning dinner into a spreadsheet."],
+      ["h2", "Step 1: look before you list"],
+      ["p", "Open the fridge, freezer and cupboards first. Anything that needs using soon goes at the top of the week's plan. It's the single best way to waste less."],
+      ["h2", "Step 2: plan four dinners, not seven"],
+      ["p", "Leftovers, a freezer meal and one night of “whatever's left” fill the gaps. Planning every night tends to fall apart by Thursday."],
+      ["h2", "Step 3: write the list by aisle"],
+      ["p", "Grouping the list the way the shop is laid out makes the trip faster, and a faster trip means fewer impulse buys."],
+      ["h2", "Step 4: one shop, one top-up"],
+      ["p", "Do the main shop once, and allow yourself a single mid-week top-up for fresh things like milk and bread. Most of the savings come from simply going into the shop less often."],
+      ["p", "Give it a month. Most people find the bill settles somewhere noticeably lower — and Sunday evenings feel a little more organised, too."],
+    ],
+    ads: [
+      { brand: "Harbor Pantry", line: "Seasonal produce boxes, no subscription", cta: "Pick your first box", color: "#0f766e", icon: "\u{1F955}" },
+      { brand: "Brightside Bikes", line: "Cycle to the shops — spring tune-ups", cta: "Find a slot", color: "#1d4ed8", icon: "\u{1F6B2}" },
+      { brand: "Copperline Cookware", line: "One good pan for every recipe", cta: "See the range", color: "#b45309", icon: "\u{1F373}" },
+    ],
+  },
+];
+
+/** A different page from the last one shown in this tab. */
+export function pickDecoy() {
+  let last = -1;
+  try { last = Number(sessionStorage.getItem("pmv-decoy") ?? -1); } catch { /* none */ }
+  let i = Math.floor(Math.random() * DECOY_PAGES.length);
+  if (i === last) i = (i + 1 + Math.floor(Math.random() * (DECOY_PAGES.length - 1))) % DECOY_PAGES.length;
+  try { sessionStorage.setItem("pmv-decoy", String(i)); } catch { /* fine */ }
+  return DECOY_PAGES[i];
+}

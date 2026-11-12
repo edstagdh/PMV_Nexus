@@ -1,0 +1,21 @@
+{
+  "name": "pmv-nexus-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "PMV Nexus web interface (Vue 3). Built into ../frontend/next.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@videojs/html": "10.3.0",
+    "hls.js": "1.7.4",
+    "vue": "3.5.45",
+    "vue-router": "4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.7"
+  }
+}

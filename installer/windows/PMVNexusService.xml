@@ -1,0 +1,29 @@
+<!--
+  Windows service definition for WinSW (https://github.com/winsw/winsw, v2), used when
+  "Run it as a Windows service" is chosen in Setup (2.26.0). Setup copies WinSW next to
+  this file as PMVNexusService.exe (same base name = this is its settings).
+  %BASE% is the folder of these two files: <app>\runtime\service.
+  The service runs as Local System by default: it can't see mapped network drives
+  (Z:\...). For videos on a NAS use \\server\share paths, or set an account under
+  services.msc -> PMV Nexus -> Log On.
+-->
+<service>
+  <id>PMVNexus</id>
+  <name>PMV Nexus</name>
+  <description>PMV Nexus web app. Settings: config.yaml in the app folder.</description>
+  <executable>%BASE%\..\..\.venv\Scripts\python.exe</executable>
+  <arguments>-u "%BASE%\..\..\run.py"</arguments>
+  <workingdirectory>%BASE%\..\..</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <onfailure action="none"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <logpath>%BASE%\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

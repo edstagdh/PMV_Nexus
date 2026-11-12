@@ -1,0 +1,100 @@
+# Builds the Windows installer (2.26.0).
+#  - Push a tag vX.Y.Z (matching VERSION)  -> builds Setup.exe and publishes a GitHub Release
+#    with it, its SHA-256 and that version's CHANGELOG section as the notes.
+#  - Actions -> Release -> Run workflow   -> test build only: Setup.exe as a downloadable
+#    artifact of the run (nothing is published).
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the release
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12.10"   # installed by Setup when the PC has no Python 3.10-3.13
+  WINSW_VERSION: "v2.12.0"    # Windows service wrapper (https://github.com/winsw/winsw)
+
+jobs:
+  windows-installer:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$v") {
+            throw "Tag $($env:GITHUB_REF_NAME) doesn't match VERSION ($v). Bump VERSION, commit, then tag v$v."
+          }
+          "APP_VERSION=$v" >> $env:GITHUB_ENV
+
+      - name: Check the Python code compiles
+        shell: pwsh
+        run: python -m compileall -q backend Tools run.py
+
+      - name: Fetch WinSW and the Python installer's checksum
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force installer/windows/build | Out-Null
+          Invoke-WebRequest "https://github.com/winsw/winsw/releases/download/$($env:WINSW_VERSION)/WinSW-x64.exe" `
+            -OutFile installer/windows/build/PMVNexusService.exe
+          # Setup downloads Python itself (only when needed); pin the file it will accept.
+          $py = "https://www.python.org/ftp/python/$($env:PYTHON_VERSION)/python-$($env:PYTHON_VERSION)-amd64.exe"
+          Invoke-WebRequest $py -OutFile "$env:RUNNER_TEMP/python.exe"
+          $sig = Get-AuthenticodeSignature "$env:RUNNER_TEMP/python.exe"
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Python Software Foundation') {
+            throw "The Python installer isn't signed by the Python Software Foundation ($($sig.Status))"
+          }
+          $hash = (Get-FileHash "$env:RUNNER_TEMP/python.exe" -Algorithm SHA256).Hash.ToLower()
+          "PY_SHA256=$hash" >> $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build Setup.exe
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            "/DAppVersion=$env:APP_VERSION" "/DPythonVersion=$env:PYTHON_VERSION" "/DPythonSha256=$env:PY_SHA256" `
+            installer/windows/PMVNexus.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          $exe = "installer/windows/build/out/PMV-Nexus-Setup-$env:APP_VERSION.exe"
+          (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower() + "  " + (Split-Path $exe -Leaf) |
+            Out-File -Encoding ascii "$exe.sha256"
+
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: |
+          $text = Get-Content CHANGELOG.md -Raw
+          $m = [regex]::Match($text, "(?ms)^## \[$([regex]::Escape($env:APP_VERSION))\][^\n]*\n(.*?)(?=^## \[|\z)")
+          $notes = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "See CHANGELOG.md." }
+          $notes += "`n`n---`n**Windows:** download ``PMV-Nexus-Setup-$env:APP_VERSION.exe`` and run it. " +
+                    "Windows may say it protected your PC (the installer isn't code-signed): **More info -> Run anyway**.`n" +
+                    "**Linux / macOS:** download the source code below and run ``./install.sh``."
+          Set-Content -Encoding utf8 "$env:RUNNER_TEMP/notes.md" $notes
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMV-Nexus-Setup-${{ env.APP_VERSION }}
+          path: installer/windows/build/out/*
+          retention-days: 14
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PMV Nexus ${{ env.APP_VERSION }}
+          body_path: ${{ runner.temp }}/notes.md
+          files: |
+            installer/windows/build/out/PMV-Nexus-Setup-${{ env.APP_VERSION }}.exe
+            installer/windows/build/out/PMV-Nexus-Setup-${{ env.APP_VERSION }}.exe.sha256
