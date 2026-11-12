@@ -107,9 +107,7 @@ proxy:
   # there win). The proxy's address and login are credentials (Credentials tab).
   site_mode: "off"        # off | split (downloads also run through the proxy, at the same time) | all
   proxy_downloads: 1      # split: downloads through the proxy at once (plus download.max_concurrent_downloads direct)
-  telegram: false         # share uploads through the proxy
-  gofile: false
-  pixeldrain: false
+  uploads: false          # extensions' uploads to other sites go through the proxy (only matters with extensions)
   check_before_use: true  # test the proxy (cached 5 min) before using it; nothing goes through it while it fails
 
 upload:
@@ -127,9 +125,8 @@ upload:
 
 features:
   # Whole features that can be switched off (2.22.0): off = gone from every menu and
-  # page, and new requests are refused. Server settings -> Re-encode / Credentials.
+  # page, and new requests are refused. Server settings -> Re-encode.
   reencode: true
-  share: true
 
 songs:
   # Finding the songs in videos (Management -> Songs, a video's "Find songs", and the

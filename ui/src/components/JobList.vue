@@ -2,7 +2,7 @@
 // Tasks page: library-wide jobs (GET /api/library/activity) -- what's
 // running now with its stage and progress, the next Scheduler runs, and
 // what finished in the last day. Videos' own downloads / re-encodes /
-// repairs / shares are listed by TasksView itself.
+// repairs are listed by TasksView itself.
 import { askConfirm } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import Icon from "./Icon.vue";
@@ -26,7 +26,7 @@ const ICONS = {
   performer_sync: "user", library_repair: "wrench", metadata_sync: "tag", untracked_files: "search",
   move_folder: "drag", upload: "upload", upload_dates: "calendar",
 };
-const SOURCE = { schedule: "Scheduled", manual: "Started by hand", auto: "Automatic" };
+const SOURCE = { schedule: "Scheduled", manual: "Started by hand", auto: "Automatic", extension: "Extension" };
 const STATUS = { success: "Done", failed: "Failed", blocked: "Didn't start", interrupted: "Interrupted", cancelled: "Stopped",
   running: "Running", waiting: "Waiting" };
 

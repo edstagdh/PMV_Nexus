@@ -1,4 +1,4 @@
-// One dialog at a time (rename, thumbnail, share, remove), opened from any
+// One dialog at a time (rename, thumbnail, remove, an extension's action...), opened from any
 // page; rendered by components/DialogHost.vue.
 import { reactive } from "vue";
 

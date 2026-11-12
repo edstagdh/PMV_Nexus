@@ -7,7 +7,7 @@ import { computed } from "vue";
 const props = defineProps({ catalog: { type: Array, required: true }, modelValue: { type: Array, default: () => [] },
   inherited: { type: Array, default: () => [] } });  // already given by role/groups: shown ticked and greyed
 const emit = defineEmits(["update:modelValue"]);
-const LIBRARY_MANAGE = ["videos.add", "videos.upload", "videos.edit", "videos.delete", "videos.maintain", "videos.share",
+const LIBRARY_MANAGE = ["videos.add", "videos.upload", "videos.edit", "videos.delete", "videos.maintain",
   "names.manage", "performers.manage", "duplicates.manage", "maintenance.run", "tasks.view", "tasks.manage"];
 const expand = (list) => {
   const s = new Set(list || []);

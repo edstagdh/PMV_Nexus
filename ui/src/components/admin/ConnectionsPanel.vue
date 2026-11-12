@@ -4,7 +4,6 @@
 // POST /api/pmv/login?site=...).
 import { ref, onMounted } from "vue";
 import { RouterLink } from "vue-router";
-import TelegramLogin from "./TelegramLogin.vue";
 import { api, qs } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
@@ -57,7 +56,6 @@ async function connect(site) {
       </tbody>
     </table></div>
   </section>
-  <TelegramLogin />
   </div>
 </template>
 

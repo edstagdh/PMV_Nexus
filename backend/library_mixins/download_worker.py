@@ -14,9 +14,7 @@ from loguru import logger
 from .. import media_tools, proxy, stats_store
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
-from ..pmv_client import get_client
-from ..scraper_v1 import parse_metadata
-from ..sites import get_site
+from .. import sources
 from ._helpers import (
     cleanup_partial_download_file,
     extract_tags_performers_music_from_meta_dict,
@@ -318,7 +316,7 @@ class DownloadWorkerMixin:
                     item.touch()
 
                 try:
-                    await get_client(item.site).stream_download(meta.video_url, video_path, on_progress, extra_headers={"Referer": item.url})
+                    await sources.get(item.site).download(meta.video_url, video_path, on_progress, headers={"Referer": item.url})
                 except httpx.HTTPStatusError as exc:
                     # A 403/404 here has, at least once, turned out to mean the
                     # scraped video_url actually belonged to a DIFFERENT video
@@ -351,7 +349,7 @@ class DownloadWorkerMixin:
                 # already grab this (failed, or the item skipped straight to
                 # _download via the restart-fallback branch above).
                 try:
-                    await get_client(item.site).stream_download(meta.thumbnail_url, thumb_path)
+                    await sources.get(item.site).download(meta.thumbnail_url, thumb_path)
                     item.thumbnail_path = str(thumb_path)
                     item.thumbnail_updated_at = time.time()
                 except Exception:
@@ -359,7 +357,7 @@ class DownloadWorkerMixin:
 
             if fs_path is not None:
                 try:
-                    await get_client(item.site).stream_download(meta.funscript_url, fs_path)
+                    await sources.get(item.site).download(meta.funscript_url, fs_path)
                     item.funscript_path = str(fs_path)
                 except Exception:
                     logger.warning("Funscript download failed for {}, continuing", item.id)
@@ -369,7 +367,7 @@ class DownloadWorkerMixin:
                 # already grab this (failed, was skipped, or the item skipped
                 # straight to _download via the restart-fallback branch above).
                 try:
-                    await get_client(item.site).stream_download(meta.preview_url, preview_dl_path)
+                    await sources.get(item.site).download(meta.preview_url, preview_dl_path)
                     item.preview_path = str(preview_dl_path)
                     item.preview_updated_at = time.time()  # new URL, so browsers don't show the old clip
                 except Exception:

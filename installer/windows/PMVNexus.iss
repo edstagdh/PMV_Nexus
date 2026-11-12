@@ -69,7 +69,7 @@ Name: "{app}"; Permissions: users-modify
 
 [Files]
 Source: "..\..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; \
-  Excludes: "\.git\*,\.github\*,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\config.yaml,__pycache__,*.pyc,node_modules"
+  Excludes: "\.git\*,\.github\*,\extensions\.git\*,\extensions\.github\*,\extensions\*.md,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\config.yaml,__pycache__,*.pyc,node_modules"
 Source: "app.ico"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
@@ -660,6 +660,8 @@ begin
       RunLogged('Updating pip...', VenvPython, '-m pip install --disable-pip-version-check --upgrade pip', '');
       Ok := RunLogged('Installing the Python packages (a few minutes the first time)...', VenvPython,
         '-m pip install --disable-pip-version-check -r "' + AppDir + '\requirements.txt"', '');
+      if Ok and DirExists(AppDir + '\extensions') then   { a build with extensions (2.30.0) }
+        Ok := RunLogged('Installing the extensions'' packages...', VenvPython, '-m Tools.install_extensions', '');
     end;
     if Ok then
     begin

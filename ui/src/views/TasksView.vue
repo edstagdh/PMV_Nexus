@@ -2,7 +2,7 @@
 // Tasks: everything the app is working on or waiting to do. Library-wide
 // jobs first (Scheduler runs, scans, syncs, backups, performer matching,
 // uploads... -- components/JobList.vue), then each video's downloads, detail
-// fetches, re-encodes, repairs and share uploads, grouped as Running now /
+// fetches, re-encodes and repairs, grouped as Running now /
 // Waiting / Failed, with live progress; then the next scheduled runs and
 // the jobs that finished in the last day. Queue positions:
 // downloads run one at a time in the order they were added; re-encode and
@@ -42,16 +42,13 @@ async function load() {
   if (running.value.length || jobs.value?.running?.length) pollTimer = setTimeout(load, 2000);
 }
 
-const shareRunning = (it) => Object.values(it.shares || {}).some((s) => s.status === "sharing");
-const shareQueued = (it) => Object.values(it.shares || {}).some((s) => s.status === "queued");
 function isRunning(it) {
   return it.status === "downloading" || it.status === "fetching" || it.reencode_status === "encoding"
-    || it.repair_status === "running" || shareRunning(it);
+    || it.repair_status === "running";
 }
 function isFailed(it) {
-  if (it.status === "pending") return false; // queued to download: an older failed repair/share doesn't make it "failed"
-  return it.status === "failed" || it.reencode_status === "failed" || it.repair_status === "failed"
-    || Object.values(it.shares || {}).some((s) => s.status === "failed");
+  if (it.status === "pending") return false; // queued to download: an older failed repair doesn't make it "failed"
+  return it.status === "failed" || it.reencode_status === "failed" || it.repair_status === "failed";
 }
 const all = computed(() => items.value || []);
 const running = computed(() => all.value.filter(isRunning));
@@ -96,12 +93,6 @@ function state(it) {
   if (it.repair_status === "running") return { text: "Repairing", detail: it.repair_progress_label || "Working…" };
   if (it.repair_status === "queued") return { text: "Waiting to repair" };
   if (it.repair_status === "failed") return { text: "Repair failed", detail: it.repair_error, failed: true };
-  const sharing = Object.entries(it.shares || {}).find(([, s]) => s.status === "sharing");
-  if (sharing) return { text: `Uploading to ${sharing[0]}`, percent: sharing[1].progress_percent };
-  const queued = Object.entries(it.shares || {}).find(([, s]) => s.status === "queued");
-  if (queued) return { text: `Waiting to upload to ${queued[0]}` };
-  const shareFail = Object.entries(it.shares || {}).find(([, s]) => s.status === "failed");
-  if (shareFail) return { text: `Upload to ${shareFail[0]} failed`, detail: shareFail[1].error, failed: true };
   return { text: it.status };
 }
 

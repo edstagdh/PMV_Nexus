@@ -75,7 +75,6 @@ _LABELS = {
     "repair_item": "Repair / update",
     "cancel_repair_item": "Cancel repair",
     "resolve_repair": "Resolve repair conflict",
-    "share_item": "Share",
     "report_watch": "Watched",
     "report_playing": "Playing",
     "save_position": "Save my place in a video",
@@ -130,6 +129,8 @@ _LABELS = {
     "run_job_now": "Run scheduled job now",
     # backups & system
     "create_backup": "Create backup",
+    "run_extension_action": "Extension action",
+    "run_extension_panel": "Extension settings",
     "delete_backup": "Delete backup",
     "stage_restore": "Restore backup (at next start)",
     "cancel_restore": "Cancel restore",
@@ -162,14 +163,6 @@ _LABELS = {
     "test_virustotal_key": "Test VirusTotal key",
     "test_audd": "Test AudD token",
     "pmv_login": "Sign in to PMVHaven (Connections)",
-    "telegram_login_start": "Telegram sign-in: send code",
-    "telegram_login_resend": "Telegram sign-in: send code again",
-    "telegram_login_code": "Telegram sign-in: code entered",
-    "telegram_login_password": "Telegram sign-in: cloud password entered",
-    "telegram_login_email": "Telegram sign-in: login email entered",
-    "telegram_login_email_code": "Telegram sign-in: email code entered",
-    "telegram_login_cancel": "Telegram sign-in cancelled",
-    "telegram_logout": "Telegram signed out",
 }
 
 
@@ -244,7 +237,7 @@ _PATH_TARGETS = [
 # Request-body fields that may appear in the log (scalars and short lists).
 _SAFE_BODY_KEYS = (
     "url", "urls", "title", "name", "username", "role", "disabled", "filename", "creator", "upload_date",
-    "item_id", "item_ids", "keep_id", "merge_ids", "destinations", "telegram_target", "codec", "crf", "preset",
+    "item_id", "item_ids", "keep_id", "merge_ids", "codec", "crf", "preset",
     "direction", "source", "seconds", "visibility", "kind", "field", "value", "spelling", "tpdb_id", "on",
     "new_dir", "move_existing", "max_concurrent", "job_type", "cron_expression", "enabled", "level", "site_mode",
     "proxy_downloads", "auto_convert", "convert_codec", "merge_aliases", "auto_match", "timestamps",
@@ -491,8 +484,13 @@ class ActionLogMiddleware:
             return
         label = _label(name) if name else f"{scope['method']} {scope['path']}"
         if name == "bulk_action":  # /api/bulk/<action> (2.18.0)
-            label = {"songs": "Find songs", "repair": "Repair / update", "reencode": "Re-encode",
-                     "share": "Share"}.get(scope["path"].rsplit("/", 1)[-1], label) + " (picked videos)"
+            label = {"songs": "Find songs", "repair": "Repair / update", "reencode": "Re-encode"}.get(scope["path"].rsplit("/", 1)[-1], label) + " (picked videos)"
+        if name in ("run_extension_action", "run_extension_panel"):  # 2.30.0: name the extension's action
+            from . import extensions
+            key = scope["path"].rsplit("/", 1)[-1]
+            found = extensions.actions.get(key) or extensions.panels.get(key)
+            if found:
+                label = f"{found.label} ({found.extension})"
         if name == "set_favorite":
             label = "Add to Favorites" if (scope.get("state") or {}).get("action_body_on") else "Remove from Favorites"
         category = _category(scope["path"])

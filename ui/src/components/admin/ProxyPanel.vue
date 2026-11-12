@@ -1,11 +1,12 @@
 <script setup>
 // Server settings -> Proxy: the proxy's address (a credential), where it's
-// used (the sites: off / split / all; each share destination), and a test
+// used (the sites: off / split / all; extensions' uploads), and a test
 // that compares it with the direct connection (does it work, which address
 // the sites see, latency, speed) -- run it before relying on the proxy.
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { api } from "../../lib/api.js";
+import { ext } from "../../stores/extensions.js";
 import { toast } from "../../stores/toast.js";
 
 const props = defineProps({ settings: Object });
@@ -21,8 +22,8 @@ let timer = null;
 function fromSettings() {
   const p = props.settings?.proxy || {};
   addr.value = { url: p.url || "", username: p.username || "", password: "" };
-  cfg.value = { site_mode: p.site_mode || "off", proxy_downloads: p.proxy_downloads || 1, telegram: !!p.telegram,
-                gofile: !!p.gofile, pixeldrain: !!p.pixeldrain, check_before_use: p.check_before_use !== false };
+  cfg.value = { site_mode: p.site_mode || "off", proxy_downloads: p.proxy_downloads || 1, uploads: !!p.uploads,
+                check_before_use: p.check_before_use !== false };
 }
 async function loadStatus() {
   try { status.value = await api("/api/settings/proxy/status"); test.value = test.value || status.value.last_test; } catch { /* keep */ }
@@ -76,8 +77,8 @@ const ago = (ts) => (ts ? new Date(ts * 1000).toLocaleString([], { dateStyle: "s
 
 <template>
   <section class="card panel">
-    <p class="help-text">Send the app's connections through a proxy: downloads from PMVHaven / HMVHaven / PornTubeAI, and uploads to the
-      share destinations you pick. Test it first — a slow proxy holds everything sent through it up.</p>
+    <p class="help-text">Send the app's connections through a proxy: downloads from PMVHaven / HMVHaven / PornTubeAI<template v-if="ext.actions.length || ext.panels.length">, and
+      uploads made by extensions if you want</template>. Test it first — a slow proxy holds everything sent through it up.</p>
 
     <h3 class="sub">Proxy</h3>
     <div class="form-row">
@@ -145,13 +146,9 @@ const ago = (ts) => (ts ? new Date(ts * 1000).toLocaleString([], { dateStyle: "s
         <small :class="total > 2 ? 'error-text' : 'help-text'">{{ total }} downloads at the same time{{ total > 2 ? " — more than 2 will most likely cause problems (refused or slowed downloads)." : "." }}</small>
       </div>
     </div>
-    <div class="form-row">
-      <span class="label">Share uploads</span>
-      <div class="toggles">
-        <label class="switch"><input v-model="cfg.telegram" type="checkbox">Telegram</label>
-        <label class="switch"><input v-model="cfg.gofile" type="checkbox">Gofile</label>
-        <label class="switch"><input v-model="cfg.pixeldrain" type="checkbox">Pixeldrain</label>
-      </div>
+    <div v-if="ext.actions.length || ext.panels.length" class="form-row">
+      <span class="label">Extensions</span>
+      <label class="switch"><input v-model="cfg.uploads" type="checkbox">Send extensions' uploads through the proxy</label>
     </div>
     <div class="form-row">
       <span class="label">Safety</span>

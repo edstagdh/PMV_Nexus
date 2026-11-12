@@ -151,7 +151,6 @@ class FeaturesConfig(BaseModel):
     button and page, and the server refuses new requests (what's already queued
     still finishes). Server settings -> Re-encode / Credentials."""
     reencode: bool = True
-    share: bool = True
 
 
 class SongsConfig(BaseModel):
@@ -316,21 +315,6 @@ class BackupConfig(BaseModel):
     include_cache: bool = False
 
 
-class ShareConfig(BaseModel):
-    """Credentials for the 'Share To' feature. All optional -- a destination
-    is simply unavailable (and hidden/disabled in the UI) if its fields are
-    missing. Pulled from environment / .env, never from config.yaml."""
-    telegram_api_id: int | None = None
-    telegram_api_hash: str | None = None
-    telegram_session_name: str = "pmv_share_session"
-    telegram_channel_id: str | None = None  # username, invite link, or numeric chat id
-    telegram_group_id: str | None = None
-    gofile_api_key: str | None = None
-    gofile_folder_id: str | None = None
-    gofile_region: str | None = None
-    pixeldrain_api_key: str | None = None
-
-
 class PerformersConfig(BaseModel):
     """Admin -> Server settings -> Performers (ThePornDB; API key in Credentials).
       merge_aliases -- names ThePornDB lists as aliases of the same performer
@@ -353,16 +337,24 @@ class ProxyConfig(BaseModel):
                           proxy (more downloads at the same time);
                  all   -- every request to the sites (pages, metadata,
                           downloads, sign-in) goes through the proxy.
-      telegram / gofile / pixeldrain -- uploads to that share destination
-                 go through the proxy.
+      uploads  -- extensions' uploads go through the proxy (2.30.0; was a
+                 switch per destination: any of them on = on).
       check_before_use -- test the proxy (cached for a few minutes) before
                  it's used; while it fails, nothing is sent through it."""
     site_mode: str = Field("off", pattern="^(off|split|all)$")
     proxy_downloads: int = Field(1, ge=1, le=3)
-    telegram: bool = False
-    gofile: bool = False
-    pixeldrain: bool = False
+    uploads: bool = False
     check_before_use: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_upload_switches(cls, data):
+        """Before 2.30.0 there was a switch per upload destination; any of them on = uploads on."""
+        if isinstance(data, dict) and "uploads" not in data:
+            legacy = [data.get(k) for k in list(data) if k not in cls.model_fields]
+            if any(v is True for v in legacy):
+                data = {**data, "uploads": True}
+        return data
     # From the encrypted credential store, not config.yaml / overrides.
     url: str | None = None
     username: str | None = None
@@ -407,7 +399,6 @@ class Settings(BaseModel):
     duplicate_scan: DuplicateScanConfig
     backup: BackupConfig
     tray: TrayConfig = TrayConfig()
-    share: ShareConfig
 
     # --- credentials, from the encrypted store (secrets_store.py) ---
     #
@@ -558,19 +549,6 @@ def get_settings() -> Settings:
         else:
             site_logins[key] = (creds.get(f"{key}_email"), creds.get(f"{key}_password"))
 
-    telegram_api_id_raw = creds["telegram_api_id"]
-    share = ShareConfig(
-        telegram_api_id=int(telegram_api_id_raw) if (telegram_api_id_raw or "").isdigit() else None,
-        telegram_api_hash=creds["telegram_api_hash"],
-        telegram_session_name=creds["telegram_session_name"] or "pmv_share_session",
-        telegram_channel_id=creds["telegram_channel_id"],
-        telegram_group_id=creds["telegram_group_id"],
-        gofile_api_key=creds["gofile_api_key"],
-        gofile_folder_id=creds["gofile_folder_id"],
-        gofile_region=creds["gofile_region"],
-        pixeldrain_api_key=creds["pixeldrain_api_key"],
-    )
-
     duplicate_scan_raw = {**raw.get("duplicate_scan", {}), **overrides.get("duplicate_scan", {})}
 
     return Settings(
@@ -590,7 +568,6 @@ def get_settings() -> Settings:
         duplicate_scan=DuplicateScanConfig(**duplicate_scan_raw),
         backup=BackupConfig(**{**raw.get("backup", {}), **overrides.get("backup", {})}),
         tray=TrayConfig(**(raw.get("tray") or {})),
-        share=share,
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],
         pmv_email=creds["pmvhaven_email"],

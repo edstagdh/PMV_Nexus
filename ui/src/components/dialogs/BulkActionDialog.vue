@@ -1,6 +1,6 @@
 <script setup>
-// Library -> Select -> Find songs / Repair / Re-encode / Share (2.18.0): confirm,
-// pick the options (codec, destinations), and see what was queued and what was
+// Library -> Select -> Find songs / Repair / Re-encode (2.18.0): confirm,
+// pick the options (codec), and see what was queued and what was
 // skipped (backend/routers/bulk.py).
 import { ref, reactive, computed, onMounted } from "vue";
 import ModalDialog from "../ModalDialog.vue";
@@ -20,17 +20,11 @@ const TEXT = {
     lead: `Check the ${videos} and fix what's missing or broken (file, thumbnail, preview, details from the site). They're queued like a single repair.` },
   reencode: { title: "Re-encode", go: "Re-encode",
     lead: `Queue the ${videos} for re-encoding. Videos already in that codec, or already queued, are skipped.` },
-  share: { title: "Share", go: "Share",
-    lead: `Upload the ${videos} to the destinations you pick; they're queued and shared one after the other.` },
 }[props.action];
 
 // Re-encode: the server's settings, changeable for these re-encodes (2.22.0).
 const reDefaults = ref(null);
 const reState = reactive({});
-const config = ref(null);
-const dests = ref([]);
-const telegramTarget = ref("channel");
-const DESTS = [{ key: "telegram", label: "Telegram" }, { key: "gofile", label: "Gofile" }, { key: "pixeldrain", label: "Pixeldrain" }];
 const busy = ref(false);
 const error = ref("");
 const result = ref(null);
@@ -39,15 +33,9 @@ onMounted(async () => {
   if (props.action === "reencode") {
     try { reDefaults.value = await loadReencodeDefaults(); Object.assign(reState, reencodeState(reDefaults.value)); }
     catch (err) { error.value = err.message; }
-    return;
   }
-  if (props.action !== "share") return;
-  try {
-    config.value = await api("/api/share/config");
-    if (!config.value.telegram_channel && config.value.telegram_group) telegramTarget.value = "group";
-  } catch (err) { error.value = err.message; }
 });
-const ready = computed(() => (props.action !== "share" || dests.value.length > 0) && (props.action !== "reencode" || !!reDefaults.value));
+const ready = computed(() => props.action !== "reencode" || !!reDefaults.value);
 
 async function go() {
   busy.value = true;
@@ -55,7 +43,6 @@ async function go() {
   try {
     const body = { ids: props.ids };
     if (props.action === "reencode") Object.assign(body, reencodeBody(reState, reDefaults.value));
-    if (props.action === "share") Object.assign(body, { destinations: dests.value, telegram_target: telegramTarget.value });
     result.value = await api(`/api/bulk/${props.action}`, { method: "POST", body });
     const r = result.value;
     toast(`${TEXT.title}: ${r.queued} queued${r.skipped_count ? `, ${r.skipped_count} skipped` : ""}`, { type: r.queued ? "success" : "info" });
@@ -74,17 +61,6 @@ async function go() {
       <p v-else-if="action === 'reencode' && reDefaults" class="lead">With the server's settings:
         <strong>{{ reDefaults.codec === "av1" ? `AV1, CRF ${reDefaults.av1.crf}, preset ${reDefaults.av1.preset}` : `HEVC, CRF ${reDefaults.hevc.crf}, ${reDefaults.hevc.preset}` }}</strong>
         (Server settings → Re-encode).</p>
-      <div v-if="action === 'share'" class="opts">
-        <label v-for="d in DESTS" :key="d.key" class="switch" :class="{ off: config && !config[d.key] }"
-               :title="config && !config[d.key] ? 'Not configured yet (Server settings → Credentials)' : ''">
-          <input v-model="dests" type="checkbox" :value="d.key" :disabled="!config || !config[d.key]">{{ d.label }}
-          <span v-if="config && !config[d.key]" class="muted small">not configured</span>
-        </label>
-        <div v-if="dests.includes('telegram')" class="tg">
-          <label class="switch"><input v-model="telegramTarget" type="radio" value="channel" :disabled="!config?.telegram_channel">Channel</label>
-          <label class="switch"><input v-model="telegramTarget" type="radio" value="group" :disabled="!config?.telegram_group">Group</label>
-        </div>
-      </div>
     </template>
     <template v-else>
       <p class="lead"><strong>{{ result.queued }}</strong> queued<template v-if="result.skipped_count">, <strong>{{ result.skipped_count }}</strong> skipped:</template></p>
@@ -102,10 +78,7 @@ async function go() {
 
 <style scoped>
 .lead { margin: 0 0 0.75rem; font-size: 0.875rem; color: var(--text-2); }
-.opts { display: flex; flex-direction: column; gap: 0.5rem; }
-.off { opacity: 0.55; }
 .small { font-size: 0.75rem; margin-left: 0.35rem; }
-.tg { display: flex; gap: 1rem; padding-left: 1.75rem; }
 .skipped { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; max-height: 16rem; overflow-y: auto; }
 .skipped li { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
 .t { font-weight: 600; font-size: 0.85rem; }

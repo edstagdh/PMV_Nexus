@@ -71,16 +71,6 @@ watch(() => props.id, (id, old) => {
 const stop = onLibraryChange((changed) => { if (!changed || changed.includes(props.id)) load(false); });
 onBeforeUnmount(() => { stop(); leavePage(); });
 
-// Where this video has been shared (Share): a link per destination.
-const SHARE_LABELS = { telegram: "Telegram", gofile: "Gofile", pixeldrain: "Pixeldrain" };
-const shares = computed(() => Object.entries(item.value?.shares || {})
-  .filter(([, s]) => s && s.status !== "idle")
-  .map(([key, s]) => ({
-    key, link: s.status === "done" ? s.link : null, status: s.status, error: s.error,
-    label: SHARE_LABELS[key] || key[0].toUpperCase() + key.slice(1),
-    text: s.status === "sharing" ? `${Math.round(s.progress_percent || 0)}%` : s.status === "failed" ? "failed" : s.status === "queued" ? "queued" : s.status,
-  })));
-
 // One column (phones, narrow windows): the playlist goes right under the
 // player instead of after the details and the creator's other videos.
 const oneColumn = window.matchMedia("(max-width: 75rem)");
@@ -199,15 +189,6 @@ function goBack() {
             <h4>Content flags<span v-if="edited('flags')" class="edited" title="Edited by hand">✎</span></h4>
             <div class="chips"><span v-for="f in flags" :key="f" class="chip">{{ f }}</span></div>
           </div>
-          <div v-if="shares.length" class="group">
-            <h4>Shares</h4>
-            <div class="chips">
-              <template v-for="s in shares" :key="s.key">
-                <a v-if="s.link" :href="s.link" target="_blank" rel="noopener noreferrer" class="chip share-chip done" :title="`Open on ${s.label}: ${s.link}`">✓ {{ s.label }}</a>
-                <span v-else class="chip share-chip" :class="s.status" :title="s.error || ''">{{ s.label }} · {{ s.text }}</span>
-              </template>
-            </div>
-          </div>
           <details v-if="view && Object.keys(view.technical).length" class="tech">
             <summary>Technical Details</summary>
             <dl class="facts"><template v-for="(v, k) in view.technical" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
@@ -265,11 +246,6 @@ function goBack() {
 .more { align-self: flex-start; padding: 0 0.375rem; margin-top: -0.5rem; }
 .edited { margin-left: 0.375rem; color: var(--accent); text-transform: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
-.share-chip { text-decoration: none; }
-.share-chip.done { border-color: color-mix(in srgb, var(--success, #22c55e) 50%, transparent); color: var(--success, #22c55e); }
-.share-chip.done:hover { text-decoration: none; background: color-mix(in srgb, var(--success, #22c55e) 12%, transparent); }
-.share-chip.failed { border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger); }
-.share-chip.sharing, .share-chip.queued { color: var(--accent); }
 .tech summary { cursor: pointer; font-weight: 600; font-size: 0.84rem; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem 1rem; margin: 0.625rem 0 0; font-size: 0.8rem; }
 .facts dt { color: var(--text-dim); }

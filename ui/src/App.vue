@@ -22,6 +22,7 @@ import { setUnauthorizedHandler } from "./lib/api.js";
 import { discover } from "./lib/discover.js";
 import NotificationBell from "./components/NotificationBell.vue";
 import { startNotifications, stopNotifications } from "./stores/notifications.js";
+import { loadExtensions } from "./stores/extensions.js";
 
 const navOpen = ref(false);
 const addOpen = ref(false);
@@ -65,7 +66,7 @@ watchEffect(() => {
 setUnauthorizedHandler(() => { session.user = null; });
 loadSession();
 watch(() => session.user, (user) => {
-  if (user) { connectLive(); startNotifications(); } else { disconnectLive(); stopNotifications(); }
+  if (user) { connectLive(); startNotifications(); loadExtensions(true); } else { disconnectLive(); stopNotifications(); }
 });
 
 // Lost the server (it's down, restarting, or the network dropped): a banner

@@ -149,7 +149,7 @@ class IssuesMixin:
         remember it existed: id, url, site, status="merged",
         merged_into=keep_id, and timestamps. Everything else (title,
         creator, tags, performers, tech_*, thumbnails, local_phash,
-        dup_phash_sequence, share history) is cleared, and any persisted
+        dup_phash_sequence, extension data) is cleared, and any persisted
         duplicate_matches rows referencing the discarded item are deleted
         outright (see db.delete_duplicate_matches_for_item()) -- a merged
         item should never keep appearing inside a duplicate group.
@@ -243,7 +243,7 @@ class IssuesMixin:
                 item.performers = []
                 item.user_edits = {}
                 item.site_values = {}
-                item.shares = {}
+                item.ext = {}
                 item.local_phash = None
                 item.local_phash_generated_at = None
                 item.dup_phash_sequence = []

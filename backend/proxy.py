@@ -2,7 +2,7 @@
 Using the optional proxy (Admin -> Server settings -> Proxy).
 
 - Where it's used comes from Settings.proxy (see config.ProxyConfig):
-  site traffic (off / split / all) and each share destination.
+  site traffic (off / split / all) and extensions' uploads (2.30.0).
 - `via_proxy` (a ContextVar) marks the work running on a proxy download
   connection: the download worker sets it for each download it starts on a
   proxy lane, and PMVClient.stream_download() / the HLS download read it.
@@ -60,10 +60,10 @@ def for_sites() -> str:
     return cfg.site_mode if cfg.address() else "off"
 
 
-def for_share(destination: str) -> Optional[str]:
-    """The proxy URL when uploads to `destination` should use it."""
+def for_uploads() -> Optional[str]:
+    """The proxy URL when extensions' uploads should use it (Server settings -> Proxy)."""
     cfg = get_settings().proxy
-    return cfg.address() if cfg.address() and getattr(cfg, destination, False) else None
+    return cfg.address() if cfg.address() and cfg.uploads else None
 
 
 def ffmpeg_args(url: Optional[str]) -> Optional[list[str]]:
@@ -76,23 +76,9 @@ def ffmpeg_args(url: Optional[str]) -> Optional[list[str]]:
     return None
 
 
-def pyrogram_proxy(url: Optional[str]) -> Optional[dict]:
-    """The proxy in Pyrogram's form (socks4, socks5 or http)."""
-    if not url:
-        return None
-    p = urlsplit(url)
-    sch = {"socks5h": "socks5", "socks4a": "socks4", "https": "http"}.get(p.scheme.lower(), p.scheme.lower())
-    out = {"scheme": sch, "hostname": p.hostname, "port": p.port or (1080 if sch.startswith("socks") else 8080)}
-    if p.username:
-        from urllib.parse import unquote
-        out["username"] = unquote(p.username)
-        out["password"] = unquote(p.password or "")
-    return out
-
-
 def _client(url: Optional[str], timeout: float = CHECK_TIMEOUT) -> httpx.AsyncClient:
     return httpx.AsyncClient(proxy=url, timeout=httpx.Timeout(timeout), follow_redirects=True,
-                             headers={"User-Agent": "Mozilla/5.0 (compatible; pmv-download-manager/1.0)"})
+                             headers={"User-Agent": "Mozilla/5.0 (compatible; PMVNexus/1.0)"})
 
 
 async def _probe(url: Optional[str]) -> dict:

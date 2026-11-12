@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class RenameRequest(BaseModel):
@@ -15,20 +15,6 @@ class DownloadDirRequest(BaseModel):
     move_existing: bool = True
 
 
-class ShareDestinationResult(BaseModel):
-    status: str = "idle"  # idle | queued | sharing | done | failed
-    progress_percent: Optional[float] = None
-    link: Optional[str] = None
-    error: Optional[str] = None
-    updated_at: float = Field(default_factory=time.time)
-
-
-class ShareRequest(BaseModel):
-    destinations: list[str]  # any of: "telegram", "gofile", "pixeldrain"
-    telegram_target: str = "channel"  # "channel" | "group"
-    caption: Optional[str] = None
-
-
 # Fields of LibraryItem the user can edit by hand (flags live only in the
 # metadata file, so they are kept in user_edits alone).
 EDITABLE_ITEM_FIELDS = ("tags", "performers", "music")
@@ -36,6 +22,10 @@ EDITABLE_DETAIL_FIELDS = (*EDITABLE_ITEM_FIELDS, "flags")
 
 
 class LibraryItem(BaseModel):
+    # Fields this version doesn't know (e.g. saved by an extension, or by an
+    # earlier version) are kept as they are, not dropped on the next save (2.30.0).
+    model_config = ConfigDict(extra="allow")
+
     id: str
     url: str
     # Which configured site (see backend/sites.py) this video came from --
@@ -77,7 +67,7 @@ class LibraryItem(BaseModel):
     # Separate from `updated_at` -- bumped ONLY when thumbnail_path is
     # actually set/replaced (initial download, thumbnail picker, or
     # repair), never by unrelated progress ticks (download %, re-encode
-    # %, share upload %) that also call item.touch(). The frontend uses
+    # %) that also call item.touch(). The frontend uses
     # THIS field (not updated_at) for thumbnail cache-busting -- see
     # views/list.js, views/grid.js, views/table.js -- so a currently-
     # running item's thumbnail doesn't get needlessly torn down and
@@ -228,7 +218,8 @@ class LibraryItem(BaseModel):
     music: list[str] = Field(default_factory=list)
     # When the video was published on the site, "YYYY-MM-DD" (None = unknown).
     upload_date: Optional[str] = None
-    shares: dict[str, ShareDestinationResult] = Field(default_factory=dict)
+    # Extensions' own data on this video: extension name -> anything (2.30.0, backend/extensions.py).
+    ext: dict[str, Any] = Field(default_factory=dict)
     # Details the user edited by hand (video page -> Edit details): field ->
     # list, for "tags", "performers", "music" and "flags". They always win
     # over whatever a download, sync, repair or "sync from files" writes --
@@ -320,9 +311,7 @@ class PlaybackSettingsRequest(BaseModel):
 class ProxySettingsRequest(BaseModel):
     site_mode: str = Field("off", pattern="^(off|split|all)$")
     proxy_downloads: int = Field(1, ge=1, le=3)
-    telegram: bool = False
-    gofile: bool = False
-    pixeldrain: bool = False
+    uploads: bool = False  # extensions' uploads (2.30.0)
     check_before_use: bool = True
 
 
@@ -380,7 +369,6 @@ class ReencodeRequest(BaseModel):
 
 class FeaturesSettingsRequest(BaseModel):
     reencode: Optional[bool] = None
-    share: Optional[bool] = None
 
 
 class ReencodeMoveRequest(BaseModel):

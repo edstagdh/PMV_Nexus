@@ -8,6 +8,7 @@ import { hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
 import { live } from "../stores/live.js";
 import { siteLabel } from "./format.js";
+import { extensionActions } from "../stores/extensions.js";
 
 /** "hevc" / "av1" / null: the codec the video is in now. */
 export function currentCodec(item) {
@@ -63,13 +64,17 @@ export function itemActions(item, { context = "library" } = {}) {
     if (can("songs.manage")) {
       out.push({ key: "songs", label: "Find songs", icon: "music", run: () => openDialog("songs", item) });
     }
-    if (can("videos.share") && featureOn("share")) {
-      out.push({ key: "share", label: "Share", icon: "share", run: () => openDialog("share", item) });
-    }
     if (hasPermission("library.view")) {
       out.push({ key: "playlist", label: "Add to playlist…", icon: "playlist", run: () => openDialog("playlist", item) });
     }
-  } else if (item.status === "failed" && can("videos.add")) {
+  }
+  // Extensions' actions (2.30.0): only those offered for one video, and only for downloaded ones unless they say otherwise.
+  for (const a of extensionActions("video")) {
+    if (item.status === "done" || !a.needs_done_video) {
+      out.push({ key: `ext:${a.id}`, label: a.label, icon: a.icon || "plus", run: () => openDialog("extension", item, { action: a }) });
+    }
+  }
+  if (item.status === "failed" && can("videos.add")) {
     out.push({ key: "retry", label: "Retry download", icon: "repeat", run: () => call(`/api/library/${id}/retry`, "Retrying") });
   }
   if (item.site !== "local") out.push({ key: "open", label: `Open on ${siteLabel(item)}`, icon: "external", href: item.url });

@@ -2,7 +2,7 @@
 Backend for the Admin Portal's Stats page -- System stats (disk, process,
 background-worker activity) and Library stats (item counts, storage,
 codec/resolution/tag/performer breakdowns, re-encode/repair/duplicate/
-share activity), plus daily historical snapshots for trend charts.
+activity), plus daily historical snapshots for trend charts.
 
 Two distinct things live here:
   - compute_system_stats() / compute_library_stats(): always a fresh,
@@ -76,10 +76,6 @@ class StatsWorkerMixin:
             stats["process"] = None
         stats["psutil_available"] = psutil is not None
 
-        sharing_active = sum(
-            1 for item in self._items.values()
-            for s in item.shares.values() if s.status == "sharing"
-        )
         stats["workers"] = {
             "downloading": sum(1 for i in self._items.values() if i.status == "downloading"),
             "fetching_metadata": sum(1 for i in self._items.values() if i.status == "fetching"),
@@ -88,7 +84,6 @@ class StatsWorkerMixin:
             "repair_queue_len": len(self._repair_queue),
             "reencoding_active": 1 if self._current_reencode_id else 0,
             "reencode_queue_len": len(self._reencode_queue),
-            "sharing_active": sharing_active,
             "duplicate_scan_running": self._duplicate_scan_running,
             "scheduler_jobs_running": len(self._scheduler_active_jobs),
         }
@@ -121,12 +116,6 @@ class StatsWorkerMixin:
 
         reencoded_count = sum(1 for i in items if i.reencode_status == "done")
 
-        share_counts: dict[str, dict[str, int]] = {}
-        for i in items:
-            for dest, result in i.shares.items():
-                share_counts.setdefault(dest, {})
-                share_counts[dest][result.status] = share_counts[dest].get(result.status, 0) + 1
-
         duplicate_groups = self._find_duplicate_groups(75.0)  # from IssuesMixin
 
         return {
@@ -149,7 +138,6 @@ class StatsWorkerMixin:
             "cumulative_repairs_performed": self.db.get_counter("stat_total_repairs_performed"),
             "cumulative_repair_fixes_applied": self.db.get_counter("stat_total_repair_fixes_applied"),
             "duplicate_group_count": len(duplicate_groups),
-            "share_counts": share_counts,
         }
 
     async def capture_stats_snapshot(self) -> dict:
@@ -248,7 +236,7 @@ class StatsWorkerMixin:
 
         # Activity counters (from 2.11.0 on) -- downloads come from the videos (full history).
         metrics = ("download_failures", "reencodes", "reencode_failures", "reencode_saved_bytes", "repairs",
-                   "repair_failures", "uploads", "upload_failures", "shares", "share_failures", "jobs", "job_failures")
+                   "repair_failures", "uploads", "upload_failures", "jobs", "job_failures")
         activity_s = {m: series() for m in metrics}
         for row in self.db.daily_stats(start.isoformat()):
             if row["metric"] in activity_s:

@@ -1,6 +1,6 @@
 """
 Everything under /api/library/* (library items: add/remove/retry, issues
-merge/ignore, repair, reencode, share, rename, metadata, thumbnail,
+merge/ignore, repair, reencode, rename, metadata, thumbnail,
 stream, preview) plus /api/external/* (the API-key-authenticated routes
 for external tools like a browser userscript). Grouped together because
 they're all fundamentally "operate on a LibraryItem" -- the permission
@@ -27,7 +27,7 @@ from ..library_manager import library_manager
 from ..hardening import scrub_item
 from ..library_mixins.local_upload import UploadError
 from ..models import (
-    AddRequest, RenameRequest, ShareRequest, SetThumbnailRequest,
+    AddRequest, RenameRequest, SetThumbnailRequest,
     ResolveRepairRequest, MergeItemsRequest, IgnoreIssueRequest, ReencodeMoveRequest, ReencodeRequest, ItemDetailsRequest, DeleteFilesRequest,
     UploadConvertRequest, PreviewFromTimestampsRequest,
 )
@@ -451,36 +451,6 @@ def get_reencode_defaults(user: AuthContext = Depends(require_permission("videos
         "hevc_presets": list(HEVC_PRESETS),
         "encoders": {c: enc in available_encoders() for c, enc in REENCODE_ENCODERS.items()},
     }
-
-
-# ---------------------------------------------------------------- share to
-@router.get("/api/share/config")
-def get_share_config(user: AuthContext = Depends(require_permission("videos.share"))):
-    """Tells the frontend which destinations are actually configured, so
-    the Share To modal can grey out options that have no credentials
-    instead of letting the user pick them and fail. Sharing itself is
-    admin-only, so this is gated the same way rather than exposed to
-    regular users who can't reach the Share modal anyway."""
-    cfg = get_settings().share
-    return {
-        "enabled": get_settings().features.share,
-        "telegram": bool(cfg.telegram_api_id and cfg.telegram_api_hash),
-        "telegram_channel": bool(cfg.telegram_channel_id),
-        "telegram_group": bool(cfg.telegram_group_id),
-        "gofile": bool(cfg.gofile_api_key),
-        "pixeldrain": bool(cfg.pixeldrain_api_key),
-    }
-
-
-@router.post("/api/library/{video_id}/share")
-async def share_item(video_id: str, payload: ShareRequest, user: AuthContext = Depends(require_permission("videos.share"))):
-    try:
-        item = await library_manager.request_share(
-            video_id, payload.destinations, payload.telegram_target, payload.caption
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return item.model_dump()
 
 
 # ------------------------------------------------------------- item extras

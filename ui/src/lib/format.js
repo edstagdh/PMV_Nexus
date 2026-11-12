@@ -89,17 +89,12 @@ export function qualityInfo(resolution) {
 }
 export const ORIENTATION_GLYPH = { landscape: "🖥️", portrait: "📱", square: "⬛" };
 
-/** Short status for background work on an item (re-encode, repair, share), or null. */
+/** Short status for background work on an item (re-encode, repair), or null. */
 export function workStatus(item) {
   if (item.reencode_status === "encoding") return { label: `Re-encoding ${Math.round(item.reencode_progress_percent || 0)}%`, kind: "busy" };
   if (item.reencode_status === "queued") return { label: "Re-encode queued", kind: "queued" };
   if (item.repair_status === "running") return { label: item.repair_progress_label || "Repairing…", kind: "busy" };
   if (item.repair_status === "queued") return { label: "Repair queued", kind: "queued" };
-  const sharing = Object.entries(item.shares || {}).find(([, s]) => s.status === "sharing" || s.status === "queued");
-  if (sharing) {
-    const [dest, s] = sharing;
-    return { label: s.status === "queued" ? `Share to ${dest} queued` : `Sharing to ${dest}${s.progress_percent != null ? ` ${Math.round(s.progress_percent)}%` : "…"}`, kind: s.status === "queued" ? "queued" : "busy" };
-  }
   if (item.reencode_status === "failed") return { label: "Re-encode failed", kind: "failed", detail: item.reencode_error };
   if (item.repair_status === "failed") return { label: "Repair failed", kind: "failed", detail: item.repair_error };
   return null;

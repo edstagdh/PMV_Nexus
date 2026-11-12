@@ -4,6 +4,38 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.30.0] - 2026-11-13
+
+### Added
+- **Extensions:** optional add-ons in an `extensions/` folder next to `run.py` (not part of the app, never created
+  by it; with none installed nothing about them shows). Each is a Python package with a `register(api)` function
+  (`backend/extensions.py` documents the API). An extension can add:
+  - actions to a video's menu and the library's picked-videos bar, and settings panels under the new
+    **Server settings → Extensions** tab (listed only when an extension is installed; shows each one as loaded or
+    failed). Extensions draw no interface: they return forms (text, password, number, choices, checkboxes, info
+    lines, links) and the app shows them step by step (`GET /api/extensions`,
+    `POST /api/extensions/actions/{id}`, `POST /api/extensions/panels/{id}`);
+  - credentials (stored encrypted, shown under Credentials), permissions (in the roles editor), sources, API routes,
+    start / stop hooks, its own data on a video, Tasks-page entries and notifications.
+  - A broken extension is skipped and the app runs without it.
+  - `python -m Tools.install_extensions` installs their packages (`extensions/<name>/requirements.txt`); the Windows
+    Setup runs it when the folder exists.
+- **Sources** (`backend/sources/`): where a video comes from is now a source module — details, the download link
+  and the download itself. PMVHaven, PornTubeAI and HMVHaven are one built-in source type (`pmv_platform.py`);
+  extensions can add more.
+
+### Removed
+- **Share (Telegram, Gofile, Pixeldrain)** is no longer part of the app: the Share actions, the share dialog,
+  the Sharing switch, the Telegram sign-in, the share credentials, the `videos.share` permission, the share stats and
+  `Tools/generate_telegram_session.py`. The `kurigram` and `pytgcrypto` packages are no longer installed.
+  Earlier share results stay stored on the videos (unused). Upgrading: `git rm` the removed files (see the release
+  notes); the stored share credentials stay in `data/secrets.db`.
+
+### Changed
+- Server settings → Proxy: the per-destination upload switches became one **Extensions' uploads** switch
+  (`proxy.uploads`; shown only when an extension is installed). Any of the old switches that was on turns it on.
+- `features.share` in `config.yaml` is no longer used (ignored when present).
+
 ## [2.29.0] - 2026-11-13
 
 ### Added

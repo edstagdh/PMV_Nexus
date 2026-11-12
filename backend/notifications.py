@@ -12,7 +12,7 @@ counts unread warnings and errors.
 Who sees it: `user_id` = that user (e.g. the person who added the video);
 None = the admins (permission settings.manage). Admins see both.
 
-Categories: download, reencode, repair, upload, share, job, system.
+Categories: download, reencode, repair, upload, extension (2.30.0), job, system.
 Levels: success, info, warning, error.
 
 Never put secrets, codes or phone numbers in a notification.
@@ -26,7 +26,7 @@ from loguru import logger
 
 KEEP_DAYS = 30
 KEEP_MAX = 2000
-CATEGORIES = ("download", "reencode", "repair", "upload", "share", "job", "system")
+CATEGORIES = ("download", "reencode", "repair", "upload", "extension", "job", "system")
 LEVELS = ("success", "info", "warning", "error")
 
 _db = None
@@ -48,7 +48,7 @@ def notify(category: str, level: str, title: str, body: Optional[str] = None, li
         _db.add_notification(user_id, category if category in CATEGORIES else "system",
                              level if level in LEVELS else "info", title[:200], (body or None) and body[:1000], link)
         _db._note_change(["notifications"])
-        if category in ("download", "reencode", "upload", "share", "job") and level in ("success", "error"):
+        if category in ("download", "reencode", "upload", "extension", "job") and level in ("success", "error"):
             from . import stats_store
             stats_store.bump(f"{category}s" if level == "success" else f"{category}_failures")
         _added += 1

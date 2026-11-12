@@ -4,7 +4,6 @@ Library -> Select: actions on several picked videos at once (2.18.0).
   POST /api/bulk/songs     {ids}                                   songs.manage
   POST /api/bulk/repair    {ids}                                   videos.maintain
   POST /api/bulk/reencode  {ids, codec?}                           videos.maintain
-  POST /api/bulk/share     {ids, destinations, telegram_target?}   videos.share
 
 Each queues the same work as the single-video action; a video that can't take
 part (already in that codec, already queued, file missing...) is skipped and
@@ -26,16 +25,13 @@ from ..security import AuthContext, require_any
 router = APIRouter()
 
 MAX_IDS = 1000
-_PERMISSION = {"songs": "songs.manage", "repair": "videos.maintain", "reencode": "videos.maintain", "share": "videos.share"}
+_PERMISSION = {"songs": "songs.manage", "repair": "videos.maintain", "reencode": "videos.maintain"}
 
 
 class BulkRequest(BaseModel):
     ids: list[str] = Field(..., min_length=1, max_length=MAX_IDS)
     codec: Optional[str] = Field(None, pattern="^(hevc|av1)$")
     options: Optional[ReencodeOptions] = None  # this re-encode's settings (2.22.0)
-    destinations: list[str] = Field(default_factory=list, max_length=5)
-    telegram_target: Optional[str] = Field(None, pattern="^(channel|group)$")
-    caption: Optional[str] = Field(None, max_length=1000)
 
 
 def _title(video_id: str) -> str:
@@ -45,7 +41,7 @@ def _title(video_id: str) -> str:
 
 @router.post("/api/bulk/{action}")
 async def bulk_action(action: str, body: BulkRequest,
-                      user: AuthContext = Depends(require_any("songs.manage", "videos.maintain", "videos.share"))):
+                      user: AuthContext = Depends(require_any("songs.manage", "videos.maintain"))):
     permission = _PERMISSION.get(action)
     if permission is None:
         raise HTTPException(status_code=404, detail="Unknown action")
@@ -53,26 +49,21 @@ async def bulk_action(action: str, body: BulkRequest,
         raise HTTPException(status_code=403, detail="You don't have permission for this")
     ids = list(dict.fromkeys(body.ids))
     features = get_settings().features
-    if (action == "reencode" and not features.reencode) or (action == "share" and not features.share):
+    if action == "reencode" and not features.reencode:
         raise HTTPException(status_code=403, detail="That's switched off in Server settings")
 
     if action == "songs":
         result = library_manager.start_song_scan_many(ids, user.username)
         return {"queued": result["queued"], "skipped": [], "skipped_count": result["skipped"]}
 
-    if action == "share" and not body.destinations:
-        raise HTTPException(status_code=400, detail="Pick at least one destination")
-
     queued, skipped = 0, []
     for video_id in ids:
         try:
             if action == "repair":
                 library_manager.request_repair(video_id)
-            elif action == "reencode":
+            else:
                 await library_manager.request_reencode(video_id, codec=body.codec,
                                                        options=body.options.model_dump() if body.options else None)
-            else:
-                await library_manager.request_share(video_id, body.destinations, body.telegram_target, body.caption)
             queued += 1
         except (ValueError, KeyError) as exc:
             skipped.append({"id": video_id, "title": _title(video_id), "reason": str(exc) or "not possible"})

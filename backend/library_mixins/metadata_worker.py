@@ -8,12 +8,9 @@ from typing import Optional
 
 from loguru import logger
 
-from ..config import get_settings
 from ..models import LibraryItem
-from ..pmv_client import get_client
-from ..scraper_v1 import parse_metadata, VideoMetadata
-from ..scraper_v2 import build_api_url, parse_metadata_from_json, is_metadata_usable
-from ..sites import get_site
+from .. import sources
+from ..scraper_v1 import VideoMetadata
 from ..log_store import get_log_store
 from ._helpers import cleanup_partial_download_file, safe_name
 
@@ -70,59 +67,19 @@ class MetadataWorkerMixin:
             return None
 
     async def _fetch_metadata_v2_or_none(self, video_id: str, page_url: str, site_key: str) -> Optional[tuple[VideoMetadata, dict]]:
-        """Tries the site's v2 JSON metadata API first (richer/more reliable
-        than the v1 HTML scrape, e.g. a correct per-video rating). Returns
-        (meta, raw_json) on success, or None on failure/incomplete data --
-        callers should fall back to v1's parse_metadata() in that case.
-        video_url/is_hls are never set here (v2 has no access to the actual
-        downloadable file) -- callers about to download must still resolve
-        those via v1's parse_metadata()."""
+        """A video's details without the file link, or None (2.30.0: from the video's
+        source -- backend/sources)."""
+        from types import SimpleNamespace
         try:
-            api_url = build_api_url(video_id, get_site(site_key).base_url)
-            response = await get_client(site_key).fetch_json(api_url)
-            json_data = response.get("data") if isinstance(response, dict) else None
-            if not json_data:
-                logger.warning("v2 metadata API for {} returned no usable data envelope", video_id)
-                return None
-            meta = parse_metadata_from_json(json_data, page_url)
-            if not is_metadata_usable(meta):
-                logger.warning("v2 metadata API for {} returned incomplete data, falling back to v1", video_id)
-                return None
-            return meta, json_data
+            return await sources.get(site_key).details(SimpleNamespace(id=video_id, url=page_url, site=site_key),
+                                                       need_file=False)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("v2 metadata API failed for {}: {} -- falling back to v1 HTML scrape", video_id, exc)
+            logger.warning("Couldn't fetch the details of {}: {}", video_id, exc)
             return None
 
     async def _site_metadata(self, item: LibraryItem) -> tuple[VideoMetadata, Optional[dict]]:
-        """Details + download link of a site video (2.27.0): from the site's API only --
-        the details JSON and its /api/videos/<_id>/download endpoint. Only when
-        download.website_fallback is on (config.yaml) is the web page read as well,
-        as before; the site's terms forbid scraping, so it's off by default."""
-        v2_result = await self._fetch_metadata_v2_or_none(item.id, item.url, item.site)
-        if v2_result is not None and v2_result[0].video_url:
-            return v2_result
-        if not get_settings().download.website_fallback:
-            raise RuntimeError(
-                "The site's API didn't return this video (removed, private, a link the API doesn't know, "
-                "or the site is unreachable). Reading its web page instead is off (download.website_fallback).")
-        html = await get_client(item.site).fetch_page(item.url)
-        v1_meta = parse_metadata(html, item.url, get_site(item.site).cdn_base)
-        raw_json: Optional[dict] = None
-        if v2_result is not None:
-            meta, raw_json = v2_result
-            meta.video_url = v1_meta.video_url
-            meta.is_hls = v1_meta.is_hls
-            if not meta.funscript_url:
-                meta.funscript_url = v1_meta.funscript_url
-        else:
-            meta = v1_meta
-        if not meta.video_url:
-            debug_path = self._dump_debug_html(item.id, html)
-            raise RuntimeError(
-                "Could not find a downloadable video URL on the page"
-                + (f" (raw HTML saved to {debug_path} for debugging)" if debug_path else "")
-            )
-        return meta, raw_json
+        """Details + the file's link, from the video's source (backend/sources, 2.30.0)."""
+        return await sources.get(item.site).details(item, need_file=True)
 
     async def _fetch_metadata(self, item: LibraryItem) -> None:
         # 2.27.0: the site's API only (see _site_metadata).
@@ -171,7 +128,7 @@ class MetadataWorkerMixin:
             thumbnail_path: Optional[str] = None
             if thumb_dl_path is not None:
                 try:
-                    await get_client(item.site).stream_download(meta.thumbnail_url, thumb_dl_path)
+                    await sources.get(item.site).download(meta.thumbnail_url, thumb_dl_path)
                     thumbnail_path = str(thumb_dl_path)
                 except Exception:
                     logger.warning("Early thumbnail fetch failed for {}, will retry during download", item.id)
@@ -179,7 +136,7 @@ class MetadataWorkerMixin:
             preview_path: Optional[str] = None
             if preview_dl_path is not None:
                 try:
-                    await get_client(item.site).stream_download(meta.preview_url, preview_dl_path)
+                    await sources.get(item.site).download(meta.preview_url, preview_dl_path)
                     preview_path = str(preview_dl_path)
                 except Exception:
                     logger.warning("Early preview fetch failed for {}, will retry during download", item.id)

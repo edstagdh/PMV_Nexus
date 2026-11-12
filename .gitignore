@@ -180,3 +180,6 @@ ui/node_modules/
 # Tools the Windows installer downloads (FFmpeg, Playwright browser) -- 2.26.0
 runtime/
 installer/windows/build/
+
+# Optional add-ons (2.30.0): never part of this repository -- see backend/extensions.py
+extensions/

@@ -1,7 +1,7 @@
 """
 LibraryManager -- the central in-memory + SQLite-backed manager for the
 video library: item CRUD, search/filter/sort, and six independent
-background workers (download, metadata fetch, re-encode, repair, share,
+background workers (download, metadata fetch, re-encode, repair,
 duplicate detection), plus duplicate-issue detection and item-level
 extras (rename, thumbnail management, folder moves, metadata sync).
 
@@ -25,7 +25,6 @@ from .library_mixins.download_worker import DownloadWorkerMixin
 from .library_mixins.metadata_worker import MetadataWorkerMixin
 from .library_mixins.reencode_worker import ReencodeWorkerMixin
 from .library_mixins.repair_worker import RepairWorkerMixin
-from .library_mixins.share_worker import ShareWorkerMixin
 from .library_mixins.duplicate_worker import DuplicateWorkerMixin
 from .library_mixins.scheduler_worker import SchedulerWorkerMixin
 from .library_mixins.stats_worker import StatsWorkerMixin
@@ -45,7 +44,6 @@ class LibraryManager(
     MetadataWorkerMixin,
     ReencodeWorkerMixin,
     RepairWorkerMixin,
-    ShareWorkerMixin,
     DuplicateWorkerMixin,
     UntrackedFilesMixin,
     SchedulerWorkerMixin,

@@ -30,7 +30,6 @@ CATALOG: dict[str, tuple[str, str, str]] = {
     "videos.edit": ("Videos", "Edit details", "Edit details, rename, thumbnails, previews, bulk edit"),
     "videos.delete": ("Videos", "Remove videos", "Remove videos from the library (and delete their files)"),
     "videos.maintain": ("Videos", "Re-encode & repair", "Re-encode, repair/update one video or all of them"),
-    "videos.share": ("Videos", "Share", "Share videos to Telegram and other destinations"),
     "names.manage": ("Library care", "Names", "Rename and merge tags / performers / music, spellings"),
     "performers.manage": ("Library care", "Performers", "Link performers to ThePornDB, split names, run matching"),
     "duplicates.manage": ("Library care", "Duplicates", "Duplicate scan, merge and ignore duplicates"),
@@ -45,9 +44,10 @@ CATALOG: dict[str, tuple[str, str, str]] = {
     "self.password_reset": ("Own account", "Own password", "Change their own password"),
 }
 
-LIBRARY_MANAGE = ("videos.add", "videos.upload", "videos.edit", "videos.delete", "videos.maintain", "videos.share",
+# A list: extensions can add theirs (backend/extensions.py, 2.30.0).
+LIBRARY_MANAGE = ["videos.add", "videos.upload", "videos.edit", "videos.delete", "videos.maintain",
                   "names.manage", "performers.manage", "duplicates.manage", "maintenance.run", "tasks.view", "tasks.manage",
-                  "songs.manage")
+                  "songs.manage"]
 # settings.manage used to cover these too.
 SETTINGS_MANAGE = ("stats.view",)
 

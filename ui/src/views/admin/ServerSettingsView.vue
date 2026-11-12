@@ -9,12 +9,14 @@ import FolderPicker from "../../components/admin/FolderPicker.vue";
 import CredentialsPanel from "../../components/admin/CredentialsPanel.vue";
 import ConnectionsPanel from "../../components/admin/ConnectionsPanel.vue";
 import ProxyPanel from "../../components/admin/ProxyPanel.vue";
+import ExtensionsPanel from "../../components/admin/ExtensionsPanel.vue";
+import { ext } from "../../stores/extensions.js";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
 const route = useRoute();
 const router = useRouter();
-const TABS = [
+const BASE_TABS = [
   { key: "download", label: "Download" },
   { key: "reencode", label: "Re-encode" },
   { key: "uploads", label: "Uploads" },
@@ -25,7 +27,10 @@ const TABS = [
   { key: "credentials", label: "Credentials" },
   { key: "connections", label: "Connections" },
 ];
-const tab = computed(() => (TABS.some((t) => t.key === route.query.tab) ? route.query.tab : "download"));
+// Extensions (2.30.0): a tab only when there are any.
+const TABS = computed(() => (ext.extensions.length || ext.panels.length
+  ? [...BASE_TABS, { key: "extensions", label: "Extensions" }] : BASE_TABS));
+const tab = computed(() => (TABS.value.some((t) => t.key === route.query.tab) ? route.query.tab : "download"));
 const openTab = (key) => router.replace({ query: { ...route.query, tab: key } });
 
 const PRESETS = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"];
@@ -237,13 +242,8 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
       <button v-for="t in TABS" :key="t.key" role="tab" class="tab" :class="{ active: tab === t.key }" :aria-selected="tab === t.key" @click="openTab(t.key)">{{ t.label }}</button>
     </nav>
 
-    <section v-if="tab === 'credentials' && settings" class="card panel feature">
-      <label class="switch"><input type="checkbox" :checked="settings.features?.share !== false" :disabled="busy === 'feature-share'"
-             @change="setFeature('share', $event.target.checked)"><strong>Sharing</strong></label>
-      <p class="help-text">Off: “Share” disappears from every menu and page for everyone, whatever credentials are set below, and the
-        server refuses new shares (ones already queued still finish).</p>
-    </section>
     <CredentialsPanel v-if="tab === 'credentials'" />
+    <ExtensionsPanel v-else-if="tab === 'extensions'" />
     <ConnectionsPanel v-else-if="tab === 'connections'" />
     <ProxyPanel v-else-if="tab === 'proxy' && settings" :key="settings.proxy?.url + settings.proxy?.site_mode" :settings="settings" @saved="load" />
     <p v-else-if="error" class="error-text">{{ error }}</p>

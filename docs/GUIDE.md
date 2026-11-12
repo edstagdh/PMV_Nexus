@@ -1,6 +1,6 @@
 # PMV Nexus Guide
 
-PMV Nexus downloads, organizes, re-encodes, de-duplicates and shares videos from PMVHaven
+PMV Nexus downloads, organizes, re-encodes and de-duplicates videos from PMVHaven
 (and its sister sites porntubeai.com and hmvhaven.com) through a web app you run on your own machine.
 
 ## Getting started
@@ -103,7 +103,7 @@ with the download status, before the file has finished downloading.
   PMVHaven, backups (including ones made with **Create backup**), performer matching, repair-all, metadata syncs,
   folder moves and uploads being converted. Each shows what it's doing, how far it got (e.g. "12 of 61 done ·
   20%"), how long it has been running, and whether it was scheduled, started by hand or started automatically.
-- **Running now / Waiting / Failed:** each video's download, re-encode, repair or share upload. Failed downloads
+- **Running now / Waiting / Failed:** each video's download, re-encode or repair (and extensions' work). Failed downloads
   can be retried.
 - **Converting for watching:** every video being converted while someone watches it (**⚙ → 720p** in the player), with
   who's watching, the size and how far it got. **Stop** ends it; the viewer's player switches to the original file.
@@ -123,7 +123,7 @@ Removing a video that hasn't finished downloading also deletes its thumbnail, pr
 
 ### Notifications
 The **bell** (top of the sidebar; top right on a phone) keeps what happened in the background:
-- downloads, re-encodes, repairs, uploads and shares that finished or failed;
+- downloads, re-encodes, repairs and uploads that finished or failed (and what extensions report);
 - for admins, also jobs (scans, syncs, backups, performer matching) and low disk space.
 
 Its badge counts unread **problems**. **Problems** shows only failures and warnings; **All** shows everything.
@@ -131,7 +131,7 @@ Clicking one opens the video or page it's about. Each person is told about the v
 before 2.10.0, and ones added through the API, notify the admins.
 
 New ones also pop up in the corner. **My settings → Notifications** turns the pop-ups off per kind: downloads,
-re-encodes & repairs, uploads & shares, jobs. They're still kept under the bell. If the app loses the connection
+re-encodes & repairs, uploads, jobs (extensions' messages count as jobs). They're still kept under the bell. If the app loses the connection
 to the server, a banner says so until it's back, and every page (except a video's, whose player keeps playing what it
 already has) shows "Can't reach the server" instead of its content; the page comes back, refreshed, by itself.
 
@@ -221,9 +221,7 @@ app starts.
   versions**.
 - Tags, performers and music that differ only in upper/lower case count as one value (see **Spellings** below).
 - Click a video to open its page with the player, details and actions (rename, thumbnail, re-encode,
-  share, repair, remove).
-- The video page's details list its **Shares**: a badge for each destination it was shared to (click a ✓ badge to
-  open it there; a failed one shows why when you point at it).
+  repair, remove, and any extensions' actions).
 
 ### The player
 Video.js with the app's colours. Hover the speaker for the **volume slider** (a browser starts at 10 % until you change it; phones play at full
@@ -467,7 +465,7 @@ page**; picks are kept across pages), then **Add to playlists…** (tick one or 
 the picked videos) or **Edit tags, performers, music…**: what you add goes on every picked video,
 what you remove comes off the ones that have it. These count as your edits, so syncs don't undo them.
 The same bar also has (depending on your permissions) **Find songs**, **Repair / update**, **Re-encode…** (pick the
-codec and its settings) and **Share** (tick the destinations): they queue every picked video and show which were skipped and why
+codec and its settings) and any extensions' actions: they queue every picked video and show which were skipped and why
 (already in that codec, already queued, file missing…).
 
 **Names → Spellings** lists tags, performers and music written in more than one way (e.g. "Natural Tits"
@@ -494,8 +492,6 @@ previews of videos no longer in the library are listed as "seekbar preview".
   (`userscript/pmv-nexus.user.js`, install it in Tampermonkey or Violentmonkey) asks for the
   app's address and this key the first time. It keeps a list of what you've downloaded, refreshed once a day
   or from its menu (**Sync Downloaded List Now**), and marks videos on PMVHaven as Downloaded or Duplicate.
-- **Telegram, Gofile, Pixeldrain:** share destinations. The **Sharing** switch at the top of the Credentials tab
-  removes "Share" everywhere for everyone (whatever credentials are set) and refuses new shares; queued ones finish.
 - **AudD:** optional API token for finding songs (see *Songs*).
 - **VirusTotal:** optional API key (free account at virustotal.com) for the uploads' fingerprint check.
 
@@ -503,10 +499,16 @@ Passwords and keys are never shown again after saving; type a new value to repla
 Everything is stored encrypted in `data/secrets.db` with the key in `data/secret.key`, so keep the `data` folder
 private.
 
-**Telegram** additionally needs a sign-in: after saving the API ID and hash, open **Server settings → Connections →
-Telegram → Sign in**, enter the phone number, the code Telegram sends, and the cloud password if two-step
-verification is on. Telegram ends logins that aren't used for a long time; sharing then says so — **Sign in again**
-there. (`python -m Tools.generate_telegram_session` in a terminal still works too.)
+Extensions can add their own credentials here.
+
+## Extensions
+
+Optional add-ons in an `extensions` folder in the app folder (you create it; the app never does). With none
+installed, nothing below exists. **Server settings → Extensions** lists what's installed — loaded, or failed with
+the reason (details in the log) — and shows the settings panels they bring. Their actions appear in a video's menu
+and in the library's picked-videos bar, their credentials under **Credentials**, and their permissions in the roles
+editor. To install one: put its folder in `extensions`, run `python -m Tools.install_extensions` with the app's
+Python (Setup does this itself) and restart the app; to remove one, stop the app and delete its folder.
 
 ## Proxy
 
@@ -518,7 +520,7 @@ there. (`python -m Tools.generate_telegram_session` in a terminal still works to
     "Downloads at the same time" at 1 and one through the proxy, two videos download at once. More than 2 in total
     most likely gets downloads refused or slowed by the site.
   - **Everything:** pages, details, downloads and sign-in all go through the proxy.
-- **Share uploads:** Telegram, Gofile and/or Pixeldrain through the proxy.
+- **Extensions' uploads:** uploads extensions make to other sites go through the proxy (only shown when an extension is installed).
 - **Test the proxy** before relying on it. It compares the direct connection with the proxy: does it work, which
   address the sites see, latency, whether PMVHaven answers, and download speed. It also tells you if the proxy is
   slow enough to hold things up.
@@ -619,7 +621,7 @@ a notification. A **Restore test of the newest backup** job can be added on the 
 
 **What a backup holds:** the library database (videos, their details and your edits, users, roles and groups,
 playlists, watch history, stats, notifications), `config.yaml`, the settings changed in the app
-(`data/settings_overrides.json`) and the performer photos you added. Optionally the **secrets** (credentials, their key, site and Telegram sign-ins)
+(`data/settings_overrides.json`) and the performer photos you added. Optionally the **secrets** (credentials, their key, site sign-ins)
 and the **cache** (thumbnails and previews). **Never the video files themselves** — keep a copy of the download
 folder yourself (another drive, a NAS).
 
@@ -676,7 +678,8 @@ Errors like "database disk image is malformed", or the app won't start after a c
    off), or let the thumbnails and previews be made
    again (Maintenance → Repair everything).
 5. Check **Tools** (FFmpeg and the Python packages on the new computer) and, if you didn't include secrets,
-   **Server settings → Credentials**. Telegram sign-ins may have to be done again.
+   **Server settings → Credentials**. Extensions' sign-ins may have to be done again, and extensions themselves
+   aren't in backups — copy the `extensions` folder yourself.
 
 Moving between Windows and Linux works the same way; only the folder paths in step 4 change.
 

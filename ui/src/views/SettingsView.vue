@@ -33,7 +33,7 @@ const SORT_LABELS = {
 const BADGE_LABELS = {
   duration: "Duration", quality: "Quality", codec: "Codec (H.264 / HEVC / AV1)", filesize: "File size",
   orientation: "Orientation (🖥️ / 📱)", rating: "Rating", gone: "💀 Removed from PMVHaven",
-  status: "Work in progress (re-encode, repair, share)",
+  status: "Work in progress (re-encode, repair)",
 };
 const GONE_COLORS = ["#dc2626", "#b91c1c", "#e11d48", "#7c3aed", "#ea580c", "#111827"];
 const CHIP_KINDS = [
@@ -357,7 +357,7 @@ async function deleteAccount() {
         <div class="toggles">
           <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.download" @change="setToast('download', $event.target.checked)">Downloads finished / failed</label>
           <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.reencode" @change="setToast('reencode', $event.target.checked)">Re-encodes and repairs finished / failed</label>
-          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.upload" @change="setToast('upload', $event.target.checked)">Uploads and shares finished / failed</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.upload" @change="setToast('upload', $event.target.checked)">Uploads finished / failed</label>
           <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.job" @change="setToast('job', $event.target.checked)">Jobs finished / failed (scans, syncs, backups, performer matching)</label>
         </div>
       </div>

@@ -20,6 +20,7 @@ import { toApiParams } from "../lib/libraryQuery.js";
 import BulkEditDialog from "../components/dialogs/BulkEditDialog.vue";
 import { featureOn } from "../lib/actions.js";
 import BulkActionDialog from "../components/dialogs/BulkActionDialog.vue";
+import { extensionActions } from "../stores/extensions.js";
 import { hasPermission } from "../stores/session.js";
 
 defineOptions({ name: "LibraryView" });
@@ -230,7 +231,7 @@ const canBulkEdit = computed(() => hasPermission("videos.edit"));
 const selectMode = ref(false);
 const picked = ref(new Set());
 const bulkOpen = ref(false);
-const bulkAction = ref(null); // "songs" | "repair" | "reencode" | "share" (2.18.0)
+const bulkAction = ref(null); // "songs" | "repair" | "reencode" (2.18.0)
 // Layouts (2.23.0): admins pick grid / list / table; everyone else always gets the grid.
 const view = computed(() => (isAdmin() ? session.prefs.view : "grid"));
 function togglePick(id) {
@@ -345,7 +346,8 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
           <button class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'repair'"><Icon name="wrench" :size="15" />Repair / update</button>
           <button v-if="featureOn('reencode')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'reencode'"><Icon name="cpu" :size="15" />Re-encode…</button>
         </template>
-        <button v-if="hasPermission('videos.share') && featureOn('share')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'share'"><Icon name="share" :size="15" />Share</button>
+        <button v-for="a in extensionActions('bulk')" :key="a.id" class="btn btn-sm" :disabled="!picked.size"
+                @click="openDialog('extension', { ids: [...picked] }, { action: a })"><Icon :name="a.icon || 'plus'" :size="15" />{{ a.label }}</button>
         <button v-if="canBulkEdit" class="btn btn-primary btn-sm" :disabled="!picked.size" @click="bulkOpen = true"><Icon name="edit" :size="15" />Edit tags, performers, music…</button>
         <button class="btn btn-ghost btn-sm" @click="endSelect">Done</button>
       </div>

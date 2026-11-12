@@ -2,7 +2,7 @@
 Library-wide background work the Tasks page shows (2.9.0): Scheduler jobs,
 duplicate scans, syncs, backups, performer matching, repair-all, folder
 moves... -- everything that isn't one video's download / re-encode / repair
-/ share (those are shown from the videos themselves).
+(those are shown from the videos themselves).
 
 A job wraps its work in `async with activity.track(kind, title, progress=fn)`.
 `fn()` returns what it's doing right now -- {"stage", "done", "total",

@@ -69,13 +69,12 @@ Works with **PMVHaven** and its sister sites porntubeai.com and hmvhaven.com.
 - The pre-encode metadata JSON is preserved as a `_original.json` backup ("Original details" stays viewable from the UI); optionally the original video file itself is kept too, renamed with an `_old` suffix.
 - Queue state survives a server restart — anything that was mid-encode when the server stopped is safely restarted from scratch.
 
-### Share To
-Upload a completed download straight from the library, to one or more destinations at once (each runs concurrently, so Telegram doesn't block Gofile):
-- **Telegram** — uses a real user session (via Pyrogram/Kurigram), not a bot, so the upload limit follows your own account (4GB with Telegram Premium instead of the 50MB bot API cap). Sends a proper video message with a generated Telegram-legal thumbnail, correct duration/dimensions, and an auto-built caption (title, creator, tech badges, tags, source link). Requires a one-time interactive login — see [Configuration](#configuration).
-- **Gofile** — direct multipart upload with live progress.
-- **Pixeldrain** — direct PUT upload with live progress.
-
-Per-destination status (queued / uploading % / done with link / failed) is shown live in the library and the Share modal. If the server restarts mid-upload, in-flight shares are marked failed (uploads can't resume) so you know to retry.
+### Extensions
+Optional add-ons, each a Python package in an `extensions/` folder next to `run.py`. The folder isn't part of
+the app and isn't created by it: with no extensions, nothing about them shows anywhere. An extension can add
+actions to a video's menu and to the picked-videos bar, settings panels (Server settings → Extensions),
+credentials, permissions, sources and API routes; it draws no interface of its own — the app shows the forms it
+describes. See [Extensions](#extensions-1) below and the comments at the top of `backend/extensions.py`.
 
 ### Web UI
 - **Library** tab (paginated, filterable, sortable — everything that's finished downloading) and a **Tasks** tab (unpaginated, everything still in progress: fetching, pending, downloading, or done-but-still-encoding/uploading).
@@ -109,7 +108,6 @@ Per-destination status (queued / uploading % / done with link / failed) is shown
 | Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`) |
 | Scraping/session | httpx (scraping + downloads), Playwright + Firefox (one-time login only) |
 | Media | ffmpeg (re-encoding, HLS remuxing), PyMediaInfo, OpenCV (duration/fps probing) |
-| Sharing | Pyrogram (via the `kurigram` fork) for Telegram, httpx for Gofile/Pixeldrain |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
 | Song recognition | shazamio (Shazam), optional AudD API |
 | Images | Pillow (performer photos stored as WebP) |
@@ -128,14 +126,15 @@ project-root/
 │   ├── main.py             # FastAPI app: all routes, lifespan/startup hook
 │   ├── config.py           # settings loader — merges config.yaml + data/settings_overrides.json + encrypted credentials
 │   ├── db.py                # SQLite persistence layer for the library
-│   ├── library_manager.py  # core orchestration: download/metadata/reencode/share workers
+│   ├── library_manager.py  # core orchestration: download/metadata/reencode workers
 │   ├── logging_setup.py    # loguru configuration
 │   ├── media_tools.py      # ffmpeg re-encoding + HLS download + MediaInfo probing
 │   ├── models.py            # Pydantic request/response/domain models
 │   ├── pmv_client.py        # site client: API requests + downloads (optional Firefox sign-in, only for the web-page fallback)
 │   ├── scraper_v2.py        # site API JSON -> video details + download link (scraper_v1.py: the optional web-page fallback)
 │   ├── security.py          # session-cookie auth + API-key auth
-│   └── share_backends.py    # Telegram / Gofile / Pixeldrain upload implementations
+│   ├── sources/             # where videos come from (pmv_platform.py: PMVHaven and its sister sites)
+│   └── extensions.py        # loads the optional add-ons in extensions/ (see "Extensions")
 ├── ui/                        # interface source (Vue 3 + Vite) — see ui/README.md
 │   └── src/                   # views/ (pages), components/, stores/, lib/, styles/
 ├── frontend/                  # the built interface (generated from ui/ by `npm run build`, committed)
@@ -146,16 +145,17 @@ project-root/
 ├── install.sh                # Linux / macOS install (optionally from a backup, optional systemd user service)
 ├── installer/windows/        # Setup.exe (Inno Setup script, Windows service definition, icon)
 ├── .github/workflows/        # release.yml: builds Setup.exe and the GitHub Release for each vX.Y.Z tag
-├── Tools/                    # helper scripts (Telegram login, first_install for install.bat, ...)
+├── Tools/                    # helper scripts (first_install for install.bat, install_extensions, ...)
 ├── config.example.yaml       # settings template (committed); copied to config.yaml on first start
 ├── config.yaml               # your settings — created automatically, not committed
 ├── requirements.txt
+├── extensions/               # optional add-ons -- not part of the app, you create it (see "Extensions")
 └── data/                      # created automatically at first run
     ├── library.db              # SQLite database
     ├── backups/                 # backup zips (Management → Backups)
     ├── settings_overrides.json  # settings changed from the UI, layered on top of config.yaml
     ├── logs/                    # rotated backend.log + app_logs.db (Admin → Logs)
-    ├── pmv_session/             # saved PMVHaven browser session + Telegram session + debug dumps
+    ├── pmv_session/             # saved site browser sessions + debug dumps
     └── cache/                   # thumbnails / previews / metadata JSON (path is configurable)
 ```
 
@@ -165,9 +165,8 @@ project-root/
 
 ### Prerequisites
 - **Python 3.10+** (the codebase uses modern `X | None` type hints throughout).
-- **ffmpeg**, installed and available on your `PATH` — used for re-encoding, HLS remuxing, and generating Telegram-legal thumbnails.
+- **ffmpeg**, installed and available on your `PATH` — used for re-encoding and HLS remuxing.
 - A **PMVHaven account** (email + password) for the backend to log in with on your behalf.
-- Optional, only if you want them: **Telegram API credentials** (from https://my.telegram.org), a **Gofile** API key, and/or a **Pixeldrain** API key.
 
 ### Windows: Setup.exe (recommended)
 Download **`PMV-Nexus-Setup-<version>.exe`** from [Releases](https://github.com/edstagdh/PMV_Nexus/releases)
@@ -239,10 +238,11 @@ The first start creates `config.yaml` from `config.example.yaml`; edit it to set
 (see [Configuration](#configuration)), and `server.port` to use another port than 8676. `config.yaml` is your own file and is not committed to git. Credentials are
 entered in the app after the first start — no `.env` file is needed.
 
-### 6. (Optional) Set up Telegram sharing
-Save the Telegram API ID / hash in **Admin → Server settings → Credentials** first, then sign in under **Server settings → Connections → Telegram** (phone number, login code, and your cloud password if two-step verification is on). Do the same when Telegram says the login has expired. The terminal alternative still works:
+### 6. (Optional) Extensions
+If you have extensions, put each one's folder in `extensions/` (next to `run.py`), install their packages and
+restart the app:
 ```bash
-python -m Tools.generate_telegram_session
+python -m Tools.install_extensions
 ```
 
 ---
@@ -262,7 +262,7 @@ Non-secret settings live in **`config.yaml`** (created from `config.example.yaml
 | `site` | `base_url`, `cdn_base`, `login_path` | — | PMVHaven's base URL, CDN fallback prefix, and login page path. Update if the site changes providers. |
 | `download` | `output_dir` | `./downloads` | Where finished videos land, as `<output_dir>/<creator>/<file>`. |
 | | `cache_dir` | `./data/cache` | Thumbnails, preview clips, and metadata JSON — kept separate from `output_dir` so the UI stays fast even if your video storage is slow/networked. |
-| | `session_dir` | `./data/pmv_session` | Saved PMVHaven browser session, Telegram session, and debug dumps. |
+| | `session_dir` | `./data/pmv_session` | Saved site browser sessions (and extensions' sign-ins), and debug dumps. |
 | | `library_file` | `./data/library.json` | Legacy flat-file store, only used for a one-time auto-migration into SQLite. |
 | | `library_db_file` | `./data/library.db` | The active SQLite database. |
 | | `max_concurrent_downloads` | `1` | Parallel video downloads. |
@@ -288,12 +288,8 @@ All passwords, API keys and account settings are managed in the app and stored e
 | PornTubeAI / HMVHaven account | Use the PMVHaven account (on by default), email, password | Login for porntubeai.com / hmvhaven.com when it differs from the PMVHaven one. |
 | PMVHaven API | API key | Key from https://pmvhaven.com/api-keys (`pmvh_...`); "Test key" checks it. The same key is used for all three sites. |
 | External API | API key | `X-API-Key` for the userscript; Generate / Show / Clear. Empty = external API disabled. |
-| Telegram | API ID, API hash, session name, channel, group | Telegram sharing. |
-| Gofile | API key, folder ID, region | Gofile sharing. |
-| Pixeldrain | API key | Pixeldrain sharing. |
 
-The session-signing key is generated automatically. A share destination that's missing its credentials is
-greyed out in the Share To modal.
+Extensions can add their own groups here. The session-signing key is generated automatically.
 
 **Upgrading from `.env`:** on the first start of v1.2.0, any values still in `.env` are imported once into the
 encrypted store; after that `.env` is ignored and can be deleted.
@@ -345,7 +341,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 - **Library vs. Tasks** — Library only ever shows finished downloads; anything still fetching, pending, downloading, or done-but-still-encoding/uploading lives in **Tasks** instead.
 - **Views** — admins can switch between Grid, List and Table from the toolbar; other users see the grid.
 - **Filters & search** — the Filters panel has tags, performers, codec, quality, orientation, duration, rating and removed-from-site; the search box takes `title:`, `creator:`, `tag:`, `performer:`, `description:`, `music:` prefixes.
-- **Per-item actions** — from the ⋮ menu or the video page: Edit details, Rename, Change thumbnail, Repair / update, Re-encode… (HEVC or AV1, with this time's settings), Share, Add to playlist, Remove.
+- **Per-item actions** — from the ⋮ menu or the video page: Edit details, Rename, Change thumbnail, Repair / update, Re-encode… (HEVC or AV1, with this time's settings), Add to playlist, Remove (plus any extensions' actions).
 - **Playlists** — manual (ordered by hand) or smart (filled by a saved library filter), private or public to the app's other users; play in order or shuffled with next / previous, repeat and autoplay.
 - **Mini-player** — leave a playing video's page and it keeps playing in a floating, draggable player while you browse; a tab reload brings it back paused at the same moment.
 - **Upload** — add videos from your own computer with all their details; thumbnail, preview and technical details are made from the file.
@@ -365,7 +361,7 @@ details and step-by-step scenarios.
 - always: the library database (videos and their details, users, roles, playlists, watch history, stats),
   `config.yaml`, the settings changed in the app (`data/settings_overrides.json`), performer photos and playlist covers
   you added;
-- optional: **secrets** — the encrypted credentials *with their key* and the saved site / Telegram sign-ins;
+- optional: **secrets** — the encrypted credentials *with their key* and the saved site sign-ins;
   the thumbnail / preview **cache** (can be large);
 - **never the video files.** Copy your download folder yourself (another drive, a NAS).
 
@@ -423,6 +419,29 @@ app looks for the files there), otherwise it says which setting to fix.
 
 ---
 
+## Extensions
+
+Extensions are optional add-ons kept outside the app's code. Each is a folder in `extensions/` (next to `run.py`)
+with an `__init__.py` that has a `register(api)` function, and optionally a `requirements.txt`:
+
+```
+extensions/
+└── my_extension/
+    ├── __init__.py        # def register(api): ...
+    └── requirements.txt   # its Python packages (optional)
+```
+
+- **Install:** copy (or `git clone`) the folders into `extensions/`, run `python -m Tools.install_extensions`
+  with the app's Python (the Windows Setup does this itself when it finds the folder), restart the app.
+- **Remove:** stop the app, delete the extension's folder, start it again. Its data on videos stays in the
+  database, unused, and comes back if you reinstall it.
+- **See them:** Server settings → **Extensions** (only there when at least one is installed): what's loaded or
+  failed (the log says why), and their settings panels. Their actions appear in a video's menu and in the
+  library's picked-videos bar; their credentials under Server settings → Credentials; their permissions under
+  Users → roles.
+- **Write one:** the API (`ExtensionAPI`) and the form format are described at the top of
+  `backend/extensions.py`. A broken extension is skipped; the app runs without it.
+
 ## Data & storage layout
 
 ```
@@ -433,7 +452,6 @@ data/
 │   └── backend.log            # rotated monthly, kept for 12 months, rotated files zipped
 ├── pmv_session/
 │   ├── storage_state.json     # saved PMVHaven cookies/session
-│   ├── telegram/               # Pyrogram session file (from generate_telegram_session.py)
 │   └── debug/                  # login-failure screenshots, "no video URL found" HTML dumps
 └── cache/                      # (path from config.download.cache_dir)
     └── <creator>/               # thumbnails, preview clips, metadata JSON
@@ -459,7 +477,7 @@ The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexu
 ## Notes, limitations & fragility
 
 - PMVHaven is a Vue/Nuxt single-page app. The login-form selectors (`backend/pmv_client.py`) and the metadata selectors (`backend/scraper.py`) target the site's current markup — if PMVHaven changes its page structure, those two files are the first place to look.
-- Video/re-encode/share progress is polled every 2 seconds; there's no push/websocket layer.
+- Video/re-encode progress is polled every 2 seconds; there's no push/websocket layer.
 - This is designed around a single instance with one SQLite file — it isn't built for multiple concurrent installs sharing one database.
 
 ---
@@ -471,7 +489,6 @@ The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexu
 - **Re-encode/HLS download fails immediately** — confirm `ffmpeg -version` works from the same environment the app runs in; `/api/health` also reports whether `ffmpeg` is on `PATH`.
 - **PMVHaven login fails** — check `data/pmv_session/debug/login_fail.png` and the server log; PMVHaven's markup may have changed, in which case the selectors in `backend/pmv_client.py` need updating.
 - **Can't delete a file on Windows** — the app already retries deletion a few times to ride out the video player holding a stream open; if it still fails, make sure the video isn't open in another program.
-- **Telegram sharing fails ("not signed in" / "login has expired", `AUTH_KEY_UNREGISTERED`)** — sign in again under Server settings → Connections → Telegram.
 
 ---
 

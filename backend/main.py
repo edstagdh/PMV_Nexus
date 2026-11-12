@@ -17,7 +17,8 @@ from .logging_setup import setup_logging
 from .security import AuthContext, ensure_bootstrap_admin, get_current_user, require_permission
 from .app_info import APP_VERSION
 from .hardening import SecurityMiddleware
-from .routers import health, auth, me, users, pmv, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, telegram, performers, notifications, songs, bulk, now_playing
+from .routers import health, auth, me, users, pmv, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, performers, notifications, songs, bulk, now_playing, extensions as extensions_routes
+from . import extensions
 from .action_log import ActionLogMiddleware
 
 
@@ -56,7 +57,9 @@ async def lifespan(app: FastAPI):
     # at "pending"/"queued" forever, doing nothing, until a user happens to
     # add or retry some other item and incidentally wakes the worker up.
     library_manager.start()
+    await extensions.startup()
     yield
+    await extensions.shutdown()
     await library_manager.shutdown()
 
 
@@ -106,12 +109,14 @@ app.include_router(site_sync.router)
 app.include_router(events.router)
 app.include_router(logs.router)
 app.include_router(playlists.router)
-app.include_router(telegram.router)
 app.include_router(performers.router)
 app.include_router(notifications.router)
 app.include_router(songs.router)
 app.include_router(bulk.router)
 app.include_router(now_playing.router)
+app.include_router(extensions_routes.router)
+# Optional add-ons in extensions/ (2.30.0): loaded once; their own routes join the app here.
+extensions.load_all(app)
 
 # Every change made through the API is recorded in Admin -> Logs.
 app.add_middleware(ActionLogMiddleware)

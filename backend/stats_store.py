@@ -6,7 +6,7 @@ counting must not break the work being counted. Read by the Stats page
 
 Metrics: downloads, download_failures, download_bytes, reencodes,
 reencode_failures, reencode_saved_bytes, repairs, repair_failures, uploads,
-upload_failures, upload_bytes, shares, share_failures, jobs, job_failures.
+upload_failures, upload_bytes, jobs, job_failures (and any an extension adds).
 """
 from __future__ import annotations
 

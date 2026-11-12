@@ -8,14 +8,11 @@ from typing import Optional
 
 from loguru import logger
 
-from ..config import get_settings
 from .. import media_tools
 from .. import activity, stats_store
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
-from ..pmv_client import get_client
-from ..scraper_v1 import parse_metadata
-from ..sites import get_site
+from .. import sources
 from ._helpers import extract_tags_performers_music_from_meta_dict, is_broken_file, safe_name
 
 
@@ -468,22 +465,15 @@ class RepairWorkerMixin:
         meta = None
         raw_json = None
         html = None
-        v2_result = await self._fetch_metadata_v2_or_none(item.id, item.url, item.site)
-        if v2_result is not None:
-            meta, raw_json = v2_result
-        else:
-            try:
-                if not get_settings().download.website_fallback:  # 2.27.0: the site's API only
-                    raise RuntimeError("the site's API didn't return this video (removed, private, or unreachable)")
-                html = await get_client(item.site).fetch_page(item.url)
-                meta = parse_metadata(html, item.url, get_site(item.site).cdn_base)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Repair/Update for {}: could not re-fetch metadata: {}", item.id, exc)
-                await self._finish_repair(
-                    item, "failed",
-                    error=(f"Fixed {', '.join(fixed)}, but couldn't re-fetch metadata: {exc}" if fixed else f"Could not re-fetch metadata: {exc}"),
-                )
-                return
+        try:  # 2.30.0: from the video's source (backend/sources)
+            meta, raw_json = await sources.get(item.site).details(item, need_file=False)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Repair/Update for {}: could not re-fetch metadata: {}", item.id, exc)
+            await self._finish_repair(
+                item, "failed",
+                error=(f"Fixed {', '.join(fixed)}, but couldn't re-fetch metadata: {exc}" if fixed else f"Could not re-fetch metadata: {exc}"),
+            )
+            return
 
         # Same directory/naming the original download used -- keyed off the
         # existing video filename (not the freshly-fetched title), so a
@@ -545,7 +535,7 @@ class RepairWorkerMixin:
                     thumb_ext = "jpg"
                 thumb_path = cache_creator_dir / f"{base_name}.{thumb_ext}"
                 try:
-                    await get_client(item.site).stream_download(meta.thumbnail_url, thumb_path)
+                    await sources.get(item.site).download(meta.thumbnail_url, thumb_path)
                     if not is_broken_file(str(thumb_path)):
                         async with self._lock:
                             item.thumbnail_path = str(thumb_path)
@@ -586,7 +576,7 @@ class RepairWorkerMixin:
                 logger.info("Repair/Update for {}: re-downloading preview clip from PMVHaven", item.id)
                 preview_path = cache_creator_dir / f"{base_name}_preview.mp4"
                 try:
-                    await get_client(item.site).stream_download(meta.preview_url, preview_path)
+                    await sources.get(item.site).download(meta.preview_url, preview_path)
                     if not is_broken_file(str(preview_path)):
                         async with self._lock:
                             item.preview_path = str(preview_path)

@@ -4,14 +4,14 @@ single-JSON-file store (`library.json`).
 
 Why: the old store rewrote the *entire* library -- every item, serialized to
 one JSON blob -- on every single save, including per-second progress ticks
-during a download/re-encode/share. That gets slow and disk-heavy once the
+during a download/re-encode. That gets slow and disk-heavy once the
 library holds a lot of history. Here, each LibraryItem is one SQLite row, and
 callers can upsert just the row(s) that actually changed instead of the
 whole table.
 
 The full item is still stored as a JSON blob (`data` column) rather than
 being fully normalized into columns -- LibraryItem's schema keeps growing
-(tags, tech_* fields, shares, etc.) and this way adding a new field to the
+(tags, tech_* fields, etc.) and this way adding a new field to the
 model doesn't require a matching SQL migration. A few "hot" fields are
 promoted to real columns purely so they're indexable/filterable without
 deserializing every row: id, status, created_at, download_datetime.
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS app_state (
 -- button, or a Scheduler job of type "stats_snapshot"); nothing captures
 -- one automatically on its own.
 -- Notifications (2.10.0, backend/notifications.py): finished / failed
--- downloads, re-encodes, repairs, uploads, shares and jobs, low disk space...
+-- downloads, re-encodes, repairs, uploads, extensions and jobs, low disk space...
 -- user_id NULL = for the admins (settings.manage). Shown as toasts while the
 -- app is open and kept in the notification center.
 CREATE TABLE IF NOT EXISTS notifications (
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     read        INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id);
--- Stats (2.11.0): per-day counters (downloads, re-encodes, uploads, shares,
+-- Stats (2.11.0): per-day counters (downloads, re-encodes, uploads,
 -- repairs and their failures, bytes) and what was watched -- per user, video
 -- and day. Days are local dates "YYYY-MM-DD".
 CREATE TABLE IF NOT EXISTS stats_daily (

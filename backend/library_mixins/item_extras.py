@@ -16,9 +16,7 @@ from .. import media_tools
 from .. import storyboard
 from ..media_tools import convert_preview_for_browser, generate_thumbnail, is_browser_playable
 from ..models import EDITABLE_DETAIL_FIELDS, EDITABLE_ITEM_FIELDS, LibraryItem
-from ..pmv_client import get_client
-from ..scraper_v1 import parse_metadata
-from ..sites import get_site
+from .. import sources
 from ._helpers import extract_tags_performers_music_from_meta_dict, safe_name
 
 
@@ -287,13 +285,9 @@ class ItemExtrasMixin:
 
         if not timeline and site != "local":  # an uploaded video has no site page
             try:
-                v2 = await self._fetch_metadata_v2_or_none(video_id, page_url, site)  # 2.27.0: API first
+                v2 = await self._fetch_metadata_v2_or_none(video_id, page_url, site)  # from the source (2.30.0)
                 if v2 is not None:
                     timeline = v2[0].timeline_thumbnails
-                elif get_settings().download.website_fallback:
-                    html = await get_client(site).fetch_page(page_url)
-                    meta = parse_metadata(html, page_url, get_site(site).cdn_base)
-                    timeline = meta.timeline_thumbnails
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not fetch timeline thumbnails for {}: {}", video_id, exc)
                 timeline = []
@@ -453,7 +447,7 @@ class ItemExtrasMixin:
                 await asyncio.to_thread(tmp.write_bytes, image)
                 tmp.replace(new_thumb_path)
             else:
-                await get_client(site).stream_download(url, new_thumb_path)
+                await sources.get(site).download(url, new_thumb_path)
         except Exception:
             if backed_up_this_call:  # roll back so the original isn't stranded mid-rename
                 backup_path.rename(current_path)

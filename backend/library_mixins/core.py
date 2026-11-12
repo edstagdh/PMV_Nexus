@@ -17,8 +17,7 @@ from ..config import get_settings
 from ..spellings import fold, spellings
 from ..db import LibraryDB
 from ..models import LibraryItem
-from ..scraper_v1 import extract_video_id
-from ..sites import resolve_site_key
+from .. import sources
 from ._helpers import (
     codec_family,
     delete_with_retry,
@@ -36,7 +35,10 @@ _JOB_RESULT = {"success": ("success", "Finished"), "failed": ("error", "Failed")
 
 def _announce_job(act) -> None:
     """A finished job (backend/activity.py) -> a notification for the admins.
-    Routine successes (automatic runs, snapshots, upload dates) stay quiet."""
+    Routine successes (automatic runs, snapshots, upload dates) stay quiet;
+    extensions' work (source "extension") announces its own results."""
+    if act.source == "extension":
+        return
     if act.status == "success" and (act.source == "auto" or act.kind in ("stats_snapshot", "upload_dates", "update_check")):
         return
     level, verb = _JOB_RESULT.get(act.status, ("info", act.status))
@@ -121,7 +123,7 @@ class CoreMixin:
         self._cancel_requested: bool = False
         self._repair_cancel_requested: set[str] = set()
         # Per-item repair (thumbnail/preview/metadata fix-up), entirely
-        # independent of the download/reencode/share workers above -- see
+        # independent of the download/reencode workers above -- see
         # request_repair()/_ensure_repair_worker().
         self._repair_queue: list[str] = []
         self._repair_tasks: list[asyncio.Task] = []
@@ -129,9 +131,6 @@ class CoreMixin:
         # Same per-item tracking as _active_download_tasks/
         # _active_metadata_tasks above, but for repair runs.
         self._active_repair_tasks: dict[str, asyncio.Task] = {}
-        self._share_queue: list[tuple[str, list[str], str, Optional[str]]] = []
-        self._share_task: asyncio.Task | None = None
-        self._share_progress_last_save: dict[tuple[str, str], float] = {}
         # Score-based duplicate detection (see library_mixins/
         # duplicate_worker.py) -- no longer runs its own daily timer; a
         # recurring scan is now configured as a Scheduler job instead
@@ -211,11 +210,9 @@ class CoreMixin:
         self._perf_load()  # performer profiles + alias merging (performers.py)
 
         # anything that was mid-flight when we last shut down goes back to
-        # pending so the worker retries it; shares can't resume mid-upload,
-        # so surface those as failed instead of leaving them stuck.
+        # pending so the worker retries it.
         #
-        # Re-encodes get the same treatment as downloads, not the "just mark
-        # it failed" treatment shares get: unlike a share upload, a stalled
+        # Re-encodes get the same treatment as downloads: a stalled
         # re-encode is cheap and safe to just restart from scratch (ffmpeg
         # re-reads the source file, no partial-upload state to worry about),
         # so items are requeued rather than surfaced as failures the user
@@ -258,11 +255,6 @@ class CoreMixin:
             if item.repair_status == "queued":
                 self._repair_queue.append(item.id)
 
-            for share in item.shares.values():
-                if share.status in ("queued", "sharing"):
-                    share.status = "failed"
-                    share.error = "Interrupted by a server restart -- try sharing again"
-                    dirty[item.id] = item
         if dirty:
             self.db.save_items(dirty.values())
         if self._repair_queue:
@@ -631,9 +623,7 @@ class CoreMixin:
                 return True
             if item.reencode_status in ("queued", "encoding"):
                 return True
-            if item.repair_status in ("queued", "running"):
-                return True
-            return any(s.status in ("queued", "sharing") for s in item.shares.values())
+            return item.repair_status in ("queued", "running")
 
         items = [i for i in self._items.values() if is_active(i)]
         items.sort(key=lambda i: i.created_at, reverse=True)
@@ -695,12 +685,6 @@ class CoreMixin:
             elif item.reencode_status == "queued":
                 queued_encodes += 1
 
-            for share in item.shares.values():
-                if share.status == "sharing":
-                    uploading += 1
-                elif share.status == "queued":
-                    queued_uploads += 1
-
         return {
             "total_items": total_items,
             "facets": {
@@ -759,8 +743,9 @@ class CoreMixin:
         # Raises ValueError (caught by main.py's route handlers -> 400) if
         # the URL doesn't match any configured site -- e.g. a typo'd
         # domain, or a site that isn't in config.yaml's `sites` block yet.
-        site_key = resolve_site_key(url)
-        video_id = extract_video_id(url)
+        source = sources.for_url(url)   # 2.30.0: backend/sources (built-in sites + extensions)
+        site_key = source.key
+        video_id = source.item_id(url)
         async with self._lock:
             existing = self._items.get(video_id)
             # Any existing item that isn't "failed" is returned as-is
@@ -1175,7 +1160,7 @@ class CoreMixin:
         # task too (documented asyncio behavior), so this also interrupts
         # whatever's in-flight wherever an await point exists to land on.
         loop_tasks = [
-            t for t in [self._worker_task, self._reencode_task, self._share_task]
+            t for t in [self._worker_task, self._reencode_task]
             if t is not None
         ]
         loop_tasks += list(self._download_lanes.values())

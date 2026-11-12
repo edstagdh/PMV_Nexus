@@ -3,7 +3,7 @@
 //  - Live: CPU, memory, network, disks, what's being worked on -- every 5 s
 //    while the page is visible (GET /api/stats/machine).
 //  - Over a range (7 days ... all): library growth, activity (downloads,
-//    uploads, re-encodes, shares, repairs and failures), watching (time,
+//    uploads, re-encodes, repairs and failures), watching (time,
 //    plays, top videos / performers / tags, per user) and free disk space
 //    (GET /api/stats/history). Growth and downloads come from the videos
 //    themselves (whole history); the other activity counts and watching are
@@ -25,7 +25,7 @@ const live = ref(null);
 const error = ref("");
 
 // Colours: one per kind of activity, the same in every chart.
-const C = { downloads: "#3b82f6", uploads: "#14b8a6", reencodes: "#a855f7", shares: "#f59e0b", repairs: "#64748b",
+const C = { downloads: "#3b82f6", uploads: "#14b8a6", reencodes: "#a855f7", repairs: "#64748b",
   failures: "#ef4444", watch: "#ec4899", plays: "#8b5cf6", videos: "#3b82f6", size: "#14b8a6", free: "#22c55e" };
 
 async function loadHistory() {
@@ -51,7 +51,7 @@ const sum = (a) => (a || []).reduce((x, y) => x + y, 0);
 const h = computed(() => hist.value);
 const failures = computed(() => {
   const a = h.value?.activity || {};
-  return h.value ? h.value.labels.map((_, i) => ["download_failures", "upload_failures", "reencode_failures", "share_failures", "repair_failures"]
+  return h.value ? h.value.labels.map((_, i) => ["download_failures", "upload_failures", "reencode_failures", "repair_failures"]
     .reduce((s, k) => s + (a[k]?.[i] || 0), 0)) : [];
 });
 const tiles = computed(() => {
@@ -62,7 +62,7 @@ const tiles = computed(() => {
     { k: "Videos", v: (g.videos[last] || 0).toLocaleString(), s: `+${sum(g.added).toLocaleString()} in this range` },
     { k: "Library size", v: formatBytes(g.bytes[last] || 0), s: `+${formatBytes(sum(g.added_bytes))}` },
     { k: "Downloads", v: sum(a.downloads).toLocaleString(), s: `${sum(a.uploads).toLocaleString()} uploads · ${sum(a.reencodes).toLocaleString()} re-encodes` },
-    { k: "Failures", v: sum(failures.value).toLocaleString(), s: "downloads, uploads, re-encodes, shares, repairs", bad: sum(failures.value) > 0 },
+    { k: "Failures", v: sum(failures.value).toLocaleString(), s: "downloads, uploads, re-encodes, repairs", bad: sum(failures.value) > 0 },
     { k: "Watched", v: hours(sum(h.value.watch.seconds)), s: `${sum(h.value.watch.plays).toLocaleString()} ${sum(h.value.watch.plays) === 1 ? "play" : "plays"}` },
   ];
 });
@@ -85,7 +85,7 @@ const activitySeries = computed(() => {
   const a = h.value.activity;
   return [
     { name: "Downloads", values: a.downloads, color: C.downloads }, { name: "Uploads", values: a.uploads, color: C.uploads },
-    { name: "Re-encodes", values: a.reencodes, color: C.reencodes }, { name: "Shares", values: a.shares, color: C.shares },
+    { name: "Re-encodes", values: a.reencodes, color: C.reencodes },
     { name: "Repairs", values: a.repairs, color: C.repairs }, { name: "Failures", values: failures.value, color: C.failures },
   ].filter((s) => s.values.some((v) => v) || s.name === "Downloads");
 });
@@ -235,12 +235,6 @@ const saved = (b) => (b > 0 ? `${formatBytes(b)} saved` : b < 0 ? `${formatBytes
             <span class="name" :title="name">{{ name || "Unknown" }}</span>
             <span class="bar"><span :style="{ width: `${(Number(n) / maxOf(pairs(lib[key]))) * 100}%` }" /></span>
             <span class="n">{{ Number(n).toLocaleString() }}</span>
-          </div>
-        </div>
-        <div v-if="Object.keys(lib.share_counts || {}).length" class="list">
-          <h3>Shares</h3>
-          <div v-for="(statuses, dest) in lib.share_counts" :key="dest" class="bar-row">
-            <span class="name">{{ dest }}</span><span class="muted small">{{ Object.entries(statuses).map(([s, n]) => `${n} ${s}`).join(" · ") }}</span>
           </div>
         </div>
       </div>
