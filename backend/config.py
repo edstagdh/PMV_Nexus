@@ -299,6 +299,14 @@ class DuplicateScanConfig(BaseModel):
         return data
 
 
+class TrayConfig(BaseModel):
+    """The tray icon (run.py --tray, 2.29.0). `browser`: the program "Open PMV Nexus"
+    uses, with arguments -- e.g. "C:/Program Files/Mozilla Firefox/firefox.exe" -P Videos
+    --new-window {url} -- empty = the default browser. {url} is the app's address (added
+    at the end when missing)."""
+    browser: str = ""
+
+
 class BackupConfig(BaseModel):
     """Backups of the database + settings (see backend/backup.py). `dir` is
     relative to the project root unless absolute; `keep` is how many backup
@@ -398,6 +406,7 @@ class Settings(BaseModel):
     performers: PerformersConfig
     duplicate_scan: DuplicateScanConfig
     backup: BackupConfig
+    tray: TrayConfig = TrayConfig()
     share: ShareConfig
 
     # --- credentials, from the encrypted store (secrets_store.py) ---
@@ -580,6 +589,7 @@ def get_settings() -> Settings:
                              "password": creds.get("proxy_password")}),
         duplicate_scan=DuplicateScanConfig(**duplicate_scan_raw),
         backup=BackupConfig(**{**raw.get("backup", {}), **overrides.get("backup", {})}),
+        tray=TrayConfig(**(raw.get("tray") or {})),
         share=share,
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],

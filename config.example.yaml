@@ -5,6 +5,13 @@
 # entered in the app (Admin -> Server settings -> Credentials), never here. Settings changed in
 # the app are stored in data/settings_overrides.json on top of config.yaml.
 
+tray:
+  # The tray icon (start.bat --tray, the Windows shortcuts). "Open PMV Nexus" opens the app
+  # in this browser -- a program and its arguments, {url} = the app's address; empty = the
+  # default browser. E.g. a Firefox profile:
+  #   browser: '"C:/Program Files/Mozilla Firefox/firefox.exe" -P Videos --new-window {url}'
+  browser: ""
+
 server:
   # Where the app listens. Changing these needs a restart. Command-line options
   # (run.py --host / --port) override them for one run.

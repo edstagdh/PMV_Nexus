@@ -79,8 +79,11 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; 
   WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Comment: "Open PMV Nexus (starts it if needed)"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; \
   WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Tasks: desktopicon
-Name: "{userstartup}\{#AppName}"; Filename: "{app}\start.bat"; WorkingDir: "{app}"; \
-  IconFilename: "{app}\installer\app.ico"; Flags: runminimized; Tasks: autostart
+Name: "{userstartup}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "run.py --tray"; \
+  WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Tasks: autostart
+; A console version, for troubleshooting (shows the app's log as it runs).
+Name: "{autoprograms}\{#AppName} (console)"; Filename: "{app}\start.bat"; WorkingDir: "{app}"; \
+  IconFilename: "{app}\installer\app.ico"; Check: not WizardIsTaskSelected('service')
 
 [Run]
 Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; WorkingDir: "{app}"; \
@@ -109,7 +112,9 @@ var
   BackupPwPage: TInputQueryWizardPage;
   FoldersPage: TInputDirWizardPage;
   MoreFoldersPage: TInputDirWizardPage;
+  AdminPage: TInputQueryWizardPage;   { new library: the admin account (no setup code needed, 2.29.0) }
   PortPage: TInputQueryWizardPage;
+  AdminPassword: String;
   PythonExe: String;        { base interpreter used to make .venv }
   NeedPython: Boolean;
   IsUpgrade: Boolean;       { config.yaml was already there: keep everything, skip the set-up pages }
@@ -316,7 +321,15 @@ begin
   MoreFoldersPage.Add('Backups:');
   MoreFoldersPage.Add('Logs:');
 
-  PortPage := CreateInputQueryPage(MoreFoldersPage.ID, 'Port',
+  AdminPage := CreateInputQueryPage(MoreFoldersPage.ID, 'Your admin account',
+    'The account you sign in to PMV Nexus with',
+    'It can manage everything (users, settings, backups). 8 to 64 characters, at least one letter and one number, not containing the username.');
+  AdminPage.Add('Username:', False);
+  AdminPage.Add('Password:', True);
+  AdminPage.Add('Password again:', True);
+  AdminPage.Values[0] := 'admin';
+
+  PortPage := CreateInputQueryPage(AdminPage.ID, 'Port',
     'Which port should the app use?', 'The app opens at http://localhost:<port> on this computer, and at http://<this computer''s name or address>:<port> from other devices. 8676 unless something else uses it.');
   PortPage.Add('Port:', False);
 end;
@@ -412,7 +425,7 @@ function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
   if (PageID = ModePage.ID) or (PageID = BackupFilePage.ID) or (PageID = BackupPwPage.ID) or
-     (PageID = FoldersPage.ID) or (PageID = MoreFoldersPage.ID) or (PageID = PortPage.ID) then
+     (PageID = FoldersPage.ID) or (PageID = MoreFoldersPage.ID) or (PageID = AdminPage.ID) or (PageID = PortPage.ID) then
   begin
     if IsUpgrade or SetupFailed then
       Result := True
@@ -421,8 +434,26 @@ begin
     else if (PageID = BackupPwPage.ID) then
       Result := (ModePage.SelectedValueIndex <> 1) or not NeedPassword
     else if (PageID = MoreFoldersPage.ID) then
-      Result := not MoreFoldersNeeded;
+      Result := not MoreFoldersNeeded
+    else if (PageID = AdminPage.ID) then
+      Result := ModePage.SelectedValueIndex = 1;   { a backup brings its own accounts }
   end;
+end;
+
+{ setup_core admin: checks (CheckOnly) or creates the admin account. True when it worked. }
+function AdminAccount(const Msg: String; CheckOnly: Boolean): Boolean;
+var
+  Args, PwFile: String;
+begin
+  DeleteFile(IniFile);
+  SetIniString('admin', 'username', Trim(AdminPage.Values[0]), IniFile);
+  PwFile := ExpandConstant('{tmp}\admin-pw.txt');   { read and deleted by setup_core }
+  SaveStringToFile(PwFile, AdminPassword, False);
+  Args := 'admin --ini "' + IniFile + '" --password-file "' + PwFile + '"';
+  if CheckOnly then
+    Args := Args + ' --check-only';
+  SetupCore(Msg, Args, False);
+  Result := GetIniString('result', 'ok', '0', IniFile) = '1';
 end;
 
 function ApplySettings: Boolean;
@@ -445,6 +476,13 @@ begin
     else
       SetupCore('Saving the settings...', 'apply --ini "' + IniFile + '"', True);
     Result := GetIniString('result', 'ok', '0', IniFile) = '1';
+    if Result and (ModePage.SelectedValueIndex = 0) then
+    begin
+      Result := AdminAccount('Creating your admin account...', False);
+      if not Result then
+        SetIniString('result', 'error', 'The admin account couldn''t be created: ' +
+          GetIniString('result', 'error', 'unknown error', IniFile), IniFile);
+    end;
     if Result and WizardIsTaskSelected('service') then
     begin
       RunLogged('Installing the Windows service...', ExpandConstant('{#ServiceExe}'), 'install', '');
@@ -553,6 +591,24 @@ begin
       Result := False;
     end;
     BackupPwPage.Values[0] := '';
+  end
+  else if CurPageID = AdminPage.ID then
+  begin
+    if AdminPage.Values[1] <> AdminPage.Values[2] then
+    begin
+      MsgBox('The two passwords are different - type them again.', mbError, MB_OK);
+      Result := False;
+    end else begin
+      AdminPassword := AdminPage.Values[1];
+      WorkPage.Show;
+      try
+        Result := AdminAccount('Checking the account...', True);
+      finally
+        WorkPage.Hide;
+      end;
+      if not Result then
+        MsgBox(GetIniString('result', 'error', 'This account can''t be used.', IniFile), mbError, MB_OK);
+    end;
   end
   else if CurPageID = PortPage.ID then
     Result := ApplySettings;

@@ -24,3 +24,4 @@ shazamio>=0.9.0  # song recognition (Shazam), see backend/song_recognition.py
 numpy>=1.24
 cryptography>=42
 pyzipper>=0.3.6  # password-protected (AES-256) backups (2.25.0)
+pystray>=0.19; sys_platform == "win32"  # the tray icon (run.py --tray), Windows (2.29.0)

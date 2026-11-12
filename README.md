@@ -189,7 +189,9 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **Updating:** run the newer Setup over it; `config.yaml`, `data` and the service setting are kept, the set-up pages skipped.
 - **Uninstall** (Settings → Apps): removes the app; asks before deleting the library and settings (`data`,
   `config.yaml`) — videos outside the app folder are never touched.
-- The Start-menu shortcut opens the app in the browser, starting it first if it isn't running.
+- **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
+- The Start-menu shortcut opens the app in the browser, starting it first — with a **tray icon**, no console
+  window — if it isn't running. "PMV Nexus (console)" starts it with its log window instead, for troubleshooting.
 
 ### Linux / macOS: `install.sh`
 Get the code (download the release's source zip, or `git clone`), then run **`./install.sh`**: Python check (with the
@@ -302,7 +304,16 @@ encrypted store; after that `.env` is ignored and can be deleted.
 
 From the project root:
 
-- **Windows:** double-click `start.bat` (uses `.venv\Scripts\python.exe` if present).
+- **Windows:** double-click `start.bat` (uses `.venv\Scripts\python.exe` if present) — runs with its console window.
+- **Windows, tray icon:** `.venv\Scripts\pythonw.exe run.py --tray` (what the installer's shortcuts do) — no console:
+  - **click the icon** (or **Open PMV Nexus**) to open the app in the browser — the default one, or the program
+    set in `config.yaml` → `tray.browser` (e.g. a Firefox profile: `"C:/Program Files/Mozilla Firefox/firefox.exe" -P
+    Videos --new-window {url}`);
+  - **hover** to see what it's doing ("2 downloads, 1 re-encode, 1 playing");
+  - **right-click**: Open, Copy the setup code (only before the first account exists), Open the log folder, Open the
+    app folder, **Exit** (asks first when work is running, then stops cleanly — interrupted downloads and re-encodes
+    continue at the next start).
+  - If a folder can't be reached at start, a message box says which and offers the console window to choose it.
 - **Any OS:** `python run.py`.
 
 The port and address come from `config.yaml` (`server.port`, default **8676**; `server.host`, default `0.0.0.0` =

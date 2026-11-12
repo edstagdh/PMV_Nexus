@@ -53,6 +53,12 @@ class NowPlaying:
                 first[vid] = max(first.get(vid, 0), started)
         return sorted(first, key=lambda v: -first[v])
 
+    def playing_count(self) -> int:
+        """Players reporting now -- without sweep()'s live-update side effect (the tray, 2.29.0)."""
+        cutoff = time.time() - EXPIRE_SECONDS
+        with self._lock:
+            return sum(1 for v in self._tabs.values() if v[2] >= cutoff)
+
     def sweep(self) -> None:
         """Drops tabs that went quiet; tells the live updates when the list changed."""
         cutoff = time.time() - EXPIRE_SECONDS

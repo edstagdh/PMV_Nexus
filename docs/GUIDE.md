@@ -38,6 +38,10 @@ The first start creates `config.yaml` from `config.example.yaml`. Set `download.
 No `.env` file is needed: accounts and credentials are set up in the app.
 
 ### Start the app
+- **Windows, installed with Setup:** the Start-menu shortcut. The app runs with a **tray icon** (no window): click it
+  to open the app, hover to see what it's doing, right-click for the log folder or **Exit**. "PMV Nexus (console)"
+  runs it with its log window instead. A browser other than the default (e.g. a Firefox profile): `tray.browser` in
+  `config.yaml`.
 - **Windows:** double-click `start.bat`. It uses `.venv` automatically if it exists.
 - **Any OS:** `python run.py` from the project folder.
 

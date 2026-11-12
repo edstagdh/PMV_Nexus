@@ -16,6 +16,10 @@ behave the same; the Windows installer only shows pages and reads/writes INI fil
         staged restore (files of changed folders go to the new ones) or writes config.yaml.
         Writes [result] ok, error back into the same file.
     python -m Tools.setup_core cancel-restore
+    python -m Tools.setup_core admin --ini IN_OUT --password-file F [--check-only]
+        (2.29.0) IN: [admin] username. Creates the first admin account -- so a Windows install
+        needs no setup code -- after `apply` wrote the settings, if no account exists yet.
+        --check-only: only checks the username and password against the app's rules.
 
 --verify-only (2.26.2): only checks that the backup can be used and the password opens it
 (quick), without unpacking it. --progress P: writes "what it's doing" to P as it goes, which
@@ -218,6 +222,33 @@ def apply(path: Path, progress_file: str | None = None) -> int:
     return _result(ini, path, "")
 
 
+def admin(path: Path, password_file: str | None, check_only: bool) -> int:
+    ini = _ini()
+    ini.read(path, encoding="utf-8")
+    username = ini.get("admin", "username", fallback="").strip()
+    password = _read_password(password_file) or ""
+    from backend.security import validate_password_policy
+    if not username:
+        return _result(ini, path, "Enter a username")
+    problem = validate_password_policy(password, username)
+    if problem:
+        return _result(ini, path, problem)
+    if check_only:
+        return _result(ini, path, "")
+    import uuid
+
+    from backend.config import get_settings
+    from backend.db import LibraryDB
+    from backend.models import User
+    from backend.security import hash_password
+    db = LibraryDB(get_settings().library_db_file)
+    if not db.is_users_empty():
+        return _result(ini, path, "")  # accounts exist (e.g. restored from a backup): nothing to do
+    db.create_user(User(id=str(uuid.uuid4()), username=username, password_hash=hash_password(password),
+                        role="admin", display_name="Administrator"))
+    return _result(ini, path, "")
+
+
 def _result(ini, path: Path, error: str) -> int:
     ini["result"] = {"ok": "0" if error else "1", "error": error.replace("\n", " | ")}
     _write(ini, path)
@@ -237,6 +268,10 @@ def main() -> int:
     p.add_argument("--ini", required=True)
     p.add_argument("--progress")
     sub.add_parser("cancel-restore")
+    p = sub.add_parser("admin")
+    p.add_argument("--ini", required=True)
+    p.add_argument("--password-file")
+    p.add_argument("--check-only", action="store_true")
     args = parser.parse_args()
     if args.cmd == "inspect":
         if args.verify_only:
@@ -244,6 +279,8 @@ def main() -> int:
         return inspect(Path(args.ini), args.zip, args.password_file, args.progress)
     if args.cmd == "apply":
         return apply(Path(args.ini), args.progress)
+    if args.cmd == "admin":
+        return admin(Path(args.ini), args.password_file, args.check_only)
     backup.cancel_pending_restore()
     return 0
 

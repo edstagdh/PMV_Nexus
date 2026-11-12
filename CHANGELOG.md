@@ -4,6 +4,22 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.29.0] - 2026-11-13
+
+### Added
+- **Tray icon** (`run.py --tray`, Windows; the installer's shortcuts use it): the app runs without a console window.
+  - Click the icon / **Open PMV Nexus**: opens the app in the browser — the default one, or `tray.browser` in
+    `config.yaml` (a program + arguments, e.g. a browser profile; `{url}` = the app's address).
+  - Hover: what it's doing ("2 downloads, 1 re-encode, 1 task, 1 playing", or "running at …").
+  - Right-click: Open, **Copy the setup code** (only while no account exists; also shown in a notification),
+    Open the log folder, Open the app folder, **Exit** — asks first when work is running, then stops cleanly.
+  - Starting it again while it runs just opens the browser. A folder that can't be reached at start shows a message
+    box and offers the console window, where it can be chosen.
+  - New dependency on Windows: `pystray`.
+- **Windows installer creates the admin account** for a new library ("Your admin account" page: username, password
+  twice, the app's password rules), so no setup code is needed; a restore uses the backup's accounts. Shortcuts and
+  "start with Windows" now start the tray version; a "PMV Nexus (console)" shortcut runs it with its log window.
+
 ## [2.28.0] - 2026-11-12
 
 ### Changed

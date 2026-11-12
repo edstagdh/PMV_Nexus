@@ -145,6 +145,47 @@ def open_browser_when_up(port: int) -> None:
     threading.Thread(target=wait_and_open, daemon=True).start()
 
 
+def quiet_streams() -> None:
+    """pythonw.exe (the tray) has no console: give prints and the log's console
+    output somewhere harmless to go. The log files in data/logs are unaffected."""
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+
+
+def already_running(port: int) -> bool:
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def tray_folder_check() -> bool:
+    """The tray can't ask questions: when a folder (or a staged restore's folder) can't
+    be reached, say so in a message box and offer the console, where run.py asks."""
+    import contextlib
+    import io
+
+    from backend.tray import message_box
+
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out):
+            restore_with_folder_check()
+        return True
+    except SystemExit:
+        text = "\n".join(line for line in out.getvalue().splitlines() if line.strip())[-1500:]
+        if message_box("PMV Nexus can't start yet:\n\n" + text +
+                       "\n\nOpen a console window to choose the folders now?", yes_no=True):
+            if os.name == "nt":
+                import subprocess
+                subprocess.Popen(["cmd", "/c", str(ROOT / "start.bat")], cwd=str(ROOT),
+                                 creationflags=subprocess.CREATE_NEW_CONSOLE)
+        return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Start PMV Nexus")
     parser.add_argument("--host", help="address to listen on (default: config.yaml server.host, else 0.0.0.0)")
@@ -152,11 +193,15 @@ def main() -> None:
     parser.add_argument("--restore", metavar="BACKUP_ZIP",
                         help="put this backup back before starting (new install or another machine)")
     parser.add_argument("--open-browser", action="store_true", help="open the app in the browser once it's up")
+    parser.add_argument("--tray", action="store_true",
+                        help="no console: run with a tray icon (Windows shortcuts use this; 2.29.0)")
     parser.add_argument("--no-start", action="store_true",
                         help="only restore (--restore) and check the folders, then exit (installers)")
     args = parser.parse_args()
     restore = Path(args.restore).expanduser().resolve() if args.restore else None  # relative to where it was typed
 
+    if args.tray:
+        quiet_streams()
     # Relative paths in config.yaml (./data, ./downloads) resolve against cwd.
     os.chdir(ROOT)
     if str(ROOT) not in sys.path:
@@ -171,7 +216,11 @@ def main() -> None:
         summary = stage_from_command_line(restore)
         print(f"[restore] Restoring {summary.get('name') or restore.name} (made by version {summary.get('app_version') or '?'}). "
               "Files it replaces are kept as <name>.pre-restore.")
-    restore_with_folder_check()
+    if args.tray:
+        if not tray_folder_check():
+            return
+    else:
+        restore_with_folder_check()
     if args.no_start:
         print("Done. Start the app with run.py (or start.bat).")
         return
@@ -181,7 +230,12 @@ def main() -> None:
     host, port = args.host or host, args.port or port
     print(f"PMV Nexus: http://{'localhost' if host in ('0.0.0.0', '::') else host}:{port}")
 
-    if args.open_browser:
+    if args.tray and already_running(port):
+        from backend.tray import open_url
+        from backend.config import get_settings
+        open_url(f"http://localhost:{port}/", get_settings().tray.browser)  # the shortcut, clicked again
+        return
+    if args.open_browser and not args.tray:
         open_browser_when_up(port)
 
     import uvicorn
@@ -199,6 +253,10 @@ def main() -> None:
     config = uvicorn.Config("backend.main:app", host=host, port=port, log_config=None,
                             timeout_graceful_shutdown=5, server_header=False,  # don't announce the server software
                             h11_max_incomplete_event_size=64 * 1024)  # headers larger than this are refused
+    if args.tray:
+        from backend.tray import run as run_tray
+        run_tray(Server(config), port, open_browser=args.open_browser)
+        return
     try:
         Server(config).run()
     except KeyboardInterrupt:

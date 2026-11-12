@@ -1,9 +1,9 @@
 """The Start-menu / desktop shortcut and "Start now" of the Windows installer (2.26.0).
 
 Opens the app in the browser. If it isn't running yet: as a Windows service it's
-only waited for (the service starts it); otherwise start.bat is started in its own
-console window (where the app's log and any questions show) and the browser opens
-once the app answers. Run with pythonw.exe, so this part has no window of its own.
+only waited for (the service starts it); otherwise (2.29.0) it's started with its
+tray icon and no console window (run.py --tray), and the browser opens once it
+answers. Run with pythonw.exe, so nothing here has a window of its own.
 """
 from __future__ import annotations
 
@@ -34,7 +34,9 @@ def main() -> int:
     port = configured_address()[1]
     url = f"http://localhost:{port}/"
     if answering(port):
-        webbrowser.open(url)
+        from backend.config import get_settings
+        from backend.tray import open_url
+        open_url(url, get_settings().tray.browser)
         return 0
     if SERVICE_EXE.is_file():
         for _ in range(60):  # the service may still be starting
@@ -45,8 +47,9 @@ def main() -> int:
         webbrowser.open(url)  # the browser shows "can't connect"; the service log says why
         return 1
     if os.name == "nt":
-        subprocess.Popen(["cmd", "/c", str(ROOT / "start.bat"), "--open-browser"], cwd=str(ROOT),
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        pythonw = Path(sys.executable).with_name("pythonw.exe")
+        subprocess.Popen([str(pythonw if pythonw.is_file() else sys.executable), str(ROOT / "run.py"), "--tray", "--open-browser"],
+                         cwd=str(ROOT), creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
         subprocess.Popen([sys.executable, str(ROOT / "run.py"), "--open-browser"], cwd=str(ROOT),
                          start_new_session=True)
