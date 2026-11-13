@@ -849,6 +849,42 @@ begin
     InstallAfterFiles;
 end;
 
+{ Uninstalling while the app runs (2.33.3): asks, then closes it with the installed
+  Tools\stop_app.py (the service is stopped first). False = don't uninstall. }
+function InitializeUninstall: Boolean;
+var
+  Code: Integer;
+  Script, Args, ReportFile: String;
+  Report: AnsiString;
+begin
+  Result := True;
+  Script := AppDir + '\Tools\stop_app.py';
+  if not (FileExists(VenvPython) and FileExists(Script)) then
+    Exit;                      { an install from before 2.33.0, or a broken one }
+  ReportFile := GetTempDir + 'pmvnexus_stop_report.txt';
+  DeleteFile(ReportFile);
+  Args := '"' + Script + '" --root "' + AppDir + '" --report "' + ReportFile + '"';
+  if not Exec(VenvPython, Args + ' --check', GetTempDir, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 3) then
+    Exit;
+  if SuppressibleMsgBox('PMV Nexus is running. It will be closed so it can be uninstalled.' + #13#10#13#10 +
+      'Work in progress (downloads, re-encodes, scans) stops safely.', mbConfirmation, MB_OKCANCEL, IDOK) <> IDOK then
+  begin
+    Result := False;
+    Exit;
+  end;
+  ServiceCommand('stop');      { a service would start the app again }
+  if not Exec(VenvPython, Args, GetTempDir, SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+  begin
+    Report := '';
+    LoadStringFromFile(ReportFile, Report);
+    SuppressibleMsgBox('PMV Nexus couldn''t be closed, so it wasn''t uninstalled. Close it yourself (tray icon: Exit ' +
+      'PMV Nexus, or end it in Task Manager) and uninstall again.' + #13#10#13#10 + 'Still running:' + #13#10 +
+      String(Report), mbError, MB_OK, IDOK);
+    Result := False;
+  end;
+  DeleteFile(ReportFile);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Code: Integer;
