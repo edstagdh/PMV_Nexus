@@ -1,8 +1,12 @@
 // ==UserScript==
 // @name         PMV Nexus - PMVHaven companion
 // @namespace    edstagdh
-// @version      2.19
-// @description  v2.19: renamed for PMV Nexus (install it fresh: a renamed script is a new script to Tampermonkey; enter the address and API key again). v2.18: menu "Change PMV Nexus Address / API Key" (e.g. after the app's port changed); the Windows installer writes the chosen port into this file's default address. Send the current PMVHaven video URL to your local PMV Nexus, with SPA-aware URL cleaning, server-side "already exists" detection, grid/listing badges showing download status on every video card, a manual cache-clear control, a backend health/status indicator that's coordinated across tabs, the video's rating pulled straight from PMVHaven's own API, a default-volume fix for the player, and a full tag list rendered as compact split minus/tag/plus vote pills that highlight your actual votes. v2.17: also runs on hmvhaven.com (PMVHaven's sister site, same platform as porntubeai.com) — the download button, badges and tag votes work there the same way, with the same download-manager address and API key. v2.16: keeps a local copy of PMV Nexus's list of downloaded videos (and removed duplicates) in GM storage, synced once a day (any tab, coordinated across tabs) and on demand from the menu ("Sync Downloaded List Now") — grid/listing badges now come straight from that list with no request per card; only the current video's own button still asks the server live (to catch queued/downloading). Videos removed on the Duplicates page show as "Duplicate" (purple) with the title of the copy that was kept. The old per-URL 30-day cache is replaced by this list. v2.15: fixed the user-id sniffer actually never capturing anything — it was patching plain window.fetch/XMLHttpRequest, which in Tampermonkey's isolated JS world are NOT the same objects the page's own SPA code calls into (only this userscript's own requests were ever visible to it). Now patches unsafeWindow.fetch / unsafeWindow.XMLHttpRequest.prototype.open instead, added @grant unsafeWindow, and added a "Toggle Verbose User-ID Sniffer Logging" menu command to confirm from the console that it's actually seeing page requests. v2.14: the site calls GET /api/xp/<id> as part of its own client-side hydration on nearly every page, not just Profile — so removed the manual "open Profile to detect id" menu command and toast nudge entirely. Also switched to document-start so the sniffer installs before the site's own bundle runs. v2.13: dropped the per-video/per-tag local vote memory entirely — the ONLY thing persisted now is your PMVHaven user id itself. Vote-pill highlighting is derived purely by checking that id against each tag's own live tagVotes[].upvotes/downvotes arrays on every render. v2.12: detects and caches your real PMVHaven user id by passively watching every fetch/XHR request the page makes for GET /api/xp/<id>. v2.11: after a successful vote, the direction was remembered locally (GM storage, keyed per video + tag) and the matching button stayed highlighted (green for upvoted, red for downvoted). v2.10: matched the site's own dark/orange palette — the tag label keeps the site's own orange-gradient tag-pill look, while the vote buttons use the same neutral #2A2A2A/#3A3A3A the site uses for its own icon buttons (colored only on hover); shows the net vote count as "(n)" next to the tag name; and shrunk the pill's padding/button size for a lower-profile row. v2.9: redesigned each tag pill as a three-segment control (red "−" | tag name | green "+") instead of small inline arrows. v2.8: both tag vote buttons now call the site's confirmed voting endpoint, POST /api/videos/<id>/tags/vote with {tag, voteType: "upvote"|"downvote", tagType}, covering both directions on already-attached tags; since that endpoint's own response shape wasn't confirmed, a successful vote triggers a re-fetch of the video's metadata so the pill is redrawn from the server's real tagVotes counts rather than a parsed/guessed response. v2.7: (superseded) wired the upvote button to /api/videos/<id>/tags/suggest, the site's "Add a New Tag" endpoint, as a stand-in before the dedicated /tags/vote endpoint was found; downvote was disabled since no downvote path was known yet. v2.6: replaced the site's own truncated "top 5 tags" row on a video's own page with the FULL tag list (net up/down vote counts computed from the video API's tagVotes array) and added inline vote buttons per tag. v2.5: on video pages, dynamically detects the site's <video> element (even across SPA navigation / re-sourced players) and sets its volume to 4% once metadata for the current source has loaded, since the player otherwise always starts at 100%. v2.4: on a video's own page, fetches the rating from https://pmvhaven.com/api/videos/<id> and displays it in the site's own "XX% out of 100%" format right after the duration in the views/date/duration row. v2.3: added a backend status icon (online/offline/checking) that refreshes every 30s; multiple open tabs share one cached result via GM storage so only one tab pings the backend at a time, with GM_addValueChangeListener pushing the result to sibling tabs instantly. v2.2: download button icon now turns green (downloaded), glowing yellow (queued), or glowing pink (downloading). v2.1: buttons live in the site's top bar, anchored to the search icon, and status checks no longer re-fire on every SPA polling tick.
+// @version      2.20
+// @description  Companion for PMV Nexus: a download button on PMVHaven / PornTubeAI / HMVHaven video pages, and badges marking the videos you already have.
+// @homepageURL  https://github.com/edstagdh/PMV_Nexus
+// @supportURL   https://github.com/edstagdh/PMV_Nexus/issues
+// @updateURL    https://raw.githubusercontent.com/edstagdh/PMV_Nexus/main/userscript/pmv-nexus.user.js
+// @downloadURL  https://raw.githubusercontent.com/edstagdh/PMV_Nexus/main/userscript/pmv-nexus.user.js
 // @match        https://pmvhaven.com/*
 // @match        https://porntubeai.com/*
 // @match        https://hmvhaven.com/*
@@ -15,6 +19,58 @@
 // @connect      localhost
 // @run-at       document-start
 // ==/UserScript==
+
+// Changes:
+// v2.20: a short description, and it updates itself from GitHub (PMV Nexus 3.0.0). v2.19: renamed for PMV Nexus
+// (install it fresh: a renamed script is a new script to Tampermonkey; enter the address and API key again). v2.18:
+// menu "Change PMV Nexus Address / API Key" (e.g. after the app's port changed); the Windows installer writes the
+// chosen port into this file's default address. Send the current PMVHaven video URL to your local PMV Nexus, with
+// SPA-aware URL cleaning, server-side "already exists" detection, grid/listing badges showing download status on
+// every video card, a manual cache-clear control, a backend health/status indicator that's coordinated across tabs,
+// the video's rating pulled straight from PMVHaven's own API, a default-volume fix for the player, and a full tag
+// list rendered as compact split minus/tag/plus vote pills that highlight your actual votes. v2.17: also runs on
+// hmvhaven.com (PMVHaven's sister site, same platform as porntubeai.com) — the download button, badges and tag votes
+// work there the same way, with the same download-manager address and API key. v2.16: keeps a local copy of PMV
+// Nexus's list of downloaded videos (and removed duplicates) in GM storage, synced once a day (any tab, coordinated
+// across tabs) and on demand from the menu ("Sync Downloaded List Now") — grid/listing badges now come straight from
+// that list with no request per card; only the current video's own button still asks the server live (to catch
+// queued/downloading). Videos removed on the Duplicates page show as "Duplicate" (purple) with the title of the copy
+// that was kept. The old per-URL 30-day cache is replaced by this list. v2.15: fixed the user-id sniffer actually
+// never capturing anything — it was patching plain window.fetch/XMLHttpRequest, which in Tampermonkey's isolated JS
+// world are NOT the same objects the page's own SPA code calls into (only this userscript's own requests were ever
+// visible to it). Now patches unsafeWindow.fetch / unsafeWindow.XMLHttpRequest.prototype.open instead, added @grant
+// unsafeWindow, and added a "Toggle Verbose User-ID Sniffer Logging" menu command to confirm from the console that
+// it's actually seeing page requests. v2.14: the site calls GET /api/xp/<id> as part of its own client-side hydration
+// on nearly every page, not just Profile — so removed the manual "open Profile to detect id" menu command and toast
+// nudge entirely. Also switched to document-start so the sniffer installs before the site's own bundle runs. v2.13:
+// dropped the per-video/per-tag local vote memory entirely — the ONLY thing persisted now is your PMVHaven user id
+// itself. Vote-pill highlighting is derived purely by checking that id against each tag's own live
+// tagVotes[].upvotes/downvotes arrays on every render. v2.12: detects and caches your real PMVHaven user id by
+// passively watching every fetch/XHR request the page makes for GET /api/xp/<id>. v2.11: after a successful vote, the
+// direction was remembered locally (GM storage, keyed per video + tag) and the matching button stayed highlighted
+// (green for upvoted, red for downvoted). v2.10: matched the site's own dark/orange palette — the tag label keeps the
+// site's own orange-gradient tag-pill look, while the vote buttons use the same neutral #2A2A2A/#3A3A3A the site uses
+// for its own icon buttons (colored only on hover); shows the net vote count as "(n)" next to the tag name; and
+// shrunk the pill's padding/button size for a lower-profile row. v2.9: redesigned each tag pill as a three-segment
+// control (red "−" | tag name | green "+") instead of small inline arrows. v2.8: both tag vote buttons now call the
+// site's confirmed voting endpoint, POST /api/videos/<id>/tags/vote with {tag, voteType: "upvote"|"downvote",
+// tagType}, covering both directions on already-attached tags; since that endpoint's own response shape wasn't
+// confirmed, a successful vote triggers a re-fetch of the video's metadata so the pill is redrawn from the server's
+// real tagVotes counts rather than a parsed/guessed response. v2.7: (superseded) wired the upvote button to
+// /api/videos/<id>/tags/suggest, the site's "Add a New Tag" endpoint, as a stand-in before the dedicated /tags/vote
+// endpoint was found; downvote was disabled since no downvote path was known yet. v2.6: replaced the site's own
+// truncated "top 5 tags" row on a video's own page with the FULL tag list (net up/down vote counts computed from the
+// video API's tagVotes array) and added inline vote buttons per tag. v2.5: on video pages, dynamically detects the
+// site's <video> element (even across SPA navigation / re-sourced players) and sets its volume to 4% once metadata
+// for the current source has loaded, since the player otherwise always starts at 100%. v2.4: on a video's own page,
+// fetches the rating from https://pmvhaven.com/api/videos/<id> and displays it in the site's own "XX% out of 100%"
+// format right after the duration in the views/date/duration row. v2.3: added a backend status icon
+// (online/offline/checking) that refreshes every 30s; multiple open tabs share one cached result via GM storage so
+// only one tab pings the backend at a time, with GM_addValueChangeListener pushing the result to sibling tabs
+// instantly. v2.2: download button icon now turns green (downloaded), glowing yellow (queued), or glowing pink
+// (downloading). v2.1: buttons live in the site's top bar, anchored to the search icon, and status checks no longer
+// re-fire on every SPA polling tick.
+
 
 (function () {
   "use strict";

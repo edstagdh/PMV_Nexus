@@ -9,12 +9,22 @@ duplicate detection, optional HEVC / AV1 re-encoding and backups. It runs on you
 
 Works with **PMVHaven** and its sister sites porntubeai.com and hmvhaven.com.
 
+**Open beta.** Download the Windows installer from [Releases](https://github.com/edstagdh/PMV_Nexus/releases), or
+see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues](https://github.com/edstagdh/PMV_Nexus/issues).
+
 > **Independent, unofficial project.** PMV Nexus is not affiliated with, endorsed by or connected to PMVHaven or
 > any other site it works with. **Adults only (18+).** You are responsible for following each site's terms
 > (download only what a site offers for download, for your own personal use) and the law where you live; don't use
 > it to redistribute content you have no rights to. It uses each site's official API, doesn't bypass any access
 > control, and this project hosts no media. Read the full [Terms of use and disclaimer](DISCLAIMER.md) — installing
 > or using PMV Nexus means you accept them.
+
+<!-- Screenshots: add PNGs to docs/screenshots/ and list them here, e.g.
+<p align="center">
+  <img src="docs/screenshots/library.png" alt="The library" width="49%">
+  <img src="docs/screenshots/video.png" alt="A video's page" width="49%">
+</p>
+-->
 
 ---
 
@@ -32,6 +42,8 @@ Works with **PMVHaven** and its sister sites porntubeai.com and hmvhaven.com.
 - [External API (userscript integration)](#external-api-userscript-integration)
 - [Notes, limitations & fragility](#notes-limitations--fragility)
 - [Troubleshooting](#troubleshooting)
+- [Documentation, versions & support](#documentation-versions--support)
+- [Code signing policy](#code-signing-policy)
 - [Terms of use and disclaimer](DISCLAIMER.md)
 
 ---
@@ -467,7 +479,9 @@ These endpoints authenticate via a static `X-API-Key` header (generate the key i
 - `GET /api/external/exists?url=...` — returns `{"exists": bool, "status": ..., "title": ..., "label": ...}` for dedupe checks before adding (an item that previously `failed` is reported as not existing, since it's re-addable). A duplicate removed on the Duplicates page has `status: "merged"` and `duplicate_of: {id, title, url}` (the copy that was kept).
 - `GET /api/external/index` — `{"generated_at", "done": [ids], "merged": {id: {"of", "title"}}}`: every downloaded video's id (the 24-character id at the end of a PMVHaven video URL) and every removed duplicate, so a client can keep its own copy instead of asking per video.
 
-The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexus.user.js) — install it in Tampermonkey/Violentmonkey; it asks for the app's URL and the API key on first use (change them later from its menu: **Change PMV Nexus Address / API Key**). The Windows installer puts the chosen port in its default address. It keeps a copy of the downloaded list (synced daily, or via its menu → **Sync Downloaded List Now**), marks downloaded videos and duplicates on every listing, and adds a download button on video pages.
+The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexus.user.js) — install it in Tampermonkey/Violentmonkey
+(open the [raw file](https://raw.githubusercontent.com/edstagdh/PMV_Nexus/main/userscript/pmv-nexus.user.js) with
+the extension installed and it offers to install it; it then updates itself from there); it asks for the app's URL and the API key on first use (change them later from its menu: **Change PMV Nexus Address / API Key**). The Windows installer puts the chosen port in its default address. It keeps a copy of the downloaded list (synced daily, or via its menu → **Sync Downloaded List Now**), marks downloaded videos and duplicates on every listing, and adds a download button on video pages.
 
 ---
 
@@ -494,11 +508,12 @@ The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexu
 - In-app **Help** menu: Guide (`docs/GUIDE.md`), Changelog (`CHANGELOG.md`) and About.
 - The current version is in `VERSION`; click the version label in the header to check for updates.
 - Report bugs at <https://github.com/edstagdh/PMV_Nexus/issues> (Help → Report an issue prefills one).
+- Security problems: please report them privately — see [SECURITY.md](SECURITY.md).
 
 ### Making a release (maintainers)
 Releases are built by GitHub Actions (`.github/workflows/release.yml`) — nothing to build locally:
 1. Update `VERSION` and the `CHANGELOG.md` section for it; commit and push.
-2. Tag the commit and push the tag: `git tag v2.26.0 && git push origin v2.26.0`.
+2. Tag the commit and push the tag: `git tag v3.0.1 && git push origin v3.0.1`.
 3. The **Release** workflow checks that the tag matches `VERSION`, compiles the Python code, downloads WinSW and checks
    the Python installer's signature, builds `Setup.exe` with Inno Setup, and publishes a GitHub Release with the
    `.exe`, its `.sha256` and the CHANGELOG section as release notes (the source zip is added by GitHub).
@@ -506,6 +521,23 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) — nothi
 To try the installer without releasing: **Actions → Release → Run workflow** — the `.exe` is attached to that run
 as an artifact. To build on a Windows PC instead: install Inno Setup 6, put WinSW-x64.exe at
 `installer/windows/build/PMVNexusService.exe`, and run `iscc installer\windows\PMVNexus.iss`.
+
+## Code signing policy
+
+Windows releases are built from this repository's source by GitHub Actions (`.github/workflows/release.yml`) —
+never on a personal computer — and published on the [Releases](https://github.com/edstagdh/PMV_Nexus/releases)
+page with their SHA-256 checksums.
+
+- **Signing:** releases are not code-signed yet (Windows shows "Windows protected your PC": **More info → Run
+  anyway**; check the download against its `.sha256` if you like). When they are, this section will say who
+  provides the certificate.
+- **Who:** committer, reviewer and release approver: [edstagdh](https://github.com/edstagdh). Every signed release
+  is approved by hand.
+- **What's installed:** the app and its Python packages (from PyPI), and — when they're missing — Python from
+  python.org (its signature and checksum are checked when the installer is built) and FFmpeg (gyan.dev, optional).
+- **Privacy:** PMV Nexus sends nothing to this project. It talks to the sites you add videos from (with your API
+  key), and only when you use them: Shazam (sound samples), Google Gemini (sound clips, with your key), ThePornDB,
+  VirusTotal, the proxy test (ipify, Cloudflare's speed test), and GitHub to check for a newer version.
 
 ## License
 

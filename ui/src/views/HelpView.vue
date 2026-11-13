@@ -69,7 +69,6 @@ const issueUrl = computed(() => {
     "### Environment",
     `- App version: ${i.version || "unknown"}`, `- OS: ${i.platform || "unknown"}`, `- Python: ${i.python || "unknown"}`,
     `- FFmpeg: ${i.ffmpeg || "not found"}`, `- Browser: ${navigator.userAgent}`, `- Role: ${session.user?.role || "unknown"}`,
-    "- Interface: new (/next)",
   ].join("\n");
   const base = i.new_issue_url || "https://github.com/edstagdh/PMV_Nexus/issues/new";
   return `${base}?${new URLSearchParams({ labels: "bug", title: "[Bug] ", body })}`;
