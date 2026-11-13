@@ -49,8 +49,32 @@ def wait_until_answering(port: int, seconds: int = 60) -> bool:
     return False
 
 
+def open_page(page: str) -> int:
+    """--page /help/changelog (Setup's "See what's new", 2.34.0): opens that page of the
+    app, starting the app first (without opening it) when it isn't running."""
+    from run import configured_address
+
+    from backend.config import get_settings
+    from backend.tray import open_url
+
+    port = configured_address()[1]
+    url = f"http://localhost:{port}/{page.lstrip('/')}"
+    if not answering(port) and not starting() and not SERVICE_EXE.is_file():
+        if os.name == "nt":
+            pythonw = Path(sys.executable).with_name("pythonw.exe")
+            subprocess.Popen([str(pythonw if pythonw.is_file() else sys.executable), str(ROOT / "run.py"), "--tray"],
+                             cwd=str(ROOT), creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            subprocess.Popen([sys.executable, str(ROOT / "run.py")], cwd=str(ROOT), start_new_session=True)
+    wait_until_answering(port, 120)
+    open_url(url, get_settings().tray.browser)
+    return 0
+
+
 def main() -> int:
     sys.path.insert(0, str(ROOT))
+    if "--page" in sys.argv[1:-1]:
+        return open_page(sys.argv[sys.argv.index("--page") + 1])
     from run import configured_address
 
     from backend.config import get_settings

@@ -442,11 +442,14 @@ server. What's heard is **suggested**, never added by itself:
   videos: **Select** in the library → **Find songs**.
 - **Try again a bit later:** a sample Shazam doesn't know is tried once more 7 seconds further on (often past a sound
   effect or a transition); the result says how many were retried. Turn it off in the settings to use fewer requests.
-- **Optional AI — Google Gemini:** for the spots Shazam didn't recognise, the app can ask Gemini, Google's AI. It's
-  off until you turn it on: save a free API key (from aistudio.google.com/apikey) in **Server settings → Credentials →
-  Google Gemini** (**Test key** checks it without using your quota), then tick **Ask Gemini (AI) about samples Shazam
-  missed** in the Songs settings. Gemini gets a 20-second sound clip of each such spot (at most 3 per video by
-  default) and names a song only when it says it's sure; its finds are marked **Gemini (AI)** and are never counted as
+- **Optional AI — Google Gemini:** the app can also ask Gemini, Google's AI. Save a free API key (from
+  aistudio.google.com/apikey) in **Server settings → Credentials → Google Gemini** (**Test key** checks it without
+  using your quota). Then choose how songs are found — in the Songs settings for the Scheduler job and **Find songs
+  now**, and each time you find songs by hand (a video's **Find songs**, or **Select → Find songs**):
+  **Shazam** only; **Shazam, then Gemini** for the spots Shazam found nothing; **Shazam and Gemini** — a second
+  opinion, useful when Shazam names the wrong song (both answers are listed); or **Gemini only**, for videos without
+  well-known songs. Gemini gets a 20-second sound clip per spot (at most 3 per video by default) and names a song
+  only when it says it's sure; its finds are marked **Gemini (AI)** and are never counted as
   "sure" on their own — check them. The free models are tried best first, falling back to the next when one is busy;
   when all are out of today's free quota, Gemini is skipped for an hour. Google may use free-tier requests to improve
   its products.

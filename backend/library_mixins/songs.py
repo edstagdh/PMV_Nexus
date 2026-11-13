@@ -49,11 +49,16 @@ class SongsMixin:
         self.db._note_change(["songs"])
 
     # ------------------------------------------------------------ one video
-    async def _scan_video(self, item, on_sample=None) -> dict:
+    async def _scan_video(self, item, on_sample=None, method: Optional[str] = None) -> dict:
         """Samples and looks up one video; stores the suggestions. Raises
-        RecognitionError when a service stops answering (limit, bad key)."""
+        RecognitionError when a service stops answering (limit, bad key).
+        `method` (2.34.0): see config.SongsConfig.method; None = the setting."""
         cfg = self.settings.songs
-        key = self.settings.gemini_api_key if cfg.gemini else None  # 2.33.0: optional AI step
+        method = method or cfg.method
+        key = self.settings.gemini_api_key if method != "shazam" else None
+        if method == "gemini" and not key:
+            raise rec.RecognitionError("Gemini needs its API key (Server settings → Credentials → Google Gemini)")
+        use_shazam = method != "gemini"
         from ..media_tools import probe_streams
         info = await asyncio.to_thread(probe_streams, item.video_path)
         duration = float(info.get("duration") or 0)
@@ -76,8 +81,11 @@ class SongsMixin:
             entry["hits"] += 1
             entry["times"].append(round(at))
 
+        if not use_shazam:  # Gemini only: no Shazam requests at all
+            unmatched = list(times)
+            taken = len(times)
         async with rec.ShazamClient() as shazam:
-            for i, at in enumerate(times):
+            for i, at in enumerate(times if use_shazam else []):
                 wav = await asyncio.to_thread(rec.cut_sample, item.video_path, at)
                 taken += 1
                 if on_sample:
@@ -111,13 +119,22 @@ class SongsMixin:
                 else:
                     unmatched.append(at)
         gemini_used, gemini_note = 0, None
-        if key and unmatched and rec.gemini_paused():
+        # Where Gemini listens: the spots Shazam missed, or (both / Gemini only) any spot.
+        spots = unmatched if method == "shazam_gemini" else list(times)
+        if method != "shazam" and not key:
+            gemini_note = "Gemini skipped: no API key saved"
+        elif key and spots and rec.gemini_paused():
             gemini_note = "Gemini skipped: its free models were out of quota a moment ago"
-        elif key and unmatched:
-            # Spread Gemini's few tries over the spots Shazam missed; it gets a longer clip.
+            if method == "gemini":
+                raise rec.RecognitionError(gemini_note)
+        elif key and spots:
+            # Spread Gemini's few tries over the spots; it gets a longer clip.
             limit = cfg.gemini_max_samples
-            step = max(1, len(unmatched) // max(1, limit))
-            for at in unmatched[::step][:limit]:
+            step = max(1, len(spots) // max(1, limit))
+            picked = spots[::step][:limit]
+            for n, at in enumerate(picked):
+                if not use_shazam and on_sample:
+                    on_sample(n + 1, len(picked), len(songs))
                 start = max(0.0, min(at, duration - rec.GEMINI_SAMPLE))
                 clip = await asyncio.to_thread(rec.cut_sample, item.video_path, start, rec.GEMINI_SAMPLE)
                 if not clip:
@@ -127,17 +144,24 @@ class SongsMixin:
                 except rec.RecognitionError as exc:
                     gemini_note = f"Gemini: {exc}"
                     logger.warning("Song scan of '{}': {}", item.title, gemini_note)
+                    if method == "gemini" and not gemini_used:
+                        raise
                     break
                 gemini_used += 1
                 if song:
                     add(at, song)
+        if not use_shazam:
+            taken = gemini_used  # Gemini only: its clips are the samples
         have = {fold(v) for v in item.music} | {fold(spellings.canonical("music", v)) for v in item.music}
         new = [{**s, "samples": taken} for k, s in songs.items() if k not in have]
         pending = self.db.store_song_suggestions(item.id, sorted(new, key=lambda s: -s["hits"]))
-        detail = (f"{len(songs)} song(s) heard in {taken} samples"
+        how = {"shazam": "Shazam", "shazam_gemini": "Shazam, then Gemini", "both": "Shazam and Gemini",
+               "gemini": "Gemini"}[method]
+        heard = f"{gemini_used} Gemini clips" if not use_shazam else f"{taken} samples"
+        detail = (f"{how}: {len(songs)} song(s) heard in {heard}"
                   + (f", {len(songs) - len(new)} already listed" if len(songs) != len(new) else "")
                   + (f" ({retries} retried a bit later)" if retries else "")
-                  + (f" (Gemini: {gemini_used} clips)" if gemini_used else "")
+                  + (f" (Gemini: {gemini_used} clips)" if gemini_used and use_shazam else "")
                   + (f"; {shazam_error}" if shazam_error else "")
                   + (f"; {gemini_note}" if gemini_note else ""))
         self.db.save_song_scan(item.id, taken, len(songs), "done", detail)
@@ -145,7 +169,7 @@ class SongsMixin:
         return {"samples": taken, "found": len(songs), "new": pending, "detail": detail}
 
     # ------------------------------------------------------------ from a video's page
-    def start_song_scan(self, item_id: str, user: str) -> dict:
+    def start_song_scan(self, item_id: str, user: str, method: Optional[str] = None) -> dict:
         item = self._items.get(item_id)
         if not self._song_scannable(item):
             raise ValueError("This video's file isn't available")
@@ -153,10 +177,10 @@ class SongsMixin:
         if item_id in self._song_state:
             return self._song_state[item_id]
         self._set_song_state(item_id, state="waiting" if lock.locked() else "scanning", done=0, total=None, found=0)
-        asyncio.get_running_loop().create_task(self._manual_song_scan(item, user))
+        asyncio.get_running_loop().create_task(self._manual_song_scan(item, user, method))
         return self._song_state[item_id]
 
-    async def _manual_song_scan(self, item, user: str) -> None:
+    async def _manual_song_scan(self, item, user: str, method: Optional[str] = None) -> None:
         lock = self._songs_lock()
 
         def progress() -> dict:
@@ -174,7 +198,7 @@ class SongsMixin:
             async with activity.track("song_scan", f"Finding songs: {title_of(item)}", stop=True, progress=progress) as act:
                 async with lock:
                     self._set_song_state(item.id, state="scanning")
-                    result = await self._scan_video(item, on_sample)
+                    result = await self._scan_video(item, on_sample, method)
                     act.summary = result["detail"]
             if result.get("new"):
                 notify("job", "info", f"{result['new']} song(s) found in {title_of(item)}", link=video_link(item))
@@ -214,24 +238,25 @@ class SongsMixin:
         result = await self._scan_many(self._song_candidates()[:cfg.per_run], "Finding songs in videos without music")
         return {**result, "left": max(0, len(self._song_candidates()))}
 
-    def start_song_scan_many(self, ids: list[str], user: str) -> dict:
+    def start_song_scan_many(self, ids: list[str], user: str, method: Optional[str] = None) -> dict:
         """Library -> Select -> Find songs (2.18.0): the picked videos, one after the
         other, as one task on Tasks."""
         self._songs_lock()
         items = [self._items[i] for i in dict.fromkeys(ids) if self._song_scannable(self._items.get(i))]
         if items:
-            asyncio.get_running_loop().create_task(self._scan_many_quietly(items, f"Finding songs in {len(items)} picked video(s)"))
+            asyncio.get_running_loop().create_task(
+                self._scan_many_quietly(items, f"Finding songs in {len(items)} picked video(s)", method))
         return {"queued": len(items), "skipped": len(set(ids)) - len(items)}
 
-    async def _scan_many_quietly(self, items: list, title: str) -> None:
+    async def _scan_many_quietly(self, items: list, title: str, method: Optional[str] = None) -> None:
         try:
-            await self._scan_many(items, title)
+            await self._scan_many(items, title, method)
         except (rec.RecognitionError, asyncio.CancelledError):
             pass  # on Tasks and in the log
         except Exception:  # noqa: BLE001
             logger.exception("Finding songs in several videos failed")
 
-    async def _scan_many(self, todo: list, title: str) -> dict:
+    async def _scan_many(self, todo: list, title: str, method: Optional[str] = None) -> dict:
         state = {"done": 0, "total": len(todo), "found": 0, "title": "", "waiting": True}
         found_in = 0
         lock = self._songs_lock()
@@ -249,7 +274,8 @@ class SongsMixin:
                     state["title"] = title_of(item)
                     self._set_song_state(item.id, state="scanning", done=0, total=None, found=0)
                     try:
-                        result = await self._scan_video(item, lambda d, t, f, i=item.id: self._set_song_state(i, done=d, total=t, found=f))
+                        result = await self._scan_video(
+                            item, lambda d, t, f, i=item.id: self._set_song_state(i, done=d, total=t, found=f), method)
                     except rec.RecognitionError as exc:
                         self.db.save_song_scan(item.id, 0, 0, "failed", str(exc))
                         act.summary = f"Stopped after {state['done']} video(s): {exc}"

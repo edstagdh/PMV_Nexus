@@ -243,7 +243,7 @@ _SAFE_BODY_KEYS = (
     "new_dir", "move_existing", "max_concurrent", "job_type", "cron_expression", "enabled", "level", "site_mode",
     "proxy_downloads", "auto_convert", "convert_codec", "merge_aliases", "auto_match", "timestamps",
     "label", "gender", "permissions", "groups", "max_height", "cpu_percent", "max_sessions", "live_convert", "virus_scan",
-    "hash_check", "interval", "max_samples", "per_run", "rescan_days", "gemini", "old", "new", "remember",
+    "hash_check", "interval", "max_samples", "per_run", "rescan_days", "method", "old", "new", "remember",
 )
 _SECRET_HINT = re.compile(r"pass|secret|token|key|hash|code|phone|session", re.I)
 
@@ -378,6 +378,21 @@ def _json(raw: bytes):
         return None
 
 
+def _credential_changes(changed: dict) -> str:
+    """" · Google Gemini: API key (saved), AudD: API token (cleared)" -- names only, never values."""
+    if not changed:
+        return ""
+    from . import secrets_store
+    groups = {key: label for key, label, _help in secrets_store.GROUPS}
+    parts = []
+    for name, has_value in changed.items():
+        field = secrets_store.FIELDS.get(name) or {}
+        what = field.get("label") or name
+        group = groups.get(field.get("group"))
+        parts.append(f"{group + ': ' if group else ''}{what} ({'saved' if has_value else 'cleared'})")
+    return " · " + ", ".join(parts)
+
+
 class ActionLogMiddleware:
     def __init__(self, app):
         self.app = app
@@ -441,6 +456,9 @@ class ActionLogMiddleware:
             if not item_id and isinstance(body.get("item_id"), str) and _item_title(body["item_id"]):
                 item_id = body["item_id"]
         scope.setdefault("state", {})["action_body_on"] = body.get("on") if isinstance(body, dict) else None
+        if isinstance(body, dict) and isinstance(body.get("values"), dict):
+            # Which credentials changed (2.34.0): names and set / cleared only, never the values.
+            scope["state"]["action_value_keys"] = {str(k): bool(v) for k, v in body["values"].items()}
 
         status_code = 500
         response = {"json": False, "chunks": [], "size": 0}
@@ -478,7 +496,7 @@ class ActionLogMiddleware:
                 pass
 
     @staticmethod
-    def _log(scope, user, item_id, title, details, status_code, started) -> None:
+    def _log(scope, user, item_id, title, details, status_code, started) -> None:  # noqa: C901
         endpoint = scope.get("endpoint")
         name = getattr(endpoint, "__name__", "") or ""
         if name in _SELF_LOGGED:
@@ -492,6 +510,8 @@ class ActionLogMiddleware:
             found = extensions.actions.get(key) or extensions.panels.get(key)
             if found:
                 label = f"{found.label} ({found.extension})"
+        if name == "update_credentials":  # "Change credentials · Google Gemini: API key (saved)"
+            label += _credential_changes((scope.get("state") or {}).get("action_value_keys") or {})
         if name == "set_favorite":
             label = "Add to Favorites" if (scope.get("state") or {}).get("action_body_on") else "Remove from Favorites"
         category = _category(scope["path"])

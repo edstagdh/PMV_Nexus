@@ -6,6 +6,7 @@ from pathlib import Path
 from functools import lru_cache
 import json
 import shutil
+from typing import Literal
 
 import yaml
 from dotenv import load_dotenv
@@ -152,11 +153,24 @@ class SongsConfig(BaseModel):
     interval: int = Field(30, ge=15, le=300)          # a sample every N seconds of the video
     max_samples: int = Field(12, ge=1, le=40)         # per video
     shazam_retry: bool = True                         # a sample Shazam missed is tried again 7 s later (2.18.0)
-    # 2.33.0, optional AI: ask Google Gemini (key in Credentials) about samples Shazam missed.
-    gemini: bool = False
+    # How songs are found (2.34.0; Gemini = optional AI, key in Credentials). Used by the
+    # Scheduler job and "Find songs now", and as the preselected choice when finding songs by hand:
+    #   shazam         Shazam only
+    #   shazam_gemini  Shazam; Gemini for the spots Shazam didn't recognise
+    #   both           Shazam on every spot, and Gemini too (a second opinion: catches Shazam's wrong finds)
+    #   gemini         Gemini only
+    method: Literal["shazam", "shazam_gemini", "both", "gemini"] = "shazam"
     gemini_max_samples: int = Field(3, ge=1, le=20)   # Gemini requests per video (the free tier counts them)
     per_run: int = Field(20, ge=1, le=500)            # videos per Scheduler run
     rescan_days: int = Field(30, ge=0, le=3650)       # look at a video without music again after this (0 = never)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _gemini_switch(cls, data):
+        """2.33.0's `gemini: true` (Gemini on Shazam's misses) -> method shazam_gemini."""
+        if isinstance(data, dict) and "method" not in data and "gemini" in data:
+            data = {**data, "method": "shazam_gemini" if data.get("gemini") else "shazam"}
+        return data
 
 
 class ReencodeConfig(BaseModel):

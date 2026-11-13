@@ -5,6 +5,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import ReencodeOptions from "../ReencodeOptions.vue";
+import SongMethodPicker from "../songs/SongMethodPicker.vue";
 import { loadReencodeDefaults, reencodeBody, reencodeState } from "../../lib/reencodeOptions.js";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
@@ -28,14 +29,18 @@ const reState = reactive({});
 const busy = ref(false);
 const error = ref("");
 const result = ref(null);
+const songs = ref(null);   // Find songs: { method, gemini } -- the method can be changed for these (2.34.0)
 
 onMounted(async () => {
+  if (props.action === "songs") {
+    try { songs.value = await api("/api/songs/methods"); } catch (err) { error.value = err.message; }
+  }
   if (props.action === "reencode") {
     try { reDefaults.value = await loadReencodeDefaults(); Object.assign(reState, reencodeState(reDefaults.value)); }
     catch (err) { error.value = err.message; }
   }
 });
-const ready = computed(() => props.action !== "reencode" || !!reDefaults.value);
+const ready = computed(() => (props.action !== "reencode" || !!reDefaults.value) && (props.action !== "songs" || !!songs.value));
 
 async function go() {
   busy.value = true;
@@ -43,6 +48,7 @@ async function go() {
   try {
     const body = { ids: props.ids };
     if (props.action === "reencode") Object.assign(body, reencodeBody(reState, reDefaults.value));
+    if (props.action === "songs") body.method = songs.value.method;
     result.value = await api(`/api/bulk/${props.action}`, { method: "POST", body });
     const r = result.value;
     toast(`${TEXT.title}: ${r.queued} queued${r.skipped_count ? `, ${r.skipped_count} skipped` : ""}`, { type: r.queued ? "success" : "info" });
@@ -57,6 +63,7 @@ async function go() {
   <ModalDialog :title="`${TEXT.title} — ${videos}`" :width="action === 'reencode' ? '40rem' : undefined" @close="emit('close')">
     <template v-if="!result">
       <p class="lead">{{ TEXT.lead }}</p>
+      <SongMethodPicker v-if="action === 'songs' && songs" v-model="songs.method" :gemini="songs.gemini" label="Listen with" />
       <ReencodeOptions v-if="action === 'reencode' && reDefaults && reState.codec && reDefaults.ask" :defaults="reDefaults" :state="reState" />
       <p v-else-if="action === 'reencode' && reDefaults" class="lead">With the server's settings:
         <strong>{{ reDefaults.codec === "av1" ? `AV1, CRF ${reDefaults.av1.crf}, preset ${reDefaults.av1.preset}` : `HEVC, CRF ${reDefaults.hevc.crf}, ${reDefaults.hevc.preset}` }}</strong>

@@ -134,7 +134,10 @@ songs:
   interval: 30           # a 12-second sample every N seconds of the video
   max_samples: 12        # per video
   shazam_retry: true     # a sample Shazam missed is tried again 7 s later
-  gemini: false          # ask Gemini (AI) about samples Shazam missed -- needs its key in Credentials
+  # How songs are found (Scheduler job, "Find songs now"; preselected when finding songs by hand):
+  #   shazam | shazam_gemini (Gemini on Shazam's misses) | both (a second opinion) | gemini
+  # The Gemini ones need its API key in Credentials.
+  method: shazam
   gemini_max_samples: 3  # Gemini requests per video (the free tier counts them)
   per_run: 20            # videos per Scheduler run (newest first)
   rescan_days: 30        # listen again to a video still without music after N days (0 = never)

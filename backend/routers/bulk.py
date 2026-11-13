@@ -32,6 +32,7 @@ class BulkRequest(BaseModel):
     ids: list[str] = Field(..., min_length=1, max_length=MAX_IDS)
     codec: Optional[str] = Field(None, pattern="^(hevc|av1)$")
     options: Optional[ReencodeOptions] = None  # this re-encode's settings (2.22.0)
+    method: Optional[str] = Field(None, pattern="^(shazam|shazam_gemini|both|gemini)$")  # songs (2.34.0)
 
 
 def _title(video_id: str) -> str:
@@ -53,7 +54,7 @@ async def bulk_action(action: str, body: BulkRequest,
         raise HTTPException(status_code=403, detail="That's switched off in Server settings")
 
     if action == "songs":
-        result = library_manager.start_song_scan_many(ids, user.username)
+        result = library_manager.start_song_scan_many(ids, user.username, body.method)
         return {"queued": result["queued"], "skipped": [], "skipped_count": result["skipped"]}
 
     queued, skipped = 0, []

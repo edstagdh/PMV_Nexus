@@ -4,6 +4,20 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.34.0] - 2026-11-13
+
+### Added
+- **Choose how songs are found** (`songs.method`): **Shazam**, **Shazam, then Gemini** (Gemini on the spots Shazam
+  found nothing — what 2.33.0's switch did), **Shazam and Gemini** (both listen: a second opinion when Shazam names
+  the wrong song, both answers are listed), or **Gemini only** (for videos without well-known songs). The setting
+  (Management → Songs) is used by the Scheduler job and Find songs now; a video's **Find songs** and
+  **Select → Find songs** let you pick for that run. The Gemini choices need its API key. 2.33.0's `songs.gemini`
+  switch becomes "Shazam, then Gemini" when it was on.
+- **Setup's last page after an update: "See what's new in version …"** — opens the app's Help → Changelog (starting
+  the app if it isn't running). A new install still offers "Open PMV Nexus now".
+- **The log says which credentials changed:** "Change credentials · Google Gemini (optional AI): API key (saved)"
+  — names and saved / cleared only, never the values.
+
 ## [2.33.4] - 2026-11-13
 
 ### Fixed

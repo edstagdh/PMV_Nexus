@@ -89,7 +89,10 @@ Name: "{autoprograms}\{#AppName} (console)"; Filename: "{app}\start.bat"; Workin
 
 [Run]
 Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; WorkingDir: "{app}"; \
-  Description: "Open PMV Nexus now"; Flags: postinstall nowait skipifsilent; Check: AppReady
+  Description: "Open PMV Nexus now"; Flags: postinstall nowait skipifsilent; Check: AppReadyNew
+; An update (2.34.0): the app's Help -> Changelog instead -- the usual "what's new" on an updater's last page.
+Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app --page /help/changelog"; WorkingDir: "{app}"; \
+  Description: "See what's new in version {#AppVersion}"; Flags: postinstall nowait skipifsilent; Check: AppReadyUpdated
 
 [InstallDelete]
 ; An update replaces the app's own code folders as a whole (2.33.0), so files a new
@@ -166,6 +169,17 @@ end;
 function AppReady: Boolean;
 begin
   Result := (not SetupFailed) and FileExists(VenvPython);
+end;
+
+{ The Finish page: a new install offers "Open PMV Nexus now", an update "See what's new". }
+function AppReadyNew: Boolean;
+begin
+  Result := AppReady and not IsUpgrade;
+end;
+
+function AppReadyUpdated: Boolean;
+begin
+  Result := AppReady and IsUpgrade;
 end;
 
 function LogFile: String;
