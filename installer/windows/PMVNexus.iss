@@ -106,10 +106,14 @@ Type: filesandordirs; Name: "{app}\runtime\ms-playwright"
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.venv"
 Type: filesandordirs; Name: "{app}\runtime"
-Type: filesandordirs; Name: "{app}\backend\__pycache__"
-Type: filesandordirs; Name: "{app}\backend\routers\__pycache__"
-Type: filesandordirs; Name: "{app}\backend\library_mixins\__pycache__"
-Type: filesandordirs; Name: "{app}\Tools\__pycache__"
+; The app's code folders as a whole (2.33.4): Python leaves __pycache__ folders in every
+; package (backend\sources, extensions...), which a hand-made list missed. More __pycache__
+; folders (e.g. in extensions) are removed by DeletePyCaches below.
+Type: filesandordirs; Name: "{app}\backend"
+Type: filesandordirs; Name: "{app}\frontend"
+Type: filesandordirs; Name: "{app}\Tools"
+Type: filesandordirs; Name: "{app}\userscript"
+Type: filesandordirs; Name: "{app}\docs"
 Type: filesandordirs; Name: "{app}\__pycache__"
 
 [Code]
@@ -885,6 +889,28 @@ begin
   DeleteFile(ReportFile);
 end;
 
+{ Removes every __pycache__ folder under Dir (Python's compiled files, made while the app
+  runs, so the uninstaller doesn't know them), e.g. in the extensions folder. }
+procedure DeletePyCaches(const Dir: String);
+var
+  Find: TFindRec;
+begin
+  if FindFirst(Dir + '\*', Find) then
+  try
+    repeat
+      if (Find.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0) and (Find.Name <> '.') and (Find.Name <> '..') then
+      begin
+        if CompareText(Find.Name, '__pycache__') = 0 then
+          DelTree(Dir + '\' + Find.Name, True, True, True)
+        else if (CompareText(Find.Name, 'data') <> 0) and (CompareText(Find.Name, '.venv') <> 0) then
+          DeletePyCaches(Dir + '\' + Find.Name);
+      end;
+    until not FindNext(Find);
+  finally
+    FindClose(Find);
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Code: Integer;
@@ -898,6 +924,8 @@ begin
   end;
   if CurUninstallStep = usPostUninstall then
   begin
+    DeletePyCaches(AppDir);
+    RemoveDir(AppDir + '\extensions');   { only when nothing else is left in it }
     if DirExists(AppDir + '\data') and (SuppressibleMsgBox(
       'Also delete your library and settings?' + #13#10#13#10 +
       'This deletes the data folder (database, thumbnails, backups, logs - and the videos, if they are in data\videos) ' +
