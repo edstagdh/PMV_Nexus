@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PYTHON_VERSION: "3.12.10"   # installed by Setup when the PC has no Python 3.10-3.13
+  PYTHON_VERSION: "3.12.10"   # installed by Setup when the PC has no Python 3.11-3.14
   WINSW_VERSION: "v2.12.0"    # Windows service wrapper (https://github.com/winsw/winsw)
 
 jobs:

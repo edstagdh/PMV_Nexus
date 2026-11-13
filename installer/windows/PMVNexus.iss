@@ -198,6 +198,11 @@ begin
 end;
 
 { Python 3.10-3.13 from python.org / the Microsoft Store, found through the registry (PEP 514). }
+{ The Pythons the app supports, newest first (2.34.2): 3.14, 3.13, 3.12, 3.11 -- every package
+  the app needs has Windows builds for them. Not 3.10 (end of life since October 2026); 3.15 and
+  newer once their packages are out and tested. Found through the
+  registry entries python.org's installers make (PEP 514); a Python without them (conda,
+  pyenv, a zip) isn't seen. }
 function FindPython: Boolean;
 var
   Versions: array[0..3] of String;
@@ -206,7 +211,7 @@ var
   Exe: String;
 begin
   Result := False;
-  Versions[0] := '3.12'; Versions[1] := '3.13'; Versions[2] := '3.11'; Versions[3] := '3.10';
+  Versions[0] := '3.14'; Versions[1] := '3.13'; Versions[2] := '3.12'; Versions[3] := '3.11';
   Roots[0] := HKCU; Roots[1] := HKLM64; Roots[2] := HKLM32;
   for I := 0 to 3 do
     for J := 0 to 2 do
@@ -216,6 +221,33 @@ begin
         Result := True;
         Exit;
       end;
+end;
+
+{ Was the app's .venv made with a supported Python (see FindPython)? Read from
+  .venv\pyvenv.cfg ("version = 3.12.10"). An older .venv is made again on an update. }
+function VenvVersionOk: Boolean;
+var
+  Lines: TArrayOfString;
+  I, P: Integer;
+  Value: String;
+begin
+  Result := False;
+  if not LoadStringsFromFile(AppDir + '\.venv\pyvenv.cfg', Lines) then
+    Exit;
+  for I := 0 to GetArrayLength(Lines) - 1 do
+  begin
+    P := Pos('=', Lines[I]);
+    if (P > 0) and (Pos('version', Lowercase(Trim(Copy(Lines[I], 1, P - 1)))) = 1) then
+    begin
+      Value := Trim(Copy(Lines[I], P + 1, 20)) + '.';
+      if (Pos('3.11.', Value) = 1) or (Pos('3.12.', Value) = 1) or (Pos('3.13.', Value) = 1) or
+         (Pos('3.14.', Value) = 1) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
 end;
 
 { The last line of a text file (the install log), shown under the progress bar. }
@@ -624,11 +656,11 @@ begin
   if CurPageID = wpReady then
   begin
     { Downloads before anything is installed, so a failed download changes nothing. }
-    NeedPython := not FindPython;
+    NeedPython := not FindPython and not (FileExists(VenvPython) and VenvVersionOk);
     DownloadPage.Clear;
     if NeedPython then
     begin
-      if MsgBox('Python 3.10 or newer wasn''t found on this computer. PMV Nexus needs it.' + #13#10#13#10 +
+      if MsgBox('Python 3.11 to 3.14 wasn''t found on this computer. PMV Nexus needs one of them.' + #13#10#13#10 +
         'Setup will now download Python {#PythonVersion} from python.org and install it for your user account ' +
         '(it shows its own progress window), then continue.', mbInformation, MB_OKCANCEL) <> IDOK then
       begin
@@ -822,6 +854,11 @@ begin
   WorkPage.Show;
   try
     Ok := True;
+    if FileExists(VenvPython) and not VenvVersionOk and (PythonExe <> '') then
+    begin                       { made with a Python the app no longer supports: make it again }
+      Log('The .venv uses an unsupported Python: making it again with ' + PythonExe);
+      DelTree(AppDir + '\.venv', True, True, True);
+    end;
     if not FileExists(VenvPython) then
       Ok := RunLogged('Creating the Python environment (.venv)...', PythonExe, '-m venv "' + AppDir + '\.venv"', '');
     if Ok then

@@ -164,7 +164,7 @@ project-root/
 ## Installation
 
 ### Prerequisites
-- **Python 3.10+** (the codebase uses modern `X | None` type hints throughout).
+- **Python 3.11–3.14** (3.10 reached its end of life in October 2026).
 - **ffmpeg**, installed and available on your `PATH` — used for re-encoding and HLS remuxing.
 - A **PMVHaven API key** (from pmvhaven.com/api-keys) is recommended, so the site knows the requests are yours.
 
@@ -178,7 +178,9 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   **Windows service** (always on, before anyone signs in; Local System can't see mapped drives — use `\\server\share`
   paths or set an account under services.msc → Log On). Optional desktop shortcut. A firewall rule for the port is
   added for private networks (all-users installs; otherwise Windows asks the first time the app starts).
-- **Python:** a Python 3.10–3.13 already on the PC is used. If there's none, Setup says so, downloads Python 3.12
+- **Python:** a Python 3.14, 3.13, 3.12 or 3.11 already on the PC is used (newest first; found through the entries python.org's
+  installers make — conda / pyenv ones aren't seen). An app folder whose `.venv` was made with another version gets a new
+  one on the next update. If there's none, Setup says so, downloads Python 3.12
   from python.org (checked against the file the release was built with) and installs it — its own progress window shows.
 - It then creates `.venv`, installs the packages and, if ticked and
   not already on PATH, **FFmpeg** (in `runtime\`). Details: `data\logs\install.log`.

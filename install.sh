@@ -13,15 +13,15 @@ ask() { local a; read -r -p "$1" a || true; printf '%s' "$a"; }
 
 say "PMV Nexus - install"
 
-# ---- 1. Python 3.10+ ---------------------------------------------------------
+# ---- 1. Python 3.11 to 3.14 (the newest first) -------------------------------
 PY=""
-for c in python3.12 python3.13 python3.11 python3.10 python3; do
-  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+for c in python3.14 python3.13 python3.12 python3.11 python3; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 14))' 2>/dev/null; then
     PY="$c"; break
   fi
 done
 if [ -z "$PY" ]; then
-  say "Python 3.10 or newer wasn't found. Install it, then run ./install.sh again:"
+  say "Python 3.11 to 3.14 wasn't found. Install it, then run ./install.sh again:"
   echo "  Debian/Ubuntu:  sudo apt install python3 python3-venv python3-pip"
   echo "  Fedora:         sudo dnf install python3"
   echo "  macOS:          brew install python@3.12"

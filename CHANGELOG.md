@@ -4,6 +4,24 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.34.2] - 2026-11-13
+
+### Changed
+- **Python 3.14 is supported** (and preferred: Setup, `install.bat` and `install.sh` take the newest of 3.14, 3.13, 3.12,
+  3.11). 2.34.1 left it out on the assumption that some packages had no 3.14 builds; checked since: every package the
+  app needs has Windows builds for 3.14, and the app was run on 3.14.6 (start, extensions, downloads, backups, the Shazam
+  signature). When no supported Python is installed, Setup still installs 3.12.
+
+## [2.34.1] - 2026-11-13
+
+### Changed
+- **Which Python the app runs on:** Setup, `install.bat` and `install.sh` use Python 3.12, 3.13 or 3.11 (in that order —
+  3.12 is what the app is built and tested with), no longer 3.10 (end of life since October 2026). 3.14 isn't used
+  yet: not every package the app needs has builds for it. When none is installed, Setup installs Python 3.12 as
+  before.
+- **An update remakes an old `.venv`:** if the app's `.venv` was made with a Python outside 3.11–3.13 (e.g. 3.10 by an
+  earlier Setup), the update makes it again with the supported one and reinstalls the packages (a few minutes, once).
+
 ## [2.34.0] - 2026-11-13
 
 ### Added

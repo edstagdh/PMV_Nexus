@@ -10,12 +10,12 @@ echo  PMV Nexus - install
 echo  ============================
 echo.
 
-rem ---- 1. Python 3.10 or newer ------------------------------------------
+rem ---- 1. Python 3.11 to 3.14 (the newest first) ---------------------------
 set "PY="
-py -3 -c "import sys; sys.exit(sys.version_info < (3, 10))" >nul 2>&1 && set "PY=py -3"
-if not defined PY python -c "import sys; sys.exit(sys.version_info < (3, 10))" >nul 2>&1 && set "PY=python"
+for %%v in (3.14 3.13 3.12 3.11) do if not defined PY py -%%v -c "import sys" >nul 2>&1 && set "PY=py -%%v"
+if not defined PY python -c "import sys; sys.exit(not (3, 11) <= sys.version_info[:2] <= (3, 14))" >nul 2>&1 && set "PY=python"
 if not defined PY (
-    echo  Python 3.10 or newer was not found.
+    echo  Python 3.11 to 3.14 was not found.
     echo  Install it from https://www.python.org/downloads/ - tick "Add python.exe to PATH" -
     echo  then run install.bat again.
     goto :fail
