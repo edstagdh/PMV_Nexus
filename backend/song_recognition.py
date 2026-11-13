@@ -5,9 +5,11 @@ A video is sampled every `songs.interval` seconds: FFmpeg cuts SAMPLE seconds
 of its sound (mono 16 kHz WAV, in memory) and each sample is looked up:
   1. Shazam, through the shazamio package (free, no key; a reverse-engineered
      client of Shazam's app API, so Shazam may limit or change it),
-  2. AudD (https://audd.io, API key in Credentials) for samples Shazam didn't
-     recognise, when the key is saved and `songs.audd_fallback` is on --
-     at most `songs.audd_max_samples` per video, since AudD counts requests.
+  2. optional (2.33.0): Google Gemini (backend/gemini.py) for samples Shazam
+     didn't recognise, when a Gemini API key is saved and `songs.gemini` is on --
+     at most `songs.gemini_max_samples` per video (the free tier counts requests).
+     It gets a longer clip (GEMINI_SAMPLE seconds) of the same spot and is asked
+     to name the song only when it's sure; what it names is marked "Gemini (AI)".
 Only these short sound samples are sent; never the video or its details.
 
 The lookups return {"title", "artist", "url", "source"} or None; the caller
@@ -16,7 +18,10 @@ The lookups return {"title", "artist", "url", "source"} or None; the caller
 from __future__ import annotations
 
 import asyncio
+import base64
+import json
 import subprocess
+import time
 import sys
 from typing import Optional
 
@@ -25,6 +30,9 @@ from loguru import logger
 SAMPLE = 12          # seconds per sample (what Shazam's own app sends)
 SHAZAM_GAP = 2.0     # seconds between two Shazam requests, to stay polite
 RETRY_SHIFT = 7      # a missed sample is tried again this many seconds later (songs.shazam_retry)
+GEMINI_SAMPLE = 20   # seconds of sound Gemini gets
+GEMINI_SOURCE = "Gemini (AI)"
+GEMINI_PAUSE = 3600  # after "every model is out": don't ask Gemini again for this long
 
 
 class RecognitionError(Exception):
@@ -49,12 +57,12 @@ def sample_times(duration: float, interval: int, max_samples: int) -> list[float
 RATE = 16000
 
 
-def cut_sample(path: str, at: float) -> Optional[bytes]:
-    """SAMPLE seconds of the video's sound from `at` as WAV bytes. BLOCKING.
+def cut_sample(path: str, at: float, seconds: int = SAMPLE) -> Optional[bytes]:
+    """`seconds` (default SAMPLE) of the video's sound from `at` as WAV bytes. BLOCKING.
     FFmpeg gives raw PCM and the WAV header is written here: a WAV FFmpeg writes
     into a pipe has no lengths in its header (it can't go back to fill them in),
     which Shazam's signature maker rejects ("unexpected end of file")."""
-    cmd = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-ss", f"{at}", "-t", str(SAMPLE),
+    cmd = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-ss", f"{at}", "-t", str(seconds),
            "-i", path, "-vn", "-sn", "-dn", "-ac", "1", "-ar", str(RATE), "-f", "s16le", "pipe:1"]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
@@ -121,46 +129,57 @@ def parse_shazam(answer: dict) -> Optional[dict]:
     return {"title": title, "artist": artist, "url": track.get("url"), "source": "Shazam"}
 
 
-# ------------------------------------------------------------------ AudD
-AUDD_URL = "https://api.audd.io/"
+# ------------------------------------------------------------------ Gemini (optional AI)
+GEMINI_SYSTEM = (
+    "You identify music. You get a short audio clip from a music video: a song, possibly mixed with "
+    "sound effects, voices or other songs. Name the song only if you really recognise it. Never guess "
+    "or make one up: if you aren't sure, answer with an empty title and confidence \"low\".")
+GEMINI_CONFIG = {
+    "temperature": 0,
+    "responseMimeType": "application/json",
+    "responseSchema": {
+        "type": "OBJECT",
+        "properties": {"title": {"type": "STRING"}, "artist": {"type": "STRING"},
+                       "confidence": {"type": "STRING", "enum": ["high", "medium", "low"]}},
+        "required": ["title", "artist", "confidence"],
+    },
+}
+_gemini_paused_until = 0.0
 
 
-async def audd_lookup(wav: bytes, api_key: str) -> Optional[dict]:
-    import httpx
+def gemini_paused() -> bool:
+    return time.time() < _gemini_paused_until
+
+
+async def gemini_lookup(wav: bytes, api_key: str) -> Optional[dict]:
+    """Asks Gemini which song the clip is. Only a "high" confidence answer counts.
+    Raises RecognitionError when Gemini can't be used (bad key, every model out --
+    then it isn't asked again for GEMINI_PAUSE seconds)."""
+    global _gemini_paused_until
+    from . import gemini
+    parts = [{"inline_data": {"mime_type": "audio/wav", "data": base64.b64encode(wav).decode()}},
+             {"text": "Which song is playing in this clip? Answer as JSON."}]
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(AUDD_URL, data={"api_token": api_key}, files={"file": ("sample.wav", wav, "audio/wav")})
-        data = r.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        raise RecognitionError(f"AudD didn't answer ({exc.__class__.__name__})") from exc
-    return parse_audd(data)
+        text, model = await gemini.generate(api_key, parts, system=GEMINI_SYSTEM, config=GEMINI_CONFIG)
+    except gemini.GeminiBusy as exc:
+        _gemini_paused_until = time.time() + GEMINI_PAUSE
+        raise RecognitionError(str(exc)) from exc
+    except gemini.GeminiError as exc:
+        raise RecognitionError(str(exc)) from exc
+    return parse_gemini(text, model)
 
 
-def parse_audd(data: dict) -> Optional[dict]:
-    if (data or {}).get("status") == "error":
-        err = data.get("error") or {}
-        # 900/901: bad or missing token; 902: request limit reached.
-        raise RecognitionError(f"AudD: {err.get('error_message') or 'error'} (code {err.get('error_code')})")
-    result = (data or {}).get("result") or {}
-    title = (result.get("title") or "").strip()
-    if not title:
+def parse_gemini(text: str, model: str = "") -> Optional[dict]:
+    try:
+        data = json.loads(text or "{}")
+    except ValueError:
+        logger.debug("Gemini ({}) answered something that isn't JSON", model)
         return None
-    return {"title": title, "artist": (result.get("artist") or "").strip(), "url": result.get("song_link"), "source": "AudD"}
-
-
-async def audd_key_test(api_key: str) -> dict:
-    """Recognises AudD's own example clip (costs one request)."""
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(AUDD_URL, data={"api_token": api_key, "url": "https://audd.tech/example.mp3"})
-        found = parse_audd(r.json())
-    except RecognitionError as exc:
-        return {"ok": False, "message": str(exc)}
-    except (httpx.HTTPError, ValueError) as exc:
-        return {"ok": False, "message": f"AudD didn't answer ({exc.__class__.__name__})"}
-    return {"ok": True, "message": f"Key accepted: AudD recognised its example as “{label(found)}”" if found
-            else "Key accepted"}
+    title = str((data or {}).get("title") or "").strip()
+    if not title or data.get("confidence") != "high":
+        return None
+    return {"title": title[:150], "artist": str(data.get("artist") or "").strip()[:150], "url": None,
+            "source": GEMINI_SOURCE}
 
 
 def label(song: dict) -> str:

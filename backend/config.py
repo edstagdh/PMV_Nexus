@@ -152,8 +152,9 @@ class SongsConfig(BaseModel):
     interval: int = Field(30, ge=15, le=300)          # a sample every N seconds of the video
     max_samples: int = Field(12, ge=1, le=40)         # per video
     shazam_retry: bool = True                         # a sample Shazam missed is tried again 7 s later (2.18.0)
-    audd_fallback: bool = True                        # try AudD (key in Credentials) on samples Shazam missed
-    audd_max_samples: int = Field(4, ge=1, le=20)     # AudD lookups per video
+    # 2.33.0, optional AI: ask Google Gemini (key in Credentials) about samples Shazam missed.
+    gemini: bool = False
+    gemini_max_samples: int = Field(3, ge=1, le=20)   # Gemini requests per video (the free tier counts them)
     per_run: int = Field(20, ge=1, le=500)            # videos per Scheduler run
     rescan_days: int = Field(30, ge=0, le=3650)       # look at a video without music again after this (0 = never)
 
@@ -414,7 +415,7 @@ class Settings(BaseModel):
     # PMVHaven REST API key (Bearer pmvh_...), see pmvhaven.com/api-keys.
     pmvhaven_api_key: str | None = None
     tpdb_api_key: str | None = None  # ThePornDB (performer profiles)
-    audd_api_key: str | None = None  # song recognition fallback (song_recognition.audd_lookup)
+    gemini_api_key: str | None = None  # optional AI song recognition (backend/gemini.py)
     virustotal_api_key: str | None = None  # upload fingerprint lookups (upload_safety.hash_lookup)
 
     # One-time bootstrap credentials for the FIRST admin account -- read
@@ -554,7 +555,7 @@ def get_settings() -> Settings:
         pmvhaven_api_key=creds["pmvhaven_api_key"],
         tpdb_api_key=creds.get("tpdb_api_key"),
         virustotal_api_key=creds.get("virustotal_api_key"),
-        audd_api_key=creds.get("audd_api_key"),
+        gemini_api_key=creds.get("gemini_api_key"),
         initial_admin_username=os.getenv("INITIAL_ADMIN_USERNAME"),
         initial_admin_password=os.getenv("INITIAL_ADMIN_PASSWORD"),
     )

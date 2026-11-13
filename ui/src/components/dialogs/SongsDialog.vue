@@ -1,6 +1,6 @@
 <script setup>
 // Video -> Find songs (2.14.0): listens to samples of the video (Shazam, then
-// AudD when set up) and lists what it heard to add to the video's Music.
+// optionally Gemini AI, 2.33.0) and lists what it heard to add to the video's Music.
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import SongSuggestion from "../songs/SongSuggestion.vue";
@@ -40,8 +40,8 @@ onBeforeUnmount(() => { clearTimeout(timer); stop?.(); });
 
 <template>
   <ModalDialog :title="`Find songs: ${item.title || 'video'}`" width="44rem" @close="emit('close')">
-    <p class="muted small lead">Samples of the video's sound are recognised by Shazam (and AudD for the ones Shazam misses,
-      when its token is saved). Only short sound samples are sent. What's found waits here and in Management → Songs.</p>
+    <p class="muted small lead">Samples of the video's sound are recognised by Shazam (and, if turned on in Management → Songs,
+      Gemini AI for the ones Shazam misses — marked “Gemini (AI)”). Only short sound samples are sent. What's found waits here and in Management → Songs.</p>
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-if="!data" class="skeleton" style="height: 4rem; border-radius: var(--radius)" />
     <template v-else>

@@ -252,16 +252,30 @@ def main() -> None:
     config = uvicorn.Config("backend.main:app", host=host, port=port, log_config=None,
                             timeout_graceful_shutdown=5, server_header=False,  # don't announce the server software
                             h11_max_incomplete_event_size=64 * 1024)  # headers larger than this are refused
-    if args.tray:
-        from backend.tray import run as run_tray
-        run_tray(Server(config), port, open_browser=args.open_browser)
-        return
+    server = Server(config)
+
+    def stop_server() -> None:
+        # Setup closing the app before an update (backend/app_control.py, 2.33.0):
+        # the same as the tray's Exit / Ctrl+C.
+        from backend.routers.events import stop_streams
+        stop_streams()
+        server.requested_stop = True  # the tray closes quietly (backend/tray.py)
+        server.should_exit = True
+
+    from backend import app_control
+    app_control.register(port, stop_server)
     try:
-        Server(config).run()
+        if args.tray:
+            from backend.tray import run as run_tray
+            run_tray(server, port, open_browser=args.open_browser)
+            return
+        server.run()
     except KeyboardInterrupt:
         # uvicorn re-raises Ctrl+C after a clean shutdown (uvicorn.run() swallows
         # it the same way); without this, a normal stop ends with a traceback.
         pass
+    finally:
+        app_control.unregister()
 
 
 if __name__ == "__main__":

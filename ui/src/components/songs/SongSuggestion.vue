@@ -12,7 +12,9 @@ const emit = defineEmits(["done"]);
 const label = ref(props.s.label);
 const busy = ref(false);
 const clock = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`;
-const sure = computed(() => props.s.hits >= 2);
+// "Sure": heard in several samples -- and not only by the AI (2.33.0), which can be wrong.
+const aiOnly = computed(() => props.s.source === "Gemini (AI)");
+const sure = computed(() => props.s.hits >= 2 && !aiOnly.value);
 
 async function act(what) {
   busy.value = true;
@@ -31,7 +33,7 @@ defineExpose({ add: () => act("add") });
     <div class="main">
       <input v-model="label" class="input" maxlength="200" aria-label="Song — Artist">
       <span class="meta">
-        <span class="pill" :title="sure ? 'Heard in several samples' : 'Heard in one sample only — check it'">
+        <span class="pill" :title="sure ? 'Heard in several samples' : aiOnly ? 'Named by the AI only — check it' : 'Heard in one sample only — check it'">
           {{ s.hits }} of {{ s.samples }} {{ s.samples === 1 ? "sample" : "samples" }}</span>
         at {{ (s.times || []).map(clock).join(", ") }} · {{ s.source }}
         <a v-if="s.url" :href="s.url" target="_blank" rel="noopener noreferrer"><Icon name="external" :size="12" />Open</a>

@@ -162,7 +162,8 @@ _LABELS = {
     "generate_credential": "Generate credential",
     "test_pmvhaven_api_key": "Test PMVHaven API key",
     "test_virustotal_key": "Test VirusTotal key",
-    "test_audd": "Test AudD token",
+    "test_gemini": "Test Gemini API key",
+    "local_stop": "App closed by Setup (update)",
 }
 
 
@@ -242,7 +243,7 @@ _SAFE_BODY_KEYS = (
     "new_dir", "move_existing", "max_concurrent", "job_type", "cron_expression", "enabled", "level", "site_mode",
     "proxy_downloads", "auto_convert", "convert_codec", "merge_aliases", "auto_match", "timestamps",
     "label", "gender", "permissions", "groups", "max_height", "cpu_percent", "max_sessions", "live_convert", "virus_scan",
-    "hash_check", "interval", "max_samples", "per_run", "rescan_days", "audd_fallback", "old", "new", "remember",
+    "hash_check", "interval", "max_samples", "per_run", "rescan_days", "gemini", "old", "new", "remember",
 )
 _SECRET_HINT = re.compile(r"pass|secret|token|key|hash|code|phone|session", re.I)
 

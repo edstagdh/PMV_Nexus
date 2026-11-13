@@ -197,6 +197,11 @@ def run(server, port: int, open_browser: bool = False) -> None:
             if title != last:
                 icon.title = title[:127]  # Windows' limit for the hover text
                 last = title
+            if getattr(server, "requested_stop", False):  # Setup closed it (backend/app_control.py)
+                stopping.set()
+                thread.join(timeout=60)
+                icon.stop()
+                return
             if not thread.is_alive() and not stopping.is_set():
                 icon.title = "PMV Nexus - stopped"
                 message_box(f"PMV Nexus stopped unexpectedly. Details: {get_settings().log_dir}")

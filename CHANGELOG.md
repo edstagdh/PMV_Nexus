@@ -4,6 +4,32 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.33.0] - 2026-11-13
+
+### Added
+- **Optional AI song recognition — Google Gemini.** For the spots Shazam didn't recognise, Find songs can ask
+  Gemini: turn on **Ask Gemini (AI) about samples Shazam missed** in Management → Songs and save a free API key
+  in Server settings → Credentials → Google Gemini (**Test key** checks it without using quota). Gemini gets a
+  20-second sound clip per spot (`songs.gemini_max_samples`, 3 per video by default) and names a song only when it
+  says it's sure. Its finds are marked "Gemini (AI)" and never count as "sure" on their own. The free models are
+  tried best first (the list is refreshed from Google's), falling back to the next when one is busy or out of
+  quota; when all are out, Gemini is skipped for an hour. Off by default.
+- **Updates close the running app.** Windows Setup finds a running PMV Nexus (tray, console window, anything run
+  from its folder — the service was already handled), says so, closes it (asking the app first, the same as the
+  tray's Exit; ending what's left only if it doesn't close) and starts it again after the update. The app answers
+  such requests only from the same computer, with a token from `runtime/control.json` (`POST /api/local/stop`).
+- The Start-menu shortcut waits for an app that's still starting instead of starting a second one.
+
+### Changed
+- **Updates replace the app's code folders as a whole** (`backend`, `frontend`, `Tools`, `userscript`, `docs`), so
+  files a new version no longer has don't stay behind. Data, `config.yaml`, extensions, `.venv` and `runtime` are
+  kept.
+
+### Removed
+- **AudD** (a paid service after a short trial): its credentials, settings and key test. Finding songs uses Shazam,
+  plus Gemini if you turn it on. A saved AudD token stays in `data/secrets.db`, unused; `songs.audd_*` settings are
+  ignored.
+
 ## [2.32.0] - 2026-11-13
 
 The first version prepared for public release. Versions before it were private development builds; their
@@ -16,7 +42,7 @@ history isn't listed here.
 - **Library:** grid / list / table views, search with prefixes and wildcards, filters (tags, performers, codec,
   quality, orientation, duration, rating), bulk editing and bulk actions, rename, repair / update, duplicate
   detection (grayscale and perceptual-hash comparison, with audio checks), songs found in videos (Shazam, optional
-  AudD), performer profiles (ThePornDB), uploads of your own files.
+  Google Gemini AI), performer profiles (ThePornDB), uploads of your own files.
 - **Watching:** a built-in player with 720p conversion while you watch, seekbar previews, A-B repeat, a
   mini-player, playlists (manual and smart), continue watching, Currently Playing, Discover.
 - **Re-encoding** to HEVC or AV1 with a queue, CPU limits and progress.

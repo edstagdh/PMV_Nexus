@@ -129,13 +129,13 @@ features:
 
 songs:
   # Finding the songs in videos (Management -> Songs, a video's "Find songs", and the
-  # Scheduler job "Find songs in videos without music"). Shazam first; AudD (API token
-  # in Credentials) for samples Shazam missed. Changed from Management -> Songs.
+  # Scheduler job "Find songs in videos without music"). Shazam first; optionally
+  # Google Gemini (AI, API key in Credentials) for samples Shazam missed. Changed from Management -> Songs.
   interval: 30           # a 12-second sample every N seconds of the video
   max_samples: 12        # per video
   shazam_retry: true     # a sample Shazam missed is tried again 7 s later
-  audd_fallback: true
-  audd_max_samples: 4    # AudD lookups per video (AudD counts requests)
+  gemini: false          # ask Gemini (AI) about samples Shazam missed -- needs its key in Credentials
+  gemini_max_samples: 3  # Gemini requests per video (the free tier counts them)
   per_run: 20            # videos per Scheduler run (newest first)
   rescan_days: 30        # listen again to a video still without music after N days (0 = never)
 

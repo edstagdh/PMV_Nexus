@@ -85,7 +85,7 @@ async function copy(text) {
 const KEY_TESTS = {
   pmvhaven_api: { field: "pmvhaven_api_key", path: "pmvhaven-api" },
   virustotal: { field: "virustotal_api_key", path: "virustotal" },
-  audd: { field: "audd_api_key", path: "audd" },
+  gemini: { field: "gemini_api_key", path: "gemini" },
 };
 async function test(group) {
   results.value = { ...results.value, [group.key]: { message: "Testing…" } };

@@ -73,6 +73,8 @@ Source: "..\..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs igno
 Source: "app.ico"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
+; Closes a running app before an update (PrepareToInstall), run from {tmp} with the installed app's Python (2.33.0).
+Source: "..\..\Tools\stop_app.py"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; \
@@ -90,17 +92,16 @@ Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; Wo
   Description: "Open PMV Nexus now"; Flags: postinstall nowait skipifsilent; Check: AppReady
 
 [InstallDelete]
-; Left over from older versions: the site-login browser and files that were removed (2.30.0 / 2.32.0).
+; An update replaces the app's own code folders as a whole (2.33.0), so files a new
+; version no longer has don't stay behind. Nothing of yours is in them: the data,
+; config.yaml, extensions, .venv and runtime folders are kept.
+Type: filesandordirs; Name: "{app}\backend"
+Type: filesandordirs; Name: "{app}\frontend"
+Type: filesandordirs; Name: "{app}\Tools"
+Type: filesandordirs; Name: "{app}\userscript"
+Type: filesandordirs; Name: "{app}\docs"
+; Left over from older versions: the site-login browser (2.32.0).
 Type: filesandordirs; Name: "{app}\runtime\ms-playwright"
-Type: filesandordirs; Name: "{app}\backend\external"
-Type: files; Name: "{app}\backend\scraper_v1.py"
-Type: files; Name: "{app}\backend\scraper_v2.py"
-Type: files; Name: "{app}\backend\routers\pmv.py"
-Type: files; Name: "{app}\backend\share_backends.py"
-Type: files; Name: "{app}\backend\telegram_login.py"
-Type: files; Name: "{app}\backend\routers\telegram.py"
-Type: files; Name: "{app}\backend\library_mixins\share_worker.py"
-Type: files; Name: "{app}\Tools\generate_telegram_session.py"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.venv"
@@ -137,6 +138,7 @@ var
   NeedPassword: Boolean;
   MoreFoldersNeeded: Boolean;
   ServiceWasThere: Boolean;
+  AppWasRunning: Boolean;   { closed by Setup for the update: started again afterwards (2.33.0) }
   BackupInfo: String;       { shown on the folders page once a backup was opened }
   FolderKeys: array[0..5] of String;
 
@@ -717,6 +719,38 @@ begin
     Result := ApplySettings;
 end;
 
+{ An update while the app runs (tray, console window, or anything else from its folder):
+  asks, then closes it (Tools\stop_app.py: politely first, then ends what's left).
+  Returns '' when nothing runs any more, otherwise why Setup can't go on. }
+function CloseRunningApp: String;
+var
+  Code: Integer;
+  Script, Args: String;
+begin
+  Result := '';
+  if not FileExists(VenvPython) then
+    Exit;                      { a first install: nothing can be running }
+  ExtractTemporaryFile('stop_app.py');
+  Script := ExpandConstant('{tmp}\stop_app.py');
+  Args := '"' + Script + '" --root "' + AppDir + '"';
+  if not Exec(VenvPython, Args + ' --check', '', SW_HIDE, ewWaitUntilTerminated, Code) then
+    Exit;                      { the old Python doesn't run: then nothing of it runs either }
+  if Code <> 3 then
+    Exit;
+  if SuppressibleMsgBox('PMV Nexus is running. Setup will close it now to update it.' + #13#10#13#10 +
+      'Work in progress (downloads, re-encodes, scans) stops safely and continues when the app starts again. ' +
+      'Setup starts it again when the update is done.', mbConfirmation, MB_OKCANCEL, IDOK) <> IDOK then
+  begin
+    Result := 'PMV Nexus is still running. Close it (tray icon: Exit PMV Nexus) and run Setup again.';
+    Exit;
+  end;
+  AppWasRunning := True;
+  WizardForm.PreparingLabel.Caption := 'Closing PMV Nexus...';
+  if not Exec(VenvPython, Args, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+    Result := 'PMV Nexus couldn''t be closed. Close it yourself (tray icon: Exit PMV Nexus, or end it in Task Manager) ' +
+      'and click Back, then Install again.';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
@@ -735,6 +769,13 @@ begin
       ServiceWasThere := False;
     end;
   end;
+  Result := CloseRunningApp;
+  if Result <> '' then
+  begin
+    if ServiceWasThere then
+      ServiceCommand('start');  { not updating after all: leave it as it was }
+    Exit;
+  end;
   if NeedPython then
   begin
     Params := '/passive InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_test=0 Include_doc=0';
@@ -752,6 +793,7 @@ procedure InstallAfterFiles;
 var
   Unzip, Tmp: String;
   Ok: Boolean;
+  Code: Integer;
 begin
   WorkPage.Show;
   try
@@ -785,7 +827,11 @@ begin
         'Check the internet connection and run Setup again (it continues where it stopped).', mbCriticalError, MB_OK);
     end
     else if IsUpgrade and ServiceWasThere then
-      RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '');
+      RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '')
+    else if AppWasRunning and not WizardIsTaskSelected('service') then
+      { closed for the update: back in the tray, as the person who ran Setup (not as admin) }
+      ExecAsOriginalUser(AppDir + '\.venv\Scripts\pythonw.exe', '"' + AppDir + '\run.py" --tray', AppDir,
+        SW_HIDE, ewNoWait, Code);
   finally
     WorkPage.Hide;
   end;

@@ -8,7 +8,7 @@ Songs (2.14.0, library_mixins/songs.py) -- all need songs.manage:
   POST /api/songs/{suggestion_id}/add        {"label"?} -> into the video's Music (hand edit)
   POST /api/songs/{suggestion_id}/dismiss
   GET/POST /api/settings/songs               the songs: settings (settings.manage)
-  POST /api/credentials/test/audd            checks the AudD token (admin; one AudD request)
+  POST /api/credentials/test/gemini          checks the Gemini API key (admin; lists models, no quota used)
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import song_recognition
+from .. import gemini
 from ..config import get_settings, save_overrides
 from ..library_manager import library_manager
 from ..security import AuthContext, require_permission
@@ -35,8 +35,8 @@ class SongsSettings(BaseModel):
     interval: int = Field(30, ge=15, le=300)
     max_samples: int = Field(12, ge=1, le=40)
     shazam_retry: bool = True
-    audd_fallback: bool = True
-    audd_max_samples: int = Field(4, ge=1, le=20)
+    gemini: bool = False
+    gemini_max_samples: int = Field(3, ge=1, le=20)
     per_run: int = Field(20, ge=1, le=500)
     rescan_days: int = Field(30, ge=0, le=3650)
 
@@ -64,7 +64,7 @@ def video_songs(video_id: str, user: AuthContext = Depends(_songs)):
 @router.get("/api/songs")
 def overview(user: AuthContext = Depends(_songs)):
     out = library_manager.songs_overview()
-    out["audd"] = bool(get_settings().audd_api_key)
+    out["gemini"] = bool(get_settings().gemini_api_key)
     out["settings"] = get_settings().songs.model_dump()
     return out
 
@@ -108,9 +108,9 @@ def save_settings(payload: SongsSettings, user: AuthContext = Depends(require_pe
     return {"ok": True}
 
 
-@router.post("/api/credentials/test/audd")
-async def test_audd(payload: KeyTest, user: AuthContext = Depends(require_permission("settings.manage"))):
-    key = (payload.api_key or "").strip() or get_settings().audd_api_key
+@router.post("/api/credentials/test/gemini")
+async def test_gemini(payload: KeyTest, user: AuthContext = Depends(require_permission("settings.manage"))):
+    key = (payload.api_key or "").strip() or get_settings().gemini_api_key
     if not key:
-        return {"ok": False, "message": "No API token saved yet"}
-    return await song_recognition.audd_key_test(key)
+        return {"ok": False, "message": "No API key saved yet"}
+    return await gemini.test_key(key)

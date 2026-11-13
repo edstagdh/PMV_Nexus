@@ -34,7 +34,8 @@ onMounted(() => {
 });
 onBeforeUnmount(() => { stop?.(); clearTimeout(timer); });
 
-const sureCount = computed(() => (data.value?.videos || []).reduce((n, v) => n + v.suggestions.filter((s) => s.hits >= 2).length, 0));
+const isSure = (s) => s.hits >= 2 && s.source !== "Gemini (AI)";  // AI-only finds are never "sure"
+const sureCount = computed(() => (data.value?.videos || []).reduce((n, v) => n + v.suggestions.filter(isSure).length, 0));
 
 async function scanNow() {
   busy.value = "scan";
@@ -43,7 +44,7 @@ async function scanNow() {
   finally { busy.value = ""; }
 }
 async function addAllSure() {
-  const sure = data.value.videos.flatMap((v) => v.suggestions.filter((s) => s.hits >= 2));
+  const sure = data.value.videos.flatMap((v) => v.suggestions.filter(isSure));
   if (!(await askConfirm(`Add ${sure.length} songs heard in two or more samples to their videos?`, { ok: "Add" }))) return;
   busy.value = "all";
   for (const s of sure) await rows.value[s.id]?.add();
@@ -78,7 +79,7 @@ async function saveSettings() {
         <button v-if="sureCount" class="btn btn-sm" :disabled="busy === 'all'" @click="addAllSure">Add all sure ones ({{ sureCount }})</button>
       </div>
       <p class="muted small">To do this regularly: Management → Scheduler → new job <strong>Find songs in videos without music</strong>
-        (it listens to {{ data.settings.per_run }} videos per run, newest first). Uses Shazam{{ data.audd ? ", then AudD" : "" }}.</p>
+        (it listens to {{ data.settings.per_run }} videos per run, newest first). Uses Shazam{{ data.gemini && data.settings.gemini ? ", then Gemini (AI)" : "" }}.</p>
       <p v-if="data.scanning.length" class="muted small">Listening now: {{ data.scanning.length }} video(s) — see Tasks.</p>
     </section>
     <div v-else class="skeleton" style="height: 6rem; border-radius: var(--radius)" />
@@ -105,11 +106,13 @@ async function saveSettings() {
         <label>Each Scheduler run<span><input v-model.number="cfg.per_run" class="input input-num" type="number" min="1" max="500"> videos</span></label>
         <label>Listen again after<span><input v-model.number="cfg.rescan_days" class="input input-num" type="number" min="0" max="3650"> days (0 = never)</span></label>
         <label class="switch"><input v-model="cfg.shazam_retry" type="checkbox">Shazam: try a missed sample again 7 s later</label>
-        <label class="switch"><input v-model="cfg.audd_fallback" type="checkbox">Try AudD on samples Shazam missed</label>
-        <label>AudD, at most<span><input v-model.number="cfg.audd_max_samples" class="input input-num" type="number" min="1" max="20"> lookups per video</span></label>
+        <label class="switch"><input v-model="cfg.gemini" type="checkbox">Ask Gemini (AI) about samples Shazam missed</label>
+        <label>Gemini, at most<span><input v-model.number="cfg.gemini_max_samples" class="input input-num" type="number" min="1" max="20"> clips per video</span></label>
       </div>
-      <p class="muted small">AudD needs its API token in Server settings → Credentials{{ data?.audd ? " (saved)" : " (not saved yet)" }}.
-        Its free 300 requests run out fast; then it's $5 per 1,000.</p>
+      <p class="muted small">Optional. Gemini is Google's AI: it gets a 20-second sound clip of each spot Shazam didn't recognise
+        and names the song only when it's sure; its finds are marked “Gemini (AI)” — check them before adding. It needs a free
+        API key in Server settings → Credentials{{ data?.gemini ? " (saved)" : " (not saved yet)" }}; the free tier allows a
+        limited number of requests a day, and Google may use free-tier requests to improve its products.</p>
       <div><button class="btn btn-primary btn-sm" :disabled="busy === 'settings'" @click="saveSettings">Save</button></div>
     </section>
   </div>

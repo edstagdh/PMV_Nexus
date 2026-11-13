@@ -53,7 +53,7 @@ class SongsMixin:
         """Samples and looks up one video; stores the suggestions. Raises
         RecognitionError when a service stops answering (limit, bad key)."""
         cfg = self.settings.songs
-        key = self.settings.audd_api_key if cfg.audd_fallback else None
+        key = self.settings.gemini_api_key if cfg.gemini else None  # 2.33.0: optional AI step
         from ..media_tools import probe_streams
         info = await asyncio.to_thread(probe_streams, item.video_path)
         duration = float(info.get("duration") or 0)
@@ -62,7 +62,7 @@ class SongsMixin:
             return {"samples": 0, "found": 0, "detail": "No sound in this video"}
         times = rec.sample_times(duration, cfg.interval, cfg.max_samples)
         songs: dict[str, dict] = {}
-        unmatched: list[tuple[float, bytes]] = []
+        unmatched: list[float] = []
         shazam_error: Optional[str] = None
         taken = 0
         retries = 0
@@ -71,6 +71,8 @@ class SongsMixin:
             lbl = rec.label(song)
             k = fold(lbl)
             entry = songs.setdefault(k, {**song, "label": lbl, "hits": 0, "times": []})
+            if song["source"] not in entry["source"].split(" + "):
+                entry["source"] = f"{entry['source']} + {song['source']}"  # e.g. "Shazam + Gemini (AI)"
             entry["hits"] += 1
             entry["times"].append(round(at))
 
@@ -107,15 +109,26 @@ class SongsMixin:
                 if song:
                     add(at, song)
                 else:
-                    unmatched.append((at, wav))
-        audd_used = 0
-        if key and unmatched:
-            # Spread AudD's few tries over the samples Shazam missed.
-            limit = cfg.audd_max_samples if shazam_error is None else max(cfg.audd_max_samples, 1)
+                    unmatched.append(at)
+        gemini_used, gemini_note = 0, None
+        if key and unmatched and rec.gemini_paused():
+            gemini_note = "Gemini skipped: its free models were out of quota a moment ago"
+        elif key and unmatched:
+            # Spread Gemini's few tries over the spots Shazam missed; it gets a longer clip.
+            limit = cfg.gemini_max_samples
             step = max(1, len(unmatched) // max(1, limit))
-            for at, wav in unmatched[::step][:limit]:
-                song = await rec.audd_lookup(wav, key)
-                audd_used += 1
+            for at in unmatched[::step][:limit]:
+                start = max(0.0, min(at, duration - rec.GEMINI_SAMPLE))
+                clip = await asyncio.to_thread(rec.cut_sample, item.video_path, start, rec.GEMINI_SAMPLE)
+                if not clip:
+                    continue
+                try:
+                    song = await rec.gemini_lookup(clip, key)
+                except rec.RecognitionError as exc:
+                    gemini_note = f"Gemini: {exc}"
+                    logger.warning("Song scan of '{}': {}", item.title, gemini_note)
+                    break
+                gemini_used += 1
                 if song:
                     add(at, song)
         have = {fold(v) for v in item.music} | {fold(spellings.canonical("music", v)) for v in item.music}
@@ -124,8 +137,9 @@ class SongsMixin:
         detail = (f"{len(songs)} song(s) heard in {taken} samples"
                   + (f", {len(songs) - len(new)} already listed" if len(songs) != len(new) else "")
                   + (f" ({retries} retried a bit later)" if retries else "")
-                  + (f" (AudD: {audd_used} lookups)" if audd_used else "")
-                  + (f"; {shazam_error}" if shazam_error else ""))
+                  + (f" (Gemini: {gemini_used} clips)" if gemini_used else "")
+                  + (f"; {shazam_error}" if shazam_error else "")
+                  + (f"; {gemini_note}" if gemini_note else ""))
         self.db.save_song_scan(item.id, taken, len(songs), "done", detail)
         logger.info("Song scan of '{}' [{}]: {}", item.title, item.id, detail)
         return {"samples": taken, "found": len(songs), "new": pending, "detail": detail}

@@ -28,6 +28,27 @@ def answering(port: int) -> bool:
         return False
 
 
+def starting() -> bool:
+    """Is an app from this folder already starting (e.g. Setup just restarted it after an
+    update)? Its runtime/control.json names a live process (backend/app_control.py)."""
+    import json
+    try:
+        import psutil
+        pid = json.loads((ROOT / "runtime" / "control.json").read_text(encoding="utf-8"))["pid"]
+        proc = psutil.Process(int(pid))  # a leftover file's pid may belong to another program now
+        return os.path.normcase(proc.cwd()) == os.path.normcase(str(ROOT))
+    except Exception:  # noqa: BLE001 -- no file, old file, no psutil
+        return False
+
+
+def wait_until_answering(port: int, seconds: int = 60) -> bool:
+    for _ in range(seconds):
+        if answering(port):
+            return True
+        time.sleep(1)
+    return False
+
+
 def main() -> int:
     sys.path.insert(0, str(ROOT))
     from run import configured_address
@@ -38,7 +59,7 @@ def main() -> int:
     port = configured_address()[1]
     url = f"http://localhost:{port}/"
     tray = get_settings().tray
-    if answering(port):  # already running: the shortcut opens it
+    if answering(port) or (starting() and wait_until_answering(port)):  # already running: the shortcut opens it
         open_url(url, tray.browser)
         return 0
     if SERVICE_EXE.is_file():

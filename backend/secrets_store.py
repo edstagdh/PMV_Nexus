@@ -45,7 +45,7 @@ FIELDS: dict[str, dict] = {
                     "revealable": True, "generate": True},
     "tpdb_api_key": {"group": "tpdb", "label": "API key", "kind": "secret"},
     "virustotal_api_key": {"group": "virustotal", "label": "API key", "kind": "secret"},
-    "audd_api_key": {"group": "audd", "label": "API token", "kind": "secret"},
+    "gemini_api_key": {"group": "gemini", "label": "API key", "kind": "secret", "env": "GEMINI_API_KEY"},
     "proxy_url": {"group": "proxy", "label": "Address", "kind": "text"},
     "proxy_username": {"group": "proxy", "label": "Username", "kind": "text"},
     "proxy_password": {"group": "proxy", "label": "Password", "kind": "secret"},
@@ -65,9 +65,10 @@ GROUPS = [
     ("virustotal", "VirusTotal",
      "Free API key from https://www.virustotal.com (sign in → API key). Used to look up each uploaded file's fingerprint "
      "(SHA-256) — only the fingerprint is sent, never the file. Server settings → Uploads → Fingerprint check."),
-    ("audd", "AudD (song recognition)",
-     "Optional API token from https://dashboard.audd.io (300 free requests, then paid). Finding songs uses Shazam first; "
-     "AudD tries the samples Shazam didn't recognise. Only 12-second sound samples are sent."),
+    ("gemini", "Google Gemini (optional AI)",
+     "Optional, free-tier API key from https://aistudio.google.com/apikey. Only used by features you turn on: "
+     "Management → Songs → “Ask Gemini (AI)” sends 20-second sound clips of the spots Shazam didn't recognise. "
+     "Free-tier requests may be used by Google to improve its products."),
     ("tpdb", "ThePornDB",
      "API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases)."),
     ("proxy", "Proxy",

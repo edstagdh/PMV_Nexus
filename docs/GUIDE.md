@@ -428,22 +428,30 @@ Error), when a new log file starts and how long old ones are kept, how long Mana
 client addresses are shown (pseudonym, last part only, full or not at all). Changes apply right away.
 
 **Songs (finding the music in a video).** A video's ⋮ menu → **Find songs** listens to it: every 30 seconds a
-12-second sample of its sound is recognised by **Shazam**; samples Shazam doesn't know go to **AudD** when its API
-token is saved (Server settings → Credentials → AudD; **Test key** checks it — 300 free requests, then $5 per 1,000).
-Only these short sound samples leave the server. What's heard is **suggested**, never added by itself:
+12-second sample of its sound is recognised by **Shazam** (free, no key). Only these short sound samples leave the
+server. What's heard is **suggested**, never added by itself:
 - in the Find songs window, and in **Management → Songs** (all videos, newest first);
 - each suggestion shows in how many samples it was heard and where (e.g. "3 of 8 samples at 0:35, 1:05, 1:35") —
-  heard twice or more is the surest; a single hit is worth checking (**Open** goes to Shazam / AudD's page);
+  heard twice or more is the surest; a single hit is worth checking (**Open** goes to Shazam's page);
 - **Add** puts it in the video's Music as "Song — Artist" (fix the name first if you like; it counts as your edit, so
   syncs keep it); **Dismiss** hides it for good for that video. Listening again doesn't bring back songs you added or
-  dismissed, nor songs the video already lists. **Add all sure ones** adds every song heard twice or more.
+  dismissed, nor songs the video already lists. **Add all sure ones** adds every song heard twice or more (not ones
+  only the AI named).
 - **Find songs now** listens to videos that have no music (and weren't listened to in the last 30 days), up to 20 per
   run, newest first. To do it regularly: **Scheduler → new job → Find songs in videos without music**. For picked
   videos: **Select** in the library → **Find songs**.
 - **Try again a bit later:** a sample Shazam doesn't know is tried once more 7 seconds further on (often past a sound
   effect or a transition); the result says how many were retried. Turn it off in the settings to use fewer requests.
+- **Optional AI — Google Gemini:** for the spots Shazam didn't recognise, the app can ask Gemini, Google's AI. It's
+  off until you turn it on: save a free API key (from aistudio.google.com/apikey) in **Server settings → Credentials →
+  Google Gemini** (**Test key** checks it without using your quota), then tick **Ask Gemini (AI) about samples Shazam
+  missed** in the Songs settings. Gemini gets a 20-second sound clip of each such spot (at most 3 per video by
+  default) and names a song only when it says it's sure; its finds are marked **Gemini (AI)** and are never counted as
+  "sure" on their own — check them. The free models are tried best first, falling back to the next when one is busy;
+  when all are out of today's free quota, Gemini is skipped for an hour. Google may use free-tier requests to improve
+  its products.
 - Settings (Songs page, bottom): how often to sample, the most samples per video, videos per run, when to listen
-  again, and AudD's use. One video is listened to at a time; Tasks shows it, with **Stop**. Starting one while another
+  again, and Gemini's use. One video is listened to at a time; Tasks shows it, with **Stop**. Starting one while another
 scan runs puts it on Tasks as "Waiting for the song scan that's running"; it starts by itself after.
 
 Shazam is used through *shazamio*, an unofficial client of Shazam's app — free and without a key, but Shazam can
@@ -486,7 +494,7 @@ previews of videos no longer in the library are listed as "seekbar preview".
   (`userscript/pmv-nexus.user.js`, install it in Tampermonkey or Violentmonkey) asks for the
   app's address and this key the first time. It keeps a list of what you've downloaded, refreshed once a day
   or from its menu (**Sync Downloaded List Now**), and marks videos on PMVHaven as Downloaded or Duplicate.
-- **AudD:** optional API token for finding songs (see *Songs*).
+- **Google Gemini:** optional, free-tier API key for the AI step of finding songs (see *Songs*).
 - **VirusTotal:** optional API key (free account at virustotal.com) for the uploads' fingerprint check.
 
 Passwords and keys are never shown again after saving; type a new value to replace one, or **Clear** to remove it.

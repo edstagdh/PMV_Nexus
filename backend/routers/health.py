@@ -10,12 +10,25 @@ import json
 import shutil
 
 from loguru import logger
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from ..config import get_settings
 from ..library_manager import library_manager
 
 router = APIRouter()
+
+
+@router.post("/api/local/stop")
+def local_stop(request: Request, x_control_token: str = Header("")):
+    """Windows Setup closes the app before an update (backend/app_control.py):
+    only from this computer, with the token from runtime/control.json."""
+    from .. import app_control
+    host = request.client.host if request.client else ""
+    forwarded = any(h in request.headers for h in ("x-forwarded-for", "x-real-ip", "forwarded"))
+    if host not in ("127.0.0.1", "::1") or forwarded or not app_control.check(x_control_token):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    app_control.request_stop("asked by Setup (an update)")
+    return {"ok": True}
 
 
 @router.get("/api/health")

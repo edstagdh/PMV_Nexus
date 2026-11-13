@@ -109,7 +109,7 @@ describes. See [Extensions](#extensions-1) below and the comments at the top of 
 | Site access | httpx (the sites' API and downloads) |
 | Media | ffmpeg (re-encoding, HLS remuxing), PyMediaInfo, OpenCV (duration/fps probing) |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
-| Song recognition | shazamio (Shazam), optional AudD API |
+| Song recognition | shazamio (Shazam); optional Google Gemini API (AI) |
 | Images | Pillow (performer photos stored as WebP) |
 | Frontend | Vue 3 + Vite, hand-written CSS, Video.js 10 for video playback, hls.js for converted (720p) streams |
 | Auth | Signed session cookies (itsdangerous) for the web UI; a static API key for external tools |
@@ -185,7 +185,12 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **First install:** a new library or **from a backup** (the backup's password if it has one), then the **videos and
   cache folders** (from a backup: where you copied the videos), other folders only if one from the backup can't be
   reached here, and the **port**. Done with Tools/setup_core.py — the same checks as `run.py --restore`.
-- **Updating:** run the newer Setup over it; `config.yaml`, `data` and the service setting are kept, the set-up pages skipped.
+- **Updating:** run the newer Setup over it — it finds the install by itself (same folder, same options), so choose
+  the same "only for me" / "all users" mode as the first time. `config.yaml`, `data`, `extensions` and the service
+  setting are kept and the set-up pages skipped. If the app is running (tray, console window or service), Setup says
+  so and closes it — work in progress stops safely and continues later — and starts it again afterwards. The app's
+  code folders (`backend`, `frontend`, `Tools`, `userscript`, `docs`) are replaced as a whole, so nothing old stays
+  behind. Going back to an older version isn't supported (restore a backup instead).
 - **Uninstall** (Settings → Apps): removes the app; asks before deleting the library and settings (`data`,
   `config.yaml`) — videos outside the app folder are never touched.
 - **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
