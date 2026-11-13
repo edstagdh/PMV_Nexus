@@ -299,7 +299,7 @@ end;
 
 { ---------------------------------------------------------------- pages }
 
-{ "Choose..." on the browser page: picks a program and fills in "<program>" {url}. }
+{ "Choose..." on the browser page: picks a program and fills in its path in quotes, then the url placeholder. }
 procedure BrowseBrowserClick(Sender: TObject);
 var
   FileName: String;

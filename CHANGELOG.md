@@ -4,6 +4,12 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.33.1] - 2026-11-13
+
+### Fixed
+- The Windows Setup didn't build ("'BEGIN' expected", line 302): a comment in its code contained `{url}`, whose
+  closing brace ended the comment early (2.31.0's browser page). Nothing else changed.
+
 ## [2.33.0] - 2026-11-13
 
 ### Added
