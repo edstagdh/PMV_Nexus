@@ -4,6 +4,14 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.33.2] - 2026-11-13
+
+### Fixed
+- **Setup said PMV Nexus couldn't be closed, or was still running when it wasn't.** It counted every program
+  running in (or from) the app folder as the app — an editor, a terminal or any other program opened there too —
+  and those can't or mustn't be closed. Now only the app's own programs count (its Python, FFmpeg / FFprobe, the
+  service wrapper), other programs are never touched, and if something can't be closed the message names it.
+
 ## [2.33.1] - 2026-11-13
 
 ### Fixed

@@ -6,10 +6,13 @@ Python, so it only uses the standard library (and psutil when it's there):
     python stop_app.py --root "C:\\Program Files\\PMV Nexus" --check   -> exit 3 if it's running, else 0
     python stop_app.py --root "C:\\Program Files\\PMV Nexus"           -> closes it: exit 0 when nothing's left
 
-"Running" = any process whose program or working folder is the app folder: the
-app itself (tray or console window -- on Windows the .venv's python.exe only
-starts the real Python, which runs in the app folder), the Windows service
-wrapper, FFmpeg encodes. Closing asks the app first (POST
+"Running" = one of the app's own programs -- Python (tray or console window),
+FFmpeg / FFprobe (encodes, previews), the Windows service wrapper -- whose
+program or working folder is the app folder (on Windows the .venv's python.exe
+only starts the real Python, which runs in the app folder). Other programs that
+happen to be in the folder (an editor, a console, Explorer) are never touched
+(2.33.2: before, anything there counted, so one of those made Setup think the
+app was still running). Closing asks the app first (POST
 /api/local/stop with the token from runtime/control.json -- the same as the
 tray's Exit: work in progress stops safely and continues at the next start),
 waits for it, and only then ends what's left.
@@ -38,14 +41,18 @@ def _inside(path: str, root: str) -> bool:
         return False
 
 
-# A console the app was started from has the app folder as its working folder too;
-# it isn't the app and isn't closed (the app inside it is).
-SHELLS = {"cmd.exe", "powershell.exe", "pwsh.exe", "windowsterminal.exe", "conhost.exe", "openconsole.exe",
-          "explorer.exe", "bash", "zsh", "sh", "fish"}
+# The app's own programs (Windows and Linux / macOS names).
+APP_PROGRAMS = {"python.exe", "pythonw.exe", "python", "python3", "ffmpeg.exe", "ffprobe.exe", "ffmpeg", "ffprobe",
+                "pmvnexusservice.exe"}
+
+
+def _app_program(name: str) -> bool:
+    name = (name or "").lower()
+    return name in APP_PROGRAMS or name.startswith("python3.")  # python3.12 on Linux
 
 
 def _ours(proc, root: str) -> bool:
-    if (proc.info.get("name") or "").lower() in SHELLS:
+    if not _app_program(proc.info.get("name")):
         return False
     try:
         if proc.info["exe"] and _inside(proc.info["exe"], root):
@@ -86,7 +93,26 @@ def ask_to_close(root: Path) -> bool:
         return False
 
 
-def close(root: Path, timeout: float) -> int:
+def describe(procs: list) -> str:
+    """For Setup's message: what's still running."""
+    lines = []
+    for proc in procs:
+        try:
+            lines.append(f"{proc.info.get('name')} (process {proc.pid}): {proc.info.get('exe') or '?'}")
+        except psutil.Error:
+            continue
+    return "\n".join(lines)
+
+
+def report(path: str, text: str) -> None:
+    if path:
+        try:
+            Path(path).write_text(text, encoding="ascii", errors="replace")
+        except OSError:
+            pass
+
+
+def close(root: Path, timeout: float, report_to: str = "") -> int:
     asked = ask_to_close(root)
     print("Asked PMV Nexus to close." if asked else "PMV Nexus couldn't be asked to close.", flush=True)
     deadline = time.time() + (timeout if asked else 3)
@@ -111,7 +137,9 @@ def close(root: Path, timeout: float) -> int:
         psutil.wait_procs(alive, timeout=5)
     if psutil is None:
         return 0 if asked else 2
-    return 0 if not app_processes(root) else 2
+    left = app_processes(root)
+    report(report_to, describe(left))
+    return 0 if not left else 2
 
 
 def main() -> int:
@@ -119,13 +147,16 @@ def main() -> int:
     parser.add_argument("--root", required=True, help="the app folder")
     parser.add_argument("--check", action="store_true", help="only say whether it runs (exit 3) or not (0)")
     parser.add_argument("--timeout", type=float, default=60, help="seconds to wait for it to close itself")
+    parser.add_argument("--report", default="", help="write what's (still) running to this file")
     args = parser.parse_args()
     root = Path(args.root)
     if args.check:
-        running = bool(app_processes(root)) or (psutil is None and (root / "runtime" / "control.json").is_file())
+        found = app_processes(root)
+        report(args.report, describe(found))
+        running = bool(found) or (psutil is None and (root / "runtime" / "control.json").is_file())
         print("running" if running else "not running", flush=True)
         return 3 if running else 0
-    return close(root, args.timeout)
+    return close(root, args.timeout, args.report)
 
 
 if __name__ == "__main__":

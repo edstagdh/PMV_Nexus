@@ -725,14 +725,16 @@ end;
 function CloseRunningApp: String;
 var
   Code: Integer;
-  Script, Args: String;
+  Script, Args, ReportFile: String;
+  Report: AnsiString;
 begin
   Result := '';
   if not FileExists(VenvPython) then
     Exit;                      { a first install: nothing can be running }
   ExtractTemporaryFile('stop_app.py');
   Script := ExpandConstant('{tmp}\stop_app.py');
-  Args := '"' + Script + '" --root "' + AppDir + '"';
+  ReportFile := ExpandConstant('{tmp}\stop_app_report.txt');
+  Args := '"' + Script + '" --root "' + AppDir + '" --report "' + ReportFile + '"';
   if not Exec(VenvPython, Args + ' --check', '', SW_HIDE, ewWaitUntilTerminated, Code) then
     Exit;                      { the old Python doesn't run: then nothing of it runs either }
   if Code <> 3 then
@@ -747,8 +749,12 @@ begin
   AppWasRunning := True;
   WizardForm.PreparingLabel.Caption := 'Closing PMV Nexus...';
   if not Exec(VenvPython, Args, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+  begin
     Result := 'PMV Nexus couldn''t be closed. Close it yourself (tray icon: Exit PMV Nexus, or end it in Task Manager) ' +
       'and click Back, then Install again.';
+    if LoadStringFromFile(ReportFile, Report) and (Trim(String(Report)) <> '') then
+      Result := Result + #13#10#13#10 + 'Still running:' + #13#10 + String(Report);
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
