@@ -187,7 +187,7 @@ def run(server, port: int, open_browser: bool = False) -> None:
         if code:
             icon.notify(f"First start: setup code {code} (right-click the icon to copy it).", "PMV Nexus is running")
         else:
-            icon.notify(f"Running at {url}", "PMV Nexus")
+            icon.notify(f"Running at {url} -- click the icon to open it.", "PMV Nexus")
         if open_browser:
             do_open()
         last = None

@@ -113,6 +113,8 @@ var
   FoldersPage: TInputDirWizardPage;
   MoreFoldersPage: TInputDirWizardPage;
   AdminPage: TInputQueryWizardPage;   { new library: the admin account (no setup code needed, 2.29.0) }
+  BrowserPage: TInputQueryWizardPage;   { opening the app: browser command, open on start (2.31.0) }
+  OpenOnStartCheck: TNewCheckBox;
   PortPage: TInputQueryWizardPage;
   AdminPassword: String;
   PythonExe: String;        { base interpreter used to make .venv }
@@ -282,6 +284,71 @@ end;
 
 { ---------------------------------------------------------------- pages }
 
+{ "Choose..." on the browser page: picks a program and fills in "<program>" {url}. }
+procedure BrowseBrowserClick(Sender: TObject);
+var
+  FileName: String;
+begin
+  FileName := '';
+  if GetOpenFileName('Choose the browser', FileName, ExpandConstant('{commonpf}'), 'Programs (*.exe)|*.exe', 'exe') then
+    BrowserPage.Values[0] := '"' + FileName + '" {url}';
+end;
+
+{ The browser page's own controls, under its text box. }
+procedure CreateBrowserControls;
+var
+  Button: TNewButton;
+  Note: TNewStaticText;
+begin
+  Button := TNewButton.Create(BrowserPage);
+  Button.Parent := BrowserPage.Surface;
+  Button.Caption := 'Choose...';
+  Button.Width := ScaleX(90);
+  Button.Height := ScaleY(23);
+  Button.Left := BrowserPage.SurfaceWidth - Button.Width;
+  Button.Top := BrowserPage.Edits[0].Top + BrowserPage.Edits[0].Height + ScaleY(6);
+  Button.OnClick := @BrowseBrowserClick;
+
+  OpenOnStartCheck := TNewCheckBox.Create(BrowserPage);
+  OpenOnStartCheck.Parent := BrowserPage.Surface;
+  OpenOnStartCheck.Caption := 'Open the app in the browser when PMV Nexus starts';
+  OpenOnStartCheck.Left := 0;
+  OpenOnStartCheck.Top := Button.Top + Button.Height + ScaleY(12);
+  OpenOnStartCheck.Width := BrowserPage.SurfaceWidth;
+  OpenOnStartCheck.Height := ScaleY(17);
+  OpenOnStartCheck.Checked := True;
+
+  Note := TNewStaticText.Create(BrowserPage);
+  Note.Parent := BrowserPage.Surface;
+  Note.Left := ScaleX(18);
+  Note.Top := OpenOnStartCheck.Top + OpenOnStartCheck.Height + ScaleY(4);
+  Note.Width := BrowserPage.SurfaceWidth - ScaleX(18);
+  Note.WordWrap := True;
+  Note.Caption := 'Off: the shortcut only starts it (its icon appears by the clock; click it to open the app). ' +
+    'Both can be changed later in the app: Server settings - Opening the app.';
+end;
+
+{ The program part of a browser command line (quoted or up to the first space). }
+function BrowserProgram(const Command: String): String;
+var
+  S: String;
+  P: Integer;
+begin
+  S := Trim(Command);
+  if (Length(S) > 0) and (S[1] = '"') then
+  begin
+    Delete(S, 1, 1);
+    P := Pos('"', S);
+    if P > 0 then
+      S := Copy(S, 1, P - 1);
+  end else begin
+    P := Pos(' ', S);
+    if P > 0 then
+      S := Copy(S, 1, P - 1);
+  end;
+  Result := S;
+end;
+
 procedure InitializeWizard;
 begin
   FolderKeys[0] := 'output_dir'; FolderKeys[1] := 'cache_dir';
@@ -329,7 +396,15 @@ begin
   AdminPage.Add('Password again:', True);
   AdminPage.Values[0] := 'admin';
 
-  PortPage := CreateInputQueryPage(AdminPage.ID, 'Port',
+  BrowserPage := CreateInputQueryPage(AdminPage.ID, 'Opening the app',
+    'Which browser should PMV Nexus open in?',
+    'Leave it empty for your default browser. Or a browser with its options - {url} is the app''s address, e.g.' + #13#10 +
+    '"C:\Program Files\Mozilla Firefox\firefox.exe" -P Videos --new-window {url}' + #13#10 +
+    '"C:\Program Files\Google\Chrome\Application\chrome.exe" --profile-directory="Profile 1" {url}');
+  BrowserPage.Add('Browser (optional):', False);
+  CreateBrowserControls;
+
+  PortPage := CreateInputQueryPage(BrowserPage.ID, 'Port',
     'Which port should the app use?', 'The app opens at http://localhost:<port> on this computer, and at http://<this computer''s name or address>:<port> from other devices. 8676 unless something else uses it.');
   PortPage.Add('Port:', False);
 end;
@@ -358,6 +433,8 @@ begin
     end;
   end;
   PortPage.Values[0] := GetIniString('server', 'port', '8676', IniFile);
+  BrowserPage.Values[0] := GetIniString('tray', 'browser', '', IniFile);
+  OpenOnStartCheck.Checked := GetIniString('tray', 'open_browser', '1', IniFile) <> '0';
 end;
 
 { setup_core inspect (WorkPage must be shown): this install's folders, or -- with Zip -- the
@@ -425,7 +502,8 @@ function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
   if (PageID = ModePage.ID) or (PageID = BackupFilePage.ID) or (PageID = BackupPwPage.ID) or
-     (PageID = FoldersPage.ID) or (PageID = MoreFoldersPage.ID) or (PageID = AdminPage.ID) or (PageID = PortPage.ID) then
+     (PageID = FoldersPage.ID) or (PageID = MoreFoldersPage.ID) or (PageID = AdminPage.ID) or (PageID = BrowserPage.ID) or
+     (PageID = PortPage.ID) then
   begin
     if IsUpgrade or SetupFailed then
       Result := True
@@ -469,6 +547,11 @@ begin
       SetIniString('folders', FolderKeys[I], MoreFoldersPage.Values[I - FolderKeysMain], IniFile);
   Port := Trim(PortPage.Values[0]);
   SetIniString('server', 'port', Port, IniFile);
+  SetIniString('tray', 'browser', Trim(BrowserPage.Values[0]), IniFile);
+  if OpenOnStartCheck.Checked then
+    SetIniString('tray', 'open_browser', '1', IniFile)
+  else
+    SetIniString('tray', 'open_browser', '0', IniFile);
   WorkPage.Show;
   try
     if ModePage.SelectedValueIndex = 1 then
@@ -609,6 +692,13 @@ begin
       if not Result then
         MsgBox(GetIniString('result', 'error', 'This account can''t be used.', IniFile), mbError, MB_OK);
     end;
+  end
+  else if CurPageID = BrowserPage.ID then
+  begin
+    if (Trim(BrowserPage.Values[0]) <> '') and not FileExists(BrowserProgram(BrowserPage.Values[0])) then
+      Result := MsgBox('This program wasn''t found:' + #13#10 + BrowserProgram(BrowserPage.Values[0]) + #13#10#13#10 +
+        'Put the program in quotes when its path has spaces, e.g. "C:\Program Files\...\firefox.exe" {url}.' + #13#10 +
+        'Use it anyway?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
   end
   else if CurPageID = PortPage.ID then
     Result := ApplySettings;

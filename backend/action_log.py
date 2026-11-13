@@ -155,6 +155,7 @@ _LABELS = {
     "set_proxy_settings": "Server settings: Proxy",
     "proxy_test": "Proxy speed test",
     "performer_settings": "Server settings: Performers",
+    "set_tray_settings": "Server settings: Opening the app",
     "save_settings": "Songs settings",
     # credentials & connections
     "update_credentials": "Change credentials",

@@ -299,11 +299,18 @@ class DuplicateScanConfig(BaseModel):
 
 
 class TrayConfig(BaseModel):
-    """The tray icon (run.py --tray, 2.29.0). `browser`: the program "Open PMV Nexus"
-    uses, with arguments -- e.g. "C:/Program Files/Mozilla Firefox/firefox.exe" -P Videos
-    --new-window {url} -- empty = the default browser. {url} is the app's address (added
-    at the end when missing)."""
-    browser: str = ""
+    """Opening the app in a browser (the tray icon, the Windows shortcuts; 2.29.0).
+      browser      -- the program "Open PMV Nexus" uses, with arguments -- e.g.
+                      "C:/Program Files/Mozilla Firefox/firefox.exe" -P Videos --new-window {url} --
+                      empty = the default browser. {url} is the app's address (added at the end
+                      when missing).
+      open_browser -- when a shortcut (or Setup's "Open PMV Nexus now") STARTS the app, also open it
+                      in the browser (2.31.0). Off: it just starts (tray icon). Clicking a shortcut
+                      while the app already runs always opens it.
+    Set in Setup, config.yaml or Server settings -> Opening the app (the browser only from the
+    computer the app runs on)."""
+    browser: str = Field("", max_length=2000)
+    open_browser: bool = True
 
 
 class BackupConfig(BaseModel):
@@ -567,7 +574,7 @@ def get_settings() -> Settings:
                              "password": creds.get("proxy_password")}),
         duplicate_scan=DuplicateScanConfig(**duplicate_scan_raw),
         backup=BackupConfig(**{**raw.get("backup", {}), **overrides.get("backup", {})}),
-        tray=TrayConfig(**(raw.get("tray") or {})),
+        tray=TrayConfig(**{**(raw.get("tray") or {}), **overrides.get("tray", {})}),
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],
         pmv_email=creds["pmvhaven_email"],

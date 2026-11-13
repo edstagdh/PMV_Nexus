@@ -127,17 +127,20 @@ def use_bundled_tools() -> None:
 
 
 def open_browser_when_up(port: int) -> None:
-    """--open-browser (Start-menu shortcut): opens http://localhost:<port> once the app answers."""
+    """--open-browser (Start-menu shortcut): opens http://localhost:<port> once the app answers,
+    in tray.browser when one is set."""
     import socket
     import threading
     import time
-    import webbrowser
+
+    from backend.config import get_settings
+    from backend.tray import open_url
 
     def wait_and_open() -> None:
         for _ in range(240):
             try:
                 with socket.create_connection(("127.0.0.1", port), timeout=1):
-                    webbrowser.open(f"http://localhost:{port}/")
+                    open_url(f"http://localhost:{port}/", get_settings().tray.browser)
                     return
             except OSError:
                 time.sleep(0.5)

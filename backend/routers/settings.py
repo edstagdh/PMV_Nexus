@@ -16,7 +16,7 @@ import os
 import string
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
 from .. import upload_safety
@@ -28,7 +28,7 @@ from ..media_tools import UPLOAD_ENCODERS, available_encoders
 from ..models import (
     DownloadDirRequest, DownloadSettingsRequest, ReencodeSettingsRequest, UploadSettingsRequest, PlaybackSettingsRequest, LoggingSettingsRequest, ProxySettingsRequest,
     RepairSyncRequest, BrowseMkdirRequest, DuplicateScanSettingsRequest,
-    FeaturesSettingsRequest,
+    FeaturesSettingsRequest, TraySettingsRequest,
 )
 from ..security import require_permission, AuthContext
 from ._common import safe_folder_name
@@ -37,9 +37,10 @@ router = APIRouter()
 
 
 @router.get("/api/settings")
-def get_app_settings(user: AuthContext = Depends(require_permission("settings.manage"))):
+def get_app_settings(request: Request, user: AuthContext = Depends(require_permission("settings.manage"))):
     settings = get_settings()
     return {
+        "tray": {**settings.tray.model_dump(), "browser_editable": on_this_computer(request)},
         "download": {
             "output_dir": str(settings.output_dir),
             "cache_dir": str(settings.cache_dir),
@@ -68,6 +69,34 @@ def get_app_settings(user: AuthContext = Depends(require_permission("settings.ma
             "encoders": {codec: enc in available_encoders() for codec, enc in UPLOAD_ENCODERS.items()},
         },
     }
+
+
+def on_this_computer(request: Request) -> bool:
+    """Is the request from the computer the app runs on (and not passed on by a reverse proxy)?
+    The browser command is a program the app starts, so it's only changed from there."""
+    host = (request.client.host if request.client else "") or ""
+    name = (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]").lower()
+    forwarded = any(h in request.headers for h in ("x-forwarded-for", "x-real-ip", "forwarded"))
+    return (host in ("127.0.0.1", "::1", "localhost") and name in ("localhost", "127.0.0.1", "::1")
+            and not forwarded)
+
+
+@router.post("/api/settings/tray")
+def set_tray_settings(payload: TraySettingsRequest, request: Request,
+                      user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Opening the app (2.31.0): open the browser when a shortcut starts the app, and which browser."""
+    values = {"open_browser": payload.open_browser}
+    if payload.browser is not None:
+        browser = payload.browser.strip()
+        if browser != get_settings().tray.browser:
+            if not on_this_computer(request):
+                raise HTTPException(status_code=403, detail="The browser can only be changed on the computer the app runs "
+                                                            "on (open the app there at http://localhost)")
+            if "\n" in browser or "\r" in browser:
+                raise HTTPException(status_code=400, detail="The browser must be one line")
+            values["browser"] = browser
+    save_overrides(tray=values)
+    return {"ok": True}
 
 
 @router.post("/api/settings/duplicate-scan")

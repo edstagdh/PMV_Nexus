@@ -1,7 +1,7 @@
 <script setup>
 // Admin -> Server settings: app-wide configuration (not per-user preferences,
 // which are under Settings). Tabs: Download, Re-encode, Uploads, Duplicate scan, Logging, Proxy, Performers,
-// Credentials, Connections. Saved to config overrides by /api/settings/*.
+// Credentials, Connections, Opening the app (+ Extensions). Saved to config overrides by /api/settings/*.
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -26,6 +26,7 @@ const BASE_TABS = [
   { key: "performers", label: "Performers" },
   { key: "credentials", label: "Credentials" },
   { key: "connections", label: "Connections" },
+  { key: "opening", label: "Opening the app" },
 ];
 // Extensions (2.30.0): a tab only when there are any.
 const TABS = computed(() => (ext.extensions.length || ext.panels.length
@@ -58,6 +59,13 @@ const dup = ref({});
 const upl = ref({});
 const lg = ref({});
 const perf = ref({});
+const tray = ref({});   // opening the app (2.31.0)
+function saveTray() {
+  const v = tray.value;
+  return run("tray", () => api("/api/settings/tray", {
+    method: "POST", body: { open_browser: !!v.open_browser, ...(v.browser_editable ? { browser: v.browser || "" } : {}) },
+  }));
+}
 function savePerformers() {
   const v = perf.value;
   return run("performers", () => api("/api/settings/performers", {
@@ -99,6 +107,7 @@ async function load() {
     upl.value = { ...s.upload };
     lg.value = { ...s.logging };
     perf.value = { ...s.performers };
+    tray.value = { ...s.tray };
     folders.value = { output: s.download.output_dir, outputMove: true, cache: s.download.cache_dir, cacheMove: true };
     error.value = "";
   } catch (err) {
@@ -110,7 +119,7 @@ onMounted(load);
 // Re-encoding / sharing on or off everywhere (2.22.0); saved straight away.
 function setFeature(name, on) {
   return run(`feature-${name}`, () => api("/api/settings/features", { method: "POST", body: { [name]: on } }),
-    `${name === "reencode" ? "Re-encoding" : "Sharing"} switched ${on ? "on" : "off"}`);
+    `${name === "reencode" ? "Re-encoding" : name} switched ${on ? "on" : "off"}`);
 }
 
 async function run(key, fn, okText = "Saved") {
@@ -537,6 +546,30 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
         <div class="inline-input"><input id="pf-days" v-model.number="perf.refresh_days" class="input input-num" style="max-width: 7rem" type="number" min="7" max="365"><span class="muted">days</span></div>
       </div>
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="busy === 'performers'" @click="savePerformers">Save</button></div>
+    </section>
+
+    <!-- ================= Opening the app ================= -->
+    <section v-else-if="tab === 'opening'" class="card panel">
+      <p class="help-text">How the app opens on the computer it runs on: the Start-menu and desktop shortcuts, the tray icon,
+        and Setup's “Open PMV Nexus now”.</p>
+      <div class="form-row">
+        <span class="label">When it starts<small>Started from a shortcut. Clicking a shortcut while it's already running always opens it.</small></span>
+        <label class="switch"><input v-model="tray.open_browser" type="checkbox">Open the app in the browser. Off: it only starts —
+          its icon appears by the clock (click it to open the app).</label>
+      </div>
+      <div class="form-row">
+        <label class="label" for="tr-browser">Browser<small>Empty: the default browser. <code>{url}</code> is the app's address
+          (added at the end when missing).</small></label>
+        <div>
+          <input id="tr-browser" v-model="tray.browser" class="input" style="width: 100%" :readonly="!tray.browser_editable" spellcheck="false"
+                 placeholder="Default browser">
+          <p class="muted small" style="margin: 0.4rem 0 0">e.g. <code>"C:\Program Files\Mozilla Firefox\firefox.exe" -P Videos --new-window {url}</code>
+            (a Firefox profile) or <code>"C:\Program Files\Google\Chrome\Application\chrome.exe" --profile-directory="Profile 1" {url}</code>.</p>
+          <p v-if="!tray.browser_editable" class="muted small" style="margin: 0.4rem 0 0">It's a program the app starts, so it can only be
+            changed on the computer the app runs on — open the app there at <code>http://localhost</code>.</p>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="busy === 'tray'" @click="saveTray">Save</button></div>
     </section>
 
     <!-- ================= Logging ================= -->

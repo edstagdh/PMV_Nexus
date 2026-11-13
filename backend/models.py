@@ -367,6 +367,12 @@ class ReencodeRequest(BaseModel):
     options: Optional[ReencodeOptions] = None
 
 
+class TraySettingsRequest(BaseModel):
+    """Server settings -> Opening the app (2.31.0). browser None = unchanged."""
+    open_browser: bool = True
+    browser: Optional[str] = Field(None, max_length=2000)
+
+
 class FeaturesSettingsRequest(BaseModel):
     reencode: Optional[bool] = None
 

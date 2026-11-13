@@ -189,8 +189,9 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **Uninstall** (Settings → Apps): removes the app; asks before deleting the library and settings (`data`,
   `config.yaml`) — videos outside the app folder are never touched.
 - **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
-- The Start-menu shortcut opens the app in the browser, starting it first — with a **tray icon**, no console
-  window — if it isn't running. "PMV Nexus (console)" starts it with its log window instead, for troubleshooting.
+- The Start-menu shortcut starts the app if it isn't running — with a **tray icon**, no console window — and opens
+  it in the browser. Setup's **Opening the app** page sets which browser (e.g. a Firefox or Chrome profile) and
+  whether starting also opens it (later: Server settings → Opening the app). "PMV Nexus (console)" starts it with its log window instead, for troubleshooting.
 
 ### Linux / macOS: `install.sh`
 Get the code (download the release's source zip, or `git clone`), then run **`./install.sh`**: Python check (with the
@@ -304,7 +305,8 @@ From the project root:
 - **Windows, tray icon:** `.venv\Scripts\pythonw.exe run.py --tray` (what the installer's shortcuts do) — no console:
   - **click the icon** (or **Open PMV Nexus**) to open the app in the browser — the default one, or the program
     set in `config.yaml` → `tray.browser` (e.g. a Firefox profile: `"C:/Program Files/Mozilla Firefox/firefox.exe" -P
-    Videos --new-window {url}`);
+    Videos --new-window {url}`); `tray.open_browser: false` = a shortcut that starts the app doesn't open it (both
+    also under Server settings → Opening the app; the browser only from the computer the app runs on);
   - **hover** to see what it's doing ("2 downloads, 1 re-encode, 1 playing");
   - **right-click**: Open, Copy the setup code (only before the first account exists), Open the log folder, Open the
     app folder, **Exit** (asks first when work is running, then stops cleanly — interrupted downloads and re-encodes

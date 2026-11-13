@@ -11,10 +11,10 @@ import MultiSelect from "../components/MultiSelect.vue";
 import { api } from "../lib/api.js";
 import { onLibraryChange } from "../stores/live.js";
 
+// Sort by a field, either way (2.31.0); each field starts in its natural direction.
 const SORTS = [
-  { key: "videos", label: "Most videos" },
-  { key: "name", label: "Name A–Z" },
-  { key: "fewest", label: "Fewest videos" },
+  { key: "videos", label: "Videos", dir: "desc", asc: "Fewest videos first", desc: "Most videos first" },
+  { key: "name", label: "Name", dir: "asc", asc: "A to Z", desc: "Z to A" },
 ];
 const SHOWS = [
   { key: "all", label: "Everyone" },
@@ -28,12 +28,16 @@ try { saved = JSON.parse(localStorage.getItem(PREF) || "{}"); } catch { /* priva
 const all = ref(null);
 const error = ref("");
 const q = ref("");
-const sort = ref(SORTS.some((s) => s.key === saved.sort) ? saved.sort : "videos");
+const sortOf = (key) => SORTS.find((s) => s.key === key);
+// "fewest" was its own choice before 2.31.0: it's Videos, ascending.
+const sort = ref(saved.sort === "fewest" ? "videos" : sortOf(saved.sort) ? saved.sort : "videos");
+const dir = ref(saved.sort === "fewest" ? "asc" : saved.dir === "asc" || saved.dir === "desc" ? saved.dir : sortOf(sort.value).dir);
 const show = ref(SHOWS.some((s) => s.key === saved.show) ? saved.show : "all");
 const shown = ref(120);
-watch([sort, show], () => {
+function setSort(key) { sort.value = key; dir.value = sortOf(key).dir; }
+watch([sort, dir, show], () => {
   shown.value = 120;
-  try { localStorage.setItem(PREF, JSON.stringify({ sort: sort.value, show: show.value })); } catch { /* private mode */ }
+  try { localStorage.setItem(PREF, JSON.stringify({ sort: sort.value, dir: dir.value, show: show.value })); } catch { /* private mode */ }
 });
 watch(q, () => { shown.value = 120; });
 
@@ -117,10 +121,10 @@ const list = computed(() => {
   const s = q.value.trim().toLowerCase();
   const rows = (all.value || []).filter((p) => (show.value === "all" || (show.value === "linked") === p.linked)
     && (!s || p.name.toLowerCase().includes(s) || p.link.toLowerCase().includes(s)) && passes(p));
+  const sign = dir.value === "asc" ? 1 : -1;
   const by = {
-    videos: (a, b) => b.videos - a.videos || collator.compare(a.name, b.name),
-    fewest: (a, b) => a.videos - b.videos || collator.compare(a.name, b.name),
-    name: (a, b) => collator.compare(a.name, b.name),
+    videos: (a, b) => sign * (a.videos - b.videos) || collator.compare(a.name, b.name),
+    name: (a, b) => sign * collator.compare(a.name, b.name),
   }[sort.value];
   // ThePornDB matches first, always.
   return rows.sort((a, b) => (b.linked - a.linked) || by(a, b));
@@ -145,9 +149,15 @@ const firstUnlinked = computed(() => (show.value === "all" ? list.value.findInde
           {{ s.label }}<span v-if="all && s.key !== 'all'" class="n">{{ counts[s.key] }}</span>
         </button>
       </div>
-      <select v-model="sort" class="input sort" aria-label="Sort">
-        <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
-      </select>
+      <div class="sortbox">
+        <select :value="sort" class="input sort" aria-label="Sort by" @change="setSort($event.target.value)">
+          <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
+        </select>
+        <button class="btn btn-icon" :title="sortOf(sort)[dir]" :aria-label="`Order: ${sortOf(sort)[dir]}`"
+                @click="dir = dir === 'asc' ? 'desc' : 'asc'">
+          <Icon :name="dir === 'asc' ? 'sortAsc' : 'sortDesc'" />
+        </button>
+      </div>
       <button class="btn" :class="{ active: showFilters }" :aria-expanded="showFilters" @click="showFilters = !showFilters">
         <Icon name="filter" :size="16" />Filters<span v-if="activeFilters" class="badge-n">{{ activeFilters }}</span>
       </button>
@@ -214,7 +224,9 @@ const firstUnlinked = computed(() => (show.value === "all" ? list.value.findInde
 .search-wrap .input { padding-left: 2.1rem; width: 100%; height: 2.4rem; }
 .seg { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .n { margin-left: 0.35rem; font-size: 0.72rem; opacity: 0.75; }
+.sortbox { display: flex; gap: 0.25rem; }
 .sort { width: auto; height: 2.4rem; }
+.sortbox .btn { height: 2.4rem; }
 .badge-n { margin-left: 0.35rem; background: var(--accent); color: #fff; border-radius: 999px; font-size: 0.7rem; padding: 0 0.4rem; }
 .pfilters { padding: 1rem 1.125rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.875rem 1.25rem; }
 .range { display: flex; align-items: center; gap: 0.4rem; }

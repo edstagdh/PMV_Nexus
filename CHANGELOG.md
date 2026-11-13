@@ -4,6 +4,20 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [2.31.0] - 2026-11-13
+
+### Added
+- **Opening the app** — Server settings → Opening the app, and a new Setup page (Windows):
+  - **Open the app in the browser when it starts** (`tray.open_browser`, on by default). Off: the Start-menu / desktop
+    shortcut and Setup's "Open PMV Nexus now" only start it (tray icon; its notification says to click the icon).
+    Clicking a shortcut while the app already runs still opens it.
+  - **Browser** (`tray.browser`): a program and its options, e.g. a Firefox or Chrome profile; Setup has a
+    **Choose...** button and checks the program exists. In the app it can only be changed from the computer the app
+    runs on (it's a program the app starts), not through a reverse proxy.
+  - The browser is now also used when the app runs as a Windows service and with `run.py --open-browser`.
+- **Performers page:** sort by Videos or Name, either way (arrow button: most / fewest videos, A to Z / Z to A).
+  "Fewest videos" became Videos, ascending.
+
 ## [2.30.0] - 2026-11-13
 
 ### Added

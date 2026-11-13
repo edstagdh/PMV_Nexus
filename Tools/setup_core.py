@@ -153,6 +153,9 @@ def inspect(out: Path, zip_path: str | None, password_file: str | None, progress
         _folders_section(ini, plan)
         port = _section_get(plan.config, "server", "port") or 8676
         ini["server"] = {"port": str(port)}
+        open_browser = _section_get(plan.config, "tray", "open_browser")
+        ini["tray"] = {"open_browser": "0" if open_browser is False else "1",
+                       "browser": str(_section_get(plan.config, "tray", "browser") or "")}
     _write(ini, out)
     return 0 if result["ok"] == "1" else 1
 
@@ -217,9 +220,29 @@ def apply(path: Path, progress_file: str | None = None) -> int:
         text = folders.CONFIG.read_text(encoding="utf-8")
         folders.CONFIG.write_text(folders.set_yaml_value(text, "server", "port", int(port)), encoding="utf-8")
         set_userscript_port(int(port))
+    if ini.has_section("tray"):
+        save_tray(ini.get("tray", "open_browser", fallback="1") != "0", ini.get("tray", "browser", fallback=""))
     if not folders.CONFIG.is_file():
         folders.CONFIG.write_text(folders.TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
     return _result(ini, path, "")
+
+
+def save_tray(open_browser: bool, browser: str) -> None:
+    """Opening the app (2.31.0, Setup's "Opening the app" page): into config.yaml, and out of the
+    settings changed in the app (a restored backup's), so what was chosen in Setup applies."""
+    import json
+    if not folders.CONFIG.is_file():
+        folders.CONFIG.write_text(folders.TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
+    text = folders.CONFIG.read_text(encoding="utf-8")
+    text = folders.set_yaml_value(text, "tray", "open_browser", bool(open_browser))  # True / False: YAML booleans
+    text = folders.set_yaml_value(text, "tray", "browser", " ".join(browser.split()))
+    folders.CONFIG.write_text(text, encoding="utf-8")
+    try:
+        overrides = json.loads(folders.OVERRIDES.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if overrides.pop("tray", None) is not None:
+        folders.OVERRIDES.write_text(json.dumps(overrides, indent=2), encoding="utf-8")
 
 
 def admin(path: Path, password_file: str | None, check_only: bool) -> int:

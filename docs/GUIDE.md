@@ -40,8 +40,9 @@ No `.env` file is needed: accounts and credentials are set up in the app.
 ### Start the app
 - **Windows, installed with Setup:** the Start-menu shortcut. The app runs with a **tray icon** (no window): click it
   to open the app, hover to see what it's doing, right-click for the log folder or **Exit**. "PMV Nexus (console)"
-  runs it with its log window instead. A browser other than the default (e.g. a Firefox profile): `tray.browser` in
-  `config.yaml`.
+  runs it with its log window instead. **Server settings → Opening the app** (also asked by Setup): open the browser
+  when the shortcut starts the app or not, and a browser other than the default (e.g. a Firefox or Chrome profile —
+  only changeable on the computer the app runs on, because it's a program the app starts).
 - **Windows:** double-click `start.bat`. It uses `.venv` automatically if it exists.
 - **Any OS:** `python run.py` from the project folder.
 
@@ -354,7 +355,7 @@ How it works:
 - **Performers page** (sidebar → Performers): everyone in your videos, one card per person (names linked to the same
   ThePornDB profile together). Performers matched to ThePornDB always come first, then the others under "Not on
   ThePornDB" with a grey placeholder (female by default; on their page **Placeholder: Female / Male** switches it,
-  for people with the Performers permission). Find by name, sort by most videos / name / fewest videos, or show only
+  for people with the Performers permission). Find by name, sort by number of videos or name, either way (the arrow button), or show only
   one group; the choice is remembered in this browser.
   **Filters** narrows it by what ThePornDB says about them: gender, nationality, ethnicity, hair, eyes, cup size
   (several values each), age, height (cm) and weight (kg) ranges, and still active / enhanced breasts / tattoos /
