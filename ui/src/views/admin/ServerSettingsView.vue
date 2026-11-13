@@ -1,13 +1,12 @@
 <script setup>
 // Admin -> Server settings: app-wide configuration (not per-user preferences,
 // which are under Settings). Tabs: Download, Re-encode, Uploads, Duplicate scan, Logging, Proxy, Performers,
-// Credentials, Connections, Opening the app (+ Extensions). Saved to config overrides by /api/settings/*.
+// Credentials, Opening the app (+ Extensions). Saved to config overrides by /api/settings/*.
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import FolderPicker from "../../components/admin/FolderPicker.vue";
 import CredentialsPanel from "../../components/admin/CredentialsPanel.vue";
-import ConnectionsPanel from "../../components/admin/ConnectionsPanel.vue";
 import ProxyPanel from "../../components/admin/ProxyPanel.vue";
 import ExtensionsPanel from "../../components/admin/ExtensionsPanel.vue";
 import { ext } from "../../stores/extensions.js";
@@ -25,7 +24,6 @@ const BASE_TABS = [
   { key: "proxy", label: "Proxy" },
   { key: "performers", label: "Performers" },
   { key: "credentials", label: "Credentials" },
-  { key: "connections", label: "Connections" },
   { key: "opening", label: "Opening the app" },
 ];
 // Extensions (2.30.0): a tab only when there are any.
@@ -253,7 +251,6 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
 
     <CredentialsPanel v-if="tab === 'credentials'" />
     <ExtensionsPanel v-else-if="tab === 'extensions'" />
-    <ConnectionsPanel v-else-if="tab === 'connections'" />
     <ProxyPanel v-else-if="tab === 'proxy' && settings" :key="settings.proxy?.url + settings.proxy?.site_mode" :settings="settings" @saved="load" />
     <p v-else-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!settings" class="skeleton" style="height: 18rem; border-radius: var(--radius-lg)" />

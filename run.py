@@ -115,15 +115,11 @@ def all_reachable(plan, prefix: str, quiet: bool = False) -> bool:
 
 
 def use_bundled_tools() -> None:
-    """Tools the Windows installer puts in runtime/ (2.26.0): FFmpeg and the
-    Playwright browser. Used when present; otherwise the ones on PATH / in the
-    user's profile, as before."""
+    """FFmpeg as the Windows installer puts it in runtime/ (2.26.0), when it's
+    there; otherwise the one on PATH."""
     ffmpeg_bin = ROOT / "runtime" / "ffmpeg" / "bin"
     if ffmpeg_bin.is_dir():
         os.environ["PATH"] = str(ffmpeg_bin) + os.pathsep + os.environ.get("PATH", "")
-    browsers = ROOT / "runtime" / "ms-playwright"
-    if browsers.is_dir():
-        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(browsers))
 
 
 def open_browser_when_up(port: int) -> None:

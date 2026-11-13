@@ -49,7 +49,7 @@ export const router = createRouter({
     // Addresses of the old (classic) interface, so bookmarks keep working.
     { path: "/admin", redirect: "/admin/server" },
     { path: "/admin/dashboard", redirect: "/admin/server" },
-    { path: "/admin/:tab(download|reencode|connections|credentials)", redirect: (to) => ({ path: "/admin/server", query: { tab: to.params.tab } }) },
+    { path: "/admin/:tab(download|reencode|credentials)", redirect: (to) => ({ path: "/admin/server", query: { tab: to.params.tab } }) },
     { path: "/admin/tasks", redirect: "/tasks" },
     { path: "/admin/issues", redirect: "/admin/portal/duplicates" },
     { path: "/admin/library", redirect: "/admin/portal/maintenance" },

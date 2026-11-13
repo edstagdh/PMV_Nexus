@@ -40,16 +40,6 @@ _ENV_IMPORTED = "__env_imported"
 # "toggle" ("1" / "0"; a toggle that's on hides the rest of its group).
 # `revealable`: secret the admin may view/copy (needed to paste elsewhere).
 FIELDS: dict[str, dict] = {
-    "pmvhaven_email": {"group": "site_account", "label": "Email", "kind": "text", "env": "PMVHAVEN_EMAIL"},
-    "pmvhaven_password": {"group": "site_account", "label": "Password", "kind": "secret", "env": "PMVHAVEN_PASSWORD"},
-    "porntubeai_same_account": {"group": "porntubeai_account", "label": "Use the PMVHaven account", "kind": "toggle",
-                                "default": "1"},
-    "porntubeai_email": {"group": "porntubeai_account", "label": "Email", "kind": "text"},
-    "porntubeai_password": {"group": "porntubeai_account", "label": "Password", "kind": "secret"},
-    "hmvhaven_same_account": {"group": "hmvhaven_account", "label": "Use the PMVHaven account", "kind": "toggle",
-                              "default": "1"},
-    "hmvhaven_email": {"group": "hmvhaven_account", "label": "Email", "kind": "text"},
-    "hmvhaven_password": {"group": "hmvhaven_account", "label": "Password", "kind": "secret"},
     "pmvhaven_api_key": {"group": "pmvhaven_api", "label": "API key", "kind": "secret", "env": "PMVHAVEN_API_KEY"},
     "app_api_key": {"group": "external_api", "label": "API key", "kind": "secret", "env": "APP_API_KEY",
                     "revealable": True, "generate": True},
@@ -67,13 +57,6 @@ FIELDS: dict[str, dict] = {
 }
 
 GROUPS = [
-    ("site_account", "PMVHaven account",
-     "Used to log the app into pmvhaven.com (Server settings → Connections), and into the sister sites "
-     "below unless they have their own account."),
-    ("porntubeai_account", "PornTubeAI account",
-     "Login for porntubeai.com. Turn off “Use the PMVHaven account” if you use a different account there."),
-    ("hmvhaven_account", "HMVHaven account",
-     "Login for hmvhaven.com. Turn off “Use the PMVHaven account” if you use a different account there."),
     ("pmvhaven_api", "PMVHaven API",
      "API key from https://pmvhaven.com/api-keys (format pmvh_...). Used to sync videos with the site; "
      "the same key works on porntubeai.com and hmvhaven.com."),

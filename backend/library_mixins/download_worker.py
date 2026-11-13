@@ -152,28 +152,6 @@ class DownloadWorkerMixin:
             notify("download", "error", f"{what} {title_of(item) if named else item.url}",
                    body=error[:300], link="/tasks", user_id=item.added_by)
 
-    def _dump_debug_html(self, item_id: str, html: str, suffix: str = "no_video_url") -> Optional[Path]:
-        """Best-effort: saves the raw page HTML so a parsing gap (e.g. 'no
-        video URL found', or a repair finding no Video Timeline thumbnails
-        on a fresh fetch) can actually be diagnosed -- e.g. PMVHaven markup
-        changed, the video is members-only and the session can't see it,
-        or this particular video just genuinely doesn't have that data on
-        the site -- instead of just disappearing into a log line.
-
-        `suffix` names the failure kind so different cases for the same
-        item don't overwrite each other's debug dump (e.g.
-        "<id>_no_video_url.html" vs "<id>_no_timeline_thumbnails.html").
-        Never lets a debug-logging failure mask the real error."""
-        try:
-            debug_dir = self.settings.session_dir / "debug"
-            debug_dir.mkdir(parents=True, exist_ok=True)
-            path = debug_dir / f"{item_id}_{suffix}.html"
-            path.write_text(html, encoding="utf-8")
-            return path
-        except Exception:
-            logger.debug("Could not save debug HTML for {}", item_id)
-            return None
-
     async def _download_hls(self, item: LibraryItem, meta, video_path: Path) -> None:
         """Downloads an HLS-only video via ffmpeg instead of the plain
         httpx byte-stream path, since a .m3u8 URL is a text playlist, not a
@@ -318,23 +296,15 @@ class DownloadWorkerMixin:
                 try:
                     await sources.get(item.site).download(meta.video_url, video_path, on_progress, headers={"Referer": item.url})
                 except httpx.HTTPStatusError as exc:
-                    # A 403/404 here has, at least once, turned out to mean the
-                    # scraped video_url actually belonged to a DIFFERENT video
-                    # entirely (e.g. a "related videos" link elsewhere on the
-                    # same page matching the same pattern find_video_url() looks
-                    # for) -- not a real access/permissions problem with this
-                    # item's own file. Comparing the id embedded in the failing
-                    # URL against this item's own id surfaces that mismatch
-                    # directly in the log instead of it just looking like a
-                    # random site-side permissions error.
+                    # A failing URL whose id is neither this item's nor its API _id
+                    # means the details pointed at another video -- logged as such
+                    # rather than as a plain access error.
                     url_id_match = re.search(r"[a-f0-9]{24}", meta.video_url or "")
                     url_id = url_id_match.group(0) if url_id_match else None
                     if url_id and url_id not in (item.id, getattr(meta, "id", None)):  # API: _id differs from the link's id
                         logger.error(
-                            "Download for {} got {} on {} -- the scraped video_url contains a "
-                            "DIFFERENT id ({}) than this item's own id. This looks like the "
-                            "HTML scraper picked up the wrong video's link from the page "
-                            "(e.g. a related-video sidebar entry), not a real access problem.",
+                            "Download for {} got {} on {} -- the download link has a DIFFERENT id ({}) "
+                            "than this video, so the site's details pointed at another video.",
                             item.id, exc.response.status_code, meta.video_url, url_id,
                         )
                     else:

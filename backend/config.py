@@ -43,26 +43,21 @@ def save_overrides(**sections: dict) -> None:
 
 
 class SiteConfig(BaseModel):
-    """One PMVHaven-platform site's connection details -- PMVHaven itself,
-    or a sister site like porntubeai.com. See backend/sites.py for how a
-    video URL is matched to one of these by base_url's domain."""
+    """One PMVHaven-platform site -- PMVHaven itself, or a sister site like
+    porntubeai.com. See backend/sites.py for how a video URL is matched to one
+    of these by base_url's domain. (cdn_base / login_path from older configs
+    are ignored.)"""
     base_url: str
-    cdn_base: str
-    login_path: str = "/login"
     label: str = ""  # display name ("PMVHaven"); defaults to the key
 
 
 # Sites on the PMVHaven platform the app knows out of the box. config.yaml's
 # `sites:` block can override any of these or add more (same keys merge).
-_PLATFORM_CDN = "https://pmvhavencloud.s3.eu-west-par.io.cloud.ovh.net/"
 DEFAULT_SITES: dict[str, dict] = {
-    "pmvhaven": {"base_url": "https://pmvhaven.com", "cdn_base": _PLATFORM_CDN, "label": "PMVHaven"},
-    "porntubeai": {"base_url": "https://porntubeai.com", "cdn_base": _PLATFORM_CDN, "label": "PornTubeAI"},
-    "hmvhaven": {"base_url": "https://hmvhaven.com", "cdn_base": _PLATFORM_CDN, "label": "HMVHaven"},
+    "pmvhaven": {"base_url": "https://pmvhaven.com", "label": "PMVHaven"},
+    "porntubeai": {"base_url": "https://porntubeai.com", "label": "PornTubeAI"},
+    "hmvhaven": {"base_url": "https://hmvhaven.com", "label": "HMVHaven"},
 }
-# Sister sites whose login can be the PMVHaven account or their own one
-# (Credentials page). PMVHaven itself always uses the PMVHaven account.
-SISTER_SITES = ("porntubeai", "hmvhaven")
 
 
 class DownloadConfig(BaseModel):
@@ -82,10 +77,8 @@ class DownloadConfig(BaseModel):
     download_funscripts: bool = True
     save_metadata_json: bool = True
     min_free_percent: int = 10  # disk-space guard: downloads stop below this much free space (0 = off)
-    # 2.27.0: PMVHaven & sister sites are used through their API only (details + the
-    # /api/videos/<id>/download endpoint). True = also read the video's web page when the
-    # API can't help (the old way; mind the site's terms, which forbid scraping).
-    website_fallback: bool = False
+    # PMVHaven & sister sites are used through their API only (details + the
+    # /api/videos/<id>/download endpoint); 2.32.0 removed reading their web pages.
 
 
 class AuthConfig(BaseModel):
@@ -417,15 +410,6 @@ class Settings(BaseModel):
     # you're upgrading from an older version, you can remove those two
     # lines from your .env; they're simply never read anymore.
     app_secret_key: str
-    # Shared PMVHaven-account credentials -- confirmed to work identically
-    # for logging into any site on this platform (pmvhaven.com,
-    # porntubeai.com), so there's just one email/password pair rather than
-    # one per site.
-    pmv_email: str | None
-    pmv_password: str | None
-    # Sister sites: (email, password) each one logs in with -- the PMVHaven
-    # account unless "Use the PMVHaven account" is off for that site.
-    site_logins: dict[str, tuple[str | None, str | None]] = {}
     app_api_key: str | None
     # PMVHaven REST API key (Bearer pmvh_...), see pmvhaven.com/api-keys.
     pmvhaven_api_key: str | None = None
@@ -444,9 +428,6 @@ class Settings(BaseModel):
     # ensure_bootstrap_admin() instead, called once at server startup.
     initial_admin_username: str | None
     initial_admin_password: str | None
-
-    def login_for(self, site_key: str) -> tuple[str | None, str | None]:
-        return self.site_logins.get(site_key, (self.pmv_email, self.pmv_password))
 
     @property
     def output_dir(self) -> Path:
@@ -534,8 +515,8 @@ def get_settings() -> Settings:
     secrets_store.ensure_initialized()
     creds = secrets_store.values()
 
-    # `sites` (plural, a mapping of site-key -> {base_url, cdn_base,
-    # login_path}) replaces the old singular `site:` block. Back-compat:
+    # `sites` (plural, a mapping of site-key -> {base_url, label})
+    # replaces the old singular `site:` block. Back-compat:
     # if an old config.yaml still has `site:` and no `sites:` at all,
     # treat that single block as "pmvhaven" so existing installs don't
     # break on upgrade without editing config.yaml by hand.
@@ -548,13 +529,6 @@ def get_settings() -> Settings:
     for key, value in (sites_raw or {}).items():
         merged_sites[key] = {**merged_sites.get(key, {}), **(value or {})}
     sites = {key: SiteConfig(**value) for key, value in merged_sites.items()}
-
-    site_logins = {}
-    for key in SISTER_SITES:
-        if (creds.get(f"{key}_same_account") or "1") == "1":
-            site_logins[key] = (creds["pmvhaven_email"], creds["pmvhaven_password"])
-        else:
-            site_logins[key] = (creds.get(f"{key}_email"), creds.get(f"{key}_password"))
 
     duplicate_scan_raw = {**raw.get("duplicate_scan", {}), **overrides.get("duplicate_scan", {})}
 
@@ -577,9 +551,6 @@ def get_settings() -> Settings:
         tray=TrayConfig(**{**(raw.get("tray") or {}), **overrides.get("tray", {})}),
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],
-        pmv_email=creds["pmvhaven_email"],
-        pmv_password=creds["pmvhaven_password"],
-        site_logins=site_logins,
         pmvhaven_api_key=creds["pmvhaven_api_key"],
         tpdb_api_key=creds.get("tpdb_api_key"),
         virustotal_api_key=creds.get("virustotal_api_key"),

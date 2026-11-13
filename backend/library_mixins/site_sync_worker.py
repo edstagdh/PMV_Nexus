@@ -16,12 +16,12 @@ from pathlib import Path
 
 from loguru import logger
 
-from ..scraper_v2 import _format_upload_date
+from ..pmv_details import _format_upload_date
 
 from ..config import get_settings
 from .. import activity
 from ..pmv_api import BULK_LIMIT, PMVApiClient, PMVApiError
-from ..scraper_v2 import _format_rating
+from ..pmv_details import _format_rating
 from ._helpers import extract_tags_performers_music_from_meta_dict
 from .core import JobBlockedError
 
@@ -41,7 +41,7 @@ def _list_diff(old: list[str], new: list[str]) -> dict:
 
 def _norm_text(text: str) -> str:
     """Whitespace-insensitive form, so line-ending/spacing differences between
-    the old page scraper and the API are not reported as description changes."""
+    older versions and the API are not reported as description changes."""
     return " ".join((text or "").split())
 
 

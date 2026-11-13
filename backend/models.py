@@ -110,8 +110,7 @@ class LibraryItem(BaseModel):
     # If a repair pauses waiting on a decision (e.g. custom thumbnail broken),
     # this holds what's being asked -- cleared once resolved.
     repair_pending_action: Optional[dict] = None
-    # Alternate-thumbnail candidates scraped from PMVHaven's own "Video
-    # Timeline" scrubber row -- small frame-grab JPEGs sampled at roughly
+    # Alternate-thumbnail candidates from the site's "Video Timeline" (its API) -- small frame-grab JPEGs sampled at roughly
     # even intervals across the video, each {"url": str, "seconds": float},
     # sorted chronologically. These are just remote URLs (not files on our
     # own disk) until/unless the person picks one via the thumbnail picker,

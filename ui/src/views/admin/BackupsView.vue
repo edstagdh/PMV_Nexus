@@ -113,7 +113,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
       <h2>New backup</h2>
       <div class="toggles">
         <label class="switch"><input v-model="opts.include_cache" type="checkbox">Include the thumbnail / preview cache (can be large)</label>
-        <label class="switch"><input v-model="opts.include_secrets" type="checkbox">Include secrets (credentials and site logins) — keep such backups private</label>
+        <label class="switch"><input v-model="opts.include_secrets" type="checkbox">Include secrets (credentials and extensions' sign-ins) — keep such backups private</label>
       </div>
       <p v-if="data" class="help-text">{{ data.password_set ? "🔒 Protected with the backup password (below)." : "Not password-protected — set a backup password below." }}</p>
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="creating" @click="create"><Icon name="download" />{{ creating ? "Creating…" : "Create backup now" }}</button></div>

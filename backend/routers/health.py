@@ -14,8 +14,6 @@ from fastapi import APIRouter, Response
 
 from ..config import get_settings
 from ..library_manager import library_manager
-from ..pmv_client import get_client
-from ..sites import list_site_keys
 
 router = APIRouter()
 
@@ -31,15 +29,6 @@ def health_check():
         checks["database"] = {"ok": True}
     except Exception as exc:  # noqa: BLE001
         checks["database"] = {"ok": False, "error": str(exc)}
-
-    # PMV session presence (not validity -- just "is there a saved cookie jar")
-    # -- one health-check entry PER SITE, since a session can exist for one
-    # site but not another, and overall_ok below does
-    # all(c["ok"] for c in checks.values()) uniformly across every entry.
-    for key in list_site_keys():
-        # 2.27.0: a site sign-in is only needed when reading web pages is turned on.
-        signed_in = get_client(key).has_saved_session()
-        checks[f"pmv_session_{key}"] = {"ok": signed_in or not settings.download.website_fallback, "signed_in": signed_in}
 
     # ffmpeg on PATH
     checks["ffmpeg"] = {"ok": shutil.which("ffmpeg") is not None}

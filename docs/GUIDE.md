@@ -9,7 +9,6 @@ PMV Nexus downloads, organizes, re-encodes and de-duplicates videos from PMVHave
 - **Python 3.11 or newer**
 - **FFmpeg** (both `ffmpeg` and `ffprobe`) on your PATH
 - **MediaInfo** (bundled with `pymediainfo` on Windows)
-- **Playwright Firefox**, only needed to log the app into the sites
 
 **Management → Tools** shows which of these are installed and how to fix anything missing.
 
@@ -29,7 +28,6 @@ By hand, on any OS:
 python -m venv .venv
 .venv\Scripts\activate          # Windows  (Linux/macOS: source .venv/bin/activate)
 pip install -r requirements.txt
-python -m playwright install firefox
 ```
 
 ### Configure
@@ -52,10 +50,8 @@ uses another port for one run.
 
 **First start:** the console window shows a **setup code**. Enter it in the browser together with a username and
 password to create the admin account. Then:
-1. Open **Server settings → Credentials** and enter your PMVHaven email and password (plus any API keys you use).
-2. Optional: add your PMVHaven **API key** there too (from pmvhaven.com/api-keys). Downloads use the site's API
-   only, so connecting the sites under **Connections** isn't needed any more (it's only used if
-   `download.website_fallback` is turned on in `config.yaml`).
+1. Open **Server settings → Credentials** and enter your PMVHaven **API key** (from pmvhaven.com/api-keys), plus any
+   other keys you use. The app uses the sites' API only — it never signs in to them or reads their pages.
 
 ## Finding your way around
 
@@ -395,7 +391,7 @@ Server settings below). Management's tabs are the pages below; each one shows fo
 
 | Page | What it does |
 |---|---|
-| Server settings | Tabs: **Download** (folders, downloads at once, retries), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Connections** |
+| Server settings | Tabs: **Download** (folders, downloads at once, retries), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Opening the app** (browser, open on start) |
 | Users | Create, edit, disable and remove accounts; roles, groups and per-person permissions |
 | Duplicates | Duplicate groups found by the scan, side by side |
 | Names | Every tag, performer and music name: rename, merge misspellings, likely typos, remembered fixes, upper/lower case spellings |
@@ -484,9 +480,6 @@ previews of videos no longer in the library are listed as "seekbar preview".
 
 **Server settings → Credentials** holds everything the app needs to sign in to other services:
 
-- **PMVHaven account:** email and password used by Connections.
-- **PornTubeAI account / HMVHaven account:** "Use the PMVHaven account" is on by default. Turn it off to enter a
-  different email and password for that site.
 - **PMVHaven API:** your API key from pmvhaven.com/api-keys. **Test key** checks it with PMVHaven. The same key is
   used for porntubeai.com and hmvhaven.com.
 - **External API:** the key the userscript sends. Use **Generate**, then **Show** to copy it. The userscript
@@ -520,7 +513,7 @@ Python (Setup does this itself) and restart the app; to remove one, stop the app
   - **Split downloads:** downloads also run through the proxy, at the same time as the direct ones. With
     "Downloads at the same time" at 1 and one through the proxy, two videos download at once. More than 2 in total
     most likely gets downloads refused or slowed by the site.
-  - **Everything:** pages, details, downloads and sign-in all go through the proxy.
+  - **Everything:** details and downloads all go through the proxy.
 - **Extensions' uploads:** uploads extensions make to other sites go through the proxy (only shown when an extension is installed).
 - **Test the proxy** before relying on it. It compares the direct connection with the proxy: does it work, which
   address the sites see, latency, whether PMVHaven answers, and download speed. It also tells you if the proxy is
@@ -600,7 +593,7 @@ Changing any of them makes the next scan compare everything again.
 - the **thumbnail / preview cache** (can be large)
 
 Performer photos and playlist covers are always included (they can't be downloaded again).
-- **secrets**: the encrypted credentials (with their key) and the saved site logins. Keep such backups private.
+- **secrets**: the encrypted credentials (with their key) and extensions' saved sign-ins. Keep such backups private.
 
 A weekly backup is a built-in System job on the Scheduler page; only the newest 10 backups are kept
 (`backup.keep` in `config.yaml`).

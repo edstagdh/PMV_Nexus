@@ -144,21 +144,6 @@ def _package_status(name: str, spec: str) -> dict:
             "hint": None if ok else f'pip install --upgrade "{name}{spec}"'}
 
 
-def _playwright_firefox_status() -> dict:
-    base = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-    if not base or base == "0":
-        if sys.platform == "win32":
-            base = os.path.join(os.environ.get("LOCALAPPDATA", ""), "ms-playwright")
-        elif sys.platform == "darwin":
-            base = os.path.expanduser("~/Library/Caches/ms-playwright")
-        else:
-            base = os.path.expanduser("~/.cache/ms-playwright")
-    found = sorted(Path(base).glob("firefox-*")) if base and Path(base).is_dir() else []
-    return {"name": "Playwright Firefox", "kind": "browser", "ok": bool(found),
-            "version": found[-1].name if found else None, "path": str(found[-1]) if found else None,
-            "hint": None if found else "python -m playwright install firefox  (needed only for site login)"}
-
-
 def _mediainfo_status() -> dict:
     try:
         from pymediainfo import MediaInfo
@@ -172,8 +157,7 @@ def _mediainfo_status() -> dict:
 
 def tool_status() -> dict:
     """BLOCKING (runs a few short subprocesses) -- call from a sync route or a thread."""
-    tools = [_binary_status("ffmpeg"), _binary_status("ffprobe"), _mediainfo_status(),
-             _playwright_firefox_status()]
+    tools = [_binary_status("ffmpeg"), _binary_status("ffprobe"), _mediainfo_status()]
     packages = [_package_status(n, s) for n, s in _requirements()]
     return {
         "python": {"version": platform.python_version(), "executable": sys.executable,

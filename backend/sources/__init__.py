@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Optional
 
-from ..scraper_v1 import VideoMetadata  # noqa: F401 -- re-exported: what details() returns
+from ..video_meta import VideoMetadata  # noqa: F401 -- re-exported: what details() returns
 
 ProgressCallback = Optional[Callable[[int, Optional[int]], None]]
 

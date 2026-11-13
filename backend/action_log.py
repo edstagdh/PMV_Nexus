@@ -163,7 +163,6 @@ _LABELS = {
     "test_pmvhaven_api_key": "Test PMVHaven API key",
     "test_virustotal_key": "Test VirusTotal key",
     "test_audd": "Test AudD token",
-    "pmv_login": "Sign in to PMVHaven (Connections)",
 }
 
 
@@ -194,7 +193,7 @@ def _category(path: str) -> str:
     seg = parts[1] if len(parts) > 1 else "api"
     if seg == "library" and len(parts) > 2 and parts[2] == "issues":
         return "duplicates"
-    return {"me": "account", "pmv": "connections"}.get(seg, seg)
+    return {"me": "account"}.get(seg, seg)
 
 
 def _label(endpoint_name: str) -> str:

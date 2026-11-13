@@ -31,7 +31,7 @@ from ..models import (
     ResolveRepairRequest, MergeItemsRequest, IgnoreIssueRequest, ReencodeMoveRequest, ReencodeRequest, ItemDetailsRequest, DeleteFilesRequest,
     UploadConvertRequest, PreviewFromTimestampsRequest,
 )
-from ..scraper_v1 import extract_video_id
+from ..video_meta import extract_video_id
 from ..spellings import spellings
 from ..security import require_permission, require_any, verify_api_key, AuthContext
 from ..config import HEVC_PRESETS, get_settings

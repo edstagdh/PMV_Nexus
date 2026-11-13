@@ -134,7 +134,7 @@ const ago = (ts) => (ts ? new Date(ts * 1000).toLocaleString([], { dateStyle: "s
           <span class="muted">Downloads also run through the proxy, at the same time as the direct ones — e.g. one direct and one through the
             proxy, twice as many at once. Pages and details still load directly.</span></span></label>
         <label class="radio"><input v-model="cfg.site_mode" type="radio" value="all"><span><strong>Everything</strong>
-          <span class="muted">Every request to the sites — pages, details, downloads and sign-in — goes through the proxy.</span></span></label>
+          <span class="muted">Every request to the sites — details and downloads — goes through the proxy.</span></span></label>
       </div>
     </div>
     <div v-if="cfg.site_mode === 'split'" class="form-row">

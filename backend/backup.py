@@ -1,6 +1,6 @@
 """Backups: the library database plus settings, optionally the thumbnail/
-preview cache and secrets (the encrypted credential store, its key and the
-site login sessions), packed into one zip under settings.backup_dir.
+preview cache and secrets (the encrypted credential store, its key and
+extensions' saved sign-ins), packed into one zip under settings.backup_dir.
 
 The database is copied with SQLite's online backup API, so a backup is
 consistent even while the app keeps writing. Each zip carries a manifest.json

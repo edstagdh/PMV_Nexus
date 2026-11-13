@@ -40,9 +40,9 @@ Works with **PMVHaven** and its sister sites porntubeai.com and hmvhaven.com.
 
 ### Adding & downloading
 - Add a video by pasting its PMVHaven page URL — the video id is parsed straight out of it.
-- Automatic metadata scrape on add: title, creator (name/url/subscriber count), upload date, duration, views, rating %, description, tags, music credits, performer/model list, content-flag chips, and the site's own "Video Details" table.
+- Video details read from the site's API on add: title, creator (name/url/subscriber count), upload date, duration, views, rating %, description, tags, music credits, performer/model list, content-flag chips, and the site's own video details.
 - Thumbnail, hover-preview clip, and funscript (if present) are downloaded alongside the video; all are optional/toggleable.
-- Downloads use the site's API only: the video's details from `/api/videos/<id>`, the original-quality file from the site's own download endpoint (only videos the site offers for download). Reading web pages (`download.website_fallback`) is off by default.
+- Downloads use the site's API only: the video's details from `/api/videos/<id>`, the original-quality file from the site's own download endpoint (only videos the site offers for download). The app never reads the sites' web pages and never signs in to them.
 - A per-video metadata JSON file can be saved alongside the download, enriched with real technical details (codec, resolution, bitrate, duration) read from the file itself via MediaInfo rather than trusting whatever the page displayed.
 - Separate worker pools for metadata fetching vs. the actual download, each with its own concurrency limit, so a title/thumbnail shows up immediately instead of waiting behind whatever's currently downloading.
 - Failed items retry automatically up to a configurable limit, then land in a `failed` state you can manually retry.
@@ -96,7 +96,7 @@ describes. See [Extensions](#extensions-1) below and the comments at the top of 
 - Every write is a per-row upsert, not a full-table rewrite, so frequent progress ticks (download %, re-encode %, upload %) stay cheap even with a large library.
 - Downloads, re-encodes, and queue state are rebuilt from the database on every restart rather than assumed to still be in memory — nothing gets silently orphaned by a crash or restart.
 - The Tasks tab always sees *every* active item regardless of library size (it hits a dedicated uncapped endpoint rather than the paginated one).
-- `/api/health` reports SQLite reachability, whether a PMVHaven session is saved, whether `ffmpeg` is on `PATH`, and free disk space on the output folder.
+- `/api/health` reports SQLite reachability, whether `ffmpeg` is on `PATH`, and free disk space on the output folder.
 
 ---
 
@@ -106,7 +106,7 @@ describes. See [Extensions](#extensions-1) below and the comments at the top of 
 |---|---|
 | Backend | Python, FastAPI, Uvicorn |
 | Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`) |
-| Scraping/session | httpx (scraping + downloads), Playwright + Firefox (one-time login only) |
+| Site access | httpx (the sites' API and downloads) |
 | Media | ffmpeg (re-encoding, HLS remuxing), PyMediaInfo, OpenCV (duration/fps probing) |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
 | Song recognition | shazamio (Shazam), optional AudD API |
@@ -130,8 +130,8 @@ project-root/
 │   ├── logging_setup.py    # loguru configuration
 │   ├── media_tools.py      # ffmpeg re-encoding + HLS download + MediaInfo probing
 │   ├── models.py            # Pydantic request/response/domain models
-│   ├── pmv_client.py        # site client: API requests + downloads (optional Firefox sign-in, only for the web-page fallback)
-│   ├── scraper_v2.py        # site API JSON -> video details + download link (scraper_v1.py: the optional web-page fallback)
+│   ├── pmv_client.py        # site client: API requests + downloads, with your API key
+│   ├── pmv_details.py       # site API JSON -> video details + download link (video_meta.py: the details' shape)
 │   ├── security.py          # session-cookie auth + API-key auth
 │   ├── sources/             # where videos come from (pmv_platform.py: PMVHaven and its sister sites)
 │   └── extensions.py        # loads the optional add-ons in extensions/ (see "Extensions")
@@ -155,7 +155,7 @@ project-root/
     ├── backups/                 # backup zips (Management → Backups)
     ├── settings_overrides.json  # settings changed from the UI, layered on top of config.yaml
     ├── logs/                    # rotated backend.log + app_logs.db (Admin → Logs)
-    ├── pmv_session/             # saved site browser sessions + debug dumps
+    ├── pmv_session/             # extensions' saved sign-ins (e.g. Telegram)
     └── cache/                   # thumbnails / previews / metadata JSON (path is configurable)
 ```
 
@@ -166,7 +166,7 @@ project-root/
 ### Prerequisites
 - **Python 3.10+** (the codebase uses modern `X | None` type hints throughout).
 - **ffmpeg**, installed and available on your `PATH` — used for re-encoding and HLS remuxing.
-- A **PMVHaven account** (email + password) for the backend to log in with on your behalf.
+- A **PMVHaven API key** (from pmvhaven.com/api-keys) is recommended, so the site knows the requests are yours.
 
 ### Windows: Setup.exe (recommended)
 Download **`PMV-Nexus-Setup-<version>.exe`** from [Releases](https://github.com/edstagdh/PMV_Nexus/releases)
@@ -180,7 +180,7 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   added for private networks (all-users installs; otherwise Windows asks the first time the app starts).
 - **Python:** a Python 3.10–3.13 already on the PC is used. If there's none, Setup says so, downloads Python 3.12
   from python.org (checked against the file the release was built with) and installs it — its own progress window shows.
-- It then creates `.venv`, installs the packages, the Firefox used for site logins (in `runtime\`) and, if ticked and
+- It then creates `.venv`, installs the packages and, if ticked and
   not already on PATH, **FFmpeg** (in `runtime\`). Details: `data\logs\install.log`.
 - **First install:** a new library or **from a backup** (the backup's password if it has one), then the **videos and
   cache folders** (from a backup: where you copied the videos), other folders only if one from the backup can't be
@@ -195,16 +195,16 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 
 ### Linux / macOS: `install.sh`
 Get the code (download the release's source zip, or `git clone`), then run **`./install.sh`**: Python check (with the
-command to install it if missing), `.venv` and packages, the Playwright Firefox, an ffmpeg check, then a new library
+command to install it if missing), `.venv` and packages, an ffmpeg check, then a new library
 (folders + port) or one from a backup zip, and — on Linux with systemd — optionally a **user service**
 (`systemctl --user status pmv-nexus`) that keeps it running and starts it with the computer.
 
 ### Windows without Setup: `install.bat`
 Get the code (`git clone`, or download the zip and extract it), then double-click **`install.bat`**. It checks for
-Python, creates `.venv`, installs the Python packages and the Playwright browser, checks for ffmpeg, and asks:
+Python, creates `.venv`, installs the Python packages, checks for ffmpeg, and asks:
 - **a backup zip** (drag the file into the window) — to set up from a backup, see
   [Setting up from a backup](#setting-up-from-a-backup-new-computer-or-reinstall); or, for a new setup,
-- **the folders** — where the videos, thumbnails & previews, site logins, database, backups and logs go (Enter keeps
+- **the folders** — where the videos, thumbnails & previews, sign-ins, database, backups and logs go (Enter keeps
   the defaults inside the app folder; type a number to change one) — and **a port** (Enter = 8676), written to `config.yaml`.
 
 It can be run again any time (e.g. after an update) to install missing packages. The manual steps below do the same
@@ -223,23 +223,17 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Install the Playwright browser
-Login only uses **Firefox** (not Chromium):
-```bash
-playwright install firefox
-```
-
-### 4. Confirm ffmpeg is on your PATH
+### 3. Confirm ffmpeg is on your PATH
 ```bash
 ffmpeg -version
 ```
 
-### 5. Configure the app
+### 4. Configure the app
 The first start creates `config.yaml` from `config.example.yaml`; edit it to set where videos and the cache go
 (see [Configuration](#configuration)), and `server.port` to use another port than 8676. `config.yaml` is your own file and is not committed to git. Credentials are
 entered in the app after the first start — no `.env` file is needed.
 
-### 6. (Optional) Extensions
+### 5. (Optional) Extensions
 If you have extensions, put each one's folder in `extensions/` (next to `run.py`), install their packages and
 restart the app:
 ```bash
@@ -259,15 +253,14 @@ Non-secret settings live in **`config.yaml`** (created from `config.example.yaml
 | Section | Key | Default | Notes |
 |---|---|---|---|
 | `server` | `host`, `port` | `0.0.0.0`, `8676` | Where the app listens (read when it starts — restart after changing). `host: "127.0.0.1"` = this computer only. `run.py --host / --port` override them for one run. |
-| `download` | `website_fallback` | `false` | `false` = PMVHaven & sister sites through their API only (details + the site's own download endpoint; videos the site doesn't offer for download fail with a clear message). `true` = also read the video's web page when the API can't help — the pre-2.27.0 way; the site's terms forbid scraping. |
-| `site` | `base_url`, `cdn_base`, `login_path` | — | PMVHaven's base URL, CDN fallback prefix, and login page path. Update if the site changes providers. |
+| `sites` | `<key>`: `base_url`, `label` | built in | PMVHaven, PornTubeAI and HMVHaven are built in; add a block only to change one or add another site on the same platform. |
 | `download` | `output_dir` | `./downloads` | Where finished videos land, as `<output_dir>/<creator>/<file>`. |
 | | `cache_dir` | `./data/cache` | Thumbnails, preview clips, and metadata JSON — kept separate from `output_dir` so the UI stays fast even if your video storage is slow/networked. |
-| | `session_dir` | `./data/pmv_session` | Saved site browser sessions (and extensions' sign-ins), and debug dumps. |
+| | `session_dir` | `./data/pmv_session` | Extensions' saved sign-ins. |
 | | `library_file` | `./data/library.json` | Legacy flat-file store, only used for a one-time auto-migration into SQLite. |
 | | `library_db_file` | `./data/library.db` | The active SQLite database. |
 | | `max_concurrent_downloads` | `1` | Parallel video downloads. |
-| | `max_concurrent_metadata_fetches` | `3` | Parallel metadata-scrape workers (independent of downloads). |
+| | `max_concurrent_metadata_fetches` | `3` | Parallel video-details lookups (independent of downloads). |
 | | `max_retries` | `3` | Attempts before an item is marked `failed`. |
 | | `chunk_size_kb` | `512` | Download chunk size. |
 | | `download_funscripts` | `true` | Also fetch the `.funscript` file when present. |
@@ -285,8 +278,6 @@ All passwords, API keys and account settings are managed in the app and stored e
 
 | Group | Fields | Purpose |
 |---|---|---|
-| PMVHaven account | Email, password | Site login for pmvhaven.com (Server settings → Connections), and for the sister sites unless they have their own. |
-| PornTubeAI / HMVHaven account | Use the PMVHaven account (on by default), email, password | Login for porntubeai.com / hmvhaven.com when it differs from the PMVHaven one. |
 | PMVHaven API | API key | Key from https://pmvhaven.com/api-keys (`pmvh_...`); "Test key" checks it. The same key is used for all three sites. |
 | External API | API key | `X-API-Key` for the userscript; Generate / Show / Clear. Empty = external API disabled. |
 
@@ -332,9 +323,8 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 
 ### First run
 1. On a fresh install the console prints a **setup code**. Open `http://localhost:8676` (or the port you set), enter the code and create the admin account.
-2. Enter your PMVHaven email/password (and any API keys) in **Admin → Server settings → Credentials**.
-3. Optional: enter your **PMVHaven API key** (Credentials → PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. Since 2.27.0 the app uses the site's **API only** — video details and the site's own download endpoint — so connecting a site under **Connections** (a hidden Firefox sign-in) is no longer needed for downloading.
-4. Click **+ Add videos**, paste a `pmvhaven.com/video/...` URL; it appears under **Tasks** while it downloads, then in the **Library**.
+2. Enter your **PMVHaven API key** (and any other keys) in **Admin → Server settings → Credentials** (PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. The app uses the site's **API only** — video details and the site's own download endpoint; it never signs in to the site or reads its pages.
+3. Click **+ Add videos**, paste a `pmvhaven.com/video/...` URL; it appears under **Tasks** while it downloads, then in the **Library**.
 
 ---
 
@@ -348,7 +338,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 - **Mini-player** — leave a playing video's page and it keeps playing in a floating, draggable player while you browse; a tab reload brings it back paused at the same moment.
 - **Upload** — add videos from your own computer with all their details; thumbnail, preview and technical details are made from the file.
 - **Queues** — waiting downloads can be moved to the front/back or up/down on the Tasks page; waiting re-encodes up/down.
-- **Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, connections) are under **Admin → Server settings**.
+- **Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Admin → Server settings**.
 - **Maintenance** — **Admin → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything and untracked files.
 
 ---
@@ -386,7 +376,7 @@ waits for one. Nothing changes until the restart;
 accounts from the backup.
 
 ### Setting up from a backup (new computer or reinstall)
-1. On the old install: **Create backup now** (tick **Include secrets** to keep credentials and site logins), then
+1. On the old install: **Create backup now** (tick **Include secrets** to keep credentials and extensions' sign-ins), then
    **Download** it, or copy it from `data/backups`. Copy the **download folder** with the videos too.
 2. On the new computer, get the code, then either
    - **Windows:** double-click `install.bat` and drag the backup zip into its window when asked; or
@@ -397,7 +387,7 @@ accounts from the backup.
      (`start.bat --restore "D:\backups\pmvnexus_backup_….zip"` on Windows.)
 
    A password-protected backup asks for its password in the console. Then the console lists the **folders from
-   the backup's settings** — videos, thumbnails & previews, site logins, database, backups, logs — and whether each
+   the backup's settings** — videos, thumbnails & previews, sign-ins, database, backups, logs — and whether each
    is there on this computer. A folder that can't be reached (e.g. drive `D:` doesn't exist here) has to be given a
    new place; any other can be changed by typing its number (e.g. where you copied the videos); Enter keeps them.
    The restored files go to the new places, the new places are saved in `config.yaml`, and at the start the app
@@ -452,9 +442,7 @@ data/
 ├── settings_overrides.json    # UI-changed settings, layered over config.yaml
 ├── logs/
 │   └── backend.log            # rotated monthly, kept for 12 months, rotated files zipped
-├── pmv_session/
-│   ├── storage_state.json     # saved PMVHaven cookies/session
-│   └── debug/                  # login-failure screenshots, "no video URL found" HTML dumps
+├── pmv_session/               # extensions' saved sign-ins (e.g. Telegram)
 └── cache/                      # (path from config.download.cache_dir)
     └── <creator>/               # thumbnails, preview clips, metadata JSON
 ```
@@ -478,7 +466,7 @@ The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexu
 
 ## Notes, limitations & fragility
 
-- PMVHaven is a Vue/Nuxt single-page app. The login-form selectors (`backend/pmv_client.py`) and the metadata selectors (`backend/scraper.py`) target the site's current markup — if PMVHaven changes its page structure, those two files are the first place to look.
+- The sites are used through their API only: if PMVHaven changes its API, `backend/pmv_details.py` (reading the details), `backend/pmv_api.py` (sync) and `backend/sources/pmv_platform.py` are the places to look.
 - Video/re-encode progress is polled every 2 seconds; there's no push/websocket layer.
 - This is designed around a single instance with one SQLite file — it isn't built for multiple concurrent installs sharing one database.
 
@@ -489,7 +477,7 @@ The userscript itself is in [`userscript/pmv-nexus.user.js`](userscript/pmv-nexu
 - **A setting in `config.yaml` doesn't seem to apply** — the key name almost certainly doesn't match the corresponding Pydantic field in `backend/config.py`; unmatched keys are dropped silently. See the note in [Configuration](#configuration).
 - **`ModuleNotFoundError: No module named 'cv2'`** — install OpenCV separately: `pip install opencv-python` (see the note in [Installation](#installation)).
 - **Re-encode/HLS download fails immediately** — confirm `ffmpeg -version` works from the same environment the app runs in; `/api/health` also reports whether `ffmpeg` is on `PATH`.
-- **PMVHaven login fails** — check `data/pmv_session/debug/login_fail.png` and the server log; PMVHaven's markup may have changed, in which case the selectors in `backend/pmv_client.py` need updating.
+- **A video won't download ("the site didn't give the file" / "the API didn't return this video")** — it's private, removed, or not offered for download on the site; check that your API key is saved (Credentials → PMVHaven API → Test key).
 - **Can't delete a file on Windows** — the app already retries deletion a few times to ride out the video player holding a stream open; if it still fails, make sure the video isn't open in another program.
 
 ---

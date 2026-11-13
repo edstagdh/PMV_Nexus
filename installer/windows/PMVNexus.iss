@@ -4,8 +4,8 @@
 ; downloaded Python installer isn't checked).
 ;
 ; Pages: Welcome, License, folder, How it runs (shortcuts / start with Windows / service,
-; FFmpeg), Ready, Installing (Python if missing, app files, .venv + packages, Firefox for
-; site logins, FFmpeg), then -- only on a first install -- New library or From a backup,
+; FFmpeg), Ready, Installing (Python if missing, app files, .venv + packages, FFmpeg),
+; then -- only on a first install -- New library or From a backup,
 ; backup file (+ password), Videos & cache folders, other folders (only when one can't be
 ; reached), Port, Finish. Every decision is made by Tools/setup_core.py (INI in, INI out);
 ; this script only shows pages and runs it.
@@ -88,6 +88,19 @@ Name: "{autoprograms}\{#AppName} (console)"; Filename: "{app}\start.bat"; Workin
 [Run]
 Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; WorkingDir: "{app}"; \
   Description: "Open PMV Nexus now"; Flags: postinstall nowait skipifsilent; Check: AppReady
+
+[InstallDelete]
+; Left over from older versions: the site-login browser and files that were removed (2.30.0 / 2.32.0).
+Type: filesandordirs; Name: "{app}\runtime\ms-playwright"
+Type: filesandordirs; Name: "{app}\backend\external"
+Type: files; Name: "{app}\backend\scraper_v1.py"
+Type: files; Name: "{app}\backend\scraper_v2.py"
+Type: files; Name: "{app}\backend\routers\pmv.py"
+Type: files; Name: "{app}\backend\share_backends.py"
+Type: files; Name: "{app}\backend\telegram_login.py"
+Type: files; Name: "{app}\backend\routers\telegram.py"
+Type: files; Name: "{app}\backend\library_mixins\share_worker.py"
+Type: files; Name: "{app}\Tools\generate_telegram_session.py"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.venv"
@@ -734,10 +747,10 @@ begin
   end;
 end;
 
-{ After the files are copied: .venv, packages, Firefox for logins, FFmpeg -- each step shown. }
+{ After the files are copied: .venv, packages, FFmpeg -- each step shown. }
 procedure InstallAfterFiles;
 var
-  Env, Unzip, Tmp: String;
+  Unzip, Tmp: String;
   Ok: Boolean;
 begin
   WorkPage.Show;
@@ -752,13 +765,6 @@ begin
         '-m pip install --disable-pip-version-check -r "' + AppDir + '\requirements.txt"', '');
       if Ok and DirExists(AppDir + '\extensions') then   { a build with extensions (2.30.0) }
         Ok := RunLogged('Installing the extensions'' packages...', VenvPython, '-m Tools.install_extensions', '');
-    end;
-    if Ok then
-    begin
-      Env := 'set "PLAYWRIGHT_BROWSERS_PATH=' + AppDir + '\runtime\ms-playwright"';
-      if not RunLogged('Installing the browser used for site logins (Firefox)...', VenvPython, '-m playwright install firefox', Env) then
-        MsgBox('The browser for site logins couldn''t be installed (see data\logs\install.log). ' +
-          'Everything else works; run Setup again later to retry.', mbInformation, MB_OK);
     end;
     if Ok and WizardIsTaskSelected('ffmpeg') then
     begin

@@ -37,7 +37,7 @@ RELINK_FILE = ROOT_DIR / "data" / "relink_pending.json"
 FOLDERS = [
     ("download", "output_dir", "Videos", "./downloads", False),
     ("download", "cache_dir", "Thumbnails & previews", "./data/cache", False),
-    ("download", "session_dir", "Site logins", "./data/pmv_session", False),
+    ("download", "session_dir", "Sign-ins (extensions)", "./data/pmv_session", False),
     ("download", "library_db_file", "Library database", "./data/library.db", True),
     ("backup", "dir", "Backups", "./data/backups", False),
     ("logging", "log_dir", "Logs", "./data/logs", False),

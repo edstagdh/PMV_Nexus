@@ -152,7 +152,7 @@ function onArticleClick(e) {
           <ul>
             <li>Duplicate detection follows the approach of <a href="https://github.com/0x90d/videoduplicatefinder" target="_blank" rel="noopener noreferrer">VideoDuplicateFinder</a> (re-implemented, no code copied).</li>
             <li>Video playback by <a href="https://videojs.org" target="_blank" rel="noopener noreferrer">Video.js</a>; media processing by <a href="https://ffmpeg.org" target="_blank" rel="noopener noreferrer">FFmpeg</a> and <a href="https://mediaarea.net/en/MediaInfo" target="_blank" rel="noopener noreferrer">MediaInfo</a>.</li>
-            <li>Built with FastAPI, SQLite, OpenCV/NumPy, Playwright, Vue and Vite.</li>
+            <li>Built with FastAPI, SQLite, OpenCV/NumPy, Vue and Vite.</li>
           </ul>
           <details>
             <summary>License text</summary>

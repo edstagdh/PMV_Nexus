@@ -24,17 +24,14 @@ server:
 
 sites:
   # PMVHaven and its sister sites (porntubeai.com, hmvhaven.com) are built in
-  # (see DEFAULT_SITES in backend/config.py) -- same platform, login form and
-  # CDN. Add a block here only to change one of them or to add another site
-  # on the same platform, e.g.:
+  # (see DEFAULT_SITES in backend/config.py) -- same platform and API, used with
+  # your API key (Credentials). Add a block here only to change one of them or to
+  # add another site on the same platform, e.g.:
   #   hmvhaven:
   #     base_url: "https://hmvhaven.com"
-  #     cdn_base: "https://pmvhavencloud.s3.eu-west-par.io.cloud.ovh.net/"
-  #     login_path: "/login"
+  #     label: "HMVHaven"
   pmvhaven:
     base_url: "https://pmvhaven.com"
-    cdn_base: "https://pmvhavencloud.s3.eu-west-par.io.cloud.ovh.net/"
-    login_path: "/login"
 
 download:
   # Where finished files land, as {output_dir}/<creator>/<file>.
@@ -55,10 +52,8 @@ download:
   min_free_percent: 10    # disk-space guard: downloads stop below this much free space (0 = off)
   # PMVHaven and its sister sites are used through their API only: details from
   # /api/videos/<id>, the file from the site's own /api/videos/<id>/download (only
-  # videos the site offers for download). true = also read a video's web page when
-  # the API can't help -- the old way; the site's terms forbid scraping, so it's off.
-  website_fallback: false
-  # Parallel metadata-scrape workers, independent of the download concurrency above.
+  # videos the site offers for download).
+  # Parallel video-details lookups, independent of the download concurrency above.
   max_concurrent_metadata_fetches: 3
   # Retry attempts per file (video / funscript) before marking failed.
   max_retries: 3

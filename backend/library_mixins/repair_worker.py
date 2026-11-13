@@ -288,8 +288,7 @@ class RepairWorkerMixin:
         is itself missing or broken, falls back to generating a
         replacement locally via ffmpeg instead of leaving it blank. Also
         backfills the item's `timeline_thumbnails` list (the alternate-
-        thumbnail candidates scraped from PMVHaven's own "Video Timeline"
-        scrubber row) for items that predate that field -- see the
+        thumbnail candidates from the site's "Video Timeline", via its API) for items that predate that field -- see the
         `timeline_missing` check below. Progress is written onto the item
         at each step (see _set_repair_progress) so the Tasks tab shows
         live status. Never touches the main video file -- if that's
@@ -464,7 +463,6 @@ class RepairWorkerMixin:
         logger.info("Repair/Update for {}: re-fetching metadata for {}", item.id, item.url)
         meta = None
         raw_json = None
-        html = None
         try:  # 2.30.0: from the video's source (backend/sources)
             meta, raw_json = await sources.get(item.site).details(item, need_file=False)
         except Exception as exc:  # noqa: BLE001
@@ -509,19 +507,7 @@ class RepairWorkerMixin:
                 self.db.save_item(item)
             fixed.append("timeline thumbnails")
         elif timeline_missing:
-            # The re-fetch succeeded but found zero timeline thumbnails for
-            # this video. `html` is only set if the v1 HTML fallback
-            # actually ran (see the block above) -- the v2 JSON path never
-            # fetches a page at all, so there's nothing to dump for
-            # debugging in that case; a v2 response with genuinely zero
-            # timelineThumbnails is just taken at face value.
-            debug_path = self._dump_debug_html(item.id, html, suffix="no_timeline_thumbnails") if html else None
-            logger.warning(
-                "Repair/Update for {}: {} found no timeline thumbnails{}",
-                item.id,
-                "v1 HTML page re-fetch" if html else "v2 metadata re-fetch",
-                f" (raw HTML saved to {debug_path} for debugging)" if debug_path else "",
-            )
+            logger.warning("Repair/Update for {}: the site's API has no timeline thumbnails for it", item.id)
 
         # ---- thumbnail: only re-downloaded/regenerated if actually broken
         # -- PMVHaven's copy first, local frame-grab fallback

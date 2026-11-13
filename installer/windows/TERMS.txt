@@ -25,15 +25,18 @@ share with it. In particular, you agree to:
   downloading - for example, downloading only videos the site offers for download, and keeping
   them for your own personal, non-commercial use;
 - respect copyright and the rights of the people in the videos;
-- not use it to redistribute, re-upload or publicly share content you don't have the rights to -
-  this includes the "Share" feature, which is meant only for content you are allowed to share;
+- not use it to redistribute, re-upload or publicly share content you don't have the rights to;
 - follow the laws that apply to you.
+
+PMV Nexus is for personal use. Its user accounts are meant for you and the people you share your
+home with - not for running a public or commercial service. If you let others use your install,
+you are responsible for their use of it too.
 
 HOW IT WORKS
 
 PMV Nexus runs only on your own computer or server. It uses each site's official interface (API)
-with your own account or API key where one is needed. It does not bypass paywalls, DRM, logins or
-other access controls. Everything it downloads stays on your own devices; this project does not
+with your own API key. It does not read the sites' web pages or sign in to them, and it does not
+bypass paywalls, DRM, logins or other access controls. Everything it downloads stays on your own devices; this project does not
 host, store, upload or distribute any videos or other media.
 
 NO WARRANTY

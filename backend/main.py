@@ -17,7 +17,7 @@ from .logging_setup import setup_logging
 from .security import AuthContext, ensure_bootstrap_admin, get_current_user, require_permission
 from .app_info import APP_VERSION
 from .hardening import SecurityMiddleware
-from .routers import health, auth, me, users, pmv, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, performers, notifications, songs, bulk, now_playing, extensions as extensions_routes
+from .routers import health, auth, me, users, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, performers, notifications, songs, bulk, now_playing, extensions as extensions_routes
 from . import extensions
 from .action_log import ActionLogMiddleware
 
@@ -98,7 +98,6 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(users.router)
-app.include_router(pmv.router)
 app.include_router(settings.router)
 app.include_router(library.router)
 app.include_router(scheduler.router)

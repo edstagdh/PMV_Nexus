@@ -17,7 +17,7 @@ from loguru import logger
 
 from .. import open_files
 
-from ..scraper_v2 import extract_tags_from_votes
+from ..pmv_details import extract_tags_from_votes
 
 
 def safe_name(text: str, max_len: int = 120) -> str:
@@ -206,29 +206,29 @@ def cleanup_partial_download_file(dest_path: Optional[Path], *, is_hls_video: bo
 
 def extract_tags_performers_music_from_meta_dict(meta_dict: dict) -> tuple[list[str], list[str], list[str]]:
     """Pulls tags/performers/music back out of a metadata JSON dict already
-    on disk -- shape-aware, since the file can be either the raw v2
-    PMVHaven API response or the older curated v1 fallback shape (see
-    scraper_v1.VideoMetadata.to_dict()). Used by sync_metadata_from_disk()
+    on disk -- shape-aware, since the file can be either the raw site API
+    response or the older curated shape (VideoMetadata.to_dict(), files
+    written before 2.27.0). Used by sync_metadata_from_disk()
     and _repair_item(), which have no corresponding in-memory VideoMetadata
     object to read from -- just whatever's already saved.
 
     - tags: ranked by popularity across ALL of this video's tags (not just
       PMVHaven's own flat top-5 "tags" field) -- see extract_tags_from_votes()
-      in scraper_v2.py. Works for both shapes: the raw v2 dict has
-      "tagVotes" and this ranks off that; the curated v1-fallback shape has
+      in pmv_details.py. Works for both shapes: the raw API dict has
+      "tagVotes" and this ranks off that; the older curated shape has
       no "tagVotes" at all, so this transparently falls back to the flat
       "tags" field.
     - performers: raw v2 shape lists them under "starsTags" (each entry a
       plain string or a dict with a name/title key); the curated v1
       fallback shape lists them under "models" (each a dict with a "name"
       key) -- same data, different key name/shape depending on which
-      scraper produced the file. Displayed on the video detail page under
+      version wrote the file. Displayed on the video detail page under
       the heading "Models" (see pages/video.js's renderDetails()), but
       stored/filtered/searched everywhere else in the app -- this function
       included -- as "performers", for consistency with the rest of the UI.
     - music: raw v2 shape stores each credit as {"artist": ..., "song":
       ...}; the curated v1 fallback shape stores {"label": ...} (already
-      assembled by scraper_v1's own tag/music scraper). Rendered as
+      assembled when the file was written). Rendered as
       "Song — Artist" when both are present, mirroring
       normalizeMetaForDisplay() in frontend/js/pages/video.js -- falls
       back to whichever one exists, then to label/title/name for any

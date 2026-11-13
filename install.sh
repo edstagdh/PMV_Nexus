@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PMV Nexus -- install on Linux / macOS (2.26.0). Basic, in the console:
-# Python packages in .venv, the Playwright Firefox (site logins), a check for ffmpeg,
+# Python packages in .venv, a check for ffmpeg,
 # then a new library (folders + port) or one from a backup zip, and optionally a
 # systemd user service so it runs in the background and starts with the computer.
 # Safe to run again (updates the packages). Windows: use the Setup.exe from Releases.
@@ -27,37 +27,30 @@ if [ -z "$PY" ]; then
   echo "  macOS:          brew install python@3.12"
   exit 1
 fi
-echo "[1/5] Python: $("$PY" --version)"
+echo "[1/4] Python: $("$PY" --version)"
 
 # ---- 2. .venv + packages ------------------------------------------------------
 if [ ! -x .venv/bin/python ]; then
-  echo "[2/5] Creating the Python environment (.venv) ..."
+  echo "[2/4] Creating the Python environment (.venv) ..."
   "$PY" -m venv .venv || { say "Creating .venv failed. On Debian/Ubuntu: sudo apt install python3-venv"; exit 1; }
 else
-  echo "[2/5] Using the existing .venv"
+  echo "[2/4] Using the existing .venv"
 fi
 VPY="$APP_DIR/.venv/bin/python"
 "$VPY" -m pip install --disable-pip-version-check --quiet --upgrade pip
 echo "      Installing the Python packages - a few minutes the first time ..."
 "$VPY" -m pip install --disable-pip-version-check --quiet -r requirements.txt
 
-# ---- 3. Playwright's Firefox (into runtime/, used by run.py) --------------------
-echo "[3/5] Installing the browser used for site logins ..."
-export PLAYWRIGHT_BROWSERS_PATH="$APP_DIR/runtime/ms-playwright"
-if ! "$VPY" -m playwright install firefox; then
-  echo "      It failed. Some systems need extra libraries: sudo $VPY -m playwright install-deps firefox"
-fi
-
-# ---- 4. ffmpeg -------------------------------------------------------------------
+# ---- 3. ffmpeg -------------------------------------------------------------------
 if command -v ffmpeg >/dev/null 2>&1; then
-  echo "[4/5] ffmpeg found"
+  echo "[3/4] ffmpeg found"
 else
-  echo "[4/5] ffmpeg was NOT found. Re-encoding, previews and some downloads need it:"
+  echo "[3/4] ffmpeg was NOT found. Re-encoding, previews and some downloads need it:"
   echo "      sudo apt install ffmpeg   (or dnf / pacman / brew install ffmpeg). The app starts without it."
 fi
 
-# ---- 5. New library or from a backup ---------------------------------------------
-say "[5/5] Set up from a backup? A .zip from the Backups page of an earlier install brings back the"
+# ---- 4. New library or from a backup ---------------------------------------------
+say "[4/4] Set up from a backup? A .zip from the Backups page of an earlier install brings back the"
 echo "      library, users, playlists and settings. Videos aren't in backups: copy the video folder yourself."
 BACKUP="$(ask '      Backup zip (path, or just Enter for a new library): ')"
 BACKUP="${BACKUP%\"}"; BACKUP="${BACKUP#\"}"; BACKUP="${BACKUP%\'}"; BACKUP="${BACKUP#\'}"

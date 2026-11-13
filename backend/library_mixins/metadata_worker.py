@@ -10,7 +10,7 @@ from loguru import logger
 
 from ..models import LibraryItem
 from .. import sources
-from ..scraper_v1 import VideoMetadata
+from ..video_meta import VideoMetadata
 from ..log_store import get_log_store
 from ._helpers import cleanup_partial_download_file, safe_name
 
