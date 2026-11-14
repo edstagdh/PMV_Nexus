@@ -4,7 +4,7 @@
 import { askConfirm } from "../stores/confirm.js";
 import { api } from "./api.js";
 import { toast } from "../stores/toast.js";
-import { hasPermission } from "../stores/session.js";
+import { hasPermission, session } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
 import { live } from "../stores/live.js";
 import { siteLabel } from "./format.js";
@@ -38,6 +38,15 @@ export function itemActions(item, { context = "library" } = {}) {
       out.push({ key: "rename", label: "Rename", icon: "edit", run: () => openDialog("rename", item) });
       out.push({ key: "details", label: "Edit details", icon: "tag", run: () => openDialog("details", item) });
       out.push({ key: "thumbnail", label: "Change thumbnail", icon: "image", run: () => openDialog("thumbnail", item) });
+      // The frames under the player (3.2.0), when they're shown: made again by the app.
+      if (context === "page" && session.prefs.videoFrames === true) {
+        out.push({ key: "redo-frames", label: "Redo Frames", icon: "image",
+          title: "Make the frames under the player again — from PMVHaven's video timeline when the video has one, otherwise from the file",
+          run: async () => {
+            await call(`/api/library/${id}/frames/redo`, "Making the frames again");
+            window.dispatchEvent(new CustomEvent("pmv-frames-redo", { detail: item.id }));
+          } });
+      }
     }
     if (can("videos.maintain")) {
       if (item.repair_status === "queued" || item.repair_status === "running") {

@@ -1,5 +1,5 @@
 """
-Video frames (3.0.1): a row of small pictures from across the video, shown
+Video frames (3.2.0): a row of small pictures from across the video, shown
 under the player with their time -- clicking one jumps there (like the
 "Video Timeline" on PMVHaven's video pages).
 

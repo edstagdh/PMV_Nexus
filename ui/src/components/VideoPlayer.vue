@@ -19,6 +19,7 @@ import { toast } from "../stores/toast.js";
 import { session } from "../stores/session.js";
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import "../lib/pmvSkin.js";
+import { cleanEngines, grabFrame, searchFile } from "../lib/frameSearch.js";
 
 const props = defineProps({
   src: String, filename: String, itemId: String,
@@ -113,6 +114,41 @@ function renderQuality() {
   qualityBtn.title = live ? `Playing converted to ${live.height}p — click for the original`
     : "Play converted to 720p (less data, for slow connections; the server converts it while you watch)";
 }
+// ---- Search this frame (3.2.0, lib/frameSearch.js) ----
+const searchItem = () => skinEl.value?.part?.(".pmv-search");
+const chooser = ref(null); // { file, engines } while picking a site
+function renderSearch() {
+  const item = searchItem();
+  if (!item) return;
+  const engines = cleanEngines(session.prefs.frameSearch);
+  item.hidden = !engines.length;
+  item.querySelector(".media-menu-hint-label").textContent = engines.length === 1 ? engines[0].name : engines.length ? "Choose" : "";
+  item.title = engines.length === 1
+    ? `Pause and search this frame on ${engines[0].name} (the picture is uploaded to it, in a new tab)`
+    : "Pause and search this frame on a reverse image search site (the picture is uploaded to it, in a new tab)";
+}
+function searchFrame() {
+  const v = videoEl.value;
+  const engines = cleanEngines(session.prefs.frameSearch);
+  if (!v || !engines.length) return;
+  v.pause();
+  let file = null;
+  try { file = grabFrame(v); } catch { /* a picture the browser won't hand over */ }
+  if (!file) { toast("There's no picture to search yet", { type: "error" }); return; }
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (engines.length === 1) openSearch(file, engines[0]);
+  else chooser.value = { file, engines };
+}
+function openSearch(file, engine) {
+  if (!searchFile(file, engine)) toast("The browser blocked the new tab — allow pop-ups for this site and try again", { type: "error" });
+}
+function pickEngine(engine) {
+  const c = chooser.value;
+  chooser.value = null;
+  if (c) openSearch(c.file, engine);
+}
+watch(() => session.prefs.frameSearch, renderSearch, { deep: true });
+
 function downloadVideo() {
   if (!downloadSrc) return;
   const a = Object.assign(document.createElement("a"), { href: downloadSrc, download: props.filename || "" });
@@ -130,7 +166,7 @@ function renderNext() {
 function stopLive() {
   liveToken++;
   if (live) { live.stop(); live = null; }
-  renderQuality();
+  renderQuality(); renderSearch();
 }
 
 /** Plays the converted stream from `at` seconds. */
@@ -143,7 +179,7 @@ async function goLive(at, reason) {
     const started = await startLive(v, props.itemId, at, (message) => {
       if (token !== liveToken) return;
       live = null;
-      renderQuality();
+      renderQuality(); renderSearch();
       // A long pause ends the server's conversion: carry on from where it was.
       if (message.includes("paused")) goLive(v.currentTime);
       else { toast(`${message} — playing the original`, { type: "error" }); playOriginal(v.currentTime, !v.paused); }
@@ -156,7 +192,7 @@ async function goLive(at, reason) {
     toast(err.message || "Couldn't convert this video", { type: "error", timeout: 8000 });
     if (!reason) playOriginal(at, false);
   }
-  renderQuality();
+  renderQuality(); renderSearch();
 }
 
 function playOriginal(at, play) {
@@ -224,9 +260,12 @@ function load(src) {
   const mobile = window.matchMedia("(max-width: 64rem)").matches;
   const saved = parseFloat(localStorage.getItem(VOLUME_KEY));
   v.addEventListener("loadedmetadata", () => {
-    // A browser that never changed the volume starts at 10 % (2.24.3; was 2 %). Phones play at
-    // full volume and use their own volume buttons.
-    v.volume = mobile ? 1 : Number.isFinite(saved) ? saved : DEFAULT_VOLUME;
+    // Starting volume (3.2.0, My Settings -> Video page): the one this browser last used, or
+    // always the set one; a browser that never changed it starts at the set one (default 10 %).
+    // Phones play at full volume and use their own volume buttons.
+    const start = Number.isFinite(session.prefs.startVolume) ? session.prefs.startVolume / 100 : DEFAULT_VOLUME;
+    v.volume = mobile ? 1 : session.prefs.rememberVolume !== false && Number.isFinite(saved) ? saved : start;
+    showVolume();
     if (v.videoWidth && v.videoHeight) aspect.value = `${v.videoWidth} / ${v.videoHeight}`;
     // Sound but no picture: the browser can't decode the video track.
     else if (!live && props.itemId && !fellBack) { fellBack = true; goLive(0, "This browser can't show this video's picture — converting it to 720p while you watch"); }
@@ -365,8 +404,16 @@ let lastTick = 0;
 const onTime = () => { const now = Date.now(); if (now - lastTick > 2000) { lastTick = now; emit("timeupdate"); } };
 const onVolume = () => {
   const v = videoEl.value;
+  showVolume();
   if (v && !v.muted) try { localStorage.setItem(VOLUME_KEY, String(v.volume)); } catch { /* ignore */ }
 };
+// The value above the volume slider (3.2.0). Looked up each time: the popup is copied afresh
+// when the player moves (pmvSkin refreshPopups).
+function showVolume() {
+  const v = videoEl.value;
+  const el = skinEl.value?.part?.(".pmv-vol-value");
+  if (v && el) el.textContent = v.muted || v.volume === 0 ? "Muted" : `${Math.round(v.volume * 100)}%`;
+}
 
 onMounted(async () => {
   await customElements.whenDefined("pmv-video-skin");
@@ -377,8 +424,10 @@ onMounted(async () => {
   skin.shadowRoot.addEventListener("click", (e) => {
     if (e.target.closest?.(".pmv-quality")) toggleQuality();
     else if (e.target.closest?.(".pmv-download")) downloadVideo();
+    else if (e.target.closest?.(".pmv-search")) searchFrame();
   }, true);
   renderQuality();
+  renderSearch();
   nextBtn = skin.part(".pmv-next");
   nextBtn?.addEventListener("click", () => { if (props.hasNext) emit("next"); });
   renderNext();
@@ -446,11 +495,22 @@ onBeforeUnmount(() => {
         <video ref="videoEl" :data-item-id="itemId" playsinline preload="metadata" />
       </pmv-video-skin>
     </video-player>
+    <div v-if="chooser" class="chooser" @click.self="chooser = null" @keydown.esc="chooser = null">
+      <div class="chooser-box card" role="dialog" aria-label="Search this frame on">
+        <strong>Search this frame on</strong>
+        <button v-for="e in chooser.engines" :key="e.name + e.url" class="btn" type="button" @click="pickEngine(e)">{{ e.name }}</button>
+        <span class="muted small">The picture is uploaded to that site, in a new tab.</span>
+        <button class="btn btn-ghost btn-sm" type="button" @click="chooser = null">Cancel</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.player { border-radius: var(--radius-lg); overflow: hidden; background: #000; }
+.player { position: relative; border-radius: var(--radius-lg); overflow: hidden; background: #000; }
+.chooser { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgb(0 0 0 / 0.55); }
+.chooser-box { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; min-width: 14rem; max-width: 90%; }
+.chooser-box .small { font-size: 0.75rem; }
 /* The box takes the video's own shape, never taller than 78% of the window:
    a portrait video then gets black bars at the sides and the controls always
    stay inside the box. In fullscreen the skin fills the screen itself. */

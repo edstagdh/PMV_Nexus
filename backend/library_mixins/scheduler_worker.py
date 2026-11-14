@@ -90,7 +90,7 @@ JOB_REGISTRY: dict[str, dict] = {
     },
     "audio_fix": {
         "label": "Make audio playable (convert audio browsers can't play to AAC)",
-        "method": "run_audio_fix",  # see library_mixins/audio_fix.py (3.0.1)
+        "method": "run_audio_fix",  # see library_mixins/audio_fix.py (3.2.0)
         "category": "invasive",
     },
     "backup": {
@@ -125,7 +125,7 @@ def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: O
     dt_now = datetime.fromtimestamp(now)
 
     if kind == "once":
-        # One time (3.0.1), at a local date and time ("2026-11-14T02:00"); a time
+        # One time (3.2.0), at a local date and time ("2026-11-14T02:00"); a time
         # that has passed runs at the next check. After it ran, the job is switched off.
         try:
             return datetime.fromisoformat(str(schedule_config.get("at") or "")).timestamp()

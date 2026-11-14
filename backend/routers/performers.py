@@ -55,7 +55,7 @@ def performer_profile(name: str, user: AuthContext = Depends(_viewer)):
 @router.get("/api/performers/{performer_id}/photo")
 def performer_photo(performer_id: str, n: int = Query(0, ge=0, le=80), user: AuthContext = Depends(_viewer)):
     path = library_manager.performer_photo_path(performer_id, n)
-    if not path or not Path(path).is_file():  # a missing file is a 404, not an error (3.0.1)
+    if not path or not Path(path).is_file():  # a missing file is a 404, not an error (3.2.0)
         raise HTTPException(status_code=404, detail="No photo")
     return FileResponse(path, headers={"Cache-Control": "private, max-age=86400"})
 

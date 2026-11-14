@@ -35,7 +35,7 @@ const SORTS = [
   { key: "creator", label: "Creator" },
   { key: "ratings", label: "Rating" },
   { key: "views", label: "Views on PMVHaven" },
-  { key: "tech_duration", label: "Duration" },
+  { key: "tech_duration", label: "Duration (length)" },
   { key: "tech_filesize", label: "File size" },
   { key: "tech_resolution", label: "Resolution" },
 ];

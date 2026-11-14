@@ -1380,7 +1380,7 @@ def best_alignment_similarity(
 
 
 # --------------------------------------------------------------------------
-# Audio browsers can play (3.0.1)
+# Audio browsers can play (3.2.0)
 # --------------------------------------------------------------------------
 # Browsers play AAC, MP3, Opus and FLAC (and Vorbis in WebM / MKV). Some videos
 # carry audio they can't -- uncompressed PCM ("pcm_s16le", "pcm_s24le", ...),

@@ -1,5 +1,5 @@
 /*
- * PMVNexus.exe (3.0.1): the program the shortcuts start, so Windows shows "PMV Nexus" with
+ * PMVNexus.exe (3.2.0): the program the shortcuts start, so Windows shows "PMV Nexus" with
  * its icon (Task Manager's Startup tab, the Start menu, Explorer) instead of "pythonw".
  *
  * It only starts the app's own Python with the same arguments and ends:

@@ -38,7 +38,7 @@ async function load(full = true) {
     if (id !== props.id) return;
     const statusChanged = item.value && item.value.status !== it.status;
     // Repair/Update, a sync or an edit rewrites the metadata file (views, likes, description...):
-    // read it again whenever the video itself changed, so the page shows the new details (3.0.1).
+    // read it again whenever the video itself changed, so the page shows the new details (3.2.0).
     const changed = item.value && item.value.updated_at !== it.updated_at;
     item.value = it;
     if (md !== undefined) { meta.value = md; syncInfo.value = md?._site_sync || {}; }
@@ -121,7 +121,7 @@ const metaLine = computed(() => {
   ].filter(Boolean);
 });
 watch([title, error], ([t, e]) => setPageTitle(`/video/${props.id}`, e ? "Video not found" : t), { immediate: true });
-// Technical Details in sections (3.0.1): side by side when there's room, else one under the other.
+// Technical Details in sections (3.2.0): side by side when there's room, else one under the other.
 const TECH_GENERAL = ["Duration", "File Size", "Overall Bitrate", "Container", "Format"];
 const techGroups = computed(() => {
   const groups = { General: [], Video: [], Audio: [], Other: [] };
@@ -154,10 +154,15 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
     <div v-else-if="!item" class="watch"><div class="skeleton media-skel" /><div class="skeleton side-skel" /></div>
 
     <div v-else class="watch" :class="{ 'no-side': !session.prefs.relatedCount && !player.queue }">
+      <!-- 3.2.0: the title above the player, 🎲 Random above the related videos -->
+      <div class="watch-head">
+        <h1 class="title">{{ title }}</h1>
+        <button class="btn btn-primary random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
+      </div>
       <div class="primary">
         <div v-if="playable" ref="slot" class="player-slot" />
-        <VideoFrames v-if="playable && session.prefs.videoFrames !== false" :item-id="item.id" :can-redo="canEdit" />
-        <div v-else class="poster">
+        <VideoFrames v-if="playable && session.prefs.videoFrames === true" :item-id="item.id" />
+        <div v-if="!playable" class="poster">
           <img v-if="thumbUrl(item)" :src="thumbUrl(item)" alt="">
           <div class="poster-status" :class="{ failed: item.status === 'failed' }">
             {{ downloadStatus }}
@@ -166,10 +171,6 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
         </div>
 
         <PlayQueue v-if="narrow" />
-        <div class="title-row">
-          <h1 class="title">{{ title }}</h1>
-          <button class="btn btn-primary btn-sm random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
-        </div>
         <div class="byline">
           <button v-if="item.creator" class="creator text-creator" :title="`Show videos by ${item.creator}`" @click="filterLibrary('creator', item.creator)">{{ item.creator }}</button>
           <span v-for="m in metaLine" :key="m" class="muted">{{ m }}</span>
@@ -243,9 +244,12 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 
 <style scoped>
 .video-page { padding: 0.75rem 1.5rem 2rem; }
-.title-row { display: flex; align-items: flex-start; gap: 0.75rem; }
-.title-row .title { flex: 1; min-width: 0; }
-.title-row .random { flex: none; margin-top: 0.125rem; }
+/* The header spans both columns with the same grid, so the title sits over the player and
+   Random over the related videos; one column: side by side. */
+.watch-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 0 1.5rem; align-items: center; margin-bottom: -0.75rem; }
+.watch-head .title { min-width: 0; }
+.watch-head .random { justify-self: end; }
+.watch.no-side .watch-head { grid-template-columns: minmax(0, 1fr) auto; }
 .watch { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 1.5rem; align-items: start; }
 .watch.no-side { grid-template-columns: minmax(0, 1fr); }
 .primary { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -286,6 +290,9 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 .player-slot:empty { min-height: 12rem; background: #000; } /* only until the player moves in */
 .media-skel { aspect-ratio: 16 / 9; border-radius: var(--radius-lg); }
 .side-skel { height: 20rem; border-radius: var(--radius-lg); }
-@media (max-width: 75rem) { .watch { grid-template-columns: 1fr; } .secondary { position: static; } }
+@media (max-width: 75rem) {
+  .watch { grid-template-columns: 1fr; } .secondary { position: static; }
+  .watch-head { grid-template-columns: minmax(0, 1fr) auto; gap: 0 0.75rem; }
+}
 @media (max-width: 56rem) { .video-page { padding: 0.5rem 0.75rem 1.5rem; } }
 </style>

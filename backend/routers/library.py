@@ -235,7 +235,7 @@ async def make_missing_storyboards(user: AuthContext = Depends(require_permissio
     return {"queued": library_manager.queue_missing_storyboards()}
 
 
-# ---- Video frames under the player (3.0.1, backend/video_frames.py) ----
+# ---- Video frames under the player (3.2.0, backend/video_frames.py) ----
 @router.get("/api/library/{video_id}/frames")
 async def get_video_frames(video_id: str, user: AuthContext = Depends(require_permission("library.stream"))):
     """The frames and their times. Not made yet: they're queued (next in line) and

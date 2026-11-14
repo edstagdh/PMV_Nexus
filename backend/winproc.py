@@ -1,6 +1,6 @@
 """
 Windows: the console programs the app starts (FFprobe, FFmpeg, ClamAV...) open no window
-of their own (3.0.1). Run without a console (tray, shortcuts, service) every such program
+of their own (3.2.0). Run without a console (tray, shortcuts, service) every such program
 otherwise flashes a black window for a moment -- e.g. FFprobe checking a hover preview the
 first time it's shown.
 

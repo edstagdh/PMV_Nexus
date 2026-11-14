@@ -1,5 +1,5 @@
 """
-Video frames under the player (3.0.1, backend/video_frames.py): one queue, one
+Video frames under the player (3.2.0, backend/video_frames.py): one queue, one
 video at a time. Videos get theirs
   - after they're downloaded or uploaded,
   - the first time their page is opened without them (the page asks),

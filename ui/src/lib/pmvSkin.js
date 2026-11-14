@@ -23,6 +23,8 @@ import "@videojs/html/video/skin";
 
 const LOOP_ICON = `<svg class="media-button-icon pmv-loop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>`;
+const SEARCH_ICON = `<svg class="media-menu-trigger-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="5" width="13" height="10" rx="1.5"/><circle cx="16" cy="15" r="3.5"/><path d="m18.6 17.6 2.9 2.9"/></svg>`;
 const DOWNLOAD_ICON = `<svg class="media-menu-trigger-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
 
@@ -87,7 +89,13 @@ const EXTRA_CSS = `
   media-controls:not([data-visible]) .pmv-center-play { opacity: 0; pointer-events: none; }
 }
 /* The small floating player: fewer buttons and a smaller centre button. */
-:host([compact]) .pmv-download, :host([compact]) .pmv-loop, :host([compact]) .pmv-ab, :host([compact]) .pmv-next { display: none; }
+/* Volume (3.2.0): a taller slider (was 72 px for 0-100 %) in 1 % steps, with the value shown above it. */
+.media-volume-popover { height: auto; padding-top: calc(var(--media-spacing, 0.25rem) * 1); }
+.media-volume-popover .media-volume-slider { height: 11.25rem; width: 2rem; }
+.pmv-vol-value { display: block; text-align: center; font-size: 0.7rem; font-weight: 600; line-height: 1; padding: 0.35rem 0 0.25rem;
+  font-variant-numeric: tabular-nums; color: var(--media-popover-foreground, #fff); white-space: nowrap; }
+:host([compact]) .media-volume-popover .media-volume-slider { height: 6rem; }
+:host([compact]) .pmv-download, :host([compact]) .pmv-search, :host([compact]) .pmv-loop, :host([compact]) .pmv-ab, :host([compact]) .pmv-next { display: none; }
 :host([compact]) .pmv-center-play { width: calc(var(--media-spacing, 0.25rem) * 10); height: calc(var(--media-spacing, 0.25rem) * 10); }
 `;
 
@@ -114,8 +122,15 @@ function buildTemplate(base) {
     `<media-menu-item class="media-menu-trigger-item pmv-quality" role="menuitemcheckbox" aria-checked="false" hidden>${HD_ICON}`
     + `<span>720p</span><span class="media-menu-hint"><span class="media-menu-hint-label">Off</span></span></media-menu-item>`
     // Download the video (2.22.0: moved here from the control bar), under 720p.
-    + `<media-menu-item class="media-menu-trigger-item pmv-download" role="menuitem" title="Download the video">${DOWNLOAD_ICON}<span>Download</span></media-menu-item>`);
+    + `<media-menu-item class="media-menu-trigger-item pmv-download" role="menuitem" title="Download the video">${DOWNLOAD_ICON}<span>Download</span></media-menu-item>`
+    // Search this frame (3.2.0, lib/frameSearch.js): reverse image search of what's on screen.
+    + `<media-menu-item class="media-menu-trigger-item pmv-search" role="menuitem">${SEARCH_ICON}<span>Search frame</span>`
+    + `<span class="media-menu-hint"><span class="media-menu-hint-label"></span></span></media-menu-item>`);
   root.querySelector("media-title")?.insertAdjacentHTML("afterend", `<div class="pmv-title-shade" aria-hidden="true"></div>`);
+  // Volume (3.2.0): 1 % steps for dragging, the mouse wheel and the arrow keys (Video.js: 5 %),
+  // and the value shown above the slider (VideoPlayer.vue keeps it up to date).
+  root.querySelectorAll("media-volume-slider").forEach((s) => { s.setAttribute("step", "1"); s.setAttribute("wheel-step", "1"); });
+  root.querySelector(".media-volume-popover")?.insertAdjacentHTML("afterbegin", `<span class="pmv-vol-value" aria-hidden="true"></span>`);
   root.querySelector(".video-status-indicators")?.insertAdjacentHTML("beforeend",
     `<div class="pmv-swipe" hidden aria-live="polite"><span class="pmv-swipe-label"></span><span class="pmv-swipe-bar"><i></i></span></div>`);
   root.querySelector("media-controls")?.insertAdjacentHTML("beforeend",

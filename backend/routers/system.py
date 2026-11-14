@@ -3,7 +3,7 @@ tool status and backups. See backend/app_info.py and backend/backup.py."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
 from .. import app_info, backup
@@ -47,9 +47,53 @@ async def check_for_update(user: AuthContext = Depends(get_current_user)):
     return await library_manager.run_update_check(force=False)
 
 
+# ---- Search this frame (3.2.0, ui/src/lib/frameSearch.js) ----
+# The app's own pages may only send forms to the app (CSP form-action 'self'). This
+# tiny page, opened in a new tab by the player, is the one place that may send a form
+# to another (https) site: it gets the frame from the app (postMessage, same origin
+# only) and uploads it to the reverse image search site picked, in that same tab.
+_FRAME_SEARCH_CSP = ("default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; "
+                     "form-action https:; base-uri 'none'; frame-ancestors 'none'")
+_FRAME_SEARCH_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Searching this frame…</title><meta name="referrer" content="no-referrer">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0d;color:#e7e7ea;
+font:15px/1.5 system-ui,sans-serif}p{margin:0;padding:1rem;text-align:center}</style></head>
+<body><p id="msg">Sending the frame…</p><script src="/frame-search.js"></script></body></html>"""
+_FRAME_SEARCH_JS = r"""(function () {
+  var msg = document.getElementById("msg");
+  var done = false;
+  window.addEventListener("message", function (e) {
+    if (done || e.origin !== location.origin || !e.data || e.data.type !== "pmv-frame-search") return;
+    var d = e.data;
+    if (!(d.file instanceof File) || !/^https:\/\/\S+$/i.test(d.url) || !/^[\w.\[\]-]+$/.test(d.field)) return;
+    done = true;
+    msg.textContent = "Sending the frame to " + String(d.name || "the search site") + "…";
+    var form = document.createElement("form");
+    form.method = "POST"; form.action = d.url; form.enctype = "multipart/form-data";
+    var input = document.createElement("input");
+    input.type = "file"; input.name = d.field;
+    var dt = new DataTransfer(); dt.items.add(d.file); input.files = dt.files;
+    form.appendChild(input); document.body.appendChild(form); form.submit();
+  });
+  if (window.opener) window.opener.postMessage({ type: "pmv-frame-search-ready" }, location.origin);
+  else msg.textContent = "Open this from the player: ⚙ → Search frame.";
+})();"""
+
+
+@router.get("/frame-search", include_in_schema=False)
+def frame_search_page():
+    return HTMLResponse(_FRAME_SEARCH_HTML, headers={"Content-Security-Policy": _FRAME_SEARCH_CSP, "Cache-Control": "no-cache"})
+
+
+@router.get("/frame-search.js", include_in_schema=False)
+def frame_search_script():
+    return Response(_FRAME_SEARCH_JS, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
+
 @router.get("/api/system/docs/screenshots/{name}")
 def get_doc_screenshot(name: str, user: AuthContext = Depends(get_current_user)):
-    """The Guide's pictures (docs/screenshots/, 3.0.1) for the in-app Help page."""
+    """The Guide's pictures (docs/screenshots/, 3.2.0) for the in-app Help page."""
     path = app_info.doc_screenshot(name)
     if path is None:
         raise HTTPException(status_code=404, detail="Not found")

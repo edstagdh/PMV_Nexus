@@ -485,7 +485,7 @@ class PerformersMixin:
 
     # ---------------------------------------------------------------- photos as WebP (2.15.0)
     def _photos_of(self, p: dict) -> list[str]:
-        """Her ThePornDB photos (saved in data/performers; before 3.0.1 cache/performers)."""
+        """Her ThePornDB photos (saved in data/performers; before 3.2.0 cache/performers)."""
         return list(p.get("photos") or ([p["photo_path"]] if p.get("photo_path") else []))
 
     def _all_photos(self, p: dict) -> list[str]:
@@ -740,13 +740,13 @@ class PerformersMixin:
     MAX_CUSTOM_PHOTOS = 1  # 2.18.0: one of your own per performer; a new one replaces it
 
     def performer_photos_dir(self) -> Path:
-        """ThePornDB photos (3.0.1): their own folder in the app's data folder.
+        """ThePornDB photos (3.2.0): their own folder in the app's data folder.
         Before, they were in the cache folder's "performers" folder, among a folder
         per creator."""
         return self.settings.library_db_file.parent / "performers"
 
     def relocate_performer_photos(self) -> None:
-        """At every start (3.0.1), quick when there's nothing to do:
+        """At every start (3.2.0), quick when there's nothing to do:
         - moves ThePornDB photos from <cache folder>/performers to data/performers;
         - points saved photo paths whose file is gone at the same file in today's
           folders -- e.g. after a backup was restored with other folders (the

@@ -1,12 +1,12 @@
 """
-Audio browsers can't play (3.0.1): some videos carry audio a browser can't
+Audio browsers can't play (3.2.0): some videos carry audio a browser can't
 decode -- uncompressed PCM, AC-3, DTS, ... -- and play silent in the app's
 player. Such audio is converted to AAC (media_tools.convert_audio_to_aac; the
 picture is copied as it is):
   - right after a video is downloaded from a site (uploads already get this
     when they're re-packed),
   - for the videos already in the library by the Scheduler job "Make audio
-    playable" (created once by 3.0.1 to run at night; Run now starts it at once).
+    playable" (created once by 3.2.0 to run at night; Run now starts it at once).
 """
 from __future__ import annotations
 
@@ -146,7 +146,7 @@ class AudioFixMixin:
             self._release_invasive_lock("audio_fix")
 
     def seed_audio_fix_job(self) -> None:
-        """3.0.1: a one-time "Make audio playable" job for the videos already in
+        """3.2.0: a one-time "Make audio playable" job for the videos already in
         the library, tonight at 02:00 (only once; not for an empty library)."""
         if self.db.get_app_state(SEED_FLAG, False):
             return

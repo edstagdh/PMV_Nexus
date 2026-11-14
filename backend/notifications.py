@@ -12,7 +12,7 @@ counts unread warnings and errors.
 Who sees it: `user_id` = that user (e.g. the person who added the video);
 None = the admins (permission settings.manage). Admins see both.
 
-Categories: download, reencode, repair, upload, extension (2.30.0), job, duplicate (3.1.0), system.
+Categories: download, reencode, repair, upload, extension (2.30.0), job, duplicate (3.2.0), system.
 Levels: success, info, warning, error.
 
 Never put secrets, codes or phone numbers in a notification.

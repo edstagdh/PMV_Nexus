@@ -137,7 +137,7 @@ class DuplicateWorkerMixin:
         self._dup_trigger_events = {*self._dup_trigger_events, event}
         if self._dup_trigger_task and not self._dup_trigger_task.done():
             if self._dup_trigger_scanning:
-                # 3.1.0: never cancel a scan that's already running (that showed as
+                # 3.2.0: never cancel a scan that's already running (that showed as
                 # "Interrupted: Duplicate scan (after download) -- CancelledError" when
                 # a download finished during the scan for the one before): let it
                 # finish, then scan once more for what came in meanwhile.
@@ -178,12 +178,12 @@ class DuplicateWorkerMixin:
         except asyncio.CancelledError:
             return
 
-    # ---------------------------------------------------------- notifications (3.1.0)
+    # ---------------------------------------------------------- notifications (3.2.0)
     _NOTIFIED_KEY = "dup_notified_pairs"
     DUP_NOTIFY_ONE_BY_ONE = 5   # more new pairs than this in one scan: one summary instead
 
     def _known_duplicate_pairs(self) -> set[str]:
-        """Pairs already reported (or there before 3.1.0, so an update doesn't
+        """Pairs already reported (or there before 3.2.0, so an update doesn't
         announce every old pair). Kept apart from duplicate_matches, which a
         full re-compare empties."""
         known = self.db.get_app_state(self._NOTIFIED_KEY, None)
@@ -307,7 +307,7 @@ class DuplicateWorkerMixin:
             raise JobBlockedError("Blocked: a duplicate scan is already running")
         if self._invasive_lock_holder is not None:
             raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
-        # The pairs known before this scan (3.1.0): on the first scan with duplicate
+        # The pairs known before this scan (3.2.0): on the first scan with duplicate
         # notifications, every pair already found counts as known -- read before the
         # scan stores its own new ones (or a full re-compare empties the table).
         self._known_duplicate_pairs()

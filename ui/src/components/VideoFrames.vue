@@ -1,19 +1,16 @@
 <script setup>
-// The row of frames under the player (3.0.1, backend/video_frames.py): small
+// The row of frames under the player (3.2.0, backend/video_frames.py): small
 // pictures from across the video with their time -- clicking one jumps there.
 // The site's own timeline frames when the video has them, else made from the
 // file. A video without them yet gets them now (the server queues it first);
 // this asks again every few seconds until they're there.
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
-import Icon from "./Icon.vue";
 import { api } from "../lib/api.js";
 import { formatDuration } from "../lib/format.js";
 import { player, playerVideo, seekPlayer } from "../stores/player.js";
-import { toast } from "../stores/toast.js";
 
 const props = defineProps({
   itemId: { type: String, required: true },
-  canRedo: Boolean,
 });
 
 const data = ref(null);    // { pending, frames: [{seconds, url}], width, height, source }
@@ -55,14 +52,16 @@ const current = computed(() => {
   return at;
 });
 
-async function redo() {
-  try {
-    await api(`/api/library/${encodeURIComponent(props.itemId)}/frames/redo`, { method: "POST" });
-    data.value = { pending: true, frames: [] };
-    tries = 0;
-    retry = setTimeout(load, 2500);
-  } catch (err) { toast(err.message || "Couldn't do it", { type: "error" }); }
+// "Redo Frames" (the video page's buttons, lib/actions.js) asked the server to make them again.
+function onRedone(e) {
+  if (e.detail !== props.itemId) return;
+  clearTimeout(retry);
+  data.value = { pending: true, frames: [] };
+  tries = 0;
+  retry = setTimeout(load, 2500);
 }
+window.addEventListener("pmv-frames-redo", onRedone);
+onBeforeUnmount(() => window.removeEventListener("pmv-frames-redo", onRedone));
 </script>
 
 <template>
@@ -80,9 +79,6 @@ async function redo() {
         <div v-for="n in 8" :key="n" class="frame placeholder" aria-hidden="true"><span class="pic skeleton" /><span class="time">&nbsp;</span></div>
       </template>
     </div>
-    <button v-if="canRedo && frames.length" class="btn btn-ghost btn-sm redo" type="button"
-            :title="data?.source === 'site' ? 'From PMVHaven\'s video timeline — get them again' : 'Made from the video file — make them again'"
-            @click="redo"><Icon name="image" :size="14" />{{ data?.source === "site" ? "From the site" : "From the file" }} · redo</button>
   </section>
 </template>
 
@@ -102,8 +98,6 @@ async function redo() {
 .frame.on .pic { outline-color: var(--accent); }
 .frame.on .time { color: var(--accent); font-weight: 600; }
 .placeholder { cursor: default; }
-.redo { align-self: flex-end; font-size: 0.75rem; opacity: 0.7; }
-.redo:hover { opacity: 1; }
 /* Phones / narrow windows: one scrollable row of fixed-size frames. */
 @media (max-width: 640px) {
   .frames-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6rem; overflow-x: auto;

@@ -3,7 +3,7 @@
 // Changelog and About pages. Covers what those documents use: headings,
 // paragraphs, bold/italic, inline code, fenced code, links, ordered/
 // unordered (nested) lists, blockquotes, horizontal rules, pipe tables and the
-// Guide's own pictures (![text](screenshots/name.webp), 3.0.1 -- nothing else).
+// Guide's own pictures (![text](screenshots/name.webp), 3.2.0 -- nothing else).
 // All text is HTML-escaped first; links are restricted to http(s), mailto,
 // relative and #anchor targets.
 const escapeHtml = (str) => String(str)

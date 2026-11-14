@@ -465,7 +465,7 @@ class LocalUploadMixin:
         await self._finish_local_upload(item, up, up["base_name"])
         up.update(state="done", progress=100, message=f"Added to the library ({how}).", item=item.model_dump())
         self.request_storyboard(item.id)  # seekbar previews (2.21.0)
-        self.request_frames(item.id)  # video frames under the player (3.0.1)
+        self.request_frames(item.id)  # video frames under the player (3.2.0)
         notify("upload", "success", f"Uploaded {title_of(item)}", link=video_link(item), user_id=item.added_by)
         try:
             stats_store.bump("upload_bytes", final.stat().st_size)

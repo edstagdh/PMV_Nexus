@@ -1,4 +1,4 @@
-// The videos in my Favorites playlist (3.0.1), for the ♥ badge on thumbnails and the
+// The videos in my Favorites playlist (3.2.0), for the ♥ badge on thumbnails and the
 // ♥ button on the video page. Loaded after signing in; updated when they change here.
 import { reactive } from "vue";
 import { api } from "../lib/api.js";

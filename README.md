@@ -21,7 +21,7 @@ see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues
 
 <p align="center">
   <img src="docs/screenshots/library.webp" alt="The library: thumbnails with badges, search, filters and views" width="49%">
-  <img src="docs/screenshots/video.webp" alt="A video's page: the player, its frames, details and related videos" width="49%">
+  <img src="docs/screenshots/video.webp" alt="A video's page: the player, its details and related videos" width="49%">
 </p>
 <p align="center">
   <img src="docs/screenshots/performers.webp" alt="Performers" width="32%">
@@ -522,7 +522,7 @@ the extension installed and it offers to install it; it then updates itself from
 ### Making a release (maintainers)
 Releases are built by GitHub Actions (`.github/workflows/release.yml`) — nothing to build locally:
 1. Update `VERSION` and the `CHANGELOG.md` section for it; commit and push.
-2. Tag the commit and push the tag: `git tag v3.0.1 && git push origin v3.0.1`.
+2. Tag the commit and push the tag: `git tag v3.2.0 && git push origin v3.2.0`.
 3. The **Release** workflow checks that the tag matches `VERSION`, compiles the Python code, downloads WinSW and checks
    the Python installer's signature, builds `Setup.exe` with Inno Setup, and publishes a GitHub Release with the
    `.exe`, its `.sha256` and the CHANGELOG section as release notes (the source zip is added by GitHub).

@@ -31,7 +31,7 @@ def _kind(path: Path) -> str:
     if storyboard.FOLDER in path.parts:
         return "seekbar preview"  # of a video no longer in the library (2.21.0)
     if video_frames.FOLDER in path.parts:
-        return "video frame"  # of a video no longer in the library (3.0.1)
+        return "video frame"  # of a video no longer in the library (3.2.0)
     if name.endswith(".part") or ".part." in name:
         return "partial download"
     if ext in _VIDEO_EXT:
@@ -88,7 +88,7 @@ class UntrackedFilesMixin:
                 # uploads still being received/checked; 720p playback pieces (deleted when playback stops)
                 dirs[:] = [d for d in dirs if d not in (".incoming", ".transcode")]
                 if Path(dirpath).name in (storyboard.FOLDER, video_frames.FOLDER):
-                    # Seekbar previews (2.21.0) and video frames (3.0.1): only those of videos no longer in the library
+                    # Seekbar previews (2.21.0) and video frames (3.2.0): only those of videos no longer in the library
                     # (and none being made right now, "<id>.part").
                     dirs[:] = [d for d in dirs if d not in self._items and not d.endswith(".part")]
                 for name in names:

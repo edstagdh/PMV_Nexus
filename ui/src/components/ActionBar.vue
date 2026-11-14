@@ -14,7 +14,7 @@ const actions = computed(() => itemActions(props.item, { context: props.context 
       <a v-if="a.href" class="btn" :class="size === 'sm' && 'btn-sm'" :href="a.href" target="_blank" rel="noopener noreferrer">
         <Icon :name="a.icon" :size="15" />{{ a.label }}
       </a>
-      <button v-else class="btn" :class="[size === 'sm' && 'btn-sm', a.danger && 'btn-danger']" @click.stop="a.run()">
+      <button v-else class="btn" :class="[size === 'sm' && 'btn-sm', a.danger && 'btn-danger']" :title="a.title" @click.stop="a.run()">
         <Icon :name="a.icon" :size="15" />{{ a.label }}
       </button>
     </template>

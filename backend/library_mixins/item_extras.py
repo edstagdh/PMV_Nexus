@@ -241,7 +241,7 @@ class ItemExtrasMixin:
                 if changed_items:
                     self.db.save_items(changed_items.values())
                 # Seekbar previews (2.21.0): one folder, found by video id.
-                # ... and the video frames under the player (3.0.1).
+                # ... and the video frames under the player (3.2.0).
                 for folder in (storyboard.FOLDER, video_frames.FOLDER):
                     if (old_cache_dir / folder).is_dir() and not (new_path / folder).exists():
                         await asyncio.to_thread(shutil.move, str(old_cache_dir / folder), str(new_path / folder))

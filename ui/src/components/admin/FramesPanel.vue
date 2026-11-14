@@ -1,5 +1,5 @@
 <script setup>
-// Management -> Maintenance -> Video frames (3.0.1): the frames under the player --
+// Management -> Maintenance -> Video frames (3.2.0): the frames under the player --
 // how many videos have them, the space they use, and "Make missing ones" (one job on Tasks).
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../Icon.vue";

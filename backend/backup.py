@@ -204,7 +204,7 @@ def create_backup(settings, *, include_cache: bool, include_secrets: bool, trigg
                             add(f, kind="photos")
             if include_cache and settings.cache_dir.is_dir():
                 cached = [f for f in settings.cache_dir.rglob("*") if f.is_file()]
-                # ThePornDB photos (3.0.1: data/performers, was cache/performers): they can be
+                # ThePornDB photos (3.2.0: data/performers, was cache/performers): they can be
                 # downloaded again, so they come along with the cache like before.
                 tpdb_photos = settings.library_db_file.parent / "performers"
                 if tpdb_photos.is_dir():

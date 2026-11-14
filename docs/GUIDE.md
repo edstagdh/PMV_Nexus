@@ -74,7 +74,8 @@ Tips:
   - **Appearance:** theme (or a custom theme with your own colours), text size, coloured performer/tag/music
     chips and the 💀 badge colour.
   - **Library:** default sort, which thumbnail badges show, and the table hover-preview size.
-  - **Video page:** how many related videos to show and which badges they get, and whether Edit details'
+  - **Video page:** how many related videos to show and which badges they get, the frames under the player, the
+    starting volume, the sites for Search frame, and whether Edit details'
     suggestion lists stay open after you pick a value.
 - **Library** in the sidebar takes you back to the library as you left it (filters and page), from any page; clicked
   while you're in the library, it starts afresh.
@@ -234,11 +235,13 @@ app starts.
 
 ### The player
 
-![A video's page: the player with its frames, the details and related videos](screenshots/video.webp)
+![A video's page: the player, the details and related videos](screenshots/video.webp)
 
-Video.js with the app's colours. Hover the speaker for the **volume slider** (a browser starts at 10 % until you change it; phones play at full
-volume and use their own buttons); the ⚙ menu has **720p** (below) and the
-playback speed, and **Download** (saves the video file); **Loop** sits next to it. While a playlist plays, **⏭** next to play/pause skips to the
+Video.js with the app's colours. Hover the speaker for the **volume slider** (1 % steps — drag, or use the mouse wheel over it for fine
+control; the value shows above it; videos start at the **starting volume** from **My Settings → Video
+page** — 10 % unless you change it — or, if you keep that switched on, at the volume you last set in this browser;
+phones play at full volume and use their own buttons); the ⚙ menu has **720p** (below) and the
+playback speed, **Download** (saves the video file) and **Search frame** (below); **Loop** sits next to it. While a playlist plays, **⏭** next to play/pause skips to the
 next video. In fullscreen the video's title shows at the top along with the controls — while a playlist plays as
 `Playlist | Title` (at most two lines; longer ones end in "…").
 
@@ -259,21 +262,27 @@ brightness; iPhones and iPads don't let pages change the volume, so use the butt
 skip in fullscreen: **My Settings → Video page → Sides of the video in fullscreen → Double-tap**. On a phone the
 screen turns to suit each video in fullscreen and stays turned while a playlist moves on to a video of the same shape.
 
-**Video frames:** under the player is a row of pictures from across the video, each with its time — click one to
+**Video frames** (off by default — switch them on in **My Settings → Video page → Frames under the player**): under
+the player, a row of pictures from across the video, each with its time — click one to
 jump there (the one you're in is highlighted). They're PMVHaven's own timeline frames when the video has them (usually
 8); for uploaded videos, videos gone from the site or when those can't be downloaded, 8 are made from the file, one from
 the middle of each eighth of the video. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
 are scaled down) in the cache folder (`.frames`, about 20–60 KB per video), deleted with the video, moved with the cache
 folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
 the whole library at once from **Management → Maintenance → Video frames → Make the … missing** (one job on Tasks;
-older videos without saved timeline frames ask PMVHaven for them once). **From the site · redo** / **From the file ·
-redo** under the row makes them again (needs Edit details). They can be hidden in **My Settings → Video page → Frames
-under the player**.
+older videos without saved timeline frames ask PMVHaven for them once). **Redo Frames** (with the video's other buttons,
+while the frames are shown; needs Edit details) makes them again.
+
+**Search frame:** **⚙ → Search frame** pauses the video and looks up the picture on screen on a reverse image search
+site, in a new tab — **Google Lens** by default. The picture is uploaded to that site straight from your browser (it
+never goes through the server). Other sites can be added in **My Settings → Video page → Search this frame**: a name,
+the address the site's upload form sends the picture to and the form's file field name (with several, you pick one
+each time). If nothing opens, allow pop-ups for the app in your browser.
 
 **Audio browsers can't play:** some videos carry audio a browser can't play — uncompressed PCM (in some browsers),
 AC-3 / E-AC-3, DTS, TrueHD, ALAC, MP2 — and play silent. The app converts such audio to AAC (192 kb/s stereo; the
 picture isn't touched, and the file usually gets smaller): right after a video is downloaded (uploads already got this
-when they were re-packed), and for videos already in the library with the Scheduler job **Make audio playable**. 3.0.1
+when they were re-packed), and for videos already in the library with the Scheduler job **Make audio playable**. 3.2.0
 adds that job once, to run the first night after updating (02:00) and then switch itself off; **Run now** on the
 Scheduler page starts it at once, and it can be added again any time. It changes files, so it doesn't run at the same
 time as a duplicate scan or a repair (it waits and tries again 30 minutes later).
@@ -381,7 +390,7 @@ How it works:
   - **Wrong person?** picks a different profile.
 - **Not too fast:** the app sends ThePornDB at most one request a second. If ThePornDB still says "too many
   requests", the app waits as long as it asks, retries, and stays slower until it restarts.
-- **Refreshing:** profiles and photos are kept locally — the photos in the app's `data/performers` folder (before 3.0.1 they
+- **Refreshing:** profiles and photos are kept locally — the photos in the app's `data/performers` folder (before 3.2.0 they
   were in the cache folder; the app moves them by itself), backed up along with the thumbnails. The same job refreshes each profile every 30 days (Server
   settings → Performers).
 - **Photos as WebP:** photos are saved as WebP (quality 80, at most 1600 pixels on the long side), usually a
@@ -418,7 +427,7 @@ existing install the admin ticks it in **Users → Roles → user** (or for a gr
 
 ### Discover
 **🎲 Discover** in the sidebar (the dice in the top bar on a phone) opens a random downloaded video; on a video's page,
-**🎲 Random** (next to the title) opens another one. You won't get the same video twice until
+**🎲 Random** (above the related videos) opens another one. You won't get the same video twice until
 you've been shown every video in the library; after that a new round starts, still skipping the 20% you saw
 most recently. Each user has their own history.
 

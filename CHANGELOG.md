@@ -4,39 +4,49 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
-## [3.1.0] - 2026-11-14
+## [3.2.0] - 2026-11-14
 
 ### Added
+- **Search frame** (⚙ in the player): pauses the video and looks up the picture on screen on a reverse image search
+  site in a new tab — Google Lens by default; more sites in My Settings → Video page → Search this frame. The picture
+  goes from your browser to that site (through the app's small /frame-search page, the only page allowed to send a form
+  to another site), never through the server.
+- **Video frames under the player** (like PMVHaven's video timeline; **off by default** — the seek bar's previews do
+  the same; switch them on in My Settings → Video page): a row of pictures from across the video with their time —
+  click one to jump there; the one you're in is highlighted. PMVHaven's own timeline frames when the video has them,
+  otherwise 8 made from the file (uploads, videos gone from the site), evenly spread. Small WebP files (at most
+  320 px) in the cache folder's `.frames`; new videos get them by themselves, others when their page is opened, or all
+  at once from Management → Maintenance → Video frames. **Redo Frames** (with the video's buttons) makes them again.
 - **Notifications for possible duplicates:** when a duplicate scan (after downloads, re-encodes or repairs, the daily
   one or Scan now) finds a pair it hadn't found before: "Possible duplicate: “New video” — looks like “Older video”
   (94% match)", opening Management → Duplicates. More than 5 new pairs at once give one summary instead. Pairs you
-  marked "not duplicates" stay quiet, and pairs found before 3.1.0 aren't announced. For admins; pop-ups can be
+  marked "not duplicates" stay quiet, and pairs found before 3.2.0 aren't announced. For admins; pop-ups can be
   switched off in My Settings → Notifications → "Possible duplicates found".
-- **Video frames under the player** (like PMVHaven's video timeline): a row of pictures from across the video with
-  their time — click one to jump there; the one you're in is highlighted. PMVHaven's own timeline frames when the
-  video has them, otherwise 8 made from the file (uploads, videos gone from the site), evenly spread. Small WebP
-  files (at most 320 px) in the cache folder's `.frames`; new videos get them by themselves, others when their page
-  is opened, or all at once from Management → Maintenance → Video frames. My Settings → Video page can hide them.
 - **Audio browsers can't play is converted to AAC** (PCM, AC-3, DTS, TrueHD, ALAC, MP2 played silent in some or all
   browsers): right after a download, and for the videos already in the library by the new Scheduler job **Make audio
   playable** — added once, for the first night after updating (02:00), or start it with Run now. The picture isn't
   touched.
 - **One-time Scheduler jobs:** a job can run once at a date and time, then switches itself off.
+- **Starting volume** (My Settings → Video page): the volume videos start at (default 10 %), or keep the volume you
+  last set in each browser (on by default, as before).
+- **♥ badge on videos in your Favorites** (like the 💀 one for videos gone from the site): on thumbnails (also the
+  small ones) and in the table; it updates as soon as you add or remove a favorite. Can be turned off in
+  My Settings → Library → badges ("♥ In my Favorites").
 - **Screenshots** in the README and the Guide (also shown in Help → Guide, which can now show pictures) — a demo
   library with invented titles, names and numbers and abstract generated videos. Examples in the app (My Settings,
   Server Settings, search help) use invented names too.
-- **♥ badge on videos in your Favorites** (like the 💀 one for videos gone from the site): on thumbnails (also the
-  small ones) and in the table; it updates as soon as you add or remove a favorite. Can be turned off in
-  Settings → Badges ("♥ In my Favorites").
 
 ### Changed
-- **Video page:** the player starts at the top — the Library / Back link above it is gone, and **Discover again** is
-  now **🎲 Random**, next to the video's title. **Library** in the sidebar takes you back to the library as you left
-  it (filters, page) from any page, so the "Back button" setting in My Settings → Video page is gone too.
-- **"My Settings" and "Server Settings"** are written that way everywhere.
-- **Video page:** the description has a **Description** heading; **Technical Details** are split into General / Video /
-  Audio / Other, side by side when there's room; the videos in **Related videos** and **More from …** have the ⋮ menu;
+- **Video page:** the title is above the player and **🎲 Random** (was "Discover again") above the related videos; the
+  uploader and details come right under the player. The Library / Back link is gone: **Library** in the sidebar takes
+  you back to the library as you left it (filters, page) from any page, so the "Back button" setting is gone too.
+  The description has a **Description** heading; **Technical Details** are split into General / Video / Audio / Other,
+  side by side when there's room; the videos in **Related videos** and **More from …** have the ⋮ menu;
   **Repair/Update** is spelled that way.
+- **"My Settings" and "Server Settings"** are written that way everywhere.
+- **Volume slider:** 2.5× taller, in 1 % steps (dragging, mouse wheel, arrow keys — was 5 %, so anything below
+  about 3 % jumped to 0), with the value shown above it.
+- **Sort:** "Duration" is "Duration (length)".
 - **ThePornDB performer photos have their own folder**, `data/performers`, instead of the cache folder (which has a
   folder per creator). The app moves them by itself on the first start.
 - **Your place in a video is saved every 5 s instead of 10** while it plays (also still on pause, seek, end and

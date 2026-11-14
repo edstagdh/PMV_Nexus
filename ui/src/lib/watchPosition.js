@@ -1,5 +1,5 @@
 // Continue where you left off (2.24.0): saves my place in the playing video
-// (PUT /api/library/{id}/position) every 5 s while it plays (3.0.1; was 10), when it's paused,
+// (PUT /api/library/{id}/position) every 5 s while it plays (3.2.0; was 10), when it's paused,
 // after a seek, when it ends, when another video loads and when the tab closes.
 import { setWatch, FINISHED } from "../stores/watchProgress.js";
 

@@ -32,7 +32,10 @@ export const DEFAULT_UI = Object.freeze({
   miniPlayer: true,             // keep playing in the floating mini-player after leaving a video page
   abRepeat: false,              // player: an A-B button to repeat one part of a video (2.18.0)
   resumePlayback: true,         // continue a video where I left off (2.24.0)
-  videoFrames: true,            // the row of frames under the player, click to jump (3.0.1)
+  videoFrames: false,           // the row of frames under the player, click to jump (3.2.0; off: the seekbar previews do it)
+  frameSearch: null,            // Search this frame: [{name, url, field}]; null = Google Lens (lib/frameSearch.js)
+  rememberVolume: true,         // each browser keeps the volume you last set (3.2.0)
+  startVolume: 10,              // % -- a new browser, or every video when rememberVolume is off
   watchedBar: true,             // thin "how far I got" line on thumbnails (2.24.0)
   panicKeys: [],                // [{code, label}] (max 3) pressed together: stop and show an empty page (2.24.0)
   touchSides: "swipe",          // phones in fullscreen: "swipe" brightness/volume on the sides, or "seek" double-tap (2.19.0)
@@ -72,7 +75,10 @@ export function normalizeUi(raw) {
     abRepeat: r.abRepeat === true,
     touchSides: r.touchSides === "seek" ? "seek" : "swipe",
     resumePlayback: r.resumePlayback !== false,
-    videoFrames: r.videoFrames !== false,
+    videoFrames: r.videoFrames === true,
+    frameSearch: Array.isArray(r.frameSearch) ? r.frameSearch : null,
+    rememberVolume: r.rememberVolume !== false,
+    startVolume: clampNum(r.startVolume, 0, 100, DEFAULT_UI.startVolume),
     watchedBar: r.watchedBar !== false,
     panicKeys: Array.isArray(r.panicKeys)
       ? r.panicKeys.filter((k) => k && typeof k.code === "string" && k.code.length <= 32).slice(0, 3)
@@ -173,7 +179,7 @@ function uiSnapshot() {
   const p = session.prefs;
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
-    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
+    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
     relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });

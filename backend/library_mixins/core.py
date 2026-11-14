@@ -207,7 +207,7 @@ class CoreMixin:
         self._migrate_legacy_json_if_needed()
         self._items = self.db.load_all()
         spellings.bind(lambda: self._items.values(), self.db)
-        self.relocate_performer_photos()  # 3.0.1: data/performers, and paths after a restore
+        self.relocate_performer_photos()  # 3.2.0: data/performers, and paths after a restore
         self._perf_load()  # performer profiles + alias merging (performers.py)
 
         # anything that was mid-flight when we last shut down goes back to
@@ -887,7 +887,7 @@ class CoreMixin:
         if item is None:
             return {"existed": False, "deleted_files": 0}
         self.remove_storyboard(video_id)  # seekbar previews: only useful with the video in the library
-        self.remove_frames(video_id)  # video frames under the player (3.0.1)
+        self.remove_frames(video_id)  # video frames under the player (3.2.0)
         self.forget_watch_positions(video_id)  # everyone's place in it (2.24.0)
 
         # Stop whatever's actively running for this item, now that it's
@@ -1002,7 +1002,7 @@ class CoreMixin:
         if self.db.get_app_state("stats_daily_since", None) is None:
             self.db.set_app_state("stats_daily_since", stats_store.today())
         self.seed_default_system_jobs()
-        self.seed_audio_fix_job()  # 3.0.1: once, for the videos already in the library
+        self.seed_audio_fix_job()  # 3.2.0: once, for the videos already in the library
         asyncio.get_running_loop().create_task(self._backfill_upload_dates())
 
     async def _backfill_upload_dates(self) -> None:

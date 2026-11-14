@@ -343,7 +343,7 @@ class DownloadWorkerMixin:
                 except Exception:
                     logger.warning("Preview download failed for {}, continuing", item.id)
 
-            # Audio browsers can't play (PCM, AC-3, DTS...) becomes AAC (3.0.1),
+            # Audio browsers can't play (PCM, AC-3, DTS...) becomes AAC (3.2.0),
             # before the file's details and fingerprints below are read.
             try:
                 await self._convert_audio_in_place(str(video_path))
@@ -447,7 +447,7 @@ class DownloadWorkerMixin:
             # download" is on (Server Settings -> Duplicate scan).
             self.request_duplicate_scan_after("download")
             self.request_storyboard(item.id)  # seekbar previews (2.21.0)
-            self.request_frames(item.id)  # video frames under the player (3.0.1)
+            self.request_frames(item.id)  # video frames under the player (3.2.0)
         finally:
             async with self._lock:
                 still_exists = item.id in self._items

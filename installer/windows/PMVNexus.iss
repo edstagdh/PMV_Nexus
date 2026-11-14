@@ -72,7 +72,7 @@ Source: "..\..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs igno
   Excludes: "\.git\*,\.github\*,\extensions\.git\*,\extensions\.github\*,\extensions\*.md,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\config.yaml,__pycache__,*.pyc,node_modules"
 Source: "app.ico"; DestDir: "{app}\installer"; Flags: ignoreversion
 ; What the shortcuts start, so Windows shows "PMV Nexus" (Task Manager -> Startup) instead of
-; "pythonw" (3.0.1; installer\windows\launcher, built by build_launcher.ps1).
+; "pythonw" (3.2.0; installer\windows\launcher, built by build_launcher.ps1).
 Source: "build\PMVNexus.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service

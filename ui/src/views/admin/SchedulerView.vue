@@ -44,7 +44,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => clearTimeout(pollTimer));
 
-// One time (3.0.1): "2026-11-14T02:00", the server's local time.
+// One time (3.2.0): "2026-11-14T02:00", the server's local time.
 function onceText(at) {
   const d = at ? new Date(at) : null;
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "?";

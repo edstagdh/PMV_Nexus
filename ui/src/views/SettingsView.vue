@@ -11,6 +11,7 @@ import {
 } from "../stores/session.js";
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
+import { cleanEngines, GOOGLE_LENS } from "../lib/frameSearch.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -28,7 +29,7 @@ function openTab(key) { router.replace({ query: { ...route.query, tab: key } });
 const THEME_LABELS = { midnight: "Midnight", slate: "Slate", daylight: "Daylight" };
 const SORT_LABELS = {
   download_datetime: "Date acquired", upload_date: "Uploaded to PMVHaven", title: "Title", creator: "Creator",
-  ratings: "Rating", views: "Views on PMVHaven", tech_duration: "Duration", tech_filesize: "File size", tech_resolution: "Resolution",
+  ratings: "Rating", views: "Views on PMVHaven", tech_duration: "Duration (length)", tech_filesize: "File size", tech_resolution: "Resolution",
 };
 const BADGE_LABELS = {
   duration: "Duration", quality: "Quality", codec: "Codec (H.264 / HEVC / AV1)", filesize: "File size",
@@ -91,7 +92,7 @@ function resetTab() {
   const keys = {
     appearance: ["textScale", "goneColor", "chipColorsOn", "chipColors", "customTheme"],
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
-    video: ["relatedCount", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "watchedBar", "panicKeys"],
+    video: ["relatedCount", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
   }[tab.value] || [];
   for (const k of keys) {
@@ -134,6 +135,28 @@ async function deleteAccount() {
     del.value.busy = false;
   }
 }
+
+// ---- Video page -> Search this frame (3.2.0, lib/frameSearch.js) ----
+const engines = ref(cleanEngines(session.prefs.frameSearch));
+const engineDraft = ref({ name: "", url: "https://", field: "" });
+function saveEngines(list) {
+  savePref("frameSearch", list);
+  engines.value = cleanEngines(list);
+}
+function addEngine() {
+  const e = cleanEngines([engineDraft.value]);
+  if (!e.length) {
+    toast("Give it a name, an https:// upload address and the form's file field name (letters, numbers, _ - . [ ])", { type: "error" });
+    return;
+  }
+  saveEngines([...engines.value, e[0]]);
+  engineDraft.value = { name: "", url: "https://", field: "" };
+}
+function removeEngine(n) { saveEngines(engines.value.filter((_, i) => i !== n)); }
+function resetEngines() { saveEngines([{ ...GOOGLE_LENS }]); }
+const volumeDraft = ref(null);
+const volumeShown = computed(() => volumeDraft.value ?? session.prefs.startVolume ?? 10);
+function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolume", volumeDraft.value); volumeDraft.value = null; } }
 </script>
 
 <template>
@@ -307,9 +330,45 @@ async function deleteAccount() {
       <div class="row">
         <div class="label">
           <strong>Frames under the player</strong>
-          <span class="muted">A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file.</span>
+          <span class="muted">A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file. Off by default: the seek bar's previews do the same.</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.videoFrames !== false" @change="savePref('videoFrames', $event.target.checked)">Show them</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.videoFrames === true" @change="savePref('videoFrames', $event.target.checked)">Show them</label>
+      </div>
+      <div class="row">
+        <div class="label">
+          <strong>Starting volume</strong>
+          <span class="muted">The volume a video starts at on a computer (phones use their own volume buttons).</span>
+        </div>
+        <div class="stack">
+          <div class="range">
+            <input type="range" min="0" max="100" step="5" :value="volumeShown" aria-label="Starting volume"
+                   @input="volumeDraft = Number($event.target.value)" @change="commitVolume">
+            <output>{{ volumeShown }}%</output>
+          </div>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.rememberVolume !== false" @change="savePref('rememberVolume', $event.target.checked)">Keep the volume I last set in this browser instead</label>
+        </div>
+      </div>
+      <div class="row top">
+        <div class="label">
+          <strong>Search this frame</strong>
+          <span class="muted">⚙ → Search frame in the player pauses the video and looks the picture up on a reverse image search site, in a
+            new tab. The picture is uploaded to that site straight from your browser. With several sites you pick one each time.
+            A site is added with the address its upload form sends the picture to and the form's file field name.</span>
+        </div>
+        <div class="stack">
+          <ul class="engines">
+            <li v-for="(e, n) in engines" :key="n"><strong>{{ e.name }}</strong><code class="muted small">{{ e.url }} · {{ e.field }}</code>
+              <button class="btn btn-ghost btn-sm" type="button" :title="`Remove ${e.name}`" @click="removeEngine(n)">Remove</button></li>
+            <li v-if="!engines.length" class="muted">None — Search frame is hidden in the player.</li>
+          </ul>
+          <form class="engine-add" @submit.prevent="addEngine">
+            <input v-model="engineDraft.name" class="input" placeholder="Name" aria-label="Name" maxlength="40">
+            <input v-model="engineDraft.url" class="input" placeholder="https://… (upload address)" aria-label="Upload address">
+            <input v-model="engineDraft.field" class="input" placeholder="File field" aria-label="File field name" maxlength="60">
+            <button class="btn btn-sm" type="submit">Add</button>
+          </form>
+          <button v-if="engines.length !== 1 || engines[0].url !== GOOGLE_LENS.url" class="btn btn-ghost btn-sm reset-engines" type="button" @click="resetEngines">Only Google Lens</button>
+        </div>
       </div>
       <div class="row">
         <div class="label">
@@ -428,6 +487,12 @@ async function deleteAccount() {
 .badges.small-preview { grid-template-columns: 1fr 10.5rem; }
 .preview :deep(.thumb-empty) { color: transparent; background: linear-gradient(135deg, #3b2a1f, #1f2937 60%, #111827); }
 .toggles { display: flex; flex-direction: column; gap: 0.625rem; }
+.engines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
+.engines li { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.engines code { font-size: 0.75rem; overflow-wrap: anywhere; }
+.engine-add { display: grid; grid-template-columns: 8rem minmax(0, 1fr) 8rem auto; gap: 0.375rem; }
+.reset-engines { align-self: flex-start; }
+@media (max-width: 40rem) { .engine-add { grid-template-columns: 1fr; } }
 .sub { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-top: 0.25rem; }
 .uploader-sample { font-weight: 600; font-size: 0.875rem; }
 .radios { display: flex; flex-direction: column; gap: 0.75rem; }

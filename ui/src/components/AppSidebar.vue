@@ -9,7 +9,7 @@ import { session, savePref, hasPermission, isAdmin, logout } from "../stores/ses
 import { live } from "../stores/live.js";
 import { discover } from "../lib/discover.js";
 
-// 3.1.0: from another page, Library returns to the library as you left it (filters,
+// 3.2.0: from another page, Library returns to the library as you left it (filters,
 // page -- what the video page's Back button did); in the library it starts afresh.
 const route = useRoute();
 const libraryLink = computed(() => (route.name === "library" ? "/" : lastLibraryLocation()));

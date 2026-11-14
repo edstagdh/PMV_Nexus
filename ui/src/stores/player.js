@@ -93,10 +93,10 @@ export function closePlayer() {
   clearQueue();
 }
 
-/** The player's <video> element (or null), e.g. for the frames under it (3.0.1). */
+/** The player's <video> element (or null), e.g. for the frames under it (3.2.0). */
 export function playerVideo() { return els.video; }
 
-/** Jumps the player to `seconds` and plays from there (the frames under the player, 3.0.1). */
+/** Jumps the player to `seconds` and plays from there (the frames under the player, 3.2.0). */
 export function seekPlayer(seconds) {
   const v = els.video;
   if (!v || !Number.isFinite(seconds)) return;

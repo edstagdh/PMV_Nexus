@@ -1,4 +1,4 @@
-# Builds installer\windows\build\PMVNexus.exe (3.0.1): the small program the shortcuts start, so
+# Builds installer\windows\build\PMVNexus.exe (3.2.0): the small program the shortcuts start, so
 # Windows shows "PMV Nexus" and its icon (Task Manager -> Startup, Explorer) instead of "pythonw".
 # Used by .github/workflows/release.yml (and the personal build); needs Visual Studio's C++ tools,
 # which GitHub's Windows runners have.
