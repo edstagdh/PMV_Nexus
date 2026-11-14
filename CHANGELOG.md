@@ -7,11 +7,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Fixed
-- **Search frame on Yandex didn't work** ("Yandex didn't answer as expected"): Yandex's upload now goes the way its
-  own page does it — the browser uploads the frame with Yandex's "post, redirect, get" form and Yandex sends the tab
-  straight to the results. An existing Yandex entry switches over by itself. **Yandex (through the app's server)**
-  (Add it in My Settings → Video page) does the same from the app's server, in case Yandex refuses the browser's
-  upload; when it fails, the log now says what Yandex answered.
+- **Search frame on Yandex didn't work** ("Yandex didn't answer as expected"): the app's server now uploads the frame
+  the way Yandex's own page does ("post, redirect, get") and the tab opens the results Yandex sends back. Any Yandex
+  entry you added switches over by itself (Yandex refuses the upload straight from a browser). When it fails, the log
+  says what Yandex answered.
 - **"Cancel 1 running task(s), timeout graceful shutdown exceeded"** in the log when the app stops didn't say what was
   cancelled: it's now a warning naming the requests that were still open (nearly always a video still playing in a
   browser tab — nothing of the app's own work is lost), and the traceback that followed it is gone.

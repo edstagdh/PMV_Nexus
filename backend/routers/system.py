@@ -90,11 +90,6 @@ _FRAME_SEARCH_JS = r"""(function () {
     msg.textContent = "Sending the frame to " + String(d.name || "the search site") + "…";
     var form = document.createElement("form");
     form.method = "POST"; form.action = d.url; form.enctype = "multipart/form-data";
-    var extra = d.extra && typeof d.extra === "object" ? d.extra : {};
-    Object.keys(extra).slice(0, 5).forEach(function (k) {
-      if (!/^\w{1,20}$/.test(k) || typeof extra[k] !== "string") return;
-      var h = document.createElement("input"); h.type = "hidden"; h.name = k; h.value = extra[k].slice(0, 100); form.appendChild(h);
-    });
     var input = document.createElement("input");
     input.type = "file"; input.name = d.field;
     var dt = new DataTransfer(); dt.items.add(d.file); input.files = dt.files;
@@ -123,8 +118,9 @@ def _yandex_results(url: str) -> bool:
 
 @router.post("/api/system/frame-search/yandex")
 async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_current_user)):
-    """Search frame -> "Yandex (through the app's server)": uploads the frame (a JPEG from
-    the player) to Yandex and returns the address of its results page, which the tab opens.
+    """Search frame -> Yandex: uploads the frame (a JPEG from the player) to Yandex and
+    returns the address of its results page, which the tab opens. (Yandex refuses the
+    same upload straight from a browser.)
     Like Yandex's own page: the upload form with prg=1 answers with a redirect to the
     results; older answer (JSON with the address) tried second. What Yandex answered is
     logged when neither works."""
@@ -142,8 +138,7 @@ async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_
             tried.append(f"upload: {resp.status_code} {urlsplit(final).hostname}{urlsplit(final).path} "
                          f"({resp.headers.get('content-type', '?').split(';')[0]})")
             if "captcha" in final or "showcaptcha" in resp.text[:20000]:
-                raise HTTPException(status_code=502, detail="Yandex asked to prove you're not a robot — use plain \"Yandex\" "
-                                    "(your browser uploads it) instead")
+                raise HTTPException(status_code=502, detail="Yandex asked to prove you're not a robot — try again later")
             resp = await client.post(YANDEX_UPLOAD, params={"rpt": "imageview", "format": "json", "request": _YANDEX_BLOCKS},
                                      files={"upfile": ("frame.jpg", data, "image/jpeg")})
             try:
@@ -157,7 +152,7 @@ async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_
     except httpx.HTTPError as exc:
         tried.append(exc.__class__.__name__)
     logger.warning("Search frame on Yandex: no results address — {}", " | ".join(tried))
-    raise HTTPException(status_code=502, detail="Yandex didn't answer as expected (details in the log) — try plain \"Yandex\"")
+    raise HTTPException(status_code=502, detail="Yandex didn't answer as expected — try again later (details in the log)")
 
 
 @router.get("/frame-search", include_in_schema=False)
