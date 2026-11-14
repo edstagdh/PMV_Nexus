@@ -2,18 +2,22 @@
 // reverse image search site in a new tab. The app runs on your own computer, so a
 // site can't fetch the picture by its address: the browser uploads it to the
 // site directly (like the site's own "upload an image" page), through the app's
-// /frame-search page (backend/routers/system.py). Only for Yandex the app's server
-// passes it on (see YANDEX).
+// /frame-search page (backend/routers/system.py). Only for "Yandex (through the app's
+// server)" the app's server passes it on (see YANDEX_SERVER).
 //
 // Sites: My Settings -> Video page -> Search this frame -- each with a name, the
 // address its upload form posts to and the name of the form's file field.
 // Google Lens is the built-in default.
 
 export const GOOGLE_LENS = { name: "Google Lens", url: "https://lens.google.com/v3/upload", field: "encoded_image" };
-// Yandex answers an upload with the address of its results instead of the results, so a
-// form can't do it: the app's server uploads the frame for it (mode "yandex").
-export const YANDEX = { name: "Yandex", url: "https://yandex.com/images/search", field: "upfile", mode: "yandex" };
-export const PRESETS = [GOOGLE_LENS, YANDEX];
+// Yandex (3.2.1): its upload form with prg=1 ("post, redirect, get") answers with a redirect
+// to the results page, which the browser follows. YANDEX_SERVER: the same done by the app's
+// server (mode "yandex"), in case Yandex refuses the browser's upload.
+export const YANDEX = { name: "Yandex", url: "https://yandex.com/images/search?rpt=imageview&cbir_page=sites", field: "upfile", extra: { prg: "1" } };
+export const YANDEX_SERVER = { name: "Yandex (through the app's server)", url: "https://yandex.com/images/search", field: "upfile", mode: "yandex" };
+export const PRESETS = [GOOGLE_LENS, YANDEX, YANDEX_SERVER];
+const cleanExtra = (x) => Object.fromEntries(Object.entries(x && typeof x === "object" ? x : {})
+  .filter(([k, v]) => /^\w{1,20}$/.test(k) && typeof v === "string" && v.length <= 100).slice(0, 5));
 export const DEFAULT_ENGINES = [GOOGLE_LENS];
 const MAX_SIDE = 1920; // pixels: big enough for any search, small enough to upload quickly
 
@@ -24,9 +28,11 @@ export function cleanEngines(list) {
     .filter((e) => e && typeof e.name === "string" && typeof e.url === "string" && typeof e.field === "string")
     .map((e) => {
       const url = e.url.trim();
-      // Any Yandex address works the Yandex way (an entry added by hand before that existed too).
-      if (e.mode === "yandex" || /^https:\/\/(www\.)?yandex\.[a-z.]+\//i.test(url)) return { ...YANDEX, name: e.name.trim().slice(0, 40) || YANDEX.name };
-      return { name: e.name.trim().slice(0, 40), url, field: e.field.trim().slice(0, 60) };
+      const name = e.name.trim().slice(0, 40);
+      if (e.mode === "yandex") return { ...YANDEX_SERVER, name: name || YANDEX_SERVER.name };
+      // Any other Yandex address works the Yandex way (an entry added by hand, too).
+      if (/^https:\/\/(www\.)?yandex\.[a-z.]+\//i.test(url)) return { ...YANDEX, extra: { ...YANDEX.extra }, name: name || YANDEX.name };
+      return { name, url, field: e.field.trim().slice(0, 60), ...(e.extra ? { extra: cleanExtra(e.extra) } : {}) };
     })
     .filter((e) => e.name && /^https:\/\/[^\s]+$/i.test(e.url) && /^[\w.[\]-]+$/.test(e.field))
     .slice(0, 10);
@@ -59,7 +65,7 @@ export function searchFile(file, engine) {
   const onReady = (e) => {
     if (e.origin !== location.origin || e.source !== tab || e.data?.type !== "pmv-frame-search-ready") return;
     window.removeEventListener("message", onReady);
-    tab.postMessage({ type: "pmv-frame-search", file, name: engine.name, url: engine.url, field: engine.field, mode: engine.mode || "form" }, location.origin);
+    tab.postMessage({ type: "pmv-frame-search", file, name: engine.name, url: engine.url, field: engine.field, extra: engine.extra || {}, mode: engine.mode || "form" }, location.origin);
   };
   window.addEventListener("message", onReady);
   setTimeout(() => window.removeEventListener("message", onReady), 30000);

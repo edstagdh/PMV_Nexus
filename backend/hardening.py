@@ -130,7 +130,36 @@ class SecurityMiddleware:
                 message = {**message, "headers": hdrs}
             await send(message)
 
-        return await self.app(scope, inner_receive, send_with_headers)
+        key = object()
+        _OPEN[key] = (method, path, time.monotonic())
+        try:
+            return await self.app(scope, inner_receive, send_with_headers)
+        finally:
+            _OPEN.pop(key, None)
+
+
+# ------------------------------------------------------------------ open requests (3.2.1)
+# Which requests are still open, so uvicorn's "Cancel N running task(s), timeout graceful
+# shutdown exceeded" can say what they were (logging_setup.py): nearly always a video still
+# streaming to a browser tab or a page waiting for news -- nothing of the app's own work.
+_OPEN: dict = {}
+
+
+def _describe_path(method: str, path: str) -> str:
+    if path.endswith("/stream") or path.startswith("/api/live/"):
+        return f"a video being played ({path})"
+    if path.endswith("/preview"):
+        return f"a hover preview ({path})"
+    if path == "/api/events":
+        return "a page waiting for updates (/api/events)"
+    return f"{method} {path}"
+
+
+def open_requests() -> list[str]:
+    """The requests still open, longest first, described in a few words."""
+    now = time.monotonic()
+    rows = sorted(_OPEN.values(), key=lambda r: r[2])
+    return [f"{_describe_path(m, p)}, open {int(now - t)} s" for m, p, t in rows]
 
 
 # ------------------------------------------------------------------ sign-in throttle

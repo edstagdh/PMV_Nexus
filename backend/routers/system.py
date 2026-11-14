@@ -3,6 +3,7 @@ tool status and backups. See backend/app_info.py and backend/backup.py."""
 from __future__ import annotations
 
 import json
+import re
 from urllib.parse import urlsplit
 
 import httpx
@@ -89,6 +90,11 @@ _FRAME_SEARCH_JS = r"""(function () {
     msg.textContent = "Sending the frame to " + String(d.name || "the search site") + "…";
     var form = document.createElement("form");
     form.method = "POST"; form.action = d.url; form.enctype = "multipart/form-data";
+    var extra = d.extra && typeof d.extra === "object" ? d.extra : {};
+    Object.keys(extra).slice(0, 5).forEach(function (k) {
+      if (!/^\w{1,20}$/.test(k) || typeof extra[k] !== "string") return;
+      var h = document.createElement("input"); h.type = "hidden"; h.name = k; h.value = extra[k].slice(0, 100); form.appendChild(h);
+    });
     var input = document.createElement("input");
     input.type = "file"; input.name = d.field;
     var dt = new DataTransfer(); dt.items.add(d.file); input.files = dt.files;
@@ -101,31 +107,57 @@ _FRAME_SEARCH_JS = r"""(function () {
 
 YANDEX_UPLOAD = "https://yandex.com/images/search"
 _YANDEX_BLOCKS = json.dumps({"blocks": [{"block": "b-page_type_search-by-image__link"}]})
-_MAX_FRAME = 8 * 1024 * 1024
+_YANDEX_HOST = re.compile(r"^(?:[\w-]+\.)*yandex\.[a-z.]{2,10}$")
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://yandex.com", "Referer": "https://yandex.com/images/",
+}
+
+
+def _yandex_results(url: str) -> bool:
+    parts = urlsplit(url)
+    return parts.scheme == "https" and bool(_YANDEX_HOST.match(parts.hostname or "")) and "cbir_id=" in parts.query
 
 
 @router.post("/api/system/frame-search/yandex")
 async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_current_user)):
-    """Search frame on Yandex: uploads the frame (a JPEG from the player) to Yandex
-    and returns the address of its results page. Yandex's upload answers with that
-    address rather than the results, which a browser form can't follow -- so this
-    one step goes through the app's server, to Yandex only."""
+    """Search frame -> "Yandex (through the app's server)": uploads the frame (a JPEG from
+    the player) to Yandex and returns the address of its results page, which the tab opens.
+    Like Yandex's own page: the upload form with prg=1 answers with a redirect to the
+    results; older answer (JSON with the address) tried second. What Yandex answered is
+    logged when neither works."""
     data = await request.body()
-    if not data or len(data) > _MAX_FRAME or not data.startswith(b"\xff\xd8"):
+    if not data or not data.startswith(b"\xff\xd8"):
         raise HTTPException(status_code=400, detail="Not a frame from the player")
+    tried = []
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True,
-                                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=_BROWSER_HEADERS) as client:
+            resp = await client.post(YANDEX_UPLOAD, params={"rpt": "imageview", "cbir_page": "sites"}, data={"prg": "1"},
+                                     files={"upfile": ("frame.jpg", data, "image/jpeg")})
+            final = str(resp.url)
+            if _yandex_results(final):
+                return {"url": final}
+            tried.append(f"upload: {resp.status_code} {urlsplit(final).hostname}{urlsplit(final).path} "
+                         f"({resp.headers.get('content-type', '?').split(';')[0]})")
+            if "captcha" in final or "showcaptcha" in resp.text[:20000]:
+                raise HTTPException(status_code=502, detail="Yandex asked to prove you're not a robot — use plain \"Yandex\" "
+                                    "(your browser uploads it) instead")
             resp = await client.post(YANDEX_UPLOAD, params={"rpt": "imageview", "format": "json", "request": _YANDEX_BLOCKS},
                                      files={"upfile": ("frame.jpg", data, "image/jpeg")})
-        query = resp.json()["blocks"][0]["params"]["url"]
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-        logger.warning("Search frame on Yandex failed: {}", exc.__class__.__name__)
-        raise HTTPException(status_code=502, detail="Yandex didn't answer as expected — try again later") from exc
-    url = f"{YANDEX_UPLOAD}?{query}"
-    if urlsplit(url).netloc != "yandex.com":
-        raise HTTPException(status_code=502, detail="Yandex answered with an unexpected address")
-    return {"url": url}
+            try:
+                url = f"{YANDEX_UPLOAD}?{resp.json()['blocks'][0]['params']['url']}"
+                if _yandex_results(url):
+                    return {"url": url}
+            except (ValueError, KeyError, IndexError, TypeError):
+                pass
+            tried.append(f"json: {resp.status_code} ({resp.headers.get('content-type', '?').split(';')[0]}) "
+                         f"{resp.text[:120]!r}")
+    except httpx.HTTPError as exc:
+        tried.append(exc.__class__.__name__)
+    logger.warning("Search frame on Yandex: no results address — {}", " | ".join(tried))
+    raise HTTPException(status_code=502, detail="Yandex didn't answer as expected (details in the log) — try plain \"Yandex\"")
 
 
 @router.get("/frame-search", include_in_schema=False)

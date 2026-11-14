@@ -154,7 +154,7 @@ function addEngine() {
 }
 function removeEngine(n) { saveEngines(engines.value.filter((_, i) => i !== n)); }
 function resetEngines() { saveEngines([{ ...GOOGLE_LENS }]); }
-const missingPresets = computed(() => PRESETS.filter((p) => !engines.value.some((e) => e.url === p.url)));
+const missingPresets = computed(() => PRESETS.filter((p) => !engines.value.some((e) => e.url === p.url && (e.mode || "") === (p.mode || ""))));
 function addPreset(p) { saveEngines([...engines.value, { ...p }]); }
 const volumeDraft = ref(null);
 const volumeShown = computed(() => volumeDraft.value ?? session.prefs.startVolume ?? 10);
@@ -355,9 +355,9 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
           <strong>Search this frame</strong>
           <span class="muted">⚙ → Search frame in the player pauses the video and looks the picture up on a reverse image search site, in a
             new tab. The picture is uploaded to that site straight from your browser. With several sites you pick one each time.
-            Google Lens and Yandex are built in (for Yandex the app's server passes the picture on — Yandex's upload needs a step
-            a browser can't do); another site is added with the address its upload form sends the picture to and the form's
-            file field name.</span>
+            Google Lens and Yandex are built in ("Yandex (through the app's server)" lets the app's server upload it, in case
+            Yandex refuses your browser's upload); another site is added with the address its upload form sends the picture to
+            and the form's file field name.</span>
         </div>
         <div class="stack">
           <ul class="engines">

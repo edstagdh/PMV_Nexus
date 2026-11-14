@@ -11,6 +11,7 @@ With logging switched off nothing is recorded anywhere.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
 import threading
@@ -40,8 +41,25 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
+        message = record.getMessage()
+        # 3.2.1: uvicorn's "Cancel N running task(s), timeout graceful shutdown exceeded" only
+        # counts them; say which requests they were. Expected when a browser still streams a
+        # video at shutdown, so a warning rather than an error.
+        if record.name.startswith("uvicorn") and "graceful shutdown exceeded" in message:
+            from .hardening import open_requests
+            still = open_requests()
+            message = (f"Stopping: {len(still) or 'some'} request(s) were still open after 5 s and were ended"
+                       + (": " + "; ".join(still[:5]) + (f" (+{len(still) - 5} more)" if len(still) > 5 else "") if still else "")
+                       + " — normal when a browser still plays a video; nothing of the app's own work is lost")
+            level = "WARNING"
+        # ...and then logs each request it ended as "Exception in ASGI application" with a
+        # CancelledError traceback: the same thing again, so one quiet line instead.
+        exc = record.exc_info[1] if record.exc_info else None
+        if record.name.startswith("uvicorn") and isinstance(exc, asyncio.CancelledError) and "graceful shutdown" in str(exc):
+            logger.bind(source=record.name).debug("A request still open at shutdown was ended")
+            return
         # The logger's name ("uvicorn.error", ...) tells Admin -> Logs where it came from.
-        logger.bind(source=record.name).opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.bind(source=record.name).opt(depth=depth, exception=record.exc_info).log(level, message)
 
 
 def apply_logging() -> dict:
