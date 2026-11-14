@@ -71,18 +71,21 @@ Name: "{app}"; Permissions: users-modify
 Source: "..\..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; \
   Excludes: "\.git\*,\.github\*,\extensions\.git\*,\extensions\.github\*,\extensions\*.md,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\config.yaml,__pycache__,*.pyc,node_modules"
 Source: "app.ico"; DestDir: "{app}\installer"; Flags: ignoreversion
+; What the shortcuts start, so Windows shows "PMV Nexus" (Task Manager -> Startup) instead of
+; "pythonw" (3.0.1; installer\windows\launcher, built by build_launcher.ps1).
+Source: "build\PMVNexus.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 ; Closes a running app before an update (PrepareToInstall), run from {tmp} with the installed app's Python (2.33.0).
 Source: "..\..\Tools\stop_app.py"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; \
-  WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Comment: "Open PMV Nexus (starts it if needed)"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; \
-  WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Tasks: desktopicon
-Name: "{userstartup}\{#AppName}"; Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "run.py --tray"; \
-  WorkingDir: "{app}"; IconFilename: "{app}\installer\app.ico"; Tasks: autostart
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\PMVNexus.exe"; \
+  WorkingDir: "{app}"; Comment: "Open PMV Nexus (starts it if needed)"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\PMVNexus.exe"; \
+  WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userstartup}\{#AppName}"; Filename: "{app}\PMVNexus.exe"; Parameters: "run.py --tray"; \
+  WorkingDir: "{app}"; Comment: "Starts PMV Nexus in the tray"; Tasks: autostart
 ; A console version, for troubleshooting (shows the app's log as it runs).
 Name: "{autoprograms}\{#AppName} (console)"; Filename: "{app}\start.bat"; WorkingDir: "{app}"; \
   IconFilename: "{app}\installer\app.ico"; Check: not WizardIsTaskSelected('service')

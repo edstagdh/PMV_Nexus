@@ -10,7 +10,8 @@ from loguru import logger
 
 from .. import dupfinder
 from ..config import get_settings
-from .. import activity
+from .. import activity, notifications
+from ..notifications import title_of
 from .core import JobBlockedError
 
 # See backend/dupfinder.py for the matching logic (a re-implementation of
@@ -116,9 +117,11 @@ class DuplicateWorkerMixin:
 
     _dup_trigger_task = None
     _dup_trigger_events: set = set()
+    _dup_trigger_scanning = False   # the delayed task is running its scan now (not waiting)
+    _dup_rescan_after = False       # more events came in during that scan: one more scan after it
 
     def _duplicate_scan_triggers(self) -> dict[str, bool]:
-        """Which events start an automatic scan (Server settings -> Duplicate
+        """Which events start an automatic scan (Server Settings -> Duplicate
         scan), read fresh so a change applies at once."""
         cfg = get_settings().duplicate_scan
         return {"download": cfg.scan_after_download, "reencode": cfg.scan_after_reencode, "repair": cfg.scan_after_repair}
@@ -133,7 +136,14 @@ class DuplicateWorkerMixin:
             return
         self._dup_trigger_events = {*self._dup_trigger_events, event}
         if self._dup_trigger_task and not self._dup_trigger_task.done():
-            self._dup_trigger_task.cancel()
+            if self._dup_trigger_scanning:
+                # 3.1.0: never cancel a scan that's already running (that showed as
+                # "Interrupted: Duplicate scan (after download) -- CancelledError" when
+                # a download finished during the scan for the one before): let it
+                # finish, then scan once more for what came in meanwhile.
+                self._dup_rescan_after = True
+                return
+            self._dup_trigger_task.cancel()  # still waiting: start the wait again
         try:
             self._dup_trigger_task = asyncio.get_running_loop().create_task(self._delayed_duplicate_scan())
         except RuntimeError:  # no event loop (tests / shutdown)
@@ -148,18 +158,70 @@ class DuplicateWorkerMixin:
                 if self._duplicate_scan_running:
                     continue
                 events = ", ".join(sorted(self._dup_trigger_events)) or "event"
+                self._dup_trigger_events = set()
+                self._dup_rescan_after = False
+                self._dup_trigger_scanning = True
                 try:
                     logger.info("Automatic duplicate scan (after {})", events)
                     await self.run_duplicate_scan(title=f"Duplicate scan (after {events})", source="auto")
                 except JobBlockedError as exc:
                     logger.debug("Automatic duplicate scan postponed: {}", exc)
+                    self._dup_trigger_events |= set(events.split(", "))
                     continue
                 except Exception:
                     logger.exception("Automatic duplicate scan failed")
-                self._dup_trigger_events = set()
+                finally:
+                    self._dup_trigger_scanning = False
+                if self._dup_rescan_after and not self._shutting_down:
+                    continue  # videos arrived during the scan: one more (after the delay)
                 return
         except asyncio.CancelledError:
             return
+
+    # ---------------------------------------------------------- notifications (3.1.0)
+    _NOTIFIED_KEY = "dup_notified_pairs"
+    DUP_NOTIFY_ONE_BY_ONE = 5   # more new pairs than this in one scan: one summary instead
+
+    def _known_duplicate_pairs(self) -> set[str]:
+        """Pairs already reported (or there before 3.1.0, so an update doesn't
+        announce every old pair). Kept apart from duplicate_matches, which a
+        full re-compare empties."""
+        known = self.db.get_app_state(self._NOTIFIED_KEY, None)
+        if known is None:
+            known = [m["id"] for m in self.db.list_duplicate_matches()]
+            self.db.set_app_state(self._NOTIFIED_KEY, known)
+        return set(known)
+
+    def _announce_new_duplicates(self, pairs: list[tuple[str, str, float]]) -> None:
+        """A notification (category "duplicate", for the admins) per pair no scan
+        found before -- except pairs in a group marked "not duplicates"; more
+        than DUP_NOTIFY_ONE_BY_ONE at once: one summary."""
+        try:
+            known = self._known_duplicate_pairs()
+            ignored = [set(e["item_ids"]) for e in self.db.list_ignored_issues(issue_type="duplicate")]
+            new = []
+            for a, b, pct in pairs:
+                key = ":".join(sorted((a, b)))
+                if key in known or any({a, b} <= group for group in ignored):
+                    continue
+                if a in self._items and b in self._items:
+                    new.append((a, b, pct))
+                known.add(key)
+            # forget pairs whose videos are gone, so the list doesn't grow for ever
+            known = {k for k in known if all(i in self._items for i in k.split(":"))}
+            self.db.set_app_state(self._NOTIFIED_KEY, sorted(known))
+            if not new:
+                return
+            if len(new) > self.DUP_NOTIFY_ONE_BY_ONE:
+                notifications.notify("duplicate", "warning", f"{len(new)} possible duplicates found",
+                                     "Compare them side by side and keep the best copy.", link="/admin/duplicates")
+                return
+            for a, b, pct in new:
+                newer, older = sorted((self._items[a], self._items[b]), key=lambda i: i.created_at, reverse=True)
+                notifications.notify("duplicate", "warning", f"Possible duplicate: {title_of(newer)}",
+                                     f"Looks like {title_of(older)} ({pct:.0f}% match).", link="/admin/duplicates")
+        except Exception:  # noqa: BLE001 -- never fail a scan over its notifications
+            logger.opt(exception=True).warning("Couldn't announce the new duplicates")
 
     def request_duplicate_scan_now(self) -> None:
         """Fire-and-forget trigger -- starts run_duplicate_scan() as a
@@ -245,6 +307,10 @@ class DuplicateWorkerMixin:
             raise JobBlockedError("Blocked: a duplicate scan is already running")
         if self._invasive_lock_holder is not None:
             raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+        # The pairs known before this scan (3.1.0): on the first scan with duplicate
+        # notifications, every pair already found counts as known -- read before the
+        # scan stores its own new ones (or a full re-compare empties the table).
+        self._known_duplicate_pairs()
         async with activity.track("duplicate_scan", title, progress=self._duplicate_scan_activity, source=source,
                                   stop=True) as act:
             result = await self._duplicate_scan(verbose, full)
@@ -359,6 +425,7 @@ class DuplicateWorkerMixin:
             rows.sort(key=lambda r: r["duration"])
             n, t = cfg.samples, len(rows)
             matches_found = rejected_audio = 0
+            found_pairs: list[tuple[str, str, float]] = []
             if t:
                 ids = [r["item_id"] for r in rows]
                 frames = np.empty((t, n, dupfinder.FRAME_BYTES), dtype=np.uint8)
@@ -394,6 +461,7 @@ class DuplicateWorkerMixin:
                             ids[m["a"]], ids[m["b"]], m["pct"], m["verdict"], None, m["audio"], m["details"]
                         )
                         matches_found += 1
+                        found_pairs.append((ids[m["a"]], ids[m["b"]], m["pct"]))
                         if verbose:
                             verbose_log.append(
                                 f"{m['verdict'].capitalize()} match: '{titles.get(ids[m['a']])}' [{ids[m['a']]}] "
@@ -404,6 +472,7 @@ class DuplicateWorkerMixin:
 
             elapsed = round(time.time() - started, 1)
             if not self._shutting_down:
+                self._announce_new_duplicates(found_pairs)
                 self.db.set_app_state("dup_compare_signature", signature)
                 self.db.set_app_state("duplicate_scan_last_run_at", time.time())
                 self.db.set_app_state("duplicate_scan_last_result", {

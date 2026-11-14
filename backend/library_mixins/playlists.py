@@ -2,7 +2,7 @@
 
 - "manual" playlists keep their own order (playlist_items rows, reorderable).
 - "smart" playlists store a library query (the same parameters as
-  GET /api/library, e.g. {"performers": ["Ava Rose"], "sort_key": "ratings"})
+  GET /api/library, e.g. {"performers": ["Aurora Vale"], "sort_key": "ratings"})
   and are filled from it every time they're read, so new matching downloads
   appear by themselves.
 - visibility "private": only the owner sees it; "public": every user can see

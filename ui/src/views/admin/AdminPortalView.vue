@@ -2,7 +2,7 @@
 // Management (sidebar: Server -> Management): the admin pages that have no tabs of their own, as tabs of
 // one page (/admin/portal/<tab>) -- Users, Duplicates, Maintenance,
 // Scheduler, Backups, Stats, Logs, Tools. Each tab is the page it always
-// was; only the tabs you may open are shown. Server settings stays separate.
+// was; only the tabs you may open are shown. Server Settings stays separate.
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import UsersView from "./UsersView.vue";

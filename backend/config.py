@@ -93,7 +93,7 @@ LOG_RETENTION_PATTERN = r"^(forever|\d{1,4} (second|minute|hour|day|week|month|y
 
 
 class LoggingConfig(BaseModel):
-    """Admin -> Server settings -> Logging (applied at once, no restart).
+    """Admin -> Server Settings -> Logging (applied at once, no restart).
     `enabled` False records nothing anywhere; otherwise each output can be
     switched on its own: the console, the rotated text file (backend.log)
     and the searchable copy behind Admin -> Logs."""
@@ -131,7 +131,7 @@ HEVC_PRESETS = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium"
 
 
 class PlaybackConfig(BaseModel):
-    """Converting while watching (backend/transcode.py; Server settings -> Re-encode):
+    """Converting while watching (backend/transcode.py; Server Settings -> Re-encode):
     a video is streamed as HLS made on the fly, at most `max_height` lines, when
     the viewer picks 720p in the player or the browser can't play the file."""
     live_convert: bool = True
@@ -143,7 +143,7 @@ class PlaybackConfig(BaseModel):
 class FeaturesConfig(BaseModel):
     """Whole features that can be switched off (2.22.0). Off = gone from every menu,
     button and page, and the server refuses new requests (what's already queued
-    still finishes). Server settings -> Re-encode / Credentials."""
+    still finishes). Server Settings -> Re-encode / Credentials."""
     reencode: bool = True
 
 
@@ -174,7 +174,7 @@ class SongsConfig(BaseModel):
 
 
 class ReencodeConfig(BaseModel):
-    """Re-encode settings (Admin -> Server settings -> Re-encode). Each codec
+    """Re-encode settings (Admin -> Server Settings -> Re-encode). Each codec
     keeps its own quality/preset: HEVC uses x265 (CRF 0-51, named presets),
     AV1 uses SVT-AV1 (CRF 1-63, presets 0 = slowest/best ... 13 = fastest)."""
     codec: str = Field("hevc", pattern="^(hevc|av1)$")
@@ -223,7 +223,7 @@ class ReencodeConfig(BaseModel):
 
 
 class UploadConfig(BaseModel):
-    """Upload page (Admin -> Server settings -> Uploads): what happens to a
+    """Upload page (Admin -> Server Settings -> Uploads): what happens to a
     file browsers can't play. Videos already in MP4 with a browser codec are
     kept as they are; others are first re-packed into MP4 without touching
     the picture (fast, lossless). Only when that's not possible is the video
@@ -315,7 +315,7 @@ class TrayConfig(BaseModel):
       open_browser -- when a shortcut (or Setup's "Open PMV Nexus now") STARTS the app, also open it
                       in the browser (2.31.0). Off: it just starts (tray icon). Clicking a shortcut
                       while the app already runs always opens it.
-    Set in Setup, config.yaml or Server settings -> Opening the app (the browser only from the
+    Set in Setup, config.yaml or Server Settings -> Opening the app (the browser only from the
     computer the app runs on)."""
     browser: str = Field("", max_length=2000)
     open_browser: bool = True
@@ -331,7 +331,7 @@ class BackupConfig(BaseModel):
 
 
 class PerformersConfig(BaseModel):
-    """Admin -> Server settings -> Performers (ThePornDB; API key in Credentials).
+    """Admin -> Server Settings -> Performers (ThePornDB; API key in Credentials).
       merge_aliases -- names ThePornDB lists as aliases of the same performer
                        show as one (her main name) everywhere; a wrong merge
                        can be split on her profile page.
@@ -343,7 +343,7 @@ class PerformersConfig(BaseModel):
 
 
 class ProxyConfig(BaseModel):
-    """Admin -> Server settings -> Proxy. The proxy's address and login are
+    """Admin -> Server Settings -> Proxy. The proxy's address and login are
     credentials (encrypted store: proxy_url / proxy_username / proxy_password);
     this is where it's used.
       site_mode  off   -- the sites are reached directly;

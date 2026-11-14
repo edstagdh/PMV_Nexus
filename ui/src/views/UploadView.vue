@@ -5,7 +5,7 @@
 //     of PUT /api/library/local/{id}, with progress;
 //  2. the server checks it (GET /api/library/local/{id}, polled): kept as it
 //     is, re-packed into MP4, or -- when browsers can't play it -- converted
-//     with the codec picked here (ConvertStep), unless Server settings say to
+//     with the codec picked here (ConvertStep), unless Server Settings say to
 //     do that automatically. Only then is it added to the library;
 //  3. choose the thumbnail (ThumbnailStep) and 4. the preview clips (PreviewStep).
 import { askConfirm } from "../stores/confirm.js";

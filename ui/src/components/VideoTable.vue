@@ -5,6 +5,7 @@ import ActionMenu from "./ActionMenu.vue";
 import Icon from "./Icon.vue";
 import { itemUrlTitle, formatDate, qualityInfo, codecLabel, ratingTier } from "../lib/format.js";
 import { session } from "../stores/session.js";
+import { isFavorite } from "../stores/favorites.js";
 
 defineProps({ items: Array, sort: String, dir: String, picked: { type: Object, default: null } });
 const emit = defineEmits(["sort", "filter"]);
@@ -65,6 +66,7 @@ onBeforeUnmount(() => clearTimeout(timer));
           <td class="col-title">
             <router-link :to="{ name: 'video', params: { id: item.id } }">{{ itemUrlTitle(item) }}</router-link>
             <span v-if="session.prefs.badges.gone && item.site_status === 'removed'" class="gone" title="Gone from the site (not found during the last sync)">💀</span>
+            <span v-if="session.prefs.badges.favorite !== false && isFavorite(item.id)" class="fav" title="In your Favorites">♥</span>
           </td>
           <td><button v-if="item.creator" class="linkish" @click="emit('filter', 'creator', item.creator)">{{ item.creator }}</button></td>
           <td class="nowrap">{{ formatDate(item.upload_date) }}</td>
@@ -100,6 +102,7 @@ tbody tr:hover { background: var(--panel-2); }
 .col-title a { color: var(--text); font-weight: 550; }
 .col-title { min-width: 14rem; }
 .col-menu { width: 2.75rem; text-align: right; padding-right: 0.5rem; }
+.fav { margin-left: 0.375rem; color: #f43f5e; }
 .gone { margin-left: 0.375rem; padding: 0 0.25rem; border-radius: 0.25rem; background: var(--gone-bg, #dc2626); cursor: help; }
 .nowrap { white-space: nowrap; }
 .linkish { border: 0; background: none; padding: 0; color: var(--text-2); font: inherit; cursor: pointer; text-align: left; }

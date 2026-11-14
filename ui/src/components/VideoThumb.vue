@@ -6,6 +6,7 @@ import PreviewVideo from "./PreviewVideo.vue";
 import { thumbUrl, previewUrl, ratingTier, codecLabel, qualityInfo, ORIENTATION_GLYPH, workStatus } from "../lib/format.js";
 import { session } from "../stores/session.js";
 import { watchedShare } from "../stores/watchProgress.js";
+import { isFavorite } from "../stores/favorites.js";
 
 const props = defineProps({ item: Object, compact: Boolean, playing: Boolean });
 const hovering = ref(false);
@@ -46,6 +47,7 @@ onBeforeUnmount(() => clearTimeout(timer));
     <template v-if="!compact">
       <div class="tl">
         <span v-if="show.gone && item.site_status === 'removed'" class="badge badge-gone" title="Gone from the site (not found during the last sync)">💀</span>
+        <span v-if="show.favorite !== false && isFavorite(item.id)" class="badge badge-fav" title="In your Favorites">♥</span>
         <span v-if="show.status && status" class="badge" :class="`badge-status-${status.kind}`" :title="status.detail || status.label">{{ status.label }}</span>
       </div>
       <div class="tr">
@@ -61,7 +63,8 @@ onBeforeUnmount(() => clearTimeout(timer));
       </div>
     </template>
     <template v-else>
-      <div class="tl"><span v-if="small.has('gone') && item.site_status === 'removed'" class="badge badge-gone" title="Gone from the site">💀</span></div>
+      <div class="tl"><span v-if="small.has('gone') && item.site_status === 'removed'" class="badge badge-gone" title="Gone from the site">💀</span><span
+        v-if="small.has('favorite') && isFavorite(item.id)" class="badge badge-fav" title="In your Favorites">♥</span></div>
       <div class="tr"><span v-if="small.has('rating') && item.ratings" class="badge" :class="tier && `badge-rating-${tier}`">★ {{ item.ratings }}</span></div>
       <div class="bottom">
         <span v-if="small.has('codec') && codec" class="badge" :class="{ 'badge-hevc': codec === 'HEVC' }">{{ codec }}</span>
@@ -90,6 +93,7 @@ onBeforeUnmount(() => clearTimeout(timer));
 .compact .tl, .compact .tr { top: 0.25rem; }
 .compact .badge { height: 1.125rem; padding: 0 0.3rem; font-size: 0.625rem; }
 .preview-note { position: absolute; left: 0.375rem; right: 0.375rem; top: 50%; transform: translateY(-50%); text-align: center; font-size: 0.7rem; color: #fff; background: rgba(0, 0, 0, 0.6); border-radius: var(--radius-sm); padding: 0.25rem; pointer-events: none; }
+.badge-fav { background: rgba(0, 0, 0, 0.65); color: #f43f5e; font-size: 0.85rem; height: 1.375rem; padding: 0 0.375rem; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 .badge-gone { background: var(--gone-bg, #dc2626); color: #fff; font-size: 0.8rem; height: 1.375rem; padding: 0 0.375rem; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 .badge-status-busy { background: var(--accent); color: #fff; }
 .badge-status-queued { background: rgba(0, 0, 0, 0.72); color: #fff; }

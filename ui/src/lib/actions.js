@@ -16,7 +16,7 @@ export function currentCodec(item) {
   return /hevc|h\.?265/i.test(c) ? "hevc" : /av1/i.test(c) ? "av1" : null;
 }
 
-/** Whole features switched off in Server settings are hidden everywhere (2.22.0). */
+/** Whole features switched off in Server Settings are hidden everywhere (2.22.0). */
 export const featureOn = (name) => live.summary?.features?.[name] !== false;
 
 async function call(path, ok, body) {
@@ -45,14 +45,14 @@ export function itemActions(item, { context = "library" } = {}) {
           if ((await askConfirm(`Cancel the repair/update in progress for "${item.title || item.url}"?`, { ok: "Yes, cancel", danger: true }))) call(`/api/library/${id}/repair/cancel`, "Repair cancelled");
         } });
       } else {
-        out.push({ key: "repair", label: item.repair_status === "failed" ? "Retry repair/update" : "Repair/update", icon: "wrench",
-          run: () => call(`/api/library/${id}/repair`, "Repair/update queued") });
+        out.push({ key: "repair", label: item.repair_status === "failed" ? "Retry Repair/Update" : "Repair/Update", icon: "wrench",
+          run: () => call(`/api/library/${id}/repair`, "Repair/Update queued") });
       }
       if (item.reencode_status === "queued" || item.reencode_status === "encoding") {
         out.push({ key: "cancel-reencode", label: "Cancel re-encode", icon: "x", danger: true, run: () => call(`/api/library/${id}/reencode/cancel`, "Re-encode cancelled") });
       } else if (featureOn("reencode")) {
         // One entry; the dialog picks the codec and this re-encode's settings (2.22.0) --
-        // or, with "Ask each time" off in Server settings, straight away with the server's (2.22.1).
+        // or, with "Ask each time" off in Server Settings, straight away with the server's (2.22.1).
         const def = live.summary?.reencode_codec === "av1" ? "av1" : "hevc";
         const direct = live.summary?.reencode_ask === false && currentCodec(item) !== def;
         out.push(direct

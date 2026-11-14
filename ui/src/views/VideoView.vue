@@ -9,10 +9,10 @@ import VideoCard from "../components/VideoCard.vue";
 import RelatedList from "../components/RelatedList.vue";
 import ActionBar from "../components/ActionBar.vue";
 import FavoriteButton from "../components/FavoriteButton.vue";
+import VideoFrames from "../components/VideoFrames.vue";
 import { api, qs } from "../lib/api.js";
 import { normalizeMetadata } from "../lib/metadata.js";
 import { thumbUrl, compactNumber, workStatus } from "../lib/format.js";
-import { lastLibraryLocation } from "../lib/nav.js";
 import { onLibraryChange } from "../stores/live.js";
 import { session, hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
@@ -37,14 +37,25 @@ async function load(full = true) {
     ]);
     if (id !== props.id) return;
     const statusChanged = item.value && item.value.status !== it.status;
+    // Repair/Update, a sync or an edit rewrites the metadata file (views, likes, description...):
+    // read it again whenever the video itself changed, so the page shows the new details (3.0.1).
+    const changed = item.value && item.value.updated_at !== it.updated_at;
     item.value = it;
     if (md !== undefined) { meta.value = md; syncInfo.value = md?._site_sync || {}; }
     if (statusChanged && !full) load(true);
+    else if (changed && !full) reloadMetadata(id);
     error.value = "";
     if (full) loadNeighbours(it);
   } catch (err) {
     if (id === props.id) error.value = err.status === 404 ? "This video is not in the library." : err.message;
   }
+}
+
+async function reloadMetadata(id) {
+  const md = await api(`/api/library/${encodeURIComponent(id)}/metadata`).catch(() => null);
+  if (id !== props.id) return;
+  meta.value = md;
+  syncInfo.value = md?._site_sync || {};
 }
 
 async function loadNeighbours(it) {
@@ -110,6 +121,19 @@ const metaLine = computed(() => {
   ].filter(Boolean);
 });
 watch([title, error], ([t, e]) => setPageTitle(`/video/${props.id}`, e ? "Video not found" : t), { immediate: true });
+// Technical Details in sections (3.0.1): side by side when there's room, else one under the other.
+const TECH_GENERAL = ["Duration", "File Size", "Overall Bitrate", "Container", "Format"];
+const techGroups = computed(() => {
+  const groups = { General: [], Video: [], Audio: [], Other: [] };
+  for (const [k, v] of Object.entries(view.value?.technical || {})) {
+    if (v === null || v === undefined || v === "") continue;
+    const name = TECH_GENERAL.includes(k) ? "General"
+      : /^video\b|^resolution$|^fps$|^frame rate|^hdr|^bit depth|^pixel|^colou?r/i.test(k) ? "Video"
+      : /^audio\b|^sample rate|^channels?$/i.test(k) ? "Audio" : "Other";
+    groups[name].push([k, typeof v === "boolean" ? (v ? "Yes" : "No") : v]);
+  }
+  return Object.entries(groups).filter(([, rows]) => rows.length).map(([name, rows]) => ({ name, rows }));
+});
 const longDescription = computed(() => (view.value?.description || "").length > 300);
 const downloadStatus = computed(() => {
   const it = item.value;
@@ -122,28 +146,17 @@ const downloadStatus = computed(() => {
 });
 
 function filterLibrary(key, value) { router.push({ name: "library", query: { [key]: value } }); }
-function goBack() {
-  if (session.prefs.backMode === "history" && window.history.state?.back) router.back();
-  else router.push(lastLibraryLocation());
-}
 </script>
 
 <template>
   <div class="video-page">
-    <div class="topline">
-      <button class="btn btn-ghost" :title="session.prefs.backMode === 'library' ? 'Back to the library' : 'Back to the previous page'" @click="goBack">
-        <Icon name="back" />{{ session.prefs.backMode === "library" ? "Library" : "Back" }}
-      </button>
-      <div class="spacer" />
-      <button class="btn btn-primary" title="Open another random video, like Discover" @click="discover"><Icon name="dice" />Discover again</button>
-    </div>
-
     <div v-if="error" class="empty"><div class="empty-icon">🎞️</div>{{ error }}</div>
     <div v-else-if="!item" class="watch"><div class="skeleton media-skel" /><div class="skeleton side-skel" /></div>
 
     <div v-else class="watch" :class="{ 'no-side': !session.prefs.relatedCount && !player.queue }">
       <div class="primary">
         <div v-if="playable" ref="slot" class="player-slot" />
+        <VideoFrames v-if="playable && session.prefs.videoFrames !== false" :item-id="item.id" :can-redo="canEdit" />
         <div v-else class="poster">
           <img v-if="thumbUrl(item)" :src="thumbUrl(item)" alt="">
           <div class="poster-status" :class="{ failed: item.status === 'failed' }">
@@ -153,7 +166,10 @@ function goBack() {
         </div>
 
         <PlayQueue v-if="narrow" />
-        <h1 class="title">{{ title }}</h1>
+        <div class="title-row">
+          <h1 class="title">{{ title }}</h1>
+          <button class="btn btn-primary btn-sm random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
+        </div>
         <div class="byline">
           <button v-if="item.creator" class="creator text-creator" :title="`Show videos by ${item.creator}`" @click="filterLibrary('creator', item.creator)">{{ item.creator }}</button>
           <span v-for="m in metaLine" :key="m" class="muted">{{ m }}</span>
@@ -164,10 +180,13 @@ function goBack() {
         <div v-if="syncInfo.status === 'removed'" class="gone">💀 This video is no longer available on PMVHaven (not found during the last sync). Your downloaded copy is unaffected.</div>
 
         <section class="card details">
-          <p v-if="view?.description" class="description" :class="{ clamp: longDescription && !showFullDescription }">{{ view.description }}</p>
-          <button v-if="longDescription" class="btn btn-ghost btn-sm more" @click="showFullDescription = !showFullDescription">
-            {{ showFullDescription ? "Show less" : "Show more" }}
-          </button>
+          <div v-if="view?.description" class="group">
+            <h4>Description</h4>
+            <p class="description" :class="{ clamp: longDescription && !showFullDescription }">{{ view.description }}</p>
+            <button v-if="longDescription" class="btn btn-ghost btn-sm more" @click="showFullDescription = !showFullDescription">
+              {{ showFullDescription ? "Show less" : "Show more" }}
+            </button>
+          </div>
           <div v-if="item.user_edits && Object.keys(item.user_edits).length" class="muted small">
             ✎ Edited by hand: {{ Object.keys(item.user_edits).join(", ") }} — kept when syncing or repairing.
             <button v-if="canEdit" class="btn btn-ghost btn-sm" @click="openDialog('details', item)">Edit</button>
@@ -191,7 +210,12 @@ function goBack() {
           </div>
           <details v-if="view && Object.keys(view.technical).length" class="tech">
             <summary>Technical Details</summary>
-            <dl class="facts"><template v-for="(v, k) in view.technical" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
+            <div class="tech-groups">
+              <div v-for="g in techGroups" :key="g.name" class="tech-group">
+                <h5>{{ g.name }}</h5>
+                <dl class="facts"><template v-for="[k, v] in g.rows" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
+              </div>
+            </div>
           </details>
           <div v-if="syncInfo.synced_at" class="muted small">Last synced with PMVHaven {{ new Date(syncInfo.synced_at * 1000).toLocaleString() }}</div>
         </section>
@@ -201,7 +225,7 @@ function goBack() {
             <h3>More from {{ item.creator }}</h3>
             <button class="btn btn-ghost btn-sm" @click="filterLibrary('creator', item.creator)">View all</button>
           </div>
-          <div class="same-grid"><VideoCard v-for="v in sameCreator" :key="v.id" :item="v" small /></div>
+          <div class="same-grid"><VideoCard v-for="v in sameCreator" :key="v.id" :item="v" small @filter="filterLibrary" /></div>
         </section>
       </div>
 
@@ -219,8 +243,9 @@ function goBack() {
 
 <style scoped>
 .video-page { padding: 0.75rem 1.5rem 2rem; }
-.topline { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
-.spacer { flex: 1; }
+.title-row { display: flex; align-items: flex-start; gap: 0.75rem; }
+.title-row .title { flex: 1; min-width: 0; }
+.title-row .random { flex: none; margin-top: 0.125rem; }
 .watch { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 1.5rem; align-items: start; }
 .watch.no-side { grid-template-columns: minmax(0, 1fr); }
 .primary { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -247,7 +272,9 @@ function goBack() {
 .edited { margin-left: 0.375rem; color: var(--accent); text-transform: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
 .tech summary { cursor: pointer; font-weight: 600; font-size: 0.84rem; }
-.facts { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem 1rem; margin: 0.625rem 0 0; font-size: 0.8rem; }
+.tech-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 0.75rem 1.5rem; margin-top: 0.625rem; }
+.tech-group h5 { margin: 0 0 0.375rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 600; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem 1rem; margin: 0; font-size: 0.8rem; }
 .facts dt { color: var(--text-dim); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .small { font-size: 0.78rem; }

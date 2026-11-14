@@ -1,4 +1,4 @@
-// Panic keys (2.24.0, My settings -> Video page): pressing the chosen keys together
+// Panic keys (2.24.0, My Settings -> Video page): pressing the chosen keys together
 // stops all playback and switches to an empty page. Keys are physical keys
 // (KeyboardEvent.code), so the keyboard layout doesn't matter.
 //
@@ -18,7 +18,7 @@ const onlyOurModifiers = (e, keys) => Object.entries(MOD_FLAGS)
 const isTyping = (el) => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)
   && !["checkbox", "radio", "range", "button", "submit"].includes(el.type));
 
-// Off while new keys are being recorded in My settings (they may include the current ones).
+// Off while new keys are being recorded in My Settings (they may include the current ones).
 let paused = false;
 export function pausePanic(on) { paused = !!on; }
 

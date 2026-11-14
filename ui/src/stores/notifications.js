@@ -12,7 +12,7 @@ import { onLibraryChange } from "./live.js";
 export const notes = reactive({ items: [], unread: 0, lastId: 0, loaded: false });
 
 // Category -> the Settings switch that controls its toasts.
-const GROUP = { download: "download", reencode: "reencode", repair: "reencode", upload: "upload", extension: "job", job: "job", system: null };
+const GROUP = { download: "download", reencode: "reencode", repair: "reencode", upload: "upload", extension: "job", job: "job", duplicate: "duplicate", system: null };
 const TYPE = { success: "success", info: "info", warning: "warning", error: "error" };
 const MAX_TOASTS_AT_ONCE = 3;
 

@@ -74,7 +74,7 @@ async function save() {
 <template>
   <ModalDialog title="Edit details" width="min(90rem, max(80vw, 44rem))" @close="emit('close')">
     <p class="muted intro">Your changes are kept when the library is synced, updated or repaired.
-      Click a box to see every existing value; whether the list stays open after a pick is set in My settings → Video page.</p>
+      Click a box to see every existing value; whether the list stays open after a pick is set in My Settings → Video page.</p>
     <div class="fields">
     <div v-for="f in FIELDS" :key="f.key" class="field-block">
       <div class="field-head">

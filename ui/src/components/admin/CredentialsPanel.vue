@@ -1,5 +1,5 @@
 <script setup>
-// Server settings -> Credentials: every account and key the app uses,
+// Server Settings -> Credentials: every account and key the app uses,
 // grouped as the server describes them (GET /api/credentials). Secrets are
 // never sent back to the browser: an empty secret box keeps the saved value.
 import { askConfirm } from "../../stores/confirm.js";

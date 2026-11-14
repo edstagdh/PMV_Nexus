@@ -1,5 +1,5 @@
 <script setup>
-// Server settings -> Extensions (2.30.0): the add-ons found in the app's
+// Server Settings -> Extensions (2.30.0): the add-ons found in the app's
 // extensions/ folder, whether they loaded, and the settings panels they bring
 // (each drawn by components/ExtensionForm.vue). Only shown when there are any.
 import ExtensionForm from "../ExtensionForm.vue";

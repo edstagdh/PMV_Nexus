@@ -1,5 +1,5 @@
 <script setup>
-// Admin -> Server settings: app-wide configuration (not per-user preferences,
+// Admin -> Server Settings: app-wide configuration (not per-user preferences,
 // which are under Settings). Tabs: Download, Re-encode, Uploads, Duplicate scan, Logging, Proxy, Performers,
 // Credentials, Opening the app (+ Extensions). Saved to config overrides by /api/settings/*.
 import { askConfirm } from "../../stores/confirm.js";
@@ -240,7 +240,7 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
   <div class="page">
     <header class="page-head">
       <div>
-        <h1>Server settings</h1>
+        <h1>Server Settings</h1>
         <p>App-wide settings for everyone. Your own interface preferences are under <RouterLink to="/settings">Settings</RouterLink>.</p>
       </div>
     </header>
@@ -530,7 +530,7 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
         Matching status and names waiting for a pick: <RouterLink :to="{ name: 'portal', params: { tab: 'maintenance' } }">Management → Maintenance → Performers</RouterLink>.</p>
       <p v-if="!perf.tpdb_configured" class="error-text">No ThePornDB API key saved yet.</p>
       <div class="form-row">
-        <span class="label">Aliases<small>e.g. “Riley R” and “Riley Reid”, when ThePornDB says they're the same person.</small></span>
+        <span class="label">Aliases<small>e.g. “Luna P” and “Luna Prism”, when ThePornDB says they're the same person.</small></span>
         <label class="switch"><input v-model="perf.merge_aliases" type="checkbox">Show a performer's aliases as her main name everywhere (filters, chips, suggestions, related videos). A wrong merge can be split on her profile page.</label>
       </div>
       <div class="form-row">

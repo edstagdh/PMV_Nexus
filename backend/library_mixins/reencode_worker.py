@@ -43,12 +43,12 @@ class ReencodeWorkerMixin:
     async def request_reencode(self, video_id: str, codec: Optional[str] = None,
                                options: Optional[dict] = None) -> LibraryItem:
         """Queues a re-encode to `codec` ("hevc" / "av1"; default: the codec
-        chosen in Server settings -> Re-encode), with `options` for this one
+        chosen in Server Settings -> Re-encode), with `options` for this one
         re-encode (Re-encode dialog; see reencode_options()). Refused when the
         file is already in that codec (re-encoding it again would only lose
         quality), or when re-encoding is switched off."""
         if not self.settings.features.reencode:
-            raise ValueError("Re-encoding is switched off (Server settings → Re-encode)")
+            raise ValueError("Re-encoding is switched off (Server Settings → Re-encode)")
         target = codec or self.settings.reencode.codec
         if target not in media_tools.REENCODE_ENCODERS:
             raise ValueError(f"Unknown codec '{target}'")
@@ -384,7 +384,7 @@ class ReencodeWorkerMixin:
             item.title, item.id, video_path, " (via corruption recovery)" if use_recovery else "",
         )
         # The file's pixels just changed: re-check it for duplicates if
-        # "Scan after a re-encode" is on (Server settings -> Duplicate scan).
+        # "Scan after a re-encode" is on (Server Settings -> Duplicate scan).
         self.request_duplicate_scan_after("reencode")
 
     async def cancel_reencode(self, video_id: str) -> LibraryItem:

@@ -19,6 +19,7 @@ import { onLibraryChange } from "../stores/live.js";
 import { player, playPlaylist } from "../stores/player.js";
 import { toast } from "../stores/toast.js";
 import { setPageTitle } from "../lib/title.js";
+import { loadFavorites } from "../stores/favorites.js";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -79,6 +80,7 @@ function onDrop(targetId) {
 async function removeItem(item) {
   try {
     await api(`/api/playlists/${props.id}/items/remove`, { method: "POST", body: { item_ids: [item.id] } });
+    loadFavorites(true);  // the ♥ badges
     pl.value = { ...pl.value, items: pl.value.items.filter((i) => i.id !== item.id), item_count: pl.value.item_count - 1 };
   } catch (err) { toast(err.message || "Could not remove it", { type: "error" }); }
 }
@@ -126,6 +128,7 @@ async function addOne(it) {
   findBusy.value = it.id;
   try {
     await api(`/api/playlists/${props.id}/items`, { method: "POST", body: { item_ids: [it.id] } });
+    loadFavorites(true);  // the ♥ badges
     pl.value = { ...pl.value, items: [...pl.value.items, it], item_count: pl.value.item_count + 1 };
   } catch (err) { toast(err.message || "Could not add it", { type: "error" }); }
   finally { findBusy.value = ""; }

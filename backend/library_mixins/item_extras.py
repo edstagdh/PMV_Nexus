@@ -13,7 +13,7 @@ from ..config import get_settings, save_overrides
 from .. import open_files
 from .. import activity
 from .. import media_tools
-from .. import storyboard
+from .. import storyboard, video_frames
 from ..media_tools import convert_preview_for_browser, generate_thumbnail, is_browser_playable
 from ..models import EDITABLE_DETAIL_FIELDS, EDITABLE_ITEM_FIELDS, LibraryItem
 from .. import sources
@@ -241,9 +241,10 @@ class ItemExtrasMixin:
                 if changed_items:
                     self.db.save_items(changed_items.values())
                 # Seekbar previews (2.21.0): one folder, found by video id.
-                boards = old_cache_dir / storyboard.FOLDER
-                if boards.is_dir() and not (new_path / storyboard.FOLDER).exists():
-                    await asyncio.to_thread(shutil.move, str(boards), str(new_path / storyboard.FOLDER))
+                # ... and the video frames under the player (3.0.1).
+                for folder in (storyboard.FOLDER, video_frames.FOLDER):
+                    if (old_cache_dir / folder).is_dir() and not (new_path / folder).exists():
+                        await asyncio.to_thread(shutil.move, str(old_cache_dir / folder), str(new_path / folder))
 
         relinked = 0
         if not move_existing and old_cache_dir != new_path:

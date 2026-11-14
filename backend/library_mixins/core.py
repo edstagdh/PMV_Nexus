@@ -93,7 +93,7 @@ class CoreMixin:
         self._lock = asyncio.Lock()
         self._worker_task: asyncio.Task | None = None  # unused since 2.6.0 (see _download_lanes)
         # Download "lanes" (2.6.0): lane name -> its loop task. "direct-N" use the
-        # normal connection, "proxy-N" the proxy (Server settings -> Proxy).
+        # normal connection, "proxy-N" the proxy (Server Settings -> Proxy).
         self._download_lanes: dict[str, asyncio.Task] = {}
         self._claimed_downloads: set[str] = set()
         # Metadata (title/creator/tags/performers/thumbnail) is fetched by a
@@ -207,6 +207,7 @@ class CoreMixin:
         self._migrate_legacy_json_if_needed()
         self._items = self.db.load_all()
         spellings.bind(lambda: self._items.values(), self.db)
+        self.relocate_performer_photos()  # 3.0.1: data/performers, and paths after a restore
         self._perf_load()  # performer profiles + alias merging (performers.py)
 
         # anything that was mid-flight when we last shut down goes back to
@@ -435,7 +436,7 @@ class CoreMixin:
         def matches(item: LibraryItem) -> bool:
             if statuses_set and item.status not in statuses_set:
                 return False
-            # A codec family ("AV1", from My settings -> Library -> Group codec versions)
+            # A codec family ("AV1", from My Settings -> Library -> Group codec versions)
             # matches all its versions ("AV1 (Main@L4.0)"...).
             if codecs_set and item.tech_codec not in codecs_set and codec_family(item.tech_codec) not in codecs_set:
                 return False
@@ -721,7 +722,7 @@ class CoreMixin:
             # Switched-off features are hidden everywhere (2.22.0).
             "features": self.settings.features.model_dump(),
             # Disk-space guard (disk_guard.py): the banner. No server paths here --
-            # everyone gets the summary; admins see the folder in Server settings.
+            # everyone gets the summary; admins see the folder in Server Settings.
             "disk": {"low": bool(self._disk.get("low")), "free_percent": self._disk.get("free_percent"),
                      "free_gb": round((self._disk.get("free_bytes") or 0) / 1024 ** 3, 1),
                      "limit": self.settings.download.min_free_percent},
@@ -886,6 +887,7 @@ class CoreMixin:
         if item is None:
             return {"existed": False, "deleted_files": 0}
         self.remove_storyboard(video_id)  # seekbar previews: only useful with the video in the library
+        self.remove_frames(video_id)  # video frames under the player (3.0.1)
         self.forget_watch_positions(video_id)  # everyone's place in it (2.24.0)
 
         # Stop whatever's actively running for this item, now that it's
@@ -1000,6 +1002,7 @@ class CoreMixin:
         if self.db.get_app_state("stats_daily_since", None) is None:
             self.db.set_app_state("stats_daily_since", stats_store.today())
         self.seed_default_system_jobs()
+        self.seed_audio_fix_job()  # 3.0.1: once, for the videos already in the library
         asyncio.get_running_loop().create_task(self._backfill_upload_dates())
 
     async def _backfill_upload_dates(self) -> None:

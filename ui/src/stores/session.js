@@ -10,11 +10,11 @@ const VIEWS = ["grid", "list", "table"];
 // Multiples of 30, so full rows fit both 5 per row (sidebar open) and 6 (collapsed).
 const PAGE_SIZES = [30, 60, 90, 120];
 const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution"];
-export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "status"];
+export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "favorite", "status"];
 // Badges on the small related-video thumbnails. The bottom row has room for
 // RELATED_BADGE_MAX; rating and 💀 sit in the top corners and don't count.
 export const RELATED_BADGES_BOTTOM = ["duration", "quality", "codec", "filesize"];
-export const RELATED_BADGES_TOP = ["rating", "gone"];
+export const RELATED_BADGES_TOP = ["rating", "gone", "favorite"];
 export const RELATED_BADGES = [...RELATED_BADGES_BOTTOM, ...RELATED_BADGES_TOP];
 export const RELATED_BADGE_MAX = 3;
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -24,7 +24,7 @@ export const DEFAULT_UI = Object.freeze({
   view: "grid",
   pageSize: 60,
   textScale: 110,
-  badges: { codec: true, filesize: true, orientation: true, rating: true, gone: true, status: true },
+  badges: { codec: true, filesize: true, orientation: true, rating: true, gone: true, favorite: true, status: true },
   goneColor: "#dc2626",
   backMode: "library",          // "library" | "history"
   groupCodecs: true,            // Library filters: one entry per codec ("AV1"), not per version ("AV1 (Main@L4.0)")
@@ -32,11 +32,12 @@ export const DEFAULT_UI = Object.freeze({
   miniPlayer: true,             // keep playing in the floating mini-player after leaving a video page
   abRepeat: false,              // player: an A-B button to repeat one part of a video (2.18.0)
   resumePlayback: true,         // continue a video where I left off (2.24.0)
+  videoFrames: true,            // the row of frames under the player, click to jump (3.0.1)
   watchedBar: true,             // thin "how far I got" line on thumbnails (2.24.0)
   panicKeys: [],                // [{code, label}] (max 3) pressed together: stop and show an empty page (2.24.0)
   touchSides: "swipe",          // phones in fullscreen: "swipe" brightness/volume on the sides, or "seek" double-tap (2.19.0)
   // Pop-up toasts for background updates, by group (stores/notifications.js).
-  toasts: { download: true, reencode: true, upload: true, job: true },
+  toasts: { download: true, reencode: true, upload: true, job: true, duplicate: true },
   defaultSort: "download_datetime",
   defaultDir: "desc",
   tablePreviewScale: 200,
@@ -71,6 +72,7 @@ export function normalizeUi(raw) {
     abRepeat: r.abRepeat === true,
     touchSides: r.touchSides === "seek" ? "seek" : "swipe",
     resumePlayback: r.resumePlayback !== false,
+    videoFrames: r.videoFrames !== false,
     watchedBar: r.watchedBar !== false,
     panicKeys: Array.isArray(r.panicKeys)
       ? r.panicKeys.filter((k) => k && typeof k.code === "string" && k.code.length <= 32).slice(0, 3)
@@ -171,7 +173,7 @@ function uiSnapshot() {
   const p = session.prefs;
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
-    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
+    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
     relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });

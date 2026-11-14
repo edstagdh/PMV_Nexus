@@ -1,7 +1,7 @@
 <script setup>
 // Management -> Names: every tag / performer / music name with its video
 // count. Rename one, or merge a misspelled one into the right one
-// ("abella danguer" -> "abella danger"): every video using it is changed,
+// ("aurora vael" -> "aurora vale"): every video using it is changed,
 // and the fix can be remembered for new videos (backend/library_mixins/names.py).
 // Also: likely typos (names a letter or two apart), the remembered fixes,
 // and upper/lower case spellings (SpellingsPanel, moved here from Maintenance).

@@ -179,7 +179,7 @@ class LiveTranscoder:
     async def start(self, settings, item_id: str, user_id: str, source: str, title: str = "", username: str = "") -> Session:
         cfg = settings.playback
         if not cfg.live_convert:
-            raise TranscodeError("Converting while watching is turned off (Server settings → Re-encode)")
+            raise TranscodeError("Converting while watching is turned off (Server Settings → Re-encode)")
         if not os.path.isfile(source):
             raise TranscodeError("The video file is missing")
         # One per person: their previous playback ends.

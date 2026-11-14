@@ -57,7 +57,7 @@ class SongsMixin:
         method = method or cfg.method
         key = self.settings.gemini_api_key if method != "shazam" else None
         if method == "gemini" and not key:
-            raise rec.RecognitionError("Gemini needs its API key (Server settings → Credentials → Google Gemini)")
+            raise rec.RecognitionError("Gemini needs its API key (Server Settings → Credentials → Google Gemini)")
         use_shazam = method != "gemini"
         from ..media_tools import probe_streams
         info = await asyncio.to_thread(probe_streams, item.video_path)

@@ -3,7 +3,7 @@ Names (2.11.0, Management -> Names) and bulk edit.
 
 Names: every tag / performer / music value in the library with how many
 videos use it. A misspelled one is renamed -- or merged into an existing
-one -- in every video ("abella danguer" -> "abella danger"): the stored
+one -- in every video ("aurora vael" -> "aurora vale"): the stored
 values change (the site's value and any hand edit alike), unlike the
 case-only spellings (spellings.py) which only change what's shown. With
 "remember" (the default) the fix is also kept as a rule (spellings.add_rule),

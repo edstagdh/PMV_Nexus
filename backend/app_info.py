@@ -192,6 +192,17 @@ DOC_FILES = {
 }
 
 
+_SCREENSHOT_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}\.(?:webp|png)$")
+
+
+def doc_screenshot(name: str) -> Optional[Path]:
+    """A picture from docs/screenshots/ (the Guide's), by plain file name only."""
+    if not _SCREENSHOT_NAME.match(name or ""):
+        return None
+    path = ROOT_DIR / "docs" / "screenshots" / name
+    return path if path.is_file() else None
+
+
 def read_doc(key: str) -> Optional[str]:
     path = DOC_FILES.get(key)
     if path is None:

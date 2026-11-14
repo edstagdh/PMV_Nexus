@@ -15,7 +15,7 @@
          a real video track,
        - re-writes it: re-packed into a clean MP4 (first video + audio track
          only) when the picture can stay as it is, else re-encoded -- right
-         away with Server settings -> Uploads -> automatic, otherwise after
+         away with Server Settings -> Uploads -> automatic, otherwise after
          the uploader picks a codec (the upload then leaves the line and
          joins its end again once they've picked),
        - moves it into "<download folder>/<creator>/" and adds it to the
@@ -128,10 +128,10 @@ class LocalUploadMixin:
         if size <= 0:
             raise UploadError("The file is empty")
         if size > cfg.max_size_gb * 1024 ** 3:
-            raise UploadError(f"The file is bigger than the {cfg.max_size_gb} GB limit (Server settings → Uploads)", 413)
+            raise UploadError(f"The file is bigger than the {cfg.max_size_gb} GB limit (Server Settings → Uploads)", 413)
         if cfg.virus_scan == "required" and not upload_safety.scanner():
             raise UploadError("Uploads need a virus scanner on the server (Microsoft Defender or ClamAV), and none was "
-                              "found — see Server settings → Uploads", 503)
+                              "found — see Server Settings → Uploads", 503)
         if self._disk.get("low"):
             raise UploadError("The server is low on disk space — uploads wait until there's room again", 507)
         mine = [u for u in self._uploads.values() if u.get("user_id") == user_id and u.get("state") not in ("done", "failed")]
@@ -309,7 +309,7 @@ class LocalUploadMixin:
             if key:
                 verdict, detail = await asyncio.to_thread(upload_safety.hash_lookup, str(staged), key)
             else:
-                verdict, detail = "error", "No VirusTotal API key saved (Server settings → Credentials)"
+                verdict, detail = "error", "No VirusTotal API key saved (Server Settings → Credentials)"
             if upload_id not in self._uploads:
                 return
             if verdict == "malicious":
@@ -465,6 +465,7 @@ class LocalUploadMixin:
         await self._finish_local_upload(item, up, up["base_name"])
         up.update(state="done", progress=100, message=f"Added to the library ({how}).", item=item.model_dump())
         self.request_storyboard(item.id)  # seekbar previews (2.21.0)
+        self.request_frames(item.id)  # video frames under the player (3.0.1)
         notify("upload", "success", f"Uploaded {title_of(item)}", link=video_link(item), user_id=item.added_by)
         try:
             stats_store.bump("upload_bytes", final.stat().st_size)

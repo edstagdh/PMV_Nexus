@@ -51,7 +51,7 @@ def _config() -> tuple[str, bytes]:
 
 
 def reset() -> None:
-    """Re-read logging.ip_mode (after Server settings -> Logging changed it)."""
+    """Re-read logging.ip_mode (after Server Settings -> Logging changed it)."""
     _config.cache_clear()
 
 

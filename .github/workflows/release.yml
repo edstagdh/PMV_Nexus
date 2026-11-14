@@ -56,6 +56,10 @@ jobs:
           $hash = (Get-FileHash "$env:RUNNER_TEMP/python.exe" -Algorithm SHA256).Hash.ToLower()
           "PY_SHA256=$hash" >> $env:GITHUB_ENV
 
+      - name: Build PMVNexus.exe (the shortcuts' program)
+        shell: pwsh
+        run: ./installer/windows/build_launcher.ps1 -Version $env:APP_VERSION
+
       - name: Install Inno Setup
         shell: pwsh
         run: |

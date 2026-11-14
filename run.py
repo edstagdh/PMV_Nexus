@@ -197,6 +197,8 @@ def main() -> None:
     parser.add_argument("--no-start", action="store_true",
                         help="only restore (--restore) and check the folders, then exit (installers)")
     args = parser.parse_args()
+    from backend.winproc import hide_console_windows
+    hide_console_windows()  # no flashing windows for FFprobe / FFmpeg (3.0.1)
     restore = Path(args.restore).expanduser().resolve() if args.restore else None  # relative to where it was typed
 
     if args.tray:

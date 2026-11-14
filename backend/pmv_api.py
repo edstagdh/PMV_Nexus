@@ -67,7 +67,7 @@ class PMVApiClient:
                 await asyncio.sleep(min(max(delay, 1.0), 60.0))
                 continue
             if resp.status_code in (401, 403):
-                raise PMVApiError("PMVHaven rejected the API key -- check Server settings → Credentials")
+                raise PMVApiError("PMVHaven rejected the API key -- check Server Settings → Credentials")
             if resp.status_code != 200:
                 raise PMVApiError(f"PMVHaven returned HTTP {resp.status_code} for {path}")
             try:

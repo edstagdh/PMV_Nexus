@@ -113,7 +113,7 @@ async function saveSettings() {
       <p class="muted small">Optional. Gemini is Google's AI: it gets a 20-second sound clip of a spot in the video and names the
         song only when it's sure. When finding songs by hand (a video's Find songs, or picked videos) the way can be
         changed each time; its finds are marked “Gemini (AI)” — check them before adding. It needs a free
-        API key in Server settings → Credentials{{ data?.gemini ? " (saved)" : " (not saved yet)" }}; the free tier allows a
+        API key in Server Settings → Credentials{{ data?.gemini ? " (saved)" : " (not saved yet)" }}; the free tier allows a
         limited number of requests a day, and Google may use free-tier requests to improve its products.</p>
       <div><button class="btn btn-primary btn-sm" :disabled="busy === 'settings'" @click="saveSettings">Save</button></div>
     </section>

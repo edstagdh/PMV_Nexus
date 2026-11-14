@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import asyncio
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -53,7 +55,7 @@ def performer_profile(name: str, user: AuthContext = Depends(_viewer)):
 @router.get("/api/performers/{performer_id}/photo")
 def performer_photo(performer_id: str, n: int = Query(0, ge=0, le=80), user: AuthContext = Depends(_viewer)):
     path = library_manager.performer_photo_path(performer_id, n)
-    if not path:
+    if not path or not Path(path).is_file():  # a missing file is a 404, not an error (3.0.1)
         raise HTTPException(status_code=404, detail="No photo")
     return FileResponse(path, headers={"Cache-Control": "private, max-age=86400"})
 
@@ -135,7 +137,7 @@ async def performers_add_photo(performer_id: str, request: Request, user: AuthCo
 @router.get("/api/performers/{performer_id}/custom-photo/{photo_id}")
 def performers_custom_photo(performer_id: str, photo_id: str, user: AuthContext = Depends(_viewer)):
     path = library_manager.custom_photo_file(performer_id, photo_id)
-    if not path:
+    if not path or not Path(path).is_file():
         raise HTTPException(status_code=404, detail="No photo")
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
 
@@ -187,7 +189,7 @@ async def performers_match_now(retry_none: bool = False, user: AuthContext = Dep
     """Runs the Scheduler job "Match & refresh performers" now (with retry_none
     the names not found before are looked up again too)."""
     if not tpdb.configured():
-        raise HTTPException(status_code=400, detail="Add the ThePornDB API key in Server settings → Credentials first")
+        raise HTTPException(status_code=400, detail="Add the ThePornDB API key in Server Settings → Credentials first")
     if retry_none:
         library_manager._perf_load()
         for row in list(library_manager._perf_names.values()):

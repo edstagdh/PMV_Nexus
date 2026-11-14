@@ -15,6 +15,7 @@ import { api } from "../../lib/api.js";
 import { describeQuery } from "../../lib/libraryQuery.js";
 import { toast } from "../../stores/toast.js";
 import { session } from "../../stores/session.js";
+import { loadFavorites } from "../../stores/favorites.js";
 
 const props = defineProps({ item: Object, options: Object });
 const emit = defineEmits(["close"]);
@@ -52,6 +53,7 @@ async function toggle(p, on) {
   try {
     if (on) await api(`/api/playlists/${p.id}/items`, { method: "POST", body: { item_ids: [props.item.id] } });
     else await api(`/api/playlists/${p.id}/items/remove`, { method: "POST", body: { item_ids: [props.item.id] } });
+    loadFavorites(true);
     const s = new Set(containing.value);
     on ? s.add(p.id) : s.delete(p.id);
     containing.value = s;
@@ -97,6 +99,7 @@ async function addView(p) {
   busy.value = p.id;
   try {
     const r = await api(`/api/playlists/${p.id}/items`, { method: "POST", body: ids.value ? { item_ids: ids.value } : { query: query.value } });
+    loadFavorites(true);  // the ♥ badges
     toast(`Added ${r.added} to ${p.name}${r.skipped ? ` (${r.skipped} already in it)` : ""}`, { type: "success" });
     if (ids.value) { addedTo.value = new Set([...addedTo.value, p.id]); busy.value = ""; return; }  // picked videos: more playlists can follow
     emit("close");

@@ -1,7 +1,7 @@
 """
 ThePornDB API (https://api.theporndb.net) -- performers only: search,
 profile, similar performers, photos. The API key is a credential
-(Server settings -> Credentials -> ThePornDB) sent as a Bearer token.
+(Server Settings -> Credentials -> ThePornDB) sent as a Bearer token.
 Requests are spaced out (MIN_GAP seconds) so a library-wide match doesn't
 hammer the API.
 """
@@ -42,7 +42,7 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
     global _last
     key = get_settings().tpdb_api_key
     if not key:
-        raise TPDBError("No ThePornDB API key (Server settings → Credentials → ThePornDB)")
+        raise TPDBError("No ThePornDB API key (Server Settings → Credentials → ThePornDB)")
     global _gap
     headers = {"Authorization": f"Bearer {key}", "Accept": "application/json",
                "User-Agent": "PMV-Nexus"}
@@ -72,7 +72,7 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
             await asyncio.sleep(pause)
             _last = time.monotonic()
     if r.status_code in (401, 403):
-        raise TPDBError("ThePornDB refused the API key (check it in Server settings → Credentials)")
+        raise TPDBError("ThePornDB refused the API key (check it in Server Settings → Credentials)")
     if r.status_code == 404:
         raise TPDBError("Not found on ThePornDB")
     if r.status_code == 429:

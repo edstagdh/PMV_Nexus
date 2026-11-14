@@ -14,7 +14,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from .. import activity, open_files, storyboard
+from .. import activity, open_files, storyboard, video_frames
 
 _PATH_FIELDS = ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path")
 _IGNORED_NAMES = {"desktop.ini", "thumbs.db", ".ds_store"}
@@ -30,6 +30,8 @@ def _kind(path: Path) -> str:
     name, ext = path.name.lower(), path.suffix.lower()
     if storyboard.FOLDER in path.parts:
         return "seekbar preview"  # of a video no longer in the library (2.21.0)
+    if video_frames.FOLDER in path.parts:
+        return "video frame"  # of a video no longer in the library (3.0.1)
     if name.endswith(".part") or ".part." in name:
         return "partial download"
     if ext in _VIDEO_EXT:
@@ -85,8 +87,8 @@ class UntrackedFilesMixin:
             for dirpath, dirs, names in os.walk(root, onerror=lambda e: errors.append(str(e))):
                 # uploads still being received/checked; 720p playback pieces (deleted when playback stops)
                 dirs[:] = [d for d in dirs if d not in (".incoming", ".transcode")]
-                if Path(dirpath).name == storyboard.FOLDER:
-                    # Seekbar previews (2.21.0): only those of videos no longer in the library
+                if Path(dirpath).name in (storyboard.FOLDER, video_frames.FOLDER):
+                    # Seekbar previews (2.21.0) and video frames (3.0.1): only those of videos no longer in the library
                     # (and none being made right now, "<id>.part").
                     dirs[:] = [d for d in dirs if d not in self._items and not d.endswith(".part")]
                 for name in names:

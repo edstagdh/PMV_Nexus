@@ -18,6 +18,8 @@ from .library_mixins.disk_guard import DiskGuardMixin
 from .library_mixins.names import NamesMixin
 from .library_mixins.songs import SongsMixin
 from .library_mixins.storyboards import StoryboardsMixin
+from .library_mixins.frames import FramesMixin
+from .library_mixins.audio_fix import AudioFixMixin
 from .library_mixins.watch_positions import WatchPositionsMixin
 from .library_mixins.core import CoreMixin
 from .library_mixins.performers import PerformersMixin
@@ -60,6 +62,8 @@ class LibraryManager(
     NamesMixin,
     SongsMixin,
     StoryboardsMixin,
+    FramesMixin,
+    AudioFixMixin,
     WatchPositionsMixin,
 ):
     """Composes every mixin above into the one class the rest of the app

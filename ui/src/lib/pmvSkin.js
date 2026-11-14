@@ -2,7 +2,7 @@
 // touch gestures, hotkeys, tooltips, settings menu) registered as
 // <pmv-video-skin>, with a few changes to its template:
 //  - a Loop button, an A-B repeat button (2.18.0, off in
-//    My settings by default) in the control bar, and a Next button while a
+//    My Settings by default) in the control bar, and a Next button while a
 //    playlist plays (2.19.0),
 //  - "720p" (converted) at the top of the ⚙ menu (converting while watching,
 //    2.13.0; a bar button until 2.19.0) and "Download" under it (a bar button

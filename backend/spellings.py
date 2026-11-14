@@ -15,7 +15,7 @@ the library: if newer videos mostly say "Natural Tits", that becomes the
 shown spelling once it's the more used one. A pick by the admin always wins.
 
 Fixes (2.11.0, Management -> Names): a misspelled value renamed or merged
-into another ("abella danguer" -> "abella danger") is rewritten in every
+into another ("aurora vael" -> "aurora vale") is rewritten in every
 video, and -- when "remember" is on -- kept as a rule, so the same typo
 arriving later (a new download, a sync) shows as the fixed name too.
 Rules are applied first, before the performer alias hook and the spelling.

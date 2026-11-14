@@ -72,7 +72,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           </li>
         </ul>
         <p v-else class="muted nc-empty">{{ show === "problems" ? "No problems — nothing failed." : "Nothing yet." }}</p>
-        <p class="muted nc-foot">Pop-ups for these can be turned off per kind in My settings → Notifications.</p>
+        <p class="muted nc-foot">Pop-ups for these can be turned off per kind in My Settings → Notifications.</p>
       </aside>
     </Transition>
   </Teleport>

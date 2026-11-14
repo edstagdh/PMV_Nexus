@@ -6,7 +6,7 @@ An extension is a Python package -- `extensions/<name>/__init__.py` -- with a
 `register(api)` function, called once at start with an ExtensionAPI. Through it an
 extension can:
   - add actions to a video's menu and/or the library's "picked videos" bar, and
-    panels to Server settings → Extensions. Both use the app's generic forms (no
+    panels to Server Settings → Extensions. Both use the app's generic forms (no
     interface code in the extension): the handler returns a form to show, the
     person fills it in, the handler gets the values and returns the next form or
     "done" -- see Form below;
@@ -18,7 +18,7 @@ extension can:
 Its Python packages go in `extensions/<name>/requirements.txt`
 (`python -m Tools.install_extensions` installs them; so does the Windows Setup).
 
-A broken extension is skipped (and shown as failed under Server settings →
+A broken extension is skipped (and shown as failed under Server Settings →
 Extensions); the app runs without it.
 
 Form (what an action / panel handler returns):
@@ -127,7 +127,7 @@ class ExtensionAPI:
 
     def add_credentials(self, group: str, label: str, help: str, fields: dict) -> None:
         """fields: name -> {"label", "kind": "text|secret|number|toggle", "default"?}. Shown under
-        Server settings → Credentials; read with api.secret(name)."""
+        Server Settings → Credentials; read with api.secret(name)."""
         from . import secrets_store
         for name, spec in fields.items():
             secrets_store.FIELDS[name] = {"group": group, **spec}
@@ -188,7 +188,7 @@ class ExtensionAPI:
         return activity
 
     def proxy_url(self) -> Optional[str]:
-        """The proxy, when Server settings → Proxy sends extensions' uploads through it."""
+        """The proxy, when Server Settings → Proxy sends extensions' uploads through it."""
         from . import proxy
         return proxy.for_uploads()
 

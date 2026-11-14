@@ -28,7 +28,7 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "library", component: LibraryView },
     { path: "/video/:id", name: "video", component: VideoView, props: true, meta: { title: "Video" } },
-    { path: "/settings", name: "settings", component: SettingsView, meta: { title: "My settings" } },
+    { path: "/settings", name: "settings", component: SettingsView, meta: { title: "My Settings" } },
     { path: "/playlists", name: "playlists", component: PlaylistsView, meta: { title: "Playlists" } },
     { path: "/playlist/:id", name: "playlist", component: PlaylistView, props: true, meta: { title: "Playlist" } },
     { path: "/performers", name: "performers", component: PerformersView, meta: { title: "Performers" } },
@@ -40,7 +40,7 @@ export const router = createRouter({
     { path: "/tasks", name: "tasks", component: TasksView, meta: { title: "Tasks", permission: "tasks.view" } },
     { path: "/help/:tab(guide|changelog|terms|about)?", name: "help", component: HelpView,
       meta: { title: (to) => ({ changelog: "Changelog", about: "About" }[to.params.tab] || "Help") } },
-    { path: "/admin/server", name: "server", component: ServerSettingsView, meta: { title: "Server settings", admin: true } },
+    { path: "/admin/server", name: "server", component: ServerSettingsView, meta: { title: "Server Settings", admin: true } },
     // Users, Duplicates, Maintenance, Scheduler, Backups, Stats, Logs, Tools: tabs of one page (2.7.0).
     { path: "/admin/portal/:tab?", name: "portal", component: AdminPortalView,
       meta: { title: (to) => PORTAL_TABS.find((t) => t.key === to.params.tab)?.label || "Management" } },

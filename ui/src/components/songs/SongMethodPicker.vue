@@ -1,6 +1,6 @@
 <script setup>
 // How to find songs (2.34.0; config.SongsConfig.method): Shazam, Gemini (AI) or both.
-// The Gemini choices need its API key (Server settings → Credentials).
+// The Gemini choices need its API key (Server Settings → Credentials).
 import { computed } from "vue";
 
 const props = defineProps({

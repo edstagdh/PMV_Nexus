@@ -6,7 +6,7 @@ through loguru: the console, the rotated text file (backend.log) and the
 searchable store behind Admin -> Logs (log_store.py).
 
 apply_logging() (re)builds those outputs from the current settings; Admin
--> Server settings -> Logging calls it, so changes apply without a restart.
+-> Server Settings -> Logging calls it, so changes apply without a restart.
 With logging switched off nothing is recorded anywhere.
 """
 from __future__ import annotations

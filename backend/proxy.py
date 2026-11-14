@@ -1,5 +1,5 @@
 """
-Using the optional proxy (Admin -> Server settings -> Proxy).
+Using the optional proxy (Admin -> Server Settings -> Proxy).
 
 - Where it's used comes from Settings.proxy (see config.ProxyConfig):
   site traffic (off / split / all) and extensions' uploads (2.30.0).
@@ -61,7 +61,7 @@ def for_sites() -> str:
 
 
 def for_uploads() -> Optional[str]:
-    """The proxy URL when extensions' uploads should use it (Server settings -> Proxy)."""
+    """The proxy URL when extensions' uploads should use it (Server Settings -> Proxy)."""
     cfg = get_settings().proxy
     return cfg.address() if cfg.address() and cfg.uploads else None
 

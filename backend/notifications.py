@@ -12,7 +12,7 @@ counts unread warnings and errors.
 Who sees it: `user_id` = that user (e.g. the person who added the video);
 None = the admins (permission settings.manage). Admins see both.
 
-Categories: download, reencode, repair, upload, extension (2.30.0), job, system.
+Categories: download, reencode, repair, upload, extension (2.30.0), job, duplicate (3.1.0), system.
 Levels: success, info, warning, error.
 
 Never put secrets, codes or phone numbers in a notification.
@@ -26,7 +26,7 @@ from loguru import logger
 
 KEEP_DAYS = 30
 KEEP_MAX = 2000
-CATEGORIES = ("download", "reencode", "repair", "upload", "extension", "job", "system")
+CATEGORIES = ("download", "reencode", "repair", "upload", "extension", "job", "duplicate", "system")
 LEVELS = ("success", "info", "warning", "error")
 
 _db = None

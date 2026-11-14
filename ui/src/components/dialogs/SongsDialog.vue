@@ -44,7 +44,7 @@ onBeforeUnmount(() => { clearTimeout(timer); stop?.(); });
 <template>
   <ModalDialog :title="`Find songs: ${item.title || 'video'}`" width="44rem" @close="emit('close')">
     <p class="muted small lead">Samples of the video's sound are recognised by Shazam and / or Gemini, Google's AI (its finds are
-      marked “Gemini (AI)”; it needs its API key in Server settings → Credentials). Only short sound samples are sent. What's found waits here and in Management → Songs.</p>
+      marked “Gemini (AI)”; it needs its API key in Server Settings → Credentials). Only short sound samples are sent. What's found waits here and in Management → Songs.</p>
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-if="!data" class="skeleton" style="height: 4rem; border-radius: var(--radius)" />
     <template v-else>

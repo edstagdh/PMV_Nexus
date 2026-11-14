@@ -15,7 +15,7 @@ const emit = defineEmits(["filter"]);
     <div class="vcard-body">
       <div class="vcard-head">
         <router-link :to="{ name: 'video', params: { id: item.id } }" class="vcard-title">{{ itemUrlTitle(item) }}</router-link>
-        <ActionMenu v-if="!small" :item="item" />
+        <ActionMenu :item="item" />
       </div>
       <div class="vcard-meta">
         <button v-if="item.creator" class="linkish text-creator" :title="`Show videos by ${item.creator}`" @click="emit('filter', 'creator', item.creator)">{{ item.creator }}</button>

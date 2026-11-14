@@ -93,6 +93,17 @@ export function closePlayer() {
   clearQueue();
 }
 
+/** The player's <video> element (or null), e.g. for the frames under it (3.0.1). */
+export function playerVideo() { return els.video; }
+
+/** Jumps the player to `seconds` and plays from there (the frames under the player, 3.0.1). */
+export function seekPlayer(seconds) {
+  const v = els.video;
+  if (!v || !Number.isFinite(seconds)) return;
+  v.currentTime = Math.max(0, seconds);
+  if (v.paused) v.play().catch(() => {});
+}
+
 export function expandPlayer() {
   if (player.item) navigate({ name: "video", params: { id: player.item.id } });
 }

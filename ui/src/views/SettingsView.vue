@@ -32,12 +32,12 @@ const SORT_LABELS = {
 };
 const BADGE_LABELS = {
   duration: "Duration", quality: "Quality", codec: "Codec (H.264 / HEVC / AV1)", filesize: "File size",
-  orientation: "Orientation (🖥️ / 📱)", rating: "Rating", gone: "💀 Removed from PMVHaven",
+  orientation: "Orientation (🖥️ / 📱)", rating: "Rating", gone: "💀 Removed from PMVHaven", favorite: "♥ In my Favorites",
   status: "Work in progress (re-encode, repair)",
 };
 const GONE_COLORS = ["#dc2626", "#b91c1c", "#e11d48", "#7c3aed", "#ea580c", "#111827"];
 const CHIP_KINDS = [
-  { key: "performer", label: "Performers", sample: ["Ava Rose", "Riley Reid"] },
+  { key: "performer", label: "Performers", sample: ["Aurora Vale", "Luna Prism"] },
   { key: "tag", label: "Tags", sample: ["#pmv", "#compilation"] },
   { key: "music", label: "Music", sample: ["Track — Artist"] },
   { key: "creator", label: "Uploader", sample: ["CreatorName"], text: true },
@@ -91,7 +91,7 @@ function resetTab() {
   const keys = {
     appearance: ["textScale", "goneColor", "chipColorsOn", "chipColors", "customTheme"],
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
-    video: ["relatedCount", "relatedBadges", "backMode", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "watchedBar", "panicKeys"],
+    video: ["relatedCount", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
   }[tab.value] || [];
   for (const k of keys) {
@@ -139,7 +139,7 @@ async function deleteAccount() {
 <template>
   <div class="settings">
     <header class="head">
-      <h1>My settings</h1>
+      <h1>My Settings</h1>
       <button v-if="tab !== 'account'" class="btn btn-ghost btn-sm" @click="resetTab">Reset this tab</button>
     </header>
 
@@ -283,15 +283,6 @@ async function deleteAccount() {
           <div class="preview"><VideoThumb :item="sample" compact /></div>
         </div>
       </div>
-      <div class="row top">
-        <div class="label"><strong>Back button</strong></div>
-        <div class="radios">
-          <label class="radio"><input type="radio" :checked="session.prefs.backMode === 'library'" @change="savePref('backMode', 'library')">
-            <span><strong>Back to the library</strong><span class="muted">Returns to the library with your filters, page and scroll position — even after opening several videos (e.g. with Discover).</span></span></label>
-          <label class="radio"><input type="radio" :checked="session.prefs.backMode === 'history'" @change="savePref('backMode', 'history')">
-            <span><strong>Previous page</strong><span class="muted">Works like the browser's back button: steps back through the videos you opened.</span></span></label>
-        </div>
-      </div>
       <div class="row">
         <div class="label">
           <strong>Mini-player</strong>
@@ -312,6 +303,13 @@ async function deleteAccount() {
           <span class="muted">Opening a video I stopped partway through starts there (with a <em>Start over</em> button for a few seconds). Saved for my account, so it follows me to other devices. Videos watched to the end start from the beginning.</span>
         </div>
         <label class="switch"><input type="checkbox" :checked="session.prefs.resumePlayback !== false" @change="savePref('resumePlayback', $event.target.checked)">Continue</label>
+      </div>
+      <div class="row">
+        <div class="label">
+          <strong>Frames under the player</strong>
+          <span class="muted">A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file.</span>
+        </div>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.videoFrames !== false" @change="savePref('videoFrames', $event.target.checked)">Show them</label>
       </div>
       <div class="row">
         <div class="label">
@@ -359,6 +357,7 @@ async function deleteAccount() {
           <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.reencode" @change="setToast('reencode', $event.target.checked)">Re-encodes and repairs finished / failed</label>
           <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.upload" @change="setToast('upload', $event.target.checked)">Uploads finished / failed</label>
           <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.job" @change="setToast('job', $event.target.checked)">Jobs finished / failed (scans, syncs, backups, performer matching)</label>
+          <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.duplicate" @change="setToast('duplicate', $event.target.checked)">Possible duplicates found</label>
         </div>
       </div>
     </section>

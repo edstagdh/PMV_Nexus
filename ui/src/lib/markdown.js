@@ -2,7 +2,8 @@
 // with it. Minimal, dependency-free Markdown -> HTML renderer for the in-app Guide,
 // Changelog and About pages. Covers what those documents use: headings,
 // paragraphs, bold/italic, inline code, fenced code, links, ordered/
-// unordered (nested) lists, blockquotes, horizontal rules and pipe tables.
+// unordered (nested) lists, blockquotes, horizontal rules, pipe tables and the
+// Guide's own pictures (![text](screenshots/name.webp), 3.0.1 -- nothing else).
 // All text is HTML-escaped first; links are restricted to http(s), mailto,
 // relative and #anchor targets.
 const escapeHtml = (str) => String(str)
@@ -19,6 +20,8 @@ function inline(text) {
     return `\u0000${codes.length - 1}\u0000`;
   });
   out = out
+    .replace(/!\[([^\]]*)\]\(screenshots\/([a-z0-9][a-z0-9-]*\.(?:webp|png))\)/g, (m, alt, name) =>
+      `<img class="doc-shot" src="/api/system/docs/screenshots/${name}" alt="${alt}" loading="lazy">`)
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, href) => {
       const decoded = href.replace(/&amp;/g, "&");
       if (!/^(https?:\/\/|mailto:|\/|#|\.\/)/i.test(decoded)) return label;

@@ -19,12 +19,21 @@ see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues
 > control, and this project hosts no media. Read the full [Terms of use and disclaimer](DISCLAIMER.md) — installing
 > or using PMV Nexus means you accept them.
 
-<!-- Screenshots: add PNGs to docs/screenshots/ and list them here, e.g.
 <p align="center">
-  <img src="docs/screenshots/library.png" alt="The library" width="49%">
-  <img src="docs/screenshots/video.png" alt="A video's page" width="49%">
+  <img src="docs/screenshots/library.webp" alt="The library: thumbnails with badges, search, filters and views" width="49%">
+  <img src="docs/screenshots/video.webp" alt="A video's page: the player, its frames, details and related videos" width="49%">
 </p>
--->
+<p align="center">
+  <img src="docs/screenshots/performers.webp" alt="Performers" width="32%">
+  <img src="docs/screenshots/playlists.webp" alt="Playlists" width="32%">
+  <img src="docs/screenshots/stats.webp" alt="Statistics" width="32%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/phone-library.webp" alt="The library on a phone" width="24%">
+  <img src="docs/screenshots/phone-video.webp" alt="A video's page on a phone" width="24%">
+</p>
+<p align="center"><sub>Screenshots of a demo library: the titles, names, numbers and the abstract videos are made up.
+More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 
 ---
 
@@ -68,7 +77,7 @@ see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues
 
 ### Re-encoding (HEVC / AV1)
 - Re-encodes any completed download to HEVC (`libx265`) or AV1 (`libsvtav1`) via ffmpeg, with:
-  - The target codec chosen in Server settings, each codec with its own CRF and preset
+  - The target codec chosen in Server Settings, each codec with its own CRF and preset
   - Optional downscale to 1080p (vertical videos are scaled by height, not squashed)
   - Optional CPU limit: a number of cores or a percentage of them (the encoder is pinned to those cores)
   - Optional chapter removal
@@ -84,7 +93,7 @@ see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues
 ### Extensions
 Optional add-ons, each a Python package in an `extensions/` folder next to `run.py`. The folder isn't part of
 the app and isn't created by it: with no extensions, nothing about them shows anywhere. An extension can add
-actions to a video's menu and to the picked-videos bar, settings panels (Server settings → Extensions),
+actions to a video's menu and to the picked-videos bar, settings panels (Server Settings → Extensions),
 credentials, permissions, sources and API routes; it draws no interface of its own — the app shows the forms it
 describes. See [Extensions](#extensions-1) below and the comments at the top of `backend/extensions.py`.
 
@@ -210,7 +219,7 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
 - The Start-menu shortcut starts the app if it isn't running — with a **tray icon**, no console window — and opens
   it in the browser. Setup's **Opening the app** page sets which browser (e.g. a Firefox or Chrome profile) and
-  whether starting also opens it (later: Server settings → Opening the app). "PMV Nexus (console)" starts it with its log window instead, for troubleshooting.
+  whether starting also opens it (later: Server Settings → Opening the app). "PMV Nexus (console)" starts it with its log window instead, for troubleshooting.
 
 ### Linux / macOS: `install.sh`
 Get the code (download the release's source zip, or `git clone`), then run **`./install.sh`**: Python check (with the
@@ -263,7 +272,7 @@ python -m Tools.install_extensions
 
 ## Configuration
 
-Non-secret settings live in **`config.yaml`** (created from `config.example.yaml` on first start, not committed); credentials are managed in the app under **Admin → Server settings → Credentials** (stored encrypted). Anything changed under Admin → Server settings is stored separately in `data/settings_overrides.json` and layered on top of `config.yaml` at runtime — you don't need to hand-edit the YAML for day-to-day tweaks.
+Non-secret settings live in **`config.yaml`** (created from `config.example.yaml` on first start, not committed); credentials are managed in the app under **Admin → Server Settings → Credentials** (stored encrypted). Anything changed under Admin → Server Settings is stored separately in `data/settings_overrides.json` and layered on top of `config.yaml` at runtime — you don't need to hand-edit the YAML for day-to-day tweaks.
 
 **Key names in `config.yaml` must match the field names on the corresponding Pydantic model in `backend/config.py` exactly.** Unrecognized keys are silently dropped (Pydantic ignores unknown fields on a plain `BaseModel` rather than erroring), and any field `config.yaml` doesn't set falls back to that model's own default — with no warning that your intended value never took effect. If a setting doesn't seem to be applying, check it against the table below and against `config.py` directly.
 
@@ -286,11 +295,11 @@ Non-secret settings live in **`config.yaml`** (created from `config.example.yaml
 | | `save_metadata_json` | `true` | Write a `<name>.json` metadata file next to every video. |
 | `auth` | `session_ttl_hours` | `720` (30 days) | How long the web UI's login cookie stays valid. |
 | `logging` | `log_dir`, `rotation`, `retention`, `level` | `./data/logs`, `1 month`, `12 months`, `INFO` | loguru configuration. `rotation`/`retention` must be strings loguru understands (e.g. `"1 month"`, `"500 MB"`) — a plain word like `"monthly"` won't parse. |
-| `reencode` | `codec`, `target_crf`, `preset`, `av1_crf`, `av1_preset`, `copy_audio`, `downscale`, `cpu_limit_mode`, `cpu_limit_cores`, `cpu_limit_percent`, `remove_chapters`, `keep_original_file` | `hevc`, `24`, `medium`, `32`, `8`, `true`, `true`, `percent`, `4`, `70`, `false`, `false` | Editable under Admin → Server settings → Re-encode (the old `limit_cpu_usage` is read as 70% / off). |
+| `reencode` | `codec`, `target_crf`, `preset`, `av1_crf`, `av1_preset`, `copy_audio`, `downscale`, `cpu_limit_mode`, `cpu_limit_cores`, `cpu_limit_percent`, `remove_chapters`, `keep_original_file` | `hevc`, `24`, `medium`, `32`, `8`, `true`, `true`, `percent`, `4`, `70`, `false`, `false` | Editable under Admin → Server Settings → Re-encode (the old `limit_cpu_usage` is read as 70% / off). |
 
 Windows paths like `D:/PH_DATA` work fine — forward slashes are fine cross-platform since everything is read through `pathlib`.
 
-### Credentials (Admin → Server settings → Credentials)
+### Credentials (Admin → Server Settings → Credentials)
 
 All passwords, API keys and account settings are managed in the app and stored encrypted
 (`data/secrets.db`, key in `data/secret.key` — keep the `data` folder private):
@@ -316,7 +325,7 @@ From the project root:
   - **click the icon** (or **Open PMV Nexus**) to open the app in the browser — the default one, or the program
     set in `config.yaml` → `tray.browser` (e.g. a Firefox profile: `"C:/Program Files/Mozilla Firefox/firefox.exe" -P
     Videos --new-window {url}`); `tray.open_browser: false` = a shortcut that starts the app doesn't open it (both
-    also under Server settings → Opening the app; the browser only from the computer the app runs on);
+    also under Server Settings → Opening the app; the browser only from the computer the app runs on);
   - **hover** to see what it's doing ("2 downloads, 1 re-encode, 1 playing");
   - **right-click**: Open, Copy the setup code (only before the first account exists), Open the log folder, Open the
     app folder, **Exit** (asks first when work is running, then stops cleanly — interrupted downloads and re-encodes
@@ -342,7 +351,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 
 ### First run
 1. On a fresh install the console prints a **setup code**. Open `http://localhost:8676` (or the port you set), enter the code and create the admin account.
-2. Enter your **PMVHaven API key** (and any other keys) in **Admin → Server settings → Credentials** (PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. The app uses the site's **API only** — video details and the site's own download endpoint; it never signs in to the site or reads its pages.
+2. Enter your **PMVHaven API key** (and any other keys) in **Admin → Server Settings → Credentials** (PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. The app uses the site's **API only** — video details and the site's own download endpoint; it never signs in to the site or reads its pages.
 3. Click **+ Add videos**, paste a `pmvhaven.com/video/...` URL; it appears under **Tasks** while it downloads, then in the **Library**.
 
 ---
@@ -357,7 +366,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 - **Mini-player** — leave a playing video's page and it keeps playing in a floating, draggable player while you browse; a tab reload brings it back paused at the same moment.
 - **Upload** — add videos from your own computer with all their details; thumbnail, preview and technical details are made from the file.
 - **Queues** — waiting downloads can be moved to the front/back or up/down on the Tasks page; waiting re-encodes up/down.
-- **Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Admin → Server settings**.
+- **Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Admin → Server Settings**.
 - **Maintenance** — **Admin → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything and untracked files.
 
 ---
@@ -413,7 +422,7 @@ accounts from the backup.
    finds the videos, thumbnails and previews in them (by `<creator>/<file>`, so the old paths don't have to match).
    The app then starts with the restored library, settings and accounts — on the port in the backup's
    `config.yaml`. No setup code or temporary account is needed.
-3. Check **Management → Tools** (ffmpeg and packages), and **Server settings → Credentials** if the backup had no
+3. Check **Management → Tools** (ffmpeg and packages), and **Server Settings → Credentials** if the backup had no
    secrets.
 
 ### Backups from other versions
@@ -446,9 +455,9 @@ extensions/
   with the app's Python (the Windows Setup does this itself when it finds the folder), restart the app.
 - **Remove:** stop the app, delete the extension's folder, start it again. Its data on videos stays in the
   database, unused, and comes back if you reinstall it.
-- **See them:** Server settings → **Extensions** (only there when at least one is installed): what's loaded or
+- **See them:** Server Settings → **Extensions** (only there when at least one is installed): what's loaded or
   failed (the log says why), and their settings panels. Their actions appear in a video's menu and in the
-  library's picked-videos bar; their credentials under Server settings → Credentials; their permissions under
+  library's picked-videos bar; their credentials under Server Settings → Credentials; their permissions under
   Users → roles.
 - **Write one:** the API (`ExtensionAPI`) and the form format are described at the top of
   `backend/extensions.py`. A broken extension is skipped; the app runs without it.
@@ -473,7 +482,7 @@ Downloaded videos themselves go to `<output_dir>/<creator>/<creator> - <upload d
 
 ## External API (userscript integration)
 
-These endpoints authenticate via a static `X-API-Key` header (generate the key in **Admin → Server settings → Credentials → External API** to enable them) instead of the cookie-based session, for tools like a browser userscript that can't hold a login session:
+These endpoints authenticate via a static `X-API-Key` header (generate the key in **Admin → Server Settings → Credentials → External API** to enable them) instead of the cookie-based session, for tools like a browser userscript that can't hold a login session:
 
 - `POST /api/external/library` — body `{"url": "..."}`, adds a video to the library.
 - `GET /api/external/exists?url=...` — returns `{"exists": bool, "status": ..., "title": ..., "label": ...}` for dedupe checks before adding (an item that previously `failed` is reported as not existing, since it's re-addable). A duplicate removed on the Duplicates page has `status: "merged"` and `duplicate_of: {id, title, url}` (the copy that was kept).

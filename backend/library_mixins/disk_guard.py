@@ -60,7 +60,7 @@ class DiskGuardMixin:
         return worst or {"path": None, "free_percent": 100.0, "free_bytes": 0, "total_bytes": 0}
 
     def disk_guard_status(self) -> dict:
-        """For the summary (banner) and Server settings."""
+        """For the summary (banner) and Server Settings."""
         return {**self._disk, "limit": self.settings.download.min_free_percent}
 
     def check_disk_space(self) -> bool:

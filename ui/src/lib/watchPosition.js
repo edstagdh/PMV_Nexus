@@ -1,9 +1,9 @@
 // Continue where you left off (2.24.0): saves my place in the playing video
-// (PUT /api/library/{id}/position) every 10 s while it plays, when it's paused,
+// (PUT /api/library/{id}/position) every 5 s while it plays (3.0.1; was 10), when it's paused,
 // after a seek, when it ends, when another video loads and when the tab closes.
 import { setWatch, FINISHED } from "../stores/watchProgress.js";
 
-const EVERY = 10000;
+const EVERY = 5000;
 
 export function trackPosition(video, getItemId, getDuration) {
   let last = { id: null, pos: 0, dur: 0 };   // what's playing, as of the last timeupdate

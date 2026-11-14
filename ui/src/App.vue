@@ -23,6 +23,7 @@ import { discover } from "./lib/discover.js";
 import NotificationBell from "./components/NotificationBell.vue";
 import { startNotifications, stopNotifications } from "./stores/notifications.js";
 import { loadExtensions } from "./stores/extensions.js";
+import { loadFavorites } from "./stores/favorites.js";
 
 const navOpen = ref(false);
 const addOpen = ref(false);
@@ -32,7 +33,7 @@ const route = useRoute();
 const router = useRouter();
 setNavigator(router.push);
 
-// Panic keys (2.24.0, My settings -> Video page): stop everything, show an empty page.
+// Panic keys (2.24.0, My Settings -> Video page): stop everything, show an empty page.
 installPanic(() => (session.user ? (session.prefs.panicKeys || []).map((k) => k.code) : []), () => {
   document.querySelectorAll("video, audio").forEach((m) => { try { m.pause(); } catch { /* gone */ } });
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -66,7 +67,7 @@ watchEffect(() => {
 setUnauthorizedHandler(() => { session.user = null; });
 loadSession();
 watch(() => session.user, (user) => {
-  if (user) { connectLive(); startNotifications(); loadExtensions(true); } else { disconnectLive(); stopNotifications(); }
+  if (user) { connectLive(); startNotifications(); loadExtensions(true); loadFavorites(true); } else { disconnectLive(); stopNotifications(); }
 });
 
 // Lost the server (it's down, restarting, or the network dropped): a banner

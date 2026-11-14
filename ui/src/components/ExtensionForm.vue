@@ -1,7 +1,7 @@
 <script setup>
 // Draws the forms an extension's action or panel returns and sends the answers
 // back, step by step, until it says it's done (2.30.0; backend/extensions.py has
-// the form format). Used by the extension dialog and Server settings → Extensions.
+// the form format). Used by the extension dialog and Server Settings → Extensions.
 import { ref, onMounted } from "vue";
 import { api } from "../lib/api.js";
 

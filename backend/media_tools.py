@@ -34,6 +34,7 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Callable, Optional
 import hashlib
 import cv2
@@ -695,7 +696,7 @@ def download_hls_to_mp4(
     tmp_output = f"{output_path}.part.mp4"
     cmd = [
         "ffmpeg", "-y", "-hide_banner",
-        *(input_args or []),  # e.g. -http_proxy (Server settings -> Proxy)
+        *(input_args or []),  # e.g. -http_proxy (Server Settings -> Proxy)
         "-i", hls_url,
         "-c", "copy",
         "-bsf:a", "aac_adtstoasc",  # HLS audio (ADTS AAC) needs this to remux cleanly into an mp4 container
@@ -854,6 +855,8 @@ def probe_streams(file_path: str) -> dict:
         "video": video.get("codec_name"), "pix_fmt": video.get("pix_fmt"),
         "width": video.get("width"), "height": video.get("height"),
         "audio": audio.get("codec_name") if audio else None, "duration": duration,
+        "audio_channels": int(audio.get("channels") or 0) if audio else 0,
+        "audio_codecs": [s.get("codec_name") for s in streams if s.get("codec_type") == "audio"],
         "format": (data.get("format") or {}).get("format_name"),
     }
 
@@ -1377,6 +1380,56 @@ def best_alignment_similarity(
 
 
 # --------------------------------------------------------------------------
+# Audio browsers can play (3.0.1)
+# --------------------------------------------------------------------------
+# Browsers play AAC, MP3, Opus and FLAC (and Vorbis in WebM / MKV). Some videos
+# carry audio they can't -- uncompressed PCM ("pcm_s16le", "pcm_s24le", ...),
+# AC-3 / E-AC-3, DTS, TrueHD, ALAC, MP2 -- and play silent. Such audio is
+# converted to AAC; the picture is copied as it is.
+PLAYABLE_AUDIO = MP4_BROWSER_AUDIO | {"vorbis"}
+
+
+def unplayable_audio(info: dict) -> list[str]:
+    """The audio codecs in `info` (probe_streams) a browser can't play."""
+    return sorted({c for c in info.get("audio_codecs") or [] if c and c not in PLAYABLE_AUDIO})
+
+
+def convert_audio_to_aac(path: str, info: dict, timeout: Optional[int] = None) -> Optional[Path]:
+    """Writes a copy of `path` with its audio as AAC next to it (the video,
+    chapters and details are copied as they are) and returns it; the caller
+    puts it in place of the original. None when it didn't work. BLOCKING."""
+    src = Path(path)
+    tmp = src.with_name(f"{src.stem}.audio.part{src.suffix}")
+    channels = int(info.get("audio_channels") or 2)
+    bitrate = "192k" if channels <= 2 else f"{min(channels, 8) * 64}k"
+    cmd = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-i", str(src),
+           "-map", "0:V:0", "-map", "0:a?", "-c:v", "copy", "-c:a", "aac", "-b:a", bitrate,
+           "-map_metadata", "0", "-map_chapters", "0", "-dn", "-sn"]
+    if src.suffix.lower() in (".mp4", ".m4v", ".mov"):
+        if info.get("video") == "hevc":
+            cmd += ["-tag:v", "hvc1"]  # what Safari and most players expect for HEVC in MP4
+        cmd += ["-movflags", "+faststart"]
+    cmd.append(str(tmp))
+    if timeout is None:
+        timeout = 600 + src.stat().st_size // (2 * 1024 * 1024)  # 10 min + 1 s per 2 MB
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=timeout)
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.warning("Converting the audio of {} failed: {}", src, exc)
+        result = None
+    if result is None or result.returncode != 0 or not tmp.is_file() or tmp.stat().st_size == 0:
+        if result is not None:
+            logger.warning("Converting the audio of {} failed: {}", src, result.stderr.decode(errors="replace")[-1500:])
+        tmp.unlink(missing_ok=True)
+        return None
+    check = probe_streams(str(tmp))
+    if not check.get("video") or unplayable_audio(check) or abs(float(check.get("duration") or 0) - float(info.get("duration") or 0)) > 2:
+        logger.warning("Converting the audio of {} made an unusable file; the original is kept", src)
+        tmp.unlink(missing_ok=True)
+        return None
+    return tmp
+
+
 # Browser-playable preview clips
 # --------------------------------------------------------------------------
 # Browsers only decode 8-bit 4:2:0 video. Some previews served by the site are

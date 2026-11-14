@@ -64,7 +64,7 @@ GROUPS = [
      "Key the companion userscript sends in the X-API-Key header. Leave empty to disable the external API."),
     ("virustotal", "VirusTotal",
      "Free API key from https://www.virustotal.com (sign in → API key). Used to look up each uploaded file's fingerprint "
-     "(SHA-256) — only the fingerprint is sent, never the file. Server settings → Uploads → Fingerprint check."),
+     "(SHA-256) — only the fingerprint is sent, never the file. Server Settings → Uploads → Fingerprint check."),
     ("gemini", "Google Gemini (optional AI)",
      "Optional, free-tier API key from https://aistudio.google.com/apikey. Only used by features you turn on: "
      "Management → Songs → “Ask Gemini (AI)” sends 20-second sound clips of the spots Shazam didn't recognise. "
@@ -73,7 +73,7 @@ GROUPS = [
      "API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases)."),
     ("proxy", "Proxy",
      "e.g. socks5://192.168.1.10:1080 or http://proxy.example:8080; username/password only if it needs them. "
-     "Where it's used, and a speed test: Server settings → Proxy."),
+     "Where it's used, and a speed test: Server Settings → Proxy."),
 ]
 
 
@@ -156,7 +156,7 @@ def ensure_initialized() -> None:
         if imported:
             logger.info(
                 "Imported {} credential(s) from .env into the encrypted credential store ({}). "
-                ".env is no longer read -- manage credentials in Server settings → Credentials.",
+                ".env is no longer read -- manage credentials in Server Settings → Credentials.",
                 len(imported), ", ".join(imported),
             )
     if "app_secret_key" not in stored and "app_secret_key" not in updates:

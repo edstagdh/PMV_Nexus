@@ -8,8 +8,8 @@ person's data is always fetched, whatever the name looks like later:
     aliases links automatically; several possible people, or only near
     misses, wait in the review list (Maintenance -> Performers) for a pick;
   - when a profile is linked, other names in the library that ThePornDB
-    lists as her aliases point to the same profile ("Riley R" -> Riley
-    Reid). With Server settings -> Performers -> merge aliases on, the app
+    lists as her aliases point to the same profile ("Luna P" -> Luna
+    Prism). With Server Settings -> Performers -> merge aliases on, the app
     then shows them as one name everywhere (see spellings.py); a wrong
     merge is split on her profile page, and that name is never merged into
     her again;
@@ -29,9 +29,11 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import time
 import uuid
 from datetime import date
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Optional
 
 from loguru import logger
@@ -205,7 +207,7 @@ class PerformersMixin:
         """Scheduler job: look up new performer names on ThePornDB, refresh
         profiles older than refresh_days, fetch missing photos."""
         if not tpdb.configured():
-            raise PerformerError("No ThePornDB API key -- add it in Server settings -> Credentials")
+            raise PerformerError("No ThePornDB API key -- add it in Server Settings -> Credentials")
         if self._perf_running:
             raise JobBlockedError("Performer matching is already running")
         self._perf_running = True
@@ -356,7 +358,7 @@ class PerformersMixin:
         if existing and self._photo_urls(existing.get("data") or {}) == urls and len(old_paths) == len(urls) \
                 and all(Path(p).exists() for p in old_paths):
             return old_paths
-        folder = self.settings.cache_dir / "performers"
+        folder = self.performer_photos_dir()
         paths: list[str] = []
         for n, url in enumerate(urls):
             saved = await tpdb.download_photo(url, folder / (pid if n == 0 else f"{pid}_{n}"))
@@ -483,7 +485,7 @@ class PerformersMixin:
 
     # ---------------------------------------------------------------- photos as WebP (2.15.0)
     def _photos_of(self, p: dict) -> list[str]:
-        """Her ThePornDB photos (saved in cache/performers)."""
+        """Her ThePornDB photos (saved in data/performers; before 3.0.1 cache/performers)."""
         return list(p.get("photos") or ([p["photo_path"]] if p.get("photo_path") else []))
 
     def _all_photos(self, p: dict) -> list[str]:
@@ -736,6 +738,67 @@ class PerformersMixin:
 
     # ---------------------------------------------------------------- photos added by hand (2.16.0)
     MAX_CUSTOM_PHOTOS = 1  # 2.18.0: one of your own per performer; a new one replaces it
+
+    def performer_photos_dir(self) -> Path:
+        """ThePornDB photos (3.0.1): their own folder in the app's data folder.
+        Before, they were in the cache folder's "performers" folder, among a folder
+        per creator."""
+        return self.settings.library_db_file.parent / "performers"
+
+    def relocate_performer_photos(self) -> None:
+        """At every start (3.0.1), quick when there's nothing to do:
+        - moves ThePornDB photos from <cache folder>/performers to data/performers;
+        - points saved photo paths whose file is gone at the same file in today's
+          folders -- e.g. after a backup was restored with other folders (the
+          paths in the database are those of the computer it came from).
+        Never raises: a photo that can't be found or moved stays as it was."""
+        new_dir, old_dir = self.performer_photos_dir(), self.settings.cache_dir / "performers"
+        custom_dir = self._custom_photo_dir()
+
+        def name_of(value: str) -> str:  # a path of this or another computer (Windows / Linux)
+            return PureWindowsPath(value).name if "\\" in value else PurePosixPath(value).name
+
+        moved = repointed = 0
+        try:
+            for row in self.db.performer_rows():
+                photos = json.loads(row.get("photos") or "[]") or ([row["photo_path"]] if row.get("photo_path") else [])
+                new = []
+                for value in photos:
+                    name, cur = name_of(value), Path(value)
+                    dest = new_dir / name
+                    try:
+                        if cur.is_file() and cur.parent != new_dir:
+                            new_dir.mkdir(parents=True, exist_ok=True)
+                            if not dest.exists():
+                                shutil.move(str(cur), str(dest))
+                                moved += 1
+                            new.append(str(dest) if dest.is_file() else value)
+                        elif not cur.is_file() and dest.is_file():
+                            new.append(str(dest))
+                            repointed += 1
+                        elif not cur.is_file() and (old_dir / name).is_file():
+                            new_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(old_dir / name), str(dest))
+                            new.append(str(dest))
+                            moved += 1
+                        else:
+                            new.append(value)
+                    except OSError as exc:
+                        logger.warning("Performer photo {} couldn't be moved: {}", value, exc)
+                        new.append(value)
+                if new != photos:
+                    self.db.set_performer_photos(row["id"], new)
+            for c in self.db.custom_photo_rows():
+                cand = custom_dir / name_of(c["path"])
+                if not Path(c["path"]).is_file() and cand.is_file():
+                    self.db.set_custom_photo_path(c["id"], str(cand))
+                    repointed += 1
+            if old_dir.is_dir() and not any(old_dir.iterdir()):
+                old_dir.rmdir()
+        except Exception:  # noqa: BLE001 -- never stop the start over photos
+            logger.exception("Couldn't check the performer photos' folders")
+        if moved or repointed:
+            logger.info("Performer photos: {} moved to {}, {} found again after a folder change", moved, new_dir, repointed)
 
     def _custom_photo_dir(self):
         """In the app's data folder (not the cache): they can't be downloaded again,

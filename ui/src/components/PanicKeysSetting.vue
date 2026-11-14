@@ -1,5 +1,5 @@
 <script setup>
-// My settings -> Video page -> Panic keys (2.24.0; 2.24.2: recorded, then confirmed).
+// My Settings -> Video page -> Panic keys (2.24.0; 2.24.2: recorded, then confirmed).
 //   1. "Recording keys": the keys show as the app detects them (at most 3).
 //   2. Once they're all let go: "The app detected A + D" -> Use these keys / Try again / Cancel.
 //   3. Saved only after "Use these keys".

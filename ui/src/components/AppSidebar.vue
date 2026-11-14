@@ -1,11 +1,18 @@
 <script setup>
 import { PORTAL_TABS } from "../lib/portalTabs.js";
 import { computed } from "vue";
+import { useRoute } from "vue-router";
+import { lastLibraryLocation } from "../lib/nav.js";
 import Icon from "./Icon.vue";
 import AppLogo from "./AppLogo.vue";
 import { session, savePref, hasPermission, isAdmin, logout } from "../stores/session.js";
 import { live } from "../stores/live.js";
 import { discover } from "../lib/discover.js";
+
+// 3.1.0: from another page, Library returns to the library as you left it (filters,
+// page -- what the video page's Back button did); in the library it starts afresh.
+const route = useRoute();
+const libraryLink = computed(() => (route.name === "library" ? "/" : lastLibraryLocation()));
 import NotificationBell from "./NotificationBell.vue";
 
 defineProps({ open: Boolean });
@@ -24,7 +31,7 @@ const adminFolded = computed(() => session.prefs.adminFolded);
 const ADMIN_LINKS = [
   { to: "/tasks", label: "Tasks", icon: "tasks", permission: "tasks.view", count: true },
   { to: "/admin/portal", label: "Management", icon: "admin", anyOf: PORTAL_TABS.flatMap((t) => (t.admin ? ["*"] : [t.permission].flat())) },
-  { to: "/admin/server", label: "Settings", title: "Server settings", icon: "server", admin: true },
+  { to: "/admin/server", label: "Settings", title: "Server Settings", icon: "server", admin: true },
 ];
 const adminLinks = computed(() => ADMIN_LINKS.filter((l) => (l.admin ? isAdmin() : l.anyOf ? isAdmin() || l.anyOf.some(hasPermission) : hasPermission(l.permission))));
 
@@ -55,7 +62,7 @@ function nav(fn) { emit("close"); fn?.(); }
     </div>
 
     <nav class="nav">
-      <router-link to="/" class="nav-item" exact-active-class="active" title="Library" @click="nav()">
+      <router-link :to="libraryLink" class="nav-item" :class="{ active: route.name === 'library' }" title="Library" @click="nav()">
         <Icon name="library" /><span class="label">Library</span>
         <span v-if="live.summary" class="nav-count muted">{{ live.summary.done_count }}</span>
       </router-link>
@@ -92,8 +99,8 @@ function nav(fn) { emit("close"); fn?.(); }
       <router-link :to="{ name: 'help', params: { tab: 'guide' } }" class="nav-item" :class="{ active: $route.name === 'help' }" title="Help" @click="nav()">
         <Icon name="help" /><span class="label">Help</span>
       </router-link>
-      <router-link to="/settings" class="nav-item" active-class="active" title="My settings" @click="nav()">
-        <Icon name="settings" /><span class="label">My settings</span>
+      <router-link to="/settings" class="nav-item" active-class="active" title="My Settings" @click="nav()">
+        <Icon name="settings" /><span class="label">My Settings</span>
       </router-link>
       <button class="nav-item" :title="`Sign out (${session.user?.username})`" @click="logout">
         <Icon name="logout" /><span class="label">Sign out <span class="muted">· {{ session.user?.username }}</span></span>

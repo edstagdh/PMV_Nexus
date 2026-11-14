@@ -37,7 +37,7 @@ watch(() => session.prefs.miniPlayer, (on) => { if (on === false && player.mode 
 function onReady(video) { registerPlayerHost({ video }); }
 function onPlaying(on) { player.playing = on; savePlayerState(); }
 // Where to start: after a page reload, the same moment (player.resume); otherwise where
-// I left off last time (2.24.0, My settings -> Video page), unless it's nearly finished.
+// I left off last time (2.24.0, My Settings -> Video page), unless it's nearly finished.
 const reloadResume = computed(() => (player.resume && player.resume.id === player.item?.id ? player.resume.time : null));
 const resumeAt = computed(() => {
   if (reloadResume.value != null) return reloadResume.value;

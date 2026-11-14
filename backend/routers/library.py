@@ -235,6 +235,49 @@ async def make_missing_storyboards(user: AuthContext = Depends(require_permissio
     return {"queued": library_manager.queue_missing_storyboards()}
 
 
+# ---- Video frames under the player (3.0.1, backend/video_frames.py) ----
+@router.get("/api/library/{video_id}/frames")
+async def get_video_frames(video_id: str, user: AuthContext = Depends(require_permission("library.stream"))):
+    """The frames and their times. Not made yet: they're queued (next in line) and
+    {"pending": true} comes back -- the page asks again a little later."""
+    info = library_manager.frames_info(video_id)
+    if not info:
+        return {"pending": library_manager.request_frames(video_id, first=True), "frames": []}
+    v = int(info.get("made_at") or 0)
+    return {
+        "pending": False, "source": info.get("source"), "width": info.get("width"), "height": info.get("height"),
+        "frames": [{"seconds": f["seconds"], "url": f"/api/library/{video_id}/frames/{n}.webp?v={v}"}
+                   for n, f in enumerate(info["frames"])],
+    }
+
+
+@router.get("/api/library/{video_id}/frames/{n}.webp")
+def get_video_frame(video_id: str, n: int, user: AuthContext = Depends(require_permission("library.stream"))):
+    path = library_manager.frame_file(video_id, n)
+    if not path:
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=2592000"})
+
+
+@router.post("/api/library/{video_id}/frames/redo")
+async def redo_video_frames(video_id: str, user: AuthContext = Depends(require_permission("videos.edit"))):
+    """Makes the video's frames again (from the site when it has them, else from the file)."""
+    if not library_manager.redo_frames(video_id):
+        raise HTTPException(status_code=404, detail="Only downloaded videos have frames")
+    return {"queued": True}
+
+
+@router.get("/api/maintenance/frames")
+def frames_overview(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    return library_manager.frames_overview()
+
+
+@router.post("/api/maintenance/frames")
+async def make_missing_frames(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """Queues every finished video without video frames (one job on Tasks)."""
+    return {"queued": library_manager.queue_missing_frames()}
+
+
 @router.get("/api/maintenance/untracked-files")
 async def list_untracked_files(user: AuthContext = Depends(require_permission("maintenance.run"))):
     """Files in the download/cache folders that no library item points to."""
@@ -436,7 +479,7 @@ async def move_reencode(video_id: str, body: ReencodeMoveRequest, user: AuthCont
 
 @router.get("/api/reencode/defaults")
 def get_reencode_defaults(user: AuthContext = Depends(require_permission("videos.maintain"))):
-    """The Re-encode dialog (2.22.0): Server settings -> Re-encode per codec, which the
+    """The Re-encode dialog (2.22.0): Server Settings -> Re-encode per codec, which the
     person can change for this one re-encode, and which encoders FFmpeg has."""
     s = get_settings()
     r = s.reencode

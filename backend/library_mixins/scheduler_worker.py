@@ -88,6 +88,11 @@ JOB_REGISTRY: dict[str, dict] = {
         "method": "run_song_scan_job",  # see library_mixins/songs.py
         "category": "non_invasive",
     },
+    "audio_fix": {
+        "label": "Make audio playable (convert audio browsers can't play to AAC)",
+        "method": "run_audio_fix",  # see library_mixins/audio_fix.py (3.0.1)
+        "category": "invasive",
+    },
     "backup": {
         "label": "Backup database + settings",
         "method": "run_backup",  # see library_mixins/system_worker.py
@@ -118,6 +123,14 @@ def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: O
 
     kind = schedule_config.get("kind")
     dt_now = datetime.fromtimestamp(now)
+
+    if kind == "once":
+        # One time (3.0.1), at a local date and time ("2026-11-14T02:00"); a time
+        # that has passed runs at the next check. After it ran, the job is switched off.
+        try:
+            return datetime.fromisoformat(str(schedule_config.get("at") or "")).timestamp()
+        except ValueError as exc:
+            raise ValueError(f"Invalid date and time '{schedule_config.get('at')}' -- expected YYYY-MM-DDTHH:MM") from exc
 
     if kind == "interval_hours":
         hours = float(schedule_config.get("hours", 24))
@@ -240,16 +253,24 @@ class SchedulerWorkerMixin:
                 schedule_config = json.loads(schedule_config)
             enabled = bool(job.get("enabled", 1))
             next_run_at = None
-            if enabled:
+            once = job["schedule_mode"] == "simple" and schedule_config.get("kind") == "once"
+            if once and enabled:
+                # One-time job: done once it ran; tried again later when it couldn't run.
+                if status == "blocked":
+                    next_run_at = time.time() + 1800
+                elif status == "interrupted":
+                    next_run_at = time.time() + 300
+                else:
+                    enabled = False
+            elif enabled:
                 try:
                     next_run_at = _compute_next_run_at(job["schedule_mode"], schedule_config)
                 except Exception:
                     logger.warning("Scheduler: could not compute next run time for job {}", job_id)
-            self.db.update_scheduled_job(job_id, {
-                "last_run_at": time.time(),
-                "last_run_status": status,
-                "next_run_at": next_run_at,
-            })
+            fields = {"last_run_at": time.time(), "last_run_status": status, "next_run_at": next_run_at}
+            if once and not enabled:
+                fields["enabled"] = False
+            self.db.update_scheduled_job(job_id, fields)
             self._scheduler_active_jobs.pop(job_id, None)
             logger.info("Scheduler: job '{}' ({}) finished with status '{}'", name, job_id, status)
 

@@ -73,11 +73,15 @@ class FavoriteToggle(BaseModel):
 
 
 @router.get("/api/playlists/favorites")
-def favorites(item_id: str = "", user: AuthContext = Depends(_viewer)):
-    """The user's built-in Favorites playlist id, and whether item_id is in it."""
+def favorites(item_id: str = "", ids: bool = False, user: AuthContext = Depends(_viewer)):
+    """The user's built-in Favorites playlist id, and whether item_id is in it.
+    ids=true (3.0.1): also every video in it (for the ♥ badge on thumbnails)."""
     fav = _run(library_manager.favorites_playlist, user)
     on = bool(item_id) and fav["id"] in library_manager.db.playlists_containing(item_id)
-    return {"id": fav["id"], "favorite": on}
+    out = {"id": fav["id"], "favorite": on}
+    if ids:
+        out["item_ids"] = library_manager.db.playlist_item_ids(fav["id"])
+    return out
 
 
 @router.post("/api/playlists/favorites")

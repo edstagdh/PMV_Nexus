@@ -19,8 +19,9 @@ QUALITY = 80      # WebP quality (0-100)
 METHOD = 4        # WebP effort (0-6): 6 is ~2x slower for a few % smaller
 
 
-def to_webp(data: bytes) -> bytes:
-    """Any image Pillow reads -> WebP bytes. Raises ValueError if it isn't an image."""
+def to_webp(data: bytes, max_side: int = MAX_SIDE, quality: int = QUALITY) -> bytes:
+    """Any image Pillow reads -> WebP bytes, at most `max_side` on its long side.
+    Raises ValueError if it isn't an image."""
     from PIL import Image, ImageOps, UnidentifiedImageError
     try:
         with Image.open(io.BytesIO(data)) as im:
@@ -30,10 +31,10 @@ def to_webp(data: bytes) -> bytes:
                 im = im.convert("RGBA")
             elif im.mode != "RGB":
                 im = im.convert("RGB")
-            if max(im.size) > MAX_SIDE:
-                im.thumbnail((MAX_SIDE, MAX_SIDE), Image.LANCZOS)
+            if max(im.size) > max_side:
+                im.thumbnail((max_side, max_side), Image.LANCZOS)
             out = io.BytesIO()
-            im.save(out, "WEBP", quality=QUALITY, method=METHOD)
+            im.save(out, "WEBP", quality=quality, method=METHOD)
             return out.getvalue()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise ValueError(f"Not a usable image ({exc.__class__.__name__})") from exc

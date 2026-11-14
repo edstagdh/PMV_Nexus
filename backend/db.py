@@ -849,6 +849,10 @@ class LibraryDB:
         self._conn.commit()
         self._note_change([f"performer:{performer_id}"])
 
+    def set_custom_photo_path(self, photo_id: str, path: str) -> None:
+        self._conn.execute("UPDATE performer_custom_photos SET path = ? WHERE id = ?", (path, photo_id))
+        self._conn.commit()
+
     def set_performer_photos(self, performer_id: str, photos: list[str]) -> None:
         self._conn.execute("UPDATE performers SET photos = ?, photo_path = ? WHERE id = ?",
                            (json.dumps(photos), photos[0] if photos else None, performer_id))

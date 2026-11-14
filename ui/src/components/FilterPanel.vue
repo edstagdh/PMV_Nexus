@@ -18,7 +18,7 @@ import { session } from "../stores/session.js";
 import { api } from "../lib/api.js";
 
 const props = defineProps({ state: Object, facets: Object, goneCount: Number, activeCount: Number });
-// My settings -> Library -> Group codec versions (2.17.1): "AV1 (Main@L4.0)" and the
+// My Settings -> Library -> Group codec versions (2.17.1): "AV1 (Main@L4.0)" and the
 // other versions show as one "AV1"; the server matches a family to all its versions.
 const codecOptions = computed(() => {
   const all = props.facets?.codecs || [];

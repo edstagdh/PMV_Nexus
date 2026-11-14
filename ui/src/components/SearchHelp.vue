@@ -11,7 +11,7 @@ const root = ref(null);
 const EXAMPLES = [
   { q: "sunset", what: "Anywhere: title, creator, description, tags, performers, music" },
   { q: "alyx star natasha", what: "Every word, in any order" },
-  { q: '"big boob"', what: "Quotes: these words together, as written" },
+  { q: '"golden hour"', what: "Quotes: these words together, as written" },
   { q: "title:sunset", what: "Only in titles" },
   { q: "creator:rhythmix", what: "Only the creator's name" },
   { q: "performer:ava", what: "Performers (also model:)" },

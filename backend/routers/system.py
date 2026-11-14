@@ -47,6 +47,15 @@ async def check_for_update(user: AuthContext = Depends(get_current_user)):
     return await library_manager.run_update_check(force=False)
 
 
+@router.get("/api/system/docs/screenshots/{name}")
+def get_doc_screenshot(name: str, user: AuthContext = Depends(get_current_user)):
+    """The Guide's pictures (docs/screenshots/, 3.0.1) for the in-app Help page."""
+    path = app_info.doc_screenshot(name)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, headers={"Cache-Control": "private, max-age=86400"})
+
+
 @router.get("/api/system/docs/{key}", response_class=PlainTextResponse)
 def get_doc(key: str, user: AuthContext = Depends(get_current_user)):
     text = app_info.read_doc(key)

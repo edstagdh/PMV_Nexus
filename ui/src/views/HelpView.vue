@@ -193,6 +193,7 @@ function onArticleClick(e) {
 .markdown :deep(h2) { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); scroll-margin-top: 1rem; }
 .markdown :deep(h3) { font-size: 1rem; margin: 1.25rem 0 0.375rem; scroll-margin-top: 1rem; }
 .markdown :deep(p) { margin: 0.5rem 0; color: var(--text-2); }
+.markdown :deep(img.doc-shot) { display: block; max-width: 100%; height: auto; margin: 0.75rem 0; border-radius: var(--radius); border: 1px solid var(--border); }
 .markdown :deep(li) { color: var(--text-2); margin: 0.2rem 0; }
 .markdown :deep(ul), .markdown :deep(ol) { padding-left: 1.4rem; margin: 0.4rem 0; }
 .markdown :deep(strong) { color: var(--text); }

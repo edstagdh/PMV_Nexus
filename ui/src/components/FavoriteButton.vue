@@ -5,6 +5,7 @@ import { ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import { api, qs } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
+import { setFavoriteLocal } from "../stores/favorites.js";
 
 const props = defineProps({ itemId: String });
 const on = ref(false);
@@ -20,6 +21,7 @@ async function toggle() {
   busy.value = true;
   try {
     on.value = (await api("/api/playlists/favorites", { method: "POST", body: { item_id: props.itemId, on: !on.value } })).favorite;
+    setFavoriteLocal(props.itemId, on.value);   // the ♥ badge on thumbnails
     toast(on.value ? "Added to Favorites" : "Removed from Favorites");
   } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
   finally { busy.value = false; }

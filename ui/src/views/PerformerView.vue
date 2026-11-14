@@ -106,7 +106,7 @@ const STATUS_TEXT = {
         <div class="head-text">
           <h1>{{ prof.name }}<span v-if="p?.disambiguation" class="muted dis"> ({{ p.disambiguation }})</span></h1>
           <p v-if="p?.aliases?.length" class="muted small">Also known as {{ p.aliases.join(", ") }}</p>
-          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured"> Add a ThePornDB API key in Server settings → Credentials to see profiles.</template></p>
+          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured"> Add a ThePornDB API key in Server Settings → Credentials to see profiles.</template></p>
           <dl v-if="facts.length" class="facts">
             <div v-for="[k, v] in facts" :key="k" class="fact"><dt>{{ k }}</dt><dd>{{ v }}</dd></div>
           </dl>
@@ -144,7 +144,7 @@ const STATUS_TEXT = {
 
       <section v-if="otherNames.length" class="card panel">
         <h3 class="sub">Names in your library</h3>
-        <p class="muted small">{{ prof.merge_aliases ? "These names are shown as" : "These names belong to" }} {{ prof.name }}<template v-if="!prof.merge_aliases"> (merging aliases is off in Server settings → Performers, so they keep their own names)</template>.
+        <p class="muted small">{{ prof.merge_aliases ? "These names are shown as" : "These names belong to" }} {{ prof.name }}<template v-if="!prof.merge_aliases"> (merging aliases is off in Server Settings → Performers, so they keep their own names)</template>.
           If one is someone else, split it off.</p>
         <ul class="names">
           <li v-for="n in prof.names" :key="n.name">

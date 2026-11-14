@@ -86,7 +86,7 @@ async function scanNow() {
     setTimeout(loadStatus, 500);
   } catch (err) { toast(err.message || "Could not start the scan", { type: "error" }); }
 }
-// "Auto: after downloads, re-encodes" -- set in Server settings -> Duplicate scan.
+// "Auto: after downloads, re-encodes" -- set in Server Settings -> Duplicate scan.
 const autoText = computed(() => {
   const t = status.value?.auto_triggers;
   if (!t) return "";
@@ -205,7 +205,7 @@ watch(minMatch, load);
         </div>
         <div class="bar-actions">
           <RouterLink v-if="canManage && autoText" class="btn btn-ghost btn-sm" :to="{ path: '/admin/server', query: { tab: 'duplicates' } }"
-                      title="When scans start on their own (Server settings → Duplicate scan; the daily scan is on the Scheduler page)">{{ autoText }}</RouterLink>
+                      title="When scans start on their own (Server Settings → Duplicate scan; the daily scan is on the Scheduler page)">{{ autoText }}</RouterLink>
           <button v-if="canManage" class="btn btn-sm" :disabled="status?.running" @click="scanNow"><Icon name="search" />Scan now</button>
         </div>
       </div>

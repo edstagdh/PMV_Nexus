@@ -38,7 +38,7 @@ No `.env` file is needed: accounts and credentials are set up in the app.
 ### Start the app
 - **Windows, installed with Setup:** the Start-menu shortcut. The app runs with a **tray icon** (no window): click it
   to open the app, hover to see what it's doing, right-click for the log folder or **Exit**. "PMV Nexus (console)"
-  runs it with its log window instead. **Server settings → Opening the app** (also asked by Setup): open the browser
+  runs it with its log window instead. **Server Settings → Opening the app** (also asked by Setup): open the browser
   when the shortcut starts the app or not, and a browser other than the default (e.g. a Firefox or Chrome profile —
   only changeable on the computer the app runs on, because it's a program the app starts).
 - **Windows:** double-click `start.bat`. It uses `.venv` automatically if it exists.
@@ -50,28 +50,34 @@ uses another port for one run.
 
 **First start:** the console window shows a **setup code**. Enter it in the browser together with a username and
 password to create the admin account. Then:
-1. Open **Server settings → Credentials** and enter your PMVHaven **API key** (from pmvhaven.com/api-keys), plus any
+1. Open **Server Settings → Credentials** and enter your PMVHaven **API key** (from pmvhaven.com/api-keys), plus any
    other keys you use. The app uses the sites' API only — it never signs in to them or reads their pages.
 
 ## Finding your way around
 
+![On a phone: the library and a video's page](screenshots/phone.webp)
+
 Everything is in the sidebar on the left (on a phone, behind the ☰ button): the **Add videos** and **Upload**
 buttons, **Library**, **Discover**, **Playlists**, the **Server** section (admins only: **Tasks**, **Management** and
 the server's **Settings**; click the *Server* heading to fold it away, and Tasks still shows while something is
-running), and at the bottom **Help**, **My settings** and **Sign out**. The sidebar button next to the app name shrinks it to icons. The interface
+running), and at the bottom **Help**, **My Settings** and **Sign out**. The sidebar button next to the app name shrinks it to icons. The interface
 updates live without refreshing.
 
 Tips:
 - Press **/** to jump to the search box; the **?** inside it shows search examples.
 - Click a performer, tag or creator anywhere to filter the library by it.
 - The address bar holds the whole view (filters, sorting, page), so you can bookmark it or use Back.
-- **My settings** has five tabs:
+
+![My Settings → Appearance](screenshots/settings.webp)
+
+- **My Settings** has five tabs:
   - **Appearance:** theme (or a custom theme with your own colours), text size, coloured performer/tag/music
     chips and the 💀 badge colour.
   - **Library:** default sort, which thumbnail badges show, and the table hover-preview size.
-  - **Video page:** how many related videos to show and which badges they get, what **Back** does (return
-    to the library — the default, keeps your filters and scroll position — or step back through the videos you
-    opened), and whether Edit details' suggestion lists stay open after you pick a value.
+  - **Video page:** how many related videos to show and which badges they get, and whether Edit details'
+    suggestion lists stay open after you pick a value.
+- **Library** in the sidebar takes you back to the library as you left it (filters and page), from any page; clicked
+  while you're in the library, it starts afresh.
   - **Notifications:** which kinds of background updates pop up (see Notifications below).
   - **Account:** change your password; regular users can also delete their own account here.
 - **Related videos** are other downloaded videos ranked by what they share with the one you're watching:
@@ -95,6 +101,9 @@ fetched, **Details** on the task opens the full video page (description, tags, p
 with the download status, before the file has finished downloading.
 
 ### Tasks
+
+![Tasks: what's running, what's coming up and what finished](screenshots/tasks.webp)
+
 **Tasks** shows everything the app is working on, with live progress:
 - **Jobs running now:** work that isn't about one video. That covers Scheduler jobs, duplicate scans, syncs with
   PMVHaven, backups (including ones made with **Create backup**), performer matching, repair-all, metadata syncs,
@@ -127,7 +136,7 @@ Its badge counts unread **problems**. **Problems** shows only failures and warni
 Clicking one opens the video or page it's about. Each person is told about the videos they added; videos from
 before 2.10.0, and ones added through the API, notify the admins.
 
-New ones also pop up in the corner. **My settings → Notifications** turns the pop-ups off per kind: downloads,
+New ones also pop up in the corner. **My Settings → Notifications** turns the pop-ups off per kind: downloads,
 re-encodes & repairs, uploads, jobs (extensions' messages count as jobs). They're still kept under the bell. If the app loses the connection
 to the server, a banner says so until it's back, and every page (except a video's, whose player keeps playing what it
 already has) shows "Can't reach the server" instead of its content; the page comes back, refreshed, by itself.
@@ -137,23 +146,23 @@ When the drive with the videos (or the app's data) has less than **10%** free, d
 progress goes back to the queue, and its partial file is deleted to give the space back. A red banner tells
 everyone, and the admins get a notification. Re-encodes and everything else carry on. Once there's more than
 11% free, downloads start again by themselves. Change the limit (or set 0 to turn it off) in
-**Server settings → Download → Stop downloads below (% free)**; the current free space is shown there.
+**Server Settings → Download → Stop downloads below (% free)**; the current free space is shown there.
 
 ### Re-encoding
 **Re-encode…** in a video's ⋮ menu (or on its page) converts it to a more efficient codec to save space. The default
 codec, each codec's quality (CRF) and speed preset, the options (copy AAC audio, downscale to 1080p, remove chapters,
-keep the original as "_old") and how many CPU cores an encode may use are set under **Server settings → Re-encode**:
+keep the original as "_old") and how many CPU cores an encode may use are set under **Server Settings → Re-encode**:
 - **HEVC (H.265)** plays almost everywhere — the usual choice.
 - **AV1** makes smaller files but encodes slower, and some older devices can't play it.
 
 **Re-encode…** opens a window to pick the codec (the one the video is already in can't be picked, so AV1 videos can be
-turned into HEVC for devices that struggle with AV1). It shows that codec's settings from Server settings, which you
+turned into HEVC for devices that struggle with AV1). It shows that codec's settings from Server Settings, which you
 can change for **this re-encode only** (switching codec shows the other codec's settings; **Back to the server's
 settings** undoes your changes). Many at once: **Select** in the library → **Re-encode…**, the same window.
-**Without the window:** untick **Ask for the codec and settings each time** (Server settings → Re-encode) and
+**Without the window:** untick **Ask for the codec and settings each time** (Server Settings → Re-encode) and
 **Re-encode** queues the video straight away in the default codec with the settings there (Library → Select just
 confirms); a video already in that codec still gets the window, to pick the other codec.
-**Switching it off:** the **Re-encoding** switch at the top of **Server settings → Re-encode** removes "Re-encode"
+**Switching it off:** the **Re-encoding** switch at the top of **Server Settings → Re-encode** removes "Re-encode"
 everywhere for everyone and refuses new re-encodes (queued ones still finish and can be cancelled); converting
 uploads isn't affected. AV1 needs an FFmpeg build with SVT-AV1 (the Re-encode tab warns if it's missing).
 
@@ -166,12 +175,12 @@ uploads isn't affected. AV1 needs an FFmpeg build with SVT-AV1 (the Re-encode ta
    place in line; you can cancel while waiting). Only **.mp4 .m4v .mkv .webm .mov .avi .wmv .ts** files can be
    picked; anything else is refused before it's sent. The server then makes sure the file really is that kind of
    video (its first bytes), scans it with the server's antivirus when there is one (Microsoft Defender or ClamAV —
-   **Server settings → Uploads → Virus scan**; **Test the scanner** there shows what the antivirus answers), optionally
+   **Server Settings → Uploads → Virus scan**; **Test the scanner** there shows what the antivirus answers), optionally
    looks the file's fingerprint up on VirusTotal (below), and checks FFmpeg finds a video track in it. Every upload is then
    re-written, so only its picture and sound are kept: one browsers can play is re-packed into a clean MP4 — quick,
    and the picture isn't touched. Anything else has to be
    **re-encoded**: pick **AVC (H.264)** (plays everywhere), **HEVC** or **AV1**, its quality (CRF) and preset, and
-   press **Convert and add** (with progress). The admin sets the suggested codec in **Server settings → Uploads**,
+   press **Convert and add** (with progress). The admin sets the suggested codec in **Server Settings → Uploads**,
    and can make this happen automatically without asking. The video joins the library only once this is done.
 3. **Thumbnail:** click one of the frames spread over the video, pick any moment with the slider (**Use this
    frame**), or **Upload an image**.
@@ -183,7 +192,7 @@ It's saved like a download — `<download folder>/<creator>/<creator> - <date> -
 aren't linked to PMVHaven: no "Open on PMVHaven", they're skipped by Sync with PMVHaven, and Repair just remakes
 the thumbnail, preview and details from the file.
 
-**Fingerprint check (VirusTotal):** with a free VirusTotal API key in **Server settings → Credentials** (**Test key**
+**Fingerprint check (VirusTotal):** with a free VirusTotal API key in **Server Settings → Credentials** (**Test key**
 there checks it with VirusTotal's harmless test file), the
 upload's SHA-256 fingerprint (not the file) is looked up there. A file that antivirus engines on VirusTotal flag is
 refused. Most personal videos are simply unknown to VirusTotal, which is fine — this catches *known* bad files, it
@@ -191,11 +200,14 @@ doesn't scan new ones. **Off** (default), **On** (lookup errors are ignored), or
 when the lookup fails, e.g. after the free 4-a-minute / 500-a-day limit). Every lookup and VirusTotal's answer is in
 **Management → Logs** (search "VirusTotal"), and the Upload page lists the checks that ran when it's done.
 
-Limits (Server settings → Uploads): the largest file (50 GB), how many unfinished uploads one person may have (10),
+Limits (Server Settings → Uploads): the largest file (50 GB), how many unfinished uploads one person may have (10),
 and enough free disk space for the file twice. Files left half-uploaded by a crash or restart are deleted when the
 app starts.
 
 ### Library
+
+![The library in the grid view](screenshots/library.webp)
+
 - Admins switch between **Grid**, **List** and **Table** views; everyone else always gets the grid.
 - Sort by **date acquired** (when the file arrived — downloaded or uploaded), **uploaded to PMVHaven**, title,
   creator, rating, views, duration, size or resolution (videos with no known upload date come last).
@@ -214,13 +226,16 @@ app starts.
   the details you picked (cup DD *and* age 25–30 = the same person); performers not on ThePornDB never match. The
   choices list only what your performers have. Smart playlists keep these too.
 - **Codecs in Filters** are grouped by default: one AV1, AVC, HEVC… entry that finds all its versions ("AV1
-  (Main@L4.0)", "AV1 (Main@L5.1)"…). To pick exact versions, turn off **My settings → Library → Group codec
+  (Main@L4.0)", "AV1 (Main@L5.1)"…). To pick exact versions, turn off **My Settings → Library → Group codec
   versions**.
 - Tags, performers and music that differ only in upper/lower case count as one value (see **Spellings** below).
 - Click a video to open its page with the player, details and actions (rename, thumbnail, re-encode,
   repair, remove, and any extensions' actions).
 
 ### The player
+
+![A video's page: the player with its frames, the details and related videos](screenshots/video.webp)
+
 Video.js with the app's colours. Hover the speaker for the **volume slider** (a browser starts at 10 % until you change it; phones play at full
 volume and use their own buttons); the ⚙ menu has **720p** (below) and the
 playback speed, and **Download** (saves the video file); **Loop** sits next to it. While a playlist plays, **⏭** next to play/pause skips to the
@@ -235,20 +250,40 @@ there from the next time), or the whole library at once from **Management → Ma
 video), deleted with the video, moved with the cache folder, and not included in backups (they can be made again).
 Videos with a key frame every few seconds (most PMVs) take a few seconds; others are decoded fully and take longer. After the seek bar is the video's **length**; click it to see the time left
 instead (and again to go back). On the video page the keys (Space, ←/→, M, F, …) work anywhere on the page.
+
 On phones and tablets tap the video to show the controls — a big play/pause button sits in the middle while they
 show — and double-tap the left or right side to skip 10 s.
 In fullscreen the sides work differently by default: **swipe up / down on the left for brightness and on the right
 for volume** (brightness only changes the video's picture, from 20% to 150% — pages can't change the screen's own
 brightness; iPhones and iPads don't let pages change the volume, so use the buttons there). To keep double-tap to
-skip in fullscreen: **My settings → Video page → Sides of the video in fullscreen → Double-tap**. On a phone the
+skip in fullscreen: **My Settings → Video page → Sides of the video in fullscreen → Double-tap**. On a phone the
 screen turns to suit each video in fullscreen and stays turned while a playlist moves on to a video of the same shape.
+
+**Video frames:** under the player is a row of pictures from across the video, each with its time — click one to
+jump there (the one you're in is highlighted). They're PMVHaven's own timeline frames when the video has them (usually
+8); for uploaded videos, videos gone from the site or when those can't be downloaded, 8 are made from the file, one from
+the middle of each eighth of the video. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
+are scaled down) in the cache folder (`.frames`, about 20–60 KB per video), deleted with the video, moved with the cache
+folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
+the whole library at once from **Management → Maintenance → Video frames → Make the … missing** (one job on Tasks;
+older videos without saved timeline frames ask PMVHaven for them once). **From the site · redo** / **From the file ·
+redo** under the row makes them again (needs Edit details). They can be hidden in **My Settings → Video page → Frames
+under the player**.
+
+**Audio browsers can't play:** some videos carry audio a browser can't play — uncompressed PCM (in some browsers),
+AC-3 / E-AC-3, DTS, TrueHD, ALAC, MP2 — and play silent. The app converts such audio to AAC (192 kb/s stereo; the
+picture isn't touched, and the file usually gets smaller): right after a video is downloaded (uploads already got this
+when they were re-packed), and for videos already in the library with the Scheduler job **Make audio playable**. 3.0.1
+adds that job once, to run the first night after updating (02:00) and then switch itself off; **Run now** on the
+Scheduler page starts it at once, and it can be added again any time. It changes files, so it doesn't run at the same
+time as a duplicate scan or a repair (it waits and tries again 30 minutes later).
 
 **720p (converting while watching):** **⚙ → 720p** (shows On / Off) plays a copy the server converts while you
 watch — H.264 at 720p or less, much less data, for watching over a slow connection or VPN. Seeking works as usual
 (after a jump the picture needs a few seconds). Your choice is remembered in this browser until you switch it off again.
 A video your browser can't play (e.g. HEVC or AV1 in a browser without them) switches to this by itself, with a
 message. Nothing is saved on the server: the pieces are deleted when playback stops. The admin sets it up in
-**Server settings → Re-encode → Converting while watching**: on/off, the largest size (720p or 480p), how much of the
+**Server Settings → Re-encode → Converting while watching**: on/off, the largest size (720p or 480p), how much of the
 CPU each conversion may use (default 50% of the cores, at low priority) and how many videos may be converted at once
 (default 2, one per person). FFmpeg pauses itself when it's about a minute ahead of the viewer, so a paused video
 uses no CPU; a conversion nobody watches for 20 minutes ends. Each conversion shows on **Tasks** while it runs.
@@ -256,9 +291,9 @@ uses no CPU; a conversion nobody watches for 20 minutes ends. Each conversion sh
 **Continue where you left off:** the app remembers where you stopped in each video (for your account, so it follows
 you to other devices) and starts there next time, with a **Start over** button at the top of the player for a few
 seconds. Videos watched to the end (95 %+) start from the beginning. Thumbnails show how far you got as a thin red
-line along the bottom. Both can be switched off in **My settings → Video page**. Nobody else sees your places.
+line along the bottom. Both can be switched off in **My Settings → Video page**. Nobody else sees your places.
 
-**Panic keys** (keyboard; off until set): in **My settings → Video page → Panic keys**, press **Set keys**, then press
+**Panic keys** (keyboard; off until set): in **My Settings → Video page → Panic keys**, press **Set keys**, then press
 the keys you want together (up to 3, e.g. **A + D**) and let go. The app shows the keys it detected — **Use these keys**
 saves them, **Try again** records again (some keyboards don't report certain keys pressed together). From then on,
 pressing them **all at once** (not one after the other) anywhere in the app stops playback at
@@ -272,7 +307,7 @@ other sites aren't affected. A key that is also a player shortcut (Space, K, J, 
 working as that shortcut — the window says so before you confirm. While you type in a text field only keys that
 include Ctrl, Alt or ⌘ / Win count, so typing can't set it off.
 
-**A-B repeat** (off by default — turn it on in **My settings → Video page → A-B repeat**): an **A-B** button in the
+**A-B repeat** (off by default — turn it on in **My Settings → Video page → A-B repeat**): an **A-B** button in the
 player plays one part of a video over and over. Click it at the start of the part (A), again at the end (B); it then
 jumps back to A every time it reaches B. A third click stops it. It also stops when another video opens; while it
 repeats, a playlist doesn't move on.
@@ -291,6 +326,9 @@ video.
   continues from where you were, paused.
 
 ### Playlists
+
+![Playlists: Favorites, your own and a smart playlist](screenshots/playlists.webp)
+
 **Playlists** (sidebar) are for everyone, not just the admin.
 - **Favorites:** everyone has a built-in **Favorites** playlist, always listed first. Press **♥ Add to Favorites**
   on a video's page (again to remove it). It can't be deleted or renamed, and it's always private: nobody else sees
@@ -321,7 +359,10 @@ video.
   Duplicates page is replaced by the copy you kept.
 
 ### Performers
-Click a performer on a video's page to open her profile. If ThePornDB is set up (API key in **Server settings →
+
+![Performers](screenshots/performers.webp)
+
+Click a performer on a video's page to open her profile. If ThePornDB is set up (API key in **Server Settings →
 Credentials → ThePornDB**), the profile shows:
 - photo, age, details, bio and aliases;
 - similar performers you have, and all her videos (**Her videos in the library** opens them in the library).
@@ -333,14 +374,15 @@ How it works:
     straight away.
   - Names that could be several people are listed in **Management → Maintenance → Performers**. Pick the right
     person there (or on her profile), search ThePornDB yourself, or **Skip** the name.
-- **Aliases:** names ThePornDB lists as aliases of the same person (e.g. "Riley R" for Riley Reid) are treated as
-  her. With **Server settings → Performers → merge aliases** on, they're shown under her main name everywhere.
+- **Aliases:** names ThePornDB lists as aliases of the same person (e.g. "Luna P" for Luna Prism) are treated as
+  her. With **Server Settings → Performers → merge aliases** on, they're shown under her main name everywhere.
   - If a name was merged wrongly, open the profile and use **Not her — split off** next to it. It's never merged
     into her again.
   - **Wrong person?** picks a different profile.
 - **Not too fast:** the app sends ThePornDB at most one request a second. If ThePornDB still says "too many
   requests", the app waits as long as it asks, retries, and stays slower until it restarts.
-- **Refreshing:** profiles and photos are kept locally. The same job refreshes each profile every 30 days (Server
+- **Refreshing:** profiles and photos are kept locally — the photos in the app's `data/performers` folder (before 3.0.1 they
+  were in the cache folder; the app moves them by itself), backed up along with the thumbnails. The same job refreshes each profile every 30 days (Server
   settings → Performers).
 - **Photos as WebP:** photos are saved as WebP (quality 80, at most 1600 pixels on the long side), usually a
   third to two thirds smaller than the JPEG/PNG ThePornDB sends. Photos saved before 2.15.0: **Maintenance →
@@ -376,7 +418,7 @@ existing install the admin ticks it in **Users → Roles → user** (or for a gr
 
 ### Discover
 **🎲 Discover** in the sidebar (the dice in the top bar on a phone) opens a random downloaded video; on a video's page,
-**Discover again** (top right) opens another one. You won't get the same video twice until
+**🎲 Random** (next to the title) opens another one. You won't get the same video twice until
 you've been shown every video in the library; after that a new round starts, still skipping the 20% you saw
 most recently. Each user has their own history.
 
@@ -386,22 +428,26 @@ prefilled bug-report link, server details and the license.
 
 ## Management
 
+![Management → Scheduler](screenshots/scheduler.webp)
+
 The **Server** section of the sidebar has **Tasks**, **Management** and **Settings** (the server's settings, called
-Server settings below). Management's tabs are the pages below; each one shows for people with its permission (see *Who may do what*), the admin sees all:
+Server Settings below). Management's tabs are the pages below; each one shows for people with its permission (see *Who may do what*), the admin sees all:
 
 | Page | What it does |
 |---|---|
-| Server settings | Tabs: **Download** (folders, downloads at once, retries), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Opening the app** (browser, open on start) |
+| Server Settings | Tabs: **Download** (folders, downloads at once, retries), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Opening the app** (browser, open on start) |
 | Users | Create, edit, disable and remove accounts; roles, groups and per-person permissions |
 | Duplicates | Duplicate groups found by the scan, side by side |
 | Names | Every tag, performer and music name: rename, merge misspellings, likely typos, remembered fixes, upper/lower case spellings |
 | Songs | Songs heard in videos, waiting to be added to their Music; find songs in videos without music; settings |
-| Maintenance | Sync from metadata files, sync with PMVHaven, repair everything, untracked files |
-| Scheduler | Run jobs on a schedule or immediately, with run history and live progress. Four **System** jobs are built in — Weekly backup, Check for updates (daily), Daily duplicate scan and Match & refresh performers (daily); they can be changed or disabled, not deleted |
+| Maintenance | Sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames, untracked files |
+| Scheduler | Run jobs on a schedule (every day, every week, every few hours, **one time** at a date and time — it switches itself off after it ran — or cron) or immediately, with run history and live progress. Four **System** jobs are built in — Weekly backup, Check for updates (daily), Daily duplicate scan and Match & refresh performers (daily); they can be changed or disabled, not deleted |
 | Backups | Back up and restore the database and settings |
 | Stats | Live CPU / memory (this app and the whole computer) / network / disks with % free; library growth, activity, failures and watching over 7 days … all; the library's make-up |
 | Logs | Everything the app does and every change made by a user |
 | Tools | Status of FFmpeg, Python packages and other requirements |
+
+![Management → Stats](screenshots/stats.webp)
 
 **Users:** editing a user can rename, disable or set a new password (which signs them out everywhere).
 
@@ -422,7 +468,7 @@ someone may not use aren't shown to them, and the server refuses them anyway.
 **Logs** has search and filters (category, event, user, level, text). Click an entry for its full JSON
 record; **Export** downloads the matching entries as JSON Lines. Client addresses are hashed by default.
 
-**Server settings → Logging** switches logging off altogether (nothing is recorded anywhere) or chooses where it
+**Server Settings → Logging** switches logging off altogether (nothing is recorded anywhere) or chooses where it
 goes — Management → Logs, the log file (`data/logs/backend.log`) and the console — the level (Debug, Info, Warning,
 Error), when a new log file starts and how long old ones are kept, how long Management → Logs keeps entries, and how
 client addresses are shown (pseudonym, last part only, full or not at all). Changes apply right away.
@@ -443,7 +489,7 @@ server. What's heard is **suggested**, never added by itself:
 - **Try again a bit later:** a sample Shazam doesn't know is tried once more 7 seconds further on (often past a sound
   effect or a transition); the result says how many were retried. Turn it off in the settings to use fewer requests.
 - **Optional AI — Google Gemini:** the app can also ask Gemini, Google's AI. Save a free API key (from
-  aistudio.google.com/apikey) in **Server settings → Credentials → Google Gemini** (**Test key** checks it without
+  aistudio.google.com/apikey) in **Server Settings → Credentials → Google Gemini** (**Test key** checks it without
   using your quota). Then choose how songs are found — in the Songs settings for the Scheduler job and **Find songs
   now**, and each time you find songs by hand (a video's **Find songs**, or **Select → Find songs**):
   **Shazam** only; **Shazam, then Gemini** for the spots Shazam found nothing; **Shazam and Gemini** — a second
@@ -462,7 +508,7 @@ limit it (the scan then stops with "Shazam is limiting requests"; try later) or 
 shazamio fixes that). Mash-ups, sped-up or pitched songs and songs under loud sound effects are found less often.
 
 **Names** lists every tag, performer and music name with how many videos use it. **Rename / merge** changes a
-name in every video that has it; typing an existing name merges into it (e.g. "abella danguer" → "abella danger").
+name in every video that has it; typing an existing name merges into it (e.g. "aurora vael" → "aurora vale").
 With **Remember** (on by default) the misspelling is also kept as a fix, so it shows corrected when it turns up again
 on a new download or a sync (**Remembered fixes** lists them; **Forget** stops that without changing any video).
 **Possible typos** suggests names only a letter or two apart (numbers that differ, like "Vol 2" / "Vol 3", aren't
@@ -485,11 +531,11 @@ The videos themselves keep what PMVHaven wrote.
 library uses, so you can delete them. Performer photos in use are not listed (before 2.15.0 they were); a photo
 no performer uses any more is listed as "performer photo". A re-encode's work file (`…_temp.mp4`) isn't listed
 while it's being written; one left over from an interrupted re-encode is listed as "unfinished re-encode". Seekbar
-previews of videos no longer in the library are listed as "seekbar preview".
+previews of videos no longer in the library are listed as "seekbar preview", their video frames as "video frame".
 
 ## Credentials
 
-**Server settings → Credentials** holds everything the app needs to sign in to other services:
+**Server Settings → Credentials** holds everything the app needs to sign in to other services:
 
 - **PMVHaven API:** your API key from pmvhaven.com/api-keys. **Test key** checks it with PMVHaven. The same key is
   used for porntubeai.com and hmvhaven.com.
@@ -509,7 +555,7 @@ Extensions can add their own credentials here.
 ## Extensions
 
 Optional add-ons in an `extensions` folder in the app folder (you create it; the app never does). With none
-installed, nothing below exists. **Server settings → Extensions** lists what's installed — loaded, or failed with
+installed, nothing below exists. **Server Settings → Extensions** lists what's installed — loaded, or failed with
 the reason (details in the log) — and shows the settings panels they bring. Their actions appear in a video's menu
 and in the library's picked-videos bar, their credentials under **Credentials**, and their permissions in the roles
 editor. To install one: put its folder in `extensions`, run `python -m Tools.install_extensions` with the app's
@@ -517,7 +563,7 @@ Python (Setup does this itself) and restart the app; to remove one, stop the app
 
 ## Proxy
 
-**Server settings → Proxy** sends some of the app's connections through a proxy (`socks5://host:port` or
+**Server Settings → Proxy** sends some of the app's connections through a proxy (`socks5://host:port` or
 `http://host:port`, with a username and password if it needs one):
 - **PMVHaven, HMVHaven, PornTubeAI:**
   - **Not used**
@@ -558,8 +604,13 @@ an API key, but uses your key from **Credentials** when one is saved.
 Run it from **Management → Duplicates → Scan now**. It also runs on its own:
 - every day, from the **Daily duplicate scan** system job on the Scheduler page (change its time or disable it there);
 - about a minute after a download, a re-encode or a repair finishes — each switched on or off under
-  **Server settings → Duplicate scan → Scan automatically**. A batch (e.g. ten downloads) starts one scan after
-  the last one, and only new or changed files are read.
+  **Server Settings → Duplicate scan → Scan automatically**. A batch (e.g. ten downloads) starts one scan after
+  the last one, and only new or changed files are read. A download that finishes while a scan runs doesn't stop
+  it: one more scan follows.
+
+When a scan finds a pair it hadn't found before, the admins get a notification — "Possible duplicate: “New video”
+— looks like “Older video” (94% match)" — that opens this page (more than 5 at once: one summary). Pairs marked
+**Not duplicates** stay quiet. The pop-ups can be switched off in **My Settings → Notifications**.
 
 Each group shows the copies side by side:
 **Keep this one** removes the others (their files are deleted, the links stay known so they aren't
@@ -582,7 +633,7 @@ How a scan works:
 Videos with too few usable frames (for example almost entirely black, or unreadable) are listed as
 "unusable" in the scan status and are not compared.
 
-The settings are on **Server settings → Duplicate scan** (or under `duplicate_scan` in `config.yaml`):
+The settings are on **Server Settings → Duplicate scan** (or under `duplicate_scan` in `config.yaml`):
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -677,13 +728,13 @@ Errors like "database disk image is malformed", or the app won't start after a c
    Or: start the new install once, create a temporary admin with the setup code, put the zip into `data/backups`,
    then **Test** and **Restore** it on **Management → Backups** and restart.
 4. **Folders:** done in step 2 for the `install.bat` / `--restore` way. With the other way, the restart shows the
-   same folder list in the console. Changing them later in the app also works: open **Server settings → Download**, set the download folder (and the cache folder) to the new place
+   same folder list in the console. Changing them later in the app also works: open **Server Settings → Download**, set the download folder (and the cache folder) to the new place
    with **Move the videos already downloaded** turned **off**: the app finds the videos there by the same names
    and links them back (the message says how many). Same for the cache folder (**Move the files already cached**
    off), or let the thumbnails and previews be made
    again (Maintenance → Repair everything).
 5. Check **Tools** (FFmpeg and the Python packages on the new computer) and, if you didn't include secrets,
-   **Server settings → Credentials**. Extensions' sign-ins may have to be done again, and extensions themselves
+   **Server Settings → Credentials**. Extensions' sign-ins may have to be done again, and extensions themselves
    aren't in backups — copy the `extensions` folder yourself.
 
 Moving between Windows and Linux works the same way; only the folder paths in step 4 change.

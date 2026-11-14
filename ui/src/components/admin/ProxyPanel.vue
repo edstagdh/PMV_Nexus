@@ -1,5 +1,5 @@
 <script setup>
-// Server settings -> Proxy: the proxy's address (a credential), where it's
+// Server Settings -> Proxy: the proxy's address (a credential), where it's
 // used (the sites: off / split / all; extensions' uploads), and a test
 // that compares it with the direct connection (does it work, which address
 // the sites see, latency, speed) -- run it before relying on the proxy.

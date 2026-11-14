@@ -70,7 +70,7 @@ class DownloadWorkerMixin:
             if self._shutting_down or lane not in self._wanted_download_lanes():
                 return
             if on_proxy and not await proxy.usable():
-                logger.warning("Download lane {} paused: the proxy isn't working (Server settings → Proxy)", lane)
+                logger.warning("Download lane {} paused: the proxy isn't working (Server Settings → Proxy)", lane)
                 return
             if self.check_disk_space():
                 return  # low disk space: the guard restarts the lanes when there's room again
@@ -343,6 +343,13 @@ class DownloadWorkerMixin:
                 except Exception:
                     logger.warning("Preview download failed for {}, continuing", item.id)
 
+            # Audio browsers can't play (PCM, AC-3, DTS...) becomes AAC (3.0.1),
+            # before the file's details and fingerprints below are read.
+            try:
+                await self._convert_audio_in_place(str(video_path))
+            except Exception as exc:  # noqa: BLE001 -- the download itself is fine
+                logger.warning("Download for {}: the audio couldn't be made playable: {}", item.id, exc)
+
             if self.settings.download.save_metadata_json:
                 # Always (re)written here -- even if _fetch_metadata() already
                 # wrote a provisional version early, this merges in the real
@@ -437,9 +444,10 @@ class DownloadWorkerMixin:
             except OSError:
                 pass
             # A new video exists: check it for duplicates if "Scan after a
-            # download" is on (Server settings -> Duplicate scan).
+            # download" is on (Server Settings -> Duplicate scan).
             self.request_duplicate_scan_after("download")
             self.request_storyboard(item.id)  # seekbar previews (2.21.0)
+            self.request_frames(item.id)  # video frames under the player (3.0.1)
         finally:
             async with self._lock:
                 still_exists = item.id in self._items

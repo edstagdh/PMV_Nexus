@@ -57,7 +57,7 @@ class KeyTest(BaseModel):
 async def scan_video(video_id: str, payload: Optional[ScanRequest] = None, user: AuthContext = Depends(_songs)):
     method = payload.method if payload else None
     if method and method != "shazam" and not get_settings().gemini_api_key:
-        raise HTTPException(status_code=400, detail="Gemini needs its API key first (Server settings → Credentials → Google Gemini)")
+        raise HTTPException(status_code=400, detail="Gemini needs its API key first (Server Settings → Credentials → Google Gemini)")
     try:
         return library_manager.start_song_scan(video_id, user.username, method)
     except ValueError as exc:

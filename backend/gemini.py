@@ -1,7 +1,7 @@
 """
 Google Gemini, optional (2.33.0): the app's own small client for the Gemini REST API
 (https://ai.google.dev/api) -- httpx, no Google SDK. Used only when an admin saves a
-Gemini API key (Server settings -> Credentials) and turns on a feature that uses it
+Gemini API key (Server Settings -> Credentials) and turns on a feature that uses it
 (so far: Management -> Songs -> "Ask Gemini (AI) about samples Shazam missed").
 
 Models: the free tier's models, best first. The first request of a run asks Google
@@ -70,7 +70,7 @@ def _message(resp: httpx.Response) -> str:
 def _refusal(resp: httpx.Response) -> GeminiError:
     msg = _message(resp)
     if resp.status_code == 400 and "API key not valid" in msg:
-        return GeminiError("The Gemini API key isn't valid (Server settings → Credentials)")
+        return GeminiError("The Gemini API key isn't valid (Server Settings → Credentials)")
     if resp.status_code in (401, 403):
         return GeminiError(f"Gemini refused the key ({resp.status_code}){': ' + msg if msg else ''}")
     return GeminiError(f"Gemini answered {resp.status_code}{': ' + msg if msg else ''}")

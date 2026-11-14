@@ -54,7 +54,7 @@ const presetLabel = (p) => (c.value === "av1" ? AV1_PRESETS.find((x) => x.value 
     </div>
     <p class="foot muted">
       <template v-if="changed">Changed for this re-encode only. <button type="button" class="linkish" @click="reset">Back to the server's settings</button></template>
-      <template v-else>Server settings (Server settings → Re-encode). Changes here are for this re-encode only.</template>
+      <template v-else>Server Settings (Server Settings → Re-encode). Changes here are for this re-encode only.</template>
     </p>
   </div>
 </template>

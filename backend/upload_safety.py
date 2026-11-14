@@ -130,7 +130,7 @@ def scan(path: str, timeout: int = 1800) -> tuple[str, str]:
 
 def scanner_test() -> dict:
     """Scans a small harmless file and returns exactly what the antivirus said
-    (Server settings -> Uploads -> Test the scanner)."""
+    (Server Settings -> Uploads -> Test the scanner)."""
     import tempfile
     scanner.cache_clear()
     found = scanner()

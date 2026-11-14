@@ -44,11 +44,22 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => clearTimeout(pollTimer));
 
+// One time (3.0.1): "2026-11-14T02:00", the server's local time.
+function onceText(at) {
+  const d = at ? new Date(at) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "?";
+}
+function tomorrowAt(hhmm) {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hhmm}`;
+}
 function describe(job) {
   if (job.schedule_mode === "advanced") return `Cron: ${job.schedule_config?.expression || "?"}`;
   const c = job.schedule_config || {};
   if (c.kind === "interval_hours") return `Every ${c.hours || "?"} hour${c.hours === 1 ? "" : "s"}`;
   if (c.kind === "weekly") return `Every ${cap(c.day)} at ${c.time || "?"}`;
+  if (c.kind === "once") return `Once, ${onceText(c.at)}`;
   return `Daily at ${c.time || "?"}`;
 }
 const STATUS_PILL = { success: "pill-ok", failed: "pill-bad", interrupted: "pill-warn", blocked: "pill-warn", cancelled: "pill-warn", running: "pill-accent" };
@@ -126,6 +137,7 @@ function openDialog(job = null) {
     hours: c.hours || 6,
     day: c.day || "monday",
     expression: c.expression || "0 3 * * *",
+    at: c.at || tomorrowAt("03:00"),
     verbose: !!job?.job_config?.verbose_logging,
   };
   formError.value = "";
@@ -139,6 +151,7 @@ async function save() {
   const schedule_config = f.mode === "advanced" ? { expression: f.expression.trim() }
     : f.kind === "interval_hours" ? { kind: f.kind, hours: Math.max(1, Math.round(Number(f.hours) || 6)) }
     : f.kind === "weekly" ? { kind: f.kind, day: f.day, time: f.time || "03:00" }
+    : f.kind === "once" ? { kind: "once", at: f.at || tomorrowAt("03:00") }
     : { kind: "daily", time: f.time || "03:00" };
   const body = {
     name: f.name.trim() || defaultName.value,
@@ -203,7 +216,7 @@ async function save() {
         </span>
       </div>
       <p class="meta">
-        <span>{{ job.enabled ? describe(job) : "Disabled" }}</span>
+        <span>{{ job.enabled ? describe(job) : job.schedule_config?.kind === "once" && job.last_run_at ? "Ran once (switch it on to run it again)" : "Disabled" }}</span>
         <span v-if="job.enabled && job.next_run_at">Next: {{ formatDateTime(job.next_run_at) }}</span>
         <span v-if="job.last_run_at">Last: {{ formatDateTime(job.last_run_at) }}
           <span class="pill" :class="STATUS_PILL[job.last_run_status]">{{ job.last_run_status }}</span></span>
@@ -259,13 +272,17 @@ async function save() {
             <option value="daily">Every day</option>
             <option value="weekly">Every week</option>
             <option value="interval_hours">Every few hours</option>
+            <option value="once">One time</option>
           </select>
           <select v-if="form.kind === 'weekly'" v-model="form.day" class="select" aria-label="Day">
             <option v-for="d in DAYS" :key="d" :value="d">{{ cap(d) }}</option>
           </select>
-          <input v-if="form.kind !== 'interval_hours'" v-model="form.time" class="input" type="time" aria-label="Time" required>
+          <input v-if="form.kind === 'once'" v-model="form.at" class="input" type="datetime-local" aria-label="Date and time" required>
+          <input v-else-if="form.kind !== 'interval_hours'" v-model="form.time" class="input" type="time" aria-label="Time" required>
           <label v-else class="inline">every <input v-model.number="form.hours" class="input input-num" type="number" min="1" max="168" aria-label="Hours"> hours</label>
         </div>
+        <small v-if="form.mode === 'simple' && form.kind === 'once'" class="muted">Runs once at this time (the server's clock) and then switches
+          itself off. A time that has passed runs within a minute.</small>
         <div v-else class="field">
           <input v-model="form.expression" class="input mono" placeholder="0 3 * * *" aria-label="Cron expression" required>
           <small class="muted">minute hour day-of-month month day-of-week, server time — “0 3 * * *” is every day at 03:00, “0 */6 * * *” every 6 hours.</small>

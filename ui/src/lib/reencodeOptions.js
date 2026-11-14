@@ -1,6 +1,6 @@
 // Re-encode dialog (2.22.0): the server's settings (GET /api/reencode/defaults) as an
 // editable state, and the request body with only what was changed -- the rest
-// follows Server settings when the re-encode runs.
+// follows Server Settings when the re-encode runs.
 import { api } from "./api.js";
 
 export const AV1_PRESETS = Array.from({ length: 14 }, (_, i) => ({

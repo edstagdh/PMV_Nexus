@@ -39,8 +39,8 @@ CATALOG: dict[str, tuple[str, str, str]] = {
     "tasks.manage": ("Server", "Manage Tasks", "Reorder the queues, stop running jobs"),
     "stats.view": ("Server", "Stats", "The Stats page"),
     "logs.view": ("Server", "Logs", "Read the logs"),
-    "settings.manage": ("Server", "Server settings", "Server settings, Scheduler, Backups, Tools"),
-    "self.settings": ("Own account", "Own settings", "Change their own My settings"),
+    "settings.manage": ("Server", "Server Settings", "Server Settings, Scheduler, Backups, Tools"),
+    "self.settings": ("Own account", "Own settings", "Change their own My Settings"),
     "self.password_reset": ("Own account", "Own password", "Change their own password"),
 }
 

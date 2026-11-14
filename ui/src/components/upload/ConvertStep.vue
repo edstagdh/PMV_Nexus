@@ -1,6 +1,6 @@
 <script setup>
 // Upload page: the file has to be re-encoded before browsers can play it.
-// Pick the codec and its quality/speed; starts from Server settings -> Uploads.
+// Pick the codec and its quality/speed; starts from Server Settings -> Uploads.
 import { ref, computed, watch } from "vue";
 
 const props = defineProps({ status: Object, busy: Boolean });

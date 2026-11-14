@@ -43,7 +43,7 @@ def _inside(path: str, root: str) -> bool:
 
 # The app's own programs (Windows and Linux / macOS names).
 APP_PROGRAMS = {"python.exe", "pythonw.exe", "python", "python3", "ffmpeg.exe", "ffprobe.exe", "ffmpeg", "ffprobe",
-                "pmvnexusservice.exe"}
+                "pmvnexusservice.exe", "pmvnexus.exe"}
 
 
 def _app_program(name: str) -> bool:

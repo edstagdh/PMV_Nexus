@@ -5,7 +5,7 @@
 // settings menu, plus our Loop, A-B repeat and Download buttons, a Next button
 // for playlists and a big centre play/pause button on touch screens. In
 // fullscreen it shows the title at the top and, on touch screens, swiping up /
-// down on the left / right side sets brightness / volume (My settings).
+// down on the left / right side sets brightness / volume (My Settings).
 // There is one instance, owned by PlayerHost (see stores/player.js); it moves
 // between the video page and the floating mini-player without reloading.
 // The source is set on the <video> element directly -- or, with the 720p
@@ -51,7 +51,7 @@ let nextBtn = null;
 let live = null;          // the running conversion ({ stop, height }) or null
 let liveToken = 0;        // ignores a conversion that finished starting after the source changed
 let fellBack = false;     // already switched to converting because the original didn't play
-// A-B repeat (2.18.0, shown when turned on in My settings): first click marks A,
+// A-B repeat (2.18.0, shown when turned on in My Settings): first click marks A,
 // second marks B (then A..B plays over and over), third click clears it.
 let abBtn = null;
 let abA = null;
@@ -298,7 +298,7 @@ function onFullscreenChange() {
 }
 watch(() => props.title, () => { if (inFullscreen()) onFullscreenChange(); });
 
-// Phones / tablets, My settings -> Video page -> Sides of the video: "swipe" (default)
+// Phones / tablets, My Settings -> Video page -> Sides of the video: "swipe" (default)
 // = in fullscreen, swipe up / down on the left for brightness, on the right for
 // volume, and double-tap there does nothing; "seek" = double-tap skips 10 s.
 // Outside fullscreen the sides always double-tap to skip (a swipe there scrolls the page).

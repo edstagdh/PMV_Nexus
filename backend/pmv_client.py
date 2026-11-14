@@ -54,7 +54,7 @@ class PMVClient:
         self.site_key = site_key
         self.site = get_site(site_key)  # raises KeyError if site_key isn't configured
         self._client: Optional[httpx.AsyncClient] = None
-        # The same client through the proxy (Server settings -> Proxy), made on first use.
+        # The same client through the proxy (Server Settings -> Proxy), made on first use.
         self._proxy_client: Optional[httpx.AsyncClient] = None
         self._proxy_client_url: Optional[str] = None
         self._lock = asyncio.Lock()
@@ -68,7 +68,7 @@ class PMVClient:
         self._last_metadata_request_at = 0.0
 
     def _api_headers(self, url: str) -> dict:
-        """The user's own API key (Server settings → Credentials → PMVHaven API) on
+        """The user's own API key (Server Settings → Credentials → PMVHaven API) on
         requests to the site's API, so the site knows who is calling (2.27.0)."""
         key = self.settings.pmvhaven_api_key
         if key and urlparse(url).path.startswith("/api/"):
@@ -86,7 +86,7 @@ class PMVClient:
 
     async def _get_client(self, use_proxy: Optional[bool] = None) -> httpx.AsyncClient:
         """The client: direct, or through the proxy when
-        `use_proxy` (default: when Server settings -> Proxy sends all site
+        `use_proxy` (default: when Server Settings -> Proxy sends all site
         traffic through it)."""
         if use_proxy is None:
             use_proxy = proxy.for_sites() == "all"
@@ -94,7 +94,7 @@ class PMVClient:
             if use_proxy:
                 url = proxy.address()
                 if not url:
-                    raise RuntimeError("The proxy is turned on but has no address (Server settings → Proxy)")
+                    raise RuntimeError("The proxy is turned on but has no address (Server Settings → Proxy)")
                 if self._proxy_client is None or self._proxy_client_url != url:
                     if self._proxy_client is not None:
                         await self._proxy_client.aclose()
@@ -212,7 +212,7 @@ class PMVClient:
             if resp.status_code in (401, 403, 404) and "/api/videos/" in url and url.endswith("/download"):
                 raise RuntimeError(
                     f"The site didn't give the file (HTTP {resp.status_code}): it may not be offered for download, "
-                    "be private or removed, or need your API key (Server settings → Credentials).")
+                    "be private or removed, or need your API key (Server Settings → Credentials).")
             resp.raise_for_status()
             total = int(resp.headers.get("Content-Length", 0)) or None
             done = 0

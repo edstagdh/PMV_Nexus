@@ -40,14 +40,14 @@ async function match(retryNone = false) {
         <h2>Performers (ThePornDB)</h2>
         <p class="muted small">Each performer name in your library is matched once to a ThePornDB profile (kept by its id), for her
           profile page: photo, details, bio, aliases and similar performers. Clear matches link by themselves; names that could be several
-          people wait here for you to pick. Options: <RouterLink :to="{ name: 'server', query: { tab: 'performers' } }">Server settings → Performers</RouterLink>.</p>
+          people wait here for you to pick. Options: <RouterLink :to="{ name: 'server', query: { tab: 'performers' } }">Server Settings → Performers</RouterLink>.</p>
       </div>
       <div class="bar">
         <button class="btn btn-sm" :disabled="!ov?.configured || ov?.job?.running" @click="match(false)">{{ ov?.job?.running ? "Running…" : "Match now" }}</button>
         <button class="btn btn-ghost btn-sm" :disabled="!ov?.configured || ov?.job?.running" title="Look up the names not found before again" @click="match(true)">Retry not found</button>
       </div>
     </div>
-    <p v-if="ov && !ov.configured" class="error-text small">Add the ThePornDB API key in <RouterLink :to="{ name: 'server', query: { tab: 'credentials' } }">Server settings → Credentials</RouterLink>.</p>
+    <p v-if="ov && !ov.configured" class="error-text small">Add the ThePornDB API key in <RouterLink :to="{ name: 'server', query: { tab: 'credentials' } }">Server Settings → Credentials</RouterLink>.</p>
     <template v-if="ov">
       <p class="small">
         <strong>{{ ov.counts.linked }}</strong> linked · <strong>{{ ov.counts.review }}</strong> to review · {{ ov.counts.none }} not on ThePornDB ·

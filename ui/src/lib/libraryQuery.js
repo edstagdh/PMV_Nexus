@@ -54,7 +54,7 @@ const SORT_LABELS = {
   views: "views", tech_duration: "duration", tech_filesize: "file size", tech_resolution: "resolution",
 };
 
-/** "performer Ava Rose · tag pmv · 10+ min · sorted by rating" */
+/** "performer Aurora Vale · tag pmv · 10+ min · sorted by rating" */
 export function describeQuery(p = {}) {
   const parts = [];
   if (p.search) parts.push(`“${p.search}”`);

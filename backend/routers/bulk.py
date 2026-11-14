@@ -51,7 +51,7 @@ async def bulk_action(action: str, body: BulkRequest,
     ids = list(dict.fromkeys(body.ids))
     features = get_settings().features
     if action == "reencode" and not features.reencode:
-        raise HTTPException(status_code=403, detail="That's switched off in Server settings")
+        raise HTTPException(status_code=403, detail="That's switched off in Server Settings")
 
     if action == "songs":
         result = library_manager.start_song_scan_many(ids, user.username, body.method)

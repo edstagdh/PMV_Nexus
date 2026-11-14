@@ -4,6 +4,64 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.1.0] - 2026-11-14
+
+### Added
+- **Notifications for possible duplicates:** when a duplicate scan (after downloads, re-encodes or repairs, the daily
+  one or Scan now) finds a pair it hadn't found before: "Possible duplicate: “New video” — looks like “Older video”
+  (94% match)", opening Management → Duplicates. More than 5 new pairs at once give one summary instead. Pairs you
+  marked "not duplicates" stay quiet, and pairs found before 3.1.0 aren't announced. For admins; pop-ups can be
+  switched off in My Settings → Notifications → "Possible duplicates found".
+- **Video frames under the player** (like PMVHaven's video timeline): a row of pictures from across the video with
+  their time — click one to jump there; the one you're in is highlighted. PMVHaven's own timeline frames when the
+  video has them, otherwise 8 made from the file (uploads, videos gone from the site), evenly spread. Small WebP
+  files (at most 320 px) in the cache folder's `.frames`; new videos get them by themselves, others when their page
+  is opened, or all at once from Management → Maintenance → Video frames. My Settings → Video page can hide them.
+- **Audio browsers can't play is converted to AAC** (PCM, AC-3, DTS, TrueHD, ALAC, MP2 played silent in some or all
+  browsers): right after a download, and for the videos already in the library by the new Scheduler job **Make audio
+  playable** — added once, for the first night after updating (02:00), or start it with Run now. The picture isn't
+  touched.
+- **One-time Scheduler jobs:** a job can run once at a date and time, then switches itself off.
+- **Screenshots** in the README and the Guide (also shown in Help → Guide, which can now show pictures) — a demo
+  library with invented titles, names and numbers and abstract generated videos. Examples in the app (My Settings,
+  Server Settings, search help) use invented names too.
+- **♥ badge on videos in your Favorites** (like the 💀 one for videos gone from the site): on thumbnails (also the
+  small ones) and in the table; it updates as soon as you add or remove a favorite. Can be turned off in
+  Settings → Badges ("♥ In my Favorites").
+
+### Changed
+- **Video page:** the player starts at the top — the Library / Back link above it is gone, and **Discover again** is
+  now **🎲 Random**, next to the video's title. **Library** in the sidebar takes you back to the library as you left
+  it (filters, page) from any page, so the "Back button" setting in My Settings → Video page is gone too.
+- **"My Settings" and "Server Settings"** are written that way everywhere.
+- **Video page:** the description has a **Description** heading; **Technical Details** are split into General / Video /
+  Audio / Other, side by side when there's room; the videos in **Related videos** and **More from …** have the ⋮ menu;
+  **Repair/Update** is spelled that way.
+- **ThePornDB performer photos have their own folder**, `data/performers`, instead of the cache folder (which has a
+  folder per creator). The app moves them by itself on the first start.
+- **Your place in a video is saved every 5 s instead of 10** while it plays (also still on pause, seek, end and
+  closing the tab).
+- **Windows shows "PMV Nexus" instead of "pythonw"**: the Start-menu, desktop and start-with-Windows shortcuts now
+  open a small `PMVNexus.exe` (with the app's icon and name), so Task Manager's Startup tab, Explorer and the Start
+  menu show PMV Nexus. It just starts the app's Python and exits — the running app itself is still Python. Run the
+  new Setup over your install; it replaces the shortcuts.
+
+### Fixed
+- **"Interrupted: Duplicate scan (after download) — CancelledError"** in the notifications: a download finishing
+  while the scan for the one before was running cancelled that scan. It now finishes, and one more scan follows
+  for the videos that came in meanwhile.
+- **The page background stopped after one screen** on long pages (Help, settings...) in some browsers: it now
+  reaches the bottom of every page.
+- **Performer photos were missing after restoring a backup with other folders** (the database still had the old
+  computer's paths, e.g. `G:\…\cache\performers\…`, and the log showed "File … does not exist"): photos — ThePornDB's
+  and those added by hand — are now looked for in today's folders at every start and found again. A missing photo is
+  simply not shown, no longer an error in the log.
+- **The video page didn't update after Repair/Update** (views, likes, description... stayed as they were until you
+  reloaded the page): it now reads the new details as soon as the video changes.
+- **A black window flashed for a moment when hovering a video** (the first time per video, on Windows when the app
+  runs without its console — tray, shortcuts, service): FFprobe, checking the hover preview, opened a console
+  window. No program the app starts (FFprobe, FFmpeg, virus scanners...) opens a window any more.
+
 ## [3.0.0] - 2026-11-13
 
 **The first public release — open beta.** Versions before it were private development builds; their history isn't

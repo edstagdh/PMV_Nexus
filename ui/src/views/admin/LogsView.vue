@@ -139,7 +139,7 @@ const summary = computed(() => {
         <p class="muted small">Every action and everything the app's background jobs record, newest first. Click a row for the full entry.
           <span v-if="ipMode">Addresses: {{ IP_MODES[ipMode] || ipMode }}.</span>
           {{ " " }}<RouterLink :to="{ name: 'server', query: { tab: 'logging' } }">Logging settings</RouterLink></p>
-        <p v-if="!recording" class="error-text small">New entries aren't being recorded: logging (or this log) is switched off in Server settings → Logging.</p>
+        <p v-if="!recording" class="error-text small">New entries aren't being recorded: logging (or this log) is switched off in Server Settings → Logging.</p>
       </div>
       <div class="head-actions">
         <label class="switch" title="Add new entries as they happen"><input v-model="live" type="checkbox">Live</label>

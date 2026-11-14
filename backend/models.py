@@ -100,7 +100,7 @@ class LibraryItem(BaseModel):
     reencode_target: Optional[str] = None
     # Settings for this one re-encode, chosen in the Re-encode dialog (2.22.0):
     # {crf, preset, copy_audio, downscale, remove_chapters, keep_original_file};
-    # what's missing comes from Server settings -> Re-encode.
+    # what's missing comes from Server Settings -> Re-encode.
     reencode_options: Optional[dict] = None
     repair_status: Optional[str] = None
     repair_progress_label: Optional[str] = None
@@ -352,7 +352,7 @@ class PreviewFromTimestampsRequest(BaseModel):
 
 
 class ReencodeOptions(BaseModel):
-    """This one re-encode's settings (Re-encode dialog, 2.22.0); left out = Server settings."""
+    """This one re-encode's settings (Re-encode dialog, 2.22.0); left out = Server Settings."""
     crf: Optional[int] = Field(None, ge=0, le=63)            # HEVC 0-51, AV1 1-63 (checked per codec)
     preset: Optional[str] = Field(None, max_length=12)       # HEVC x265 name / AV1 0-13
     copy_audio: Optional[bool] = None
@@ -367,7 +367,7 @@ class ReencodeRequest(BaseModel):
 
 
 class TraySettingsRequest(BaseModel):
-    """Server settings -> Opening the app (2.31.0). browser None = unchanged."""
+    """Server Settings -> Opening the app (2.31.0). browser None = unchanged."""
     open_browser: bool = True
     browser: Optional[str] = Field(None, max_length=2000)
 
