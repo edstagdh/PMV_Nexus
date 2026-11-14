@@ -52,7 +52,9 @@ onBeforeUnmount(() => { document.removeEventListener("keydown", onKey, true); wi
 </template>
 
 <style scoped>
-.cf-overlay { position: fixed; inset: 0; z-index: 120; background: var(--overlay); display: flex; align-items: flex-start;
+/* 3.2.1: above every panel and dialog (the notifications panel is 150/151) so a confirmation
+   asked from one of them can be clicked; toasts (200) stay on top. */
+.cf-overlay { position: fixed; inset: 0; z-index: 190; background: var(--overlay); display: flex; align-items: flex-start;
   justify-content: center; padding: 18vh 1rem 1rem; backdrop-filter: blur(2px); }
 .cf { width: 100%; max-width: 27rem; padding: 1.25rem 1.25rem 1rem; box-shadow: var(--shadow); }
 .cf h3 { font-size: 1rem; margin: 0 0 0.5rem; }

@@ -274,9 +274,9 @@ older videos without saved timeline frames ask PMVHaven for them once). **Redo F
 while the frames are shown; needs Edit details) makes them again.
 
 **Search frame:** **⚙ → Search frame** pauses the video and looks up the picture on screen on a reverse image search
-site, in a new tab — **Google Lens** by default. The picture is uploaded to that site straight from your browser.
-**Yandex** is built in too (**Add Yandex** in **My Settings → Video page → Search this frame**): Yandex refuses an upload
-straight from a browser, so for Yandex the app's server uploads the picture and the tab opens the results. Other sites can be added there with a name, the address the site's upload form sends the
+site, in a new tab — **Google Lens** and **Yandex** by default (with both, you pick one each time). The picture is
+uploaded to Google Lens straight from your browser; Yandex refuses an upload straight from a browser, so for Yandex the
+app's server uploads it and the tab opens the results. Other sites can be added there with a name, the address the site's upload form sends the
 picture to and the form's file field name (with several, you pick one each time). DuckDuckGo has no search by image.
 If nothing opens, allow pop-ups for the app in your browser.
 

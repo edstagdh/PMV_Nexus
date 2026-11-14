@@ -7,14 +7,14 @@
 //
 // Sites: My Settings -> Video page -> Search this frame -- each with a name, the
 // address its upload form posts to and the name of the form's file field.
-// Google Lens is the built-in default.
+// Google Lens and Yandex are the built-in default (3.2.1).
 
 export const GOOGLE_LENS = { name: "Google Lens", url: "https://lens.google.com/v3/upload", field: "encoded_image" };
 // Yandex (3.2.1): refuses an upload straight from the browser, so the app's server uploads
 // the frame and the tab opens the results it answers with (mode "yandex").
 export const YANDEX = { name: "Yandex", url: "https://yandex.com/images/search", field: "upfile", mode: "yandex" };
 export const PRESETS = [GOOGLE_LENS, YANDEX];
-export const DEFAULT_ENGINES = [GOOGLE_LENS];
+export const DEFAULT_ENGINES = [GOOGLE_LENS, YANDEX];
 const MAX_SIDE = 1920; // pixels: big enough for any search, small enough to upload quickly
 
 /** Engines from the saved setting: valid https entries only; none saved -> Google Lens. */

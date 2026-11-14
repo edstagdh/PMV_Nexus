@@ -4,9 +4,16 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
-## [Unreleased]
+## [3.2.1] - 2026-11-14
+
+### Changed
+- **Search frame: Yandex is built in by default**, next to Google Lens (for anyone who hasn't changed the sites;
+  otherwise My Settings → Video page → Add Yandex, or "Back to Google Lens + Yandex").
 
 ### Fixed
+- **Confirmations asked from the notifications panel couldn't be answered** ("Delete all notifications?"): the panel
+  lay over them, so any click there — even on Delete or Cancel — closed the panel instead. Confirmations now sit above
+  every panel; Esc answers the confirmation first.
 - **Search frame on Yandex didn't work** ("Yandex didn't answer as expected"): the app's server now uploads the frame
   the way Yandex's own page does ("post, redirect, get") and the tab opens the results Yandex sends back. Any Yandex
   entry you added switches over by itself (Yandex refuses the upload straight from a browser). When it fails, the log

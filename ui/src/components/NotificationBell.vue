@@ -2,7 +2,7 @@
 // The bell (sidebar and mobile bar) and the notification center it opens:
 // problems (failed downloads / jobs, low disk space...) or everything,
 // newest first. The badge counts unread problems.
-import { askConfirm } from "../stores/confirm.js";
+import { askConfirm, confirmState } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import Icon from "./Icon.vue";
@@ -33,7 +33,8 @@ async function clearAll() {
   if (!(await askConfirm("Delete all notifications?", { ok: "Delete", danger: true }))) return;
   try { await clearNotifications(); } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
 }
-function onKey(e) { if (e.key === "Escape") open.value = false; }
+// Esc answers an open confirmation ("Delete all notifications?") first, not this panel (3.2.1).
+function onKey(e) { if (e.key === "Escape" && !confirmState.open) open.value = false; }
 window.addEventListener("keydown", onKey);
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>

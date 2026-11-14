@@ -11,7 +11,7 @@ import {
 } from "../stores/session.js";
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
-import { cleanEngines, GOOGLE_LENS, PRESETS } from "../lib/frameSearch.js";
+import { cleanEngines, DEFAULT_ENGINES, PRESETS } from "../lib/frameSearch.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -153,7 +153,9 @@ function addEngine() {
   engineDraft.value = { name: "", url: "https://", field: "" };
 }
 function removeEngine(n) { saveEngines(engines.value.filter((_, i) => i !== n)); }
-function resetEngines() { saveEngines([{ ...GOOGLE_LENS }]); }
+function resetEngines() { saveEngines(DEFAULT_ENGINES.map((e) => ({ ...e }))); }
+const isDefault = computed(() => engines.value.length === DEFAULT_ENGINES.length
+  && DEFAULT_ENGINES.every((d, i) => engines.value[i].url === d.url && (engines.value[i].mode || "") === (d.mode || "")));
 const missingPresets = computed(() => PRESETS.filter((p) => !engines.value.some((e) => e.url === p.url && (e.mode || "") === (p.mode || ""))));
 function addPreset(p) { saveEngines([...engines.value, { ...p }]); }
 const volumeDraft = ref(null);
@@ -373,7 +375,7 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
           </form>
           <div class="presets">
             <button v-for="p in missingPresets" :key="p.name" class="btn btn-sm" type="button" @click="addPreset(p)">Add {{ p.name }}</button>
-            <button v-if="engines.length !== 1 || engines[0].url !== GOOGLE_LENS.url" class="btn btn-ghost btn-sm" type="button" @click="resetEngines">Only Google Lens</button>
+            <button v-if="!isDefault" class="btn btn-ghost btn-sm" type="button" @click="resetEngines">Back to Google Lens + Yandex</button>
           </div>
         </div>
       </div>
