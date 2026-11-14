@@ -81,6 +81,7 @@ _LABELS = {
     "clear_position": "Start a video over",
     "make_missing_storyboards": "Make seekbar previews for every video",
     "make_missing_frames": "Make video frames for every video",
+    "frame_search_yandex": "Search a video frame on Yandex",
     "redo_video_frames": "Make video frames again",
     "start_live": "Play converted (720p)",
     "end_live": "Stop converted playback",

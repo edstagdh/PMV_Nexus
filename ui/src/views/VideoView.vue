@@ -154,12 +154,13 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
     <div v-else-if="!item" class="watch"><div class="skeleton media-skel" /><div class="skeleton side-skel" /></div>
 
     <div v-else class="watch" :class="{ 'no-side': !session.prefs.relatedCount && !player.queue }">
-      <!-- 3.2.0: the title above the player, 🎲 Random above the related videos -->
-      <div class="watch-head">
-        <h1 class="title">{{ title }}</h1>
-        <button class="btn btn-primary random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
-      </div>
       <div class="primary">
+        <!-- 3.2.0: the title and 🎲 Random above the player, in the video's own column (the related
+             videos start at the top on the right, and go below everything else in a narrow window) -->
+        <div class="watch-head">
+          <h1 class="title">{{ title }}</h1>
+          <button class="btn btn-primary random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
+        </div>
         <div v-if="playable" ref="slot" class="player-slot" />
         <VideoFrames v-if="playable && session.prefs.videoFrames === true" :item-id="item.id" />
         <div v-if="!playable" class="poster">
@@ -244,12 +245,9 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 
 <style scoped>
 .video-page { padding: 0.75rem 1.5rem 2rem; }
-/* The header spans both columns with the same grid, so the title sits over the player and
-   Random over the related videos; one column: side by side. */
-.watch-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 0 1.5rem; align-items: center; margin-bottom: -0.75rem; }
-.watch-head .title { min-width: 0; }
-.watch-head .random { justify-self: end; }
-.watch.no-side .watch-head { grid-template-columns: minmax(0, 1fr) auto; }
+.watch-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.watch-head .title { flex: 1; min-width: 0; margin: 0; }
+.watch-head .random { flex: none; }
 .watch { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 1.5rem; align-items: start; }
 .watch.no-side { grid-template-columns: minmax(0, 1fr); }
 .primary { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -292,7 +290,6 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 .side-skel { height: 20rem; border-radius: var(--radius-lg); }
 @media (max-width: 75rem) {
   .watch { grid-template-columns: 1fr; } .secondary { position: static; }
-  .watch-head { grid-template-columns: minmax(0, 1fr) auto; gap: 0 0.75rem; }
 }
 @media (max-width: 56rem) { .video-page { padding: 0.5rem 0.75rem 1.5rem; } }
 </style>

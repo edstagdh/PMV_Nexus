@@ -2,7 +2,12 @@
 tool status and backups. See backend/app_info.py and backend/backup.py."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+import json
+from urllib.parse import urlsplit
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request
+from loguru import logger
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
@@ -52,7 +57,7 @@ async def check_for_update(user: AuthContext = Depends(get_current_user)):
 # tiny page, opened in a new tab by the player, is the one place that may send a form
 # to another (https) site: it gets the frame from the app (postMessage, same origin
 # only) and uploads it to the reverse image search site picked, in that same tab.
-_FRAME_SEARCH_CSP = ("default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; "
+_FRAME_SEARCH_CSP = ("default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; "
                      "form-action https:; base-uri 'none'; frame-ancestors 'none'")
 _FRAME_SEARCH_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -66,7 +71,20 @@ _FRAME_SEARCH_JS = r"""(function () {
   window.addEventListener("message", function (e) {
     if (done || e.origin !== location.origin || !e.data || e.data.type !== "pmv-frame-search") return;
     var d = e.data;
-    if (!(d.file instanceof File) || !/^https:\/\/\S+$/i.test(d.url) || !/^[\w.\[\]-]+$/.test(d.field)) return;
+    if (!(d.file instanceof File)) return;
+    if (d.mode === "yandex") {
+      // Yandex answers an upload with the address of its results, not with them: the app's
+      // server uploads the frame (a browser can't read Yandex's answer) and this tab opens it.
+      done = true;
+      msg.textContent = "Sending the frame to Yandex…";
+      fetch("/api/system/frame-search/yandex", { method: "POST", body: d.file, credentials: "same-origin",
+        headers: { "Content-Type": "image/jpeg", "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || r.status); return j; }); })
+        .then(function (j) { location.replace(j.url); })
+        .catch(function (err) { msg.textContent = "Yandex didn't take the frame: " + err.message; });
+      return;
+    }
+    if (!/^https:\/\/\S+$/i.test(d.url) || !/^[\w.\[\]-]+$/.test(d.field)) return;
     done = true;
     msg.textContent = "Sending the frame to " + String(d.name || "the search site") + "…";
     var form = document.createElement("form");
@@ -79,6 +97,35 @@ _FRAME_SEARCH_JS = r"""(function () {
   if (window.opener) window.opener.postMessage({ type: "pmv-frame-search-ready" }, location.origin);
   else msg.textContent = "Open this from the player: ⚙ → Search frame.";
 })();"""
+
+
+YANDEX_UPLOAD = "https://yandex.com/images/search"
+_YANDEX_BLOCKS = json.dumps({"blocks": [{"block": "b-page_type_search-by-image__link"}]})
+_MAX_FRAME = 8 * 1024 * 1024
+
+
+@router.post("/api/system/frame-search/yandex")
+async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_current_user)):
+    """Search frame on Yandex: uploads the frame (a JPEG from the player) to Yandex
+    and returns the address of its results page. Yandex's upload answers with that
+    address rather than the results, which a browser form can't follow -- so this
+    one step goes through the app's server, to Yandex only."""
+    data = await request.body()
+    if not data or len(data) > _MAX_FRAME or not data.startswith(b"\xff\xd8"):
+        raise HTTPException(status_code=400, detail="Not a frame from the player")
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True,
+                                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}) as client:
+            resp = await client.post(YANDEX_UPLOAD, params={"rpt": "imageview", "format": "json", "request": _YANDEX_BLOCKS},
+                                     files={"upfile": ("frame.jpg", data, "image/jpeg")})
+        query = resp.json()["blocks"][0]["params"]["url"]
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+        logger.warning("Search frame on Yandex failed: {}", exc.__class__.__name__)
+        raise HTTPException(status_code=502, detail="Yandex didn't answer as expected — try again later") from exc
+    url = f"{YANDEX_UPLOAD}?{query}"
+    if urlsplit(url).netloc != "yandex.com":
+        raise HTTPException(status_code=502, detail="Yandex answered with an unexpected address")
+    return {"url": url}
 
 
 @router.get("/frame-search", include_in_schema=False)

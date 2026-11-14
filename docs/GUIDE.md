@@ -274,10 +274,12 @@ older videos without saved timeline frames ask PMVHaven for them once). **Redo F
 while the frames are shown; needs Edit details) makes them again.
 
 **Search frame:** **⚙ → Search frame** pauses the video and looks up the picture on screen on a reverse image search
-site, in a new tab — **Google Lens** by default. The picture is uploaded to that site straight from your browser (it
-never goes through the server). Other sites can be added in **My Settings → Video page → Search this frame**: a name,
-the address the site's upload form sends the picture to and the form's file field name (with several, you pick one
-each time). If nothing opens, allow pop-ups for the app in your browser.
+site, in a new tab — **Google Lens** by default. The picture is uploaded to that site straight from your browser.
+**Yandex** is built in too (**Add Yandex** in **My Settings → Video page → Search this frame**): its upload answers with
+the address of its results, which a browser can't follow, so for Yandex the app's server uploads the picture and the
+tab opens the results. Other sites can be added there with a name, the address the site's upload form sends the
+picture to and the form's file field name (with several, you pick one each time). DuckDuckGo has no search by image.
+If nothing opens, allow pop-ups for the app in your browser.
 
 **Audio browsers can't play:** some videos carry audio a browser can't play — uncompressed PCM (in some browsers),
 AC-3 / E-AC-3, DTS, TrueHD, ALAC, MP2 — and play silent. The app converts such audio to AAC (192 kb/s stereo; the
@@ -427,7 +429,7 @@ existing install the admin ticks it in **Users → Roles → user** (or for a gr
 
 ### Discover
 **🎲 Discover** in the sidebar (the dice in the top bar on a phone) opens a random downloaded video; on a video's page,
-**🎲 Random** (above the related videos) opens another one. You won't get the same video twice until
+**🎲 Random** (top right, above the player) opens another one. You won't get the same video twice until
 you've been shown every video in the library; after that a new round starts, still skipping the 20% you saw
 most recently. Each user has their own history.
 

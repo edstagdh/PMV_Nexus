@@ -11,7 +11,7 @@ import {
 } from "../stores/session.js";
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
-import { cleanEngines, GOOGLE_LENS } from "../lib/frameSearch.js";
+import { cleanEngines, GOOGLE_LENS, PRESETS } from "../lib/frameSearch.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -154,6 +154,8 @@ function addEngine() {
 }
 function removeEngine(n) { saveEngines(engines.value.filter((_, i) => i !== n)); }
 function resetEngines() { saveEngines([{ ...GOOGLE_LENS }]); }
+const missingPresets = computed(() => PRESETS.filter((p) => !engines.value.some((e) => e.url === p.url)));
+function addPreset(p) { saveEngines([...engines.value, { ...p }]); }
 const volumeDraft = ref(null);
 const volumeShown = computed(() => volumeDraft.value ?? session.prefs.startVolume ?? 10);
 function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolume", volumeDraft.value); volumeDraft.value = null; } }
@@ -353,7 +355,9 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
           <strong>Search this frame</strong>
           <span class="muted">⚙ → Search frame in the player pauses the video and looks the picture up on a reverse image search site, in a
             new tab. The picture is uploaded to that site straight from your browser. With several sites you pick one each time.
-            A site is added with the address its upload form sends the picture to and the form's file field name.</span>
+            Google Lens and Yandex are built in (for Yandex the app's server passes the picture on — Yandex's upload needs a step
+            a browser can't do); another site is added with the address its upload form sends the picture to and the form's
+            file field name.</span>
         </div>
         <div class="stack">
           <ul class="engines">
@@ -367,7 +371,10 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
             <input v-model="engineDraft.field" class="input" placeholder="File field" aria-label="File field name" maxlength="60">
             <button class="btn btn-sm" type="submit">Add</button>
           </form>
-          <button v-if="engines.length !== 1 || engines[0].url !== GOOGLE_LENS.url" class="btn btn-ghost btn-sm reset-engines" type="button" @click="resetEngines">Only Google Lens</button>
+          <div class="presets">
+            <button v-for="p in missingPresets" :key="p.name" class="btn btn-sm" type="button" @click="addPreset(p)">Add {{ p.name }}</button>
+            <button v-if="engines.length !== 1 || engines[0].url !== GOOGLE_LENS.url" class="btn btn-ghost btn-sm" type="button" @click="resetEngines">Only Google Lens</button>
+          </div>
         </div>
       </div>
       <div class="row">
@@ -491,7 +498,7 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
 .engines li { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .engines code { font-size: 0.75rem; overflow-wrap: anywhere; }
 .engine-add { display: grid; grid-template-columns: 8rem minmax(0, 1fr) 8rem auto; gap: 0.375rem; }
-.reset-engines { align-self: flex-start; }
+.presets { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 @media (max-width: 40rem) { .engine-add { grid-template-columns: 1fr; } }
 .sub { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-top: 0.25rem; }
 .uploader-sample { font-weight: 600; font-size: 0.875rem; }

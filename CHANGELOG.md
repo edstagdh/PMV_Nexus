@@ -8,9 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 - **Search frame** (⚙ in the player): pauses the video and looks up the picture on screen on a reverse image search
-  site in a new tab — Google Lens by default; more sites in My Settings → Video page → Search this frame. The picture
-  goes from your browser to that site (through the app's small /frame-search page, the only page allowed to send a form
-  to another site), never through the server.
+  site in a new tab — Google Lens by default, Yandex built in too, more sites in My Settings → Video page → Search
+  this frame. The picture goes from your browser to that site (through the app's small /frame-search page, the only
+  page allowed to send a form to another site); only for Yandex, whose upload answers with the address of its results,
+  the app's server passes it on.
 - **Video frames under the player** (like PMVHaven's video timeline; **off by default** — the seek bar's previews do
   the same; switch them on in My Settings → Video page): a row of pictures from across the video with their time —
   click one to jump there; the one you're in is highlighted. PMVHaven's own timeline frames when the video has them,
@@ -37,8 +38,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   Server Settings, search help) use invented names too.
 
 ### Changed
-- **Video page:** the title is above the player and **🎲 Random** (was "Discover again") above the related videos; the
-  uploader and details come right under the player. The Library / Back link is gone: **Library** in the sidebar takes
+- **Video page:** the title and **🎲 Random** (was "Discover again") are above the player, in the video's own column —
+  the related videos start at the top on the right, and go below everything else in a narrow window; the uploader
+  and details come right under the player. The Library / Back link is gone: **Library** in the sidebar takes
   you back to the library as you left it (filters, page) from any page, so the "Back button" setting is gone too.
   The description has a **Description** heading; **Technical Details** are split into General / Video / Audio / Other,
   side by side when there's room; the videos in **Related videos** and **More from …** have the ⋮ menu;
