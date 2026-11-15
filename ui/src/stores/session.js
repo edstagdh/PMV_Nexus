@@ -33,6 +33,7 @@ export const DEFAULT_UI = Object.freeze({
   abRepeat: false,              // player: an A-B button to repeat one part of a video (2.18.0)
   resumePlayback: true,         // continue a video where I left off (2.24.0)
   videoFrames: false,           // the row of frames under the player, click to jump (3.2.0; off: the seekbar previews do it)
+  tabOrder: {},                 // your order of the tabs, per page: {portal: [keys], server: [keys]} (3.4.0, lib/tabOrder.js)
   frameSearch: null,            // Search this frame: [{name, url, field}]; null = Google Lens (lib/frameSearch.js)
   rememberVolume: true,         // each browser keeps the volume you last set (3.2.0)
   startVolume: 10,              // % -- a new browser, or every video when rememberVolume is off
@@ -77,6 +78,9 @@ export function normalizeUi(raw) {
     resumePlayback: r.resumePlayback !== false,
     videoFrames: r.videoFrames === true,
     frameSearch: Array.isArray(r.frameSearch) ? r.frameSearch : null,
+    tabOrder: Object.fromEntries(Object.entries(r.tabOrder && typeof r.tabOrder === "object" ? r.tabOrder : {})
+      .filter(([page, keys]) => /^[a-z]{1,20}$/.test(page) && Array.isArray(keys))
+      .map(([page, keys]) => [page, [...new Set(keys.filter((k) => typeof k === "string" && /^[a-z_-]{1,30}$/.test(k)))].slice(0, 30)])),
     rememberVolume: r.rememberVolume !== false,
     startVolume: clampNum(r.startVolume, 0, 100, DEFAULT_UI.startVolume),
     watchedBar: r.watchedBar !== false,
@@ -179,7 +183,7 @@ function uiSnapshot() {
   const p = session.prefs;
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
-    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
+    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
     relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });

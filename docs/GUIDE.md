@@ -115,7 +115,10 @@ with the download status, before the file has finished downloading.
 - **Converting for watching:** every video being converted while someone watches it (**⚙ → 720p** in the player), with
   who's watching, the size and how far it got. **Stop** ends it; the viewer's player switches to the original file.
 - **Coming up:** the next Scheduler runs, and a duplicate scan about to start after downloads.
-- **Finished in the last day:** jobs that ended, with how they went (e.g. "matched 7 · refreshed 0").
+- **Finished in the last day:** jobs that ended, with how they went (e.g. "matched 7 · refreshed 0"). One that
+  failed or says "see the log" has a **See the log** link (with permission to see the log): it opens **Management →
+  Logs** showing only what was logged while it ran — the error and what led to it (only warnings and errors when it
+  ran longer than 10 minutes). **✕ clear** above the list shows the whole log again.
 
 The Scheduler page shows the same progress under a running job.
 
@@ -160,7 +163,10 @@ keep the original as "_old") and how many CPU cores an encode may use are set un
   the default **CRF 20** (preset medium) keeps that loss too small to see, and the file usually ends up bigger than
   the HEVC/AV1 one (up to about twice). 18 is safer still (bigger); above 23 the loss starts to show.
 
-Any codec can go to any other (HEVC ↔ AV1, either to AVC, AVC to either), only not to the one the video is already in.
+Any codec can go to any other (HEVC ↔ AV1, either to AVC, AVC to either), only not to the one the video is already in
+— except to make a video **larger than 1080p smaller** (3.4.0): with **Downscale to 1080p if larger** on, the
+Re-encode window also offers the codec it's in, e.g. an 8K HEVC video → 1080p HEVC. Making it smaller always means a
+re-encode (the picture itself changes). Library → Select → Re-encode still skips videos already in the chosen codec.
 
 **Re-encode…** opens a window to pick the codec (the one the video is already in can't be picked; AV1 videos can be
 turned into HEVC or AVC for devices that struggle with AV1). It shows that codec's settings from Server Settings, which you
@@ -272,7 +278,8 @@ skip in fullscreen: **My Settings → Video page → Sides of the video in fulls
 screen turns to suit each video in fullscreen and stays turned while a playlist moves on to a video of the same shape.
 
 **Video frames** (off by default — switch them on in **My Settings → Video page → Frames under the player**): under
-the player, a row of pictures from across the video, each with its time — click one to
+the player, a row of pictures from across the video, each with its time (a vertical video's are as tall as a
+horizontal video's, so narrower) — click one to
 jump there (the one you're in is highlighted). They're PMVHaven's own timeline frames when the video has them (usually
 8); for uploaded videos, videos gone from the site or when those can't be downloaded, 8 are made from the file, one from
 the middle of each eighth of the video. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
@@ -458,7 +465,10 @@ prefilled bug-report link, server details and the license.
 ![Management → Scheduler](screenshots/scheduler.webp)
 
 The **Server** section of the sidebar has **Tasks**, **Management** and **Settings** (the server's settings, called
-Server Settings below). Management's tabs are the pages below; each one shows for people with its permission (see *Who may do what*), the admin sees all:
+Server Settings below). Management's tabs are the pages below; each one shows for people with its permission (see *Who may do what*), the admin sees all.
+**Your own tab order** (3.4.0, Management and Server Settings): drag a tab to another place, or the **⠿** button at the
+end of the tabs → move them up / down (works on phones too) → **Back to the usual order** to undo. It's saved with
+your account, and the first tab is the one that opens when you come to the page.
 
 | Page | What it does |
 |---|---|
@@ -503,7 +513,9 @@ client addresses are shown (pseudonym, last part only, full or not at all). Chan
 **Songs (finding the music in a video).** A video's ⋮ menu → **Find songs** listens to it: every 30 seconds a
 12-second sample of its sound is recognised by **Shazam** (free, no key). Only these short sound samples leave the
 server. What's heard is **suggested**, never added by itself:
-- in the Find songs window, and in **Management → Songs** (all videos, newest first);
+- in the Find songs window — each song as soon as it's heard, while the scan goes on (3.4.0: add it right away if you
+  like; "sample 5 of 12 · 2 song(s) so far" counts on through Gemini's clips too) — and in **Management → Songs** (all
+  videos, newest first);
 - each suggestion shows in how many samples it was heard and where (e.g. "3 of 8 samples at 0:35, 1:05, 1:35") —
   heard twice or more is the surest; a single hit is worth checking (**Open** goes to Shazam's page);
 - **Add** puts it in the video's Music as "Song — Artist" (fix the name first if you like; it counts as your edit, so
@@ -806,6 +818,9 @@ restart the app. Browser tabs that were open during the update show a **Reload**
 
 - **The app does not start:** run it from a terminal (`python run.py`) to see the error, and check the
   **Management → Tools** page.
+- **"Couldn't read the video's length" (seekbar previews, video frames) before 3.4.0:** fixed in 3.4.0 for names
+  with characters like "＊（）". Make the ones that failed again with **Management → Maintenance → Seekbar previews /
+  Video frames → Make the … missing**.
 - **Forgot the admin password:** stop the app and run
   `python -m backend.create_admin --reset-password --username <name> --password <new>`.
 - **Downloads fail with "The site didn't give the file (HTTP 403)":** the site doesn't offer that video for download

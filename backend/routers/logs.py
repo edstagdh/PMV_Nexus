@@ -39,13 +39,15 @@ def list_logs(
     ip: Optional[str] = None,
     source: Optional[str] = None,
     q: Optional[str] = None,
+    since: Optional[float] = None,
+    until: Optional[float] = None,
     _auth: AuthContext = Depends(require_permission("logs.view")),
 ):
     """Newest first, paged with before_id; after_id returns only newer entries (live tail).
     category "!a,b" means everything except those categories."""
     return _store().query(before_id=before_id, after_id=after_id, limit=limit, min_level=min_level, kind=kind,
                           category=category, event=event, user=user, ip=ip, source=source,
-                          q=(q or "").strip() or None)
+                          q=(q or "").strip() or None, since=since, until=until)
 
 
 @router.get("/api/admin/logs/export")
@@ -57,11 +59,13 @@ def export_logs(
     user: Optional[str] = None,
     ip: Optional[str] = None,
     q: Optional[str] = None,
+    since: Optional[float] = None,
+    until: Optional[float] = None,
     _auth: AuthContext = Depends(require_permission("logs.view")),
 ):
     """The matching entries (up to 100,000, newest first) as JSON Lines: one JSON object per line."""
     rows = _store().export(min_level=min_level, kind=kind, category=category, event=event, user=user, ip=ip,
-                           q=(q or "").strip() or None)
+                           q=(q or "").strip() or None, since=since, until=until)
     body = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + ("\n" if rows else "")
     name = time.strftime("pmv-nexus-logs-%Y%m%d-%H%M%S.jsonl")
     return Response(body, media_type="application/x-ndjson",

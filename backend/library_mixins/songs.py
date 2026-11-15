@@ -72,6 +72,8 @@ class SongsMixin:
         taken = 0
         retries = 0
 
+        have = {fold(v) for v in item.music} | {fold(spellings.canonical("music", v)) for v in item.music}
+
         def add(at: float, song: dict) -> None:
             lbl = rec.label(song)
             k = fold(lbl)
@@ -80,6 +82,10 @@ class SongsMixin:
                 entry["source"] = f"{entry['source']} + {song['source']}"  # e.g. "Shazam + Gemini (AI)"
             entry["hits"] += 1
             entry["times"].append(round(at))
+            # 3.4.0: listed right away (the video's Find songs window shows it while the scan goes on).
+            if k not in have:
+                self.db.store_song_suggestions(item.id, [{**s, "samples": taken} for kk, s in songs.items() if kk not in have],
+                                               final=False)
 
         if not use_shazam:  # Gemini only: no Shazam requests at all
             unmatched = list(times)
@@ -116,6 +122,8 @@ class SongsMixin:
                         await rec.polite_pause()
                 if song:
                     add(at, song)
+                    if on_sample:
+                        on_sample(i + 1, len(times), len(songs))
                 else:
                     unmatched.append(at)
         gemini_used, gemini_note = 0, None
@@ -132,9 +140,10 @@ class SongsMixin:
             limit = cfg.gemini_max_samples
             step = max(1, len(spots) // max(1, limit))
             picked = spots[::step][:limit]
+            first = len(times) if use_shazam else 0  # Shazam's samples came first: Gemini's clips count on from there
             for n, at in enumerate(picked):
-                if not use_shazam and on_sample:
-                    on_sample(n + 1, len(picked), len(songs))
+                if on_sample:
+                    on_sample(first + n + 1, first + len(picked), len(songs))
                 start = max(0.0, min(at, duration - rec.GEMINI_SAMPLE))
                 clip = await asyncio.to_thread(rec.cut_sample, item.video_path, start, rec.GEMINI_SAMPLE)
                 if not clip:
@@ -150,9 +159,10 @@ class SongsMixin:
                 gemini_used += 1
                 if song:
                     add(at, song)
+                    if on_sample:
+                        on_sample(first + n + 1, first + len(picked), len(songs))
         if not use_shazam:
             taken = gemini_used  # Gemini only: its clips are the samples
-        have = {fold(v) for v in item.music} | {fold(spellings.canonical("music", v)) for v in item.music}
         new = [{**s, "samples": taken} for k, s in songs.items() if k not in have]
         pending = self.db.store_song_suggestions(item.id, sorted(new, key=lambda s: -s["hits"]))
         how = {"shazam": "Shazam", "shazam_gemini": "Shazam, then Gemini", "both": "Shazam and Gemini",

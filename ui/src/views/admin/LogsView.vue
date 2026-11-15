@@ -22,7 +22,15 @@ const filters = computed(() => ({
   // Default: user actions only, like most audit views; "all" shows system entries too.
   category: route.query.cat === "all" ? "" : route.query.cat || ACTIONS,
   event: route.query.event || "", user: route.query.user || "", ip: route.query.ip || "",
+  // 3.4.0: a time window (seconds since 1970) -- Tasks -> a finished task -> "See the log" opens the time it ran.
+  since: route.query.from || "", until: route.query.to || "",
 }));
+const windowText = computed(() => {
+  const f = Number(route.query.from), t = Number(route.query.to);
+  if (!f && !t) return "";
+  const at = (s) => new Date(s * 1000).toLocaleString();
+  return f && t ? `${at(f)} – ${new Date(t * 1000).toLocaleTimeString()}` : f ? `from ${at(f)}` : `until ${at(t)}`;
+});
 function setFilter(patch) {
   const next = { ...route.query, ...patch };
   if ("cat" in patch) next.event = "";
@@ -176,6 +184,10 @@ const summary = computed(() => {
       <label class="grow">Search
         <input v-model="searchText" class="input" type="search" placeholder="Any text in the entry" autocomplete="off">
       </label>
+    </div>
+    <div v-if="windowText" class="ip-filter">
+      Only <strong>{{ windowText }}</strong><template v-if="route.query.task"> (while “{{ route.query.task }}” ran)</template>
+      <button class="btn btn-ghost btn-sm" @click="setFilter({ from: '', to: '', task: '' })">✕ clear</button>
     </div>
     <div v-if="filters.ip" class="ip-filter">
       Address <code>{{ filters.ip }}</code> <button class="btn btn-ghost btn-sm" @click="setFilter({ ip: '' })">✕ clear</button>

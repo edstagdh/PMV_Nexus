@@ -944,22 +944,34 @@ class LibraryDB:
     def song_scan_times(self) -> dict[str, float]:
         return {r["item_id"]: r["scanned_at"] for r in self._conn.execute("SELECT item_id, scanned_at FROM song_scans")}
 
-    def store_song_suggestions(self, item_id: str, found: list[dict]) -> int:
+    def store_song_suggestions(self, item_id: str, found: list[dict], final: bool = True) -> int:
         """A scan's songs for one video. Songs already added or dismissed for it stay
-        as they were; pending ones not found again are dropped. Returns how many are pending."""
-        decided = {r["label"].lower() for r in self._conn.execute(
-            "SELECT label FROM song_suggestions WHERE item_id = ? AND status != 'pending'", (item_id,))}
-        self._conn.execute("DELETE FROM song_suggestions WHERE item_id = ? AND status = 'pending'", (item_id,))
-        n = 0
+        as they were; pending ones found again are updated in place (same id, 3.4.0:
+        this runs after each song heard, so the list fills while the scan goes on and
+        a song can be added before it ends). `final`: the scan is over -- pending ones
+        it didn't find are dropped. Returns how many of `found` are pending."""
+        rows = {r["label"].lower(): r for r in self._conn.execute(
+            "SELECT id, label, status FROM song_suggestions WHERE item_id = ?", (item_id,))}
+        keep, n = set(), 0
         for s in found:
-            if s["label"].lower() in decided:
+            row = rows.get(s["label"].lower())
+            if row and row["status"] != "pending":
                 continue
-            self._conn.execute(
-                "INSERT INTO song_suggestions (item_id, label, title, artist, url, source, hits, samples, times, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (item_id, s["label"], s.get("title"), s.get("artist"), s.get("url"), s.get("source"),
-                 s["hits"], s["samples"], json.dumps(s.get("times") or []), time.time()))
+            values = (s.get("title"), s.get("artist"), s.get("url"), s.get("source"), s["hits"], s["samples"],
+                      json.dumps(s.get("times") or []))
+            if row:
+                self._conn.execute("UPDATE song_suggestions SET title = ?, artist = ?, url = ?, source = ?, hits = ?, "
+                                   "samples = ?, times = ? WHERE id = ?", (*values, row["id"]))
+                keep.add(row["id"])
+            else:
+                self._conn.execute(
+                    "INSERT INTO song_suggestions (item_id, label, title, artist, url, source, hits, samples, times, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (item_id, s["label"], *values, time.time()))
             n += 1
+        if final:
+            stale = [r["id"] for r in rows.values() if r["status"] == "pending" and r["id"] not in keep
+                     and r["label"].lower() not in {s["label"].lower() for s in found}]
+            self._conn.executemany("DELETE FROM song_suggestions WHERE id = ?", [(i,) for i in stale])
         self._conn.commit()
         self._note_change(["songs"])
         return n

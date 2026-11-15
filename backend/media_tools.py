@@ -203,7 +203,7 @@ def ffmpeg_version() -> tuple[int, int]:
     if _FFMPEG_VERSION is None:
         major, minor = 99, 0
         try:
-            out = subprocess.run(["ffmpeg", "-hide_banner", "-version"], capture_output=True, text=True, timeout=15).stdout
+            out = subprocess.run(["ffmpeg", "-hide_banner", "-version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15).stdout
             m = re.search(r"ffmpeg version n?(\d+)\.(\d+)", out)
             if m:
                 major, minor = int(m.group(1)), int(m.group(2))
@@ -412,7 +412,7 @@ def available_encoders() -> set[str]:
     global _ENCODERS
     if _ENCODERS is None:
         try:
-            out = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True, timeout=15).stdout
+            out = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15).stdout
             _ENCODERS = {parts[1] for line in out.splitlines()
                          if (parts := line.split()) and len(parts) > 1 and parts[0].startswith("V")}
         except (OSError, subprocess.SubprocessError):
@@ -612,17 +612,17 @@ def reencode_video(
         else:
             cmd += ["-c:a", "aac", "-b:a", "128k", "-ac", "2"]
 
-    if downscale and width and height:
-        if not is_vertical and (width > 1920 or height > 1080):
+    if downscale and above_1080p(width, height):
+        if not is_vertical:
             cmd += ["-vf", "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2"]
-        elif is_vertical and height > 1080:
+        else:
             cmd += ["-vf", "scale=-2:1080"]  # already safe, -2 auto-rounds to even
 
     cmd.append(temp_output)
     logger.debug("FFmpeg command: {}", " ".join(cmd))
 
     proc = subprocess.Popen(
-        cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, errors="replace"
+        cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace"
     )
 
     if proc_holder is not None:
@@ -707,7 +707,7 @@ def download_hls_to_mp4(
                                                              for i, a in enumerate(cmd)))
 
     proc = subprocess.Popen(
-        cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, errors="replace"
+        cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace"
     )
     if proc_holder is not None:
         proc_holder["proc"] = proc
@@ -831,13 +831,34 @@ MP4_BROWSER_VIDEO = {"h264", "hevc", "av1", "vp9"}
 MP4_BROWSER_AUDIO = {"aac", "mp3", "opus", "flac"}
 
 
+def above_1080p(width, height) -> bool:
+    """Would "Downscale to 1080p if larger" change this picture? Wider than 1920 or
+    taller than 1080 (a vertical video: taller than 1080)."""
+    if not width or not height:
+        return False
+    return height > 1080 if height > width else (width > 1920 or height > 1080)
+
+
+def _tag_seconds(tags: Optional[dict]) -> Optional[float]:
+    """A "DURATION" tag ("00:03:12.480000000", how MKV/WebM give each track's length) in seconds."""
+    raw = next((v for k, v in (tags or {}).items() if k.upper() == "DURATION"), None)
+    try:
+        h, m, sec = str(raw).split(":")
+        return int(h) * 3600 + int(m) * 60 + float(sec)
+    except (ValueError, AttributeError):
+        return None
+
+
 def probe_streams(file_path: str) -> dict:
     """{"video": codec, "pix_fmt", "audio": codec or None, "width", "height",
     "duration"} of the first real video track and first audio track, via
     ffprobe. {} when the file can't be read."""
+    # ffprobe writes UTF-8 (file name, title tags...): read it as such, not in Windows' code page,
+    # or names like "（yoga）" can't be read and the video looks empty (3.4.0).
     cmd = ["ffprobe", "-v", "error", "-print_format", "json", "-show_streams", "-show_format", file_path]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
+                                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         data = json.loads(result.stdout or "{}")
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
         logger.warning("ffprobe failed for {}: {}", file_path, exc)
@@ -847,11 +868,18 @@ def probe_streams(file_path: str) -> dict:
                   and not (s.get("disposition") or {}).get("attached_pic")), None)
     audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
     if not video:
+        logger.warning("ffprobe found no video track in {}{}", file_path,
+                       f": {result.stderr.strip()[-400:]}" if (result.stderr or "").strip() else "")
         return {}
-    try:
-        duration = float((data.get("format") or {}).get("duration") or video.get("duration") or 0)
-    except ValueError:
-        duration = 0.0
+    duration = 0.0
+    for raw in ((data.get("format") or {}).get("duration"), video.get("duration"),
+                _tag_seconds(video.get("tags")), _tag_seconds((data.get("format") or {}).get("tags"))):
+        try:
+            duration = float(raw or 0)
+        except ValueError:
+            continue
+        if duration > 0:
+            break
     return {
         "video": video.get("codec_name"), "pix_fmt": video.get("pix_fmt"),
         "width": video.get("width"), "height": video.get("height"),
@@ -1173,7 +1201,7 @@ def get_video_duration_ffprobe(file_path: str) -> float:
     RuntimeError if ffprobe itself can't determine a usable duration."""
     cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", file_path]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"ffprobe timed out reading duration for {file_path}") from exc
     if result.returncode != 0:
@@ -1197,7 +1225,7 @@ def get_fps_ffprobe(file_path: str) -> float:
         "-show_entries", "stream=r_frame_rate", "-of", "json", file_path,
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"ffprobe timed out reading fps for {file_path}") from exc
     if result.returncode != 0:
@@ -1235,7 +1263,7 @@ def probe_duration_tolerant(file_path: str) -> Optional[float]:
         "-i", file_path, "-map", "0:v:0", "-f", "null", "-",
     ]
     try:
-        proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, errors="replace")
+        proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace")
     except Exception:
         logger.warning("Could not start the tolerant decode-based duration probe for {}", file_path)
         return None

@@ -191,8 +191,10 @@ const saved = (b) => (b > 0 ? `${formatBytes(b)} saved` : b < 0 ? `${formatBytes
             <h3>Videos</h3>
             <p v-if="!h.top_watched.length" class="muted small">Nothing watched in this range.</p>
             <ol class="toplist">
-              <li v-for="v in h.top_watched" :key="v.id"><router-link :to="{ name: 'video', params: { id: v.id } }">{{ v.title }}</router-link>
-                <span class="muted small">{{ v.creator }}</span><span class="n">{{ hours(v.seconds) }} · {{ v.plays }} {{ v.plays === 1 ? "play" : "plays" }}</span></li>
+              <li v-for="v in h.top_watched" :key="v.id"><div class="row">
+                <span class="what"><router-link :to="{ name: 'video', params: { id: v.id } }">{{ v.title }}</router-link>
+                  <span class="muted small">{{ v.creator }}</span></span>
+                <span class="n">{{ hours(v.seconds) }} · {{ v.plays }} {{ v.plays === 1 ? "play" : "plays" }}</span></div></li>
             </ol>
           </div>
           <div v-for="[title, key] in [['Performers', 'top_performers'], ['Tags', 'top_tags']]" :key="key" class="list">
@@ -272,7 +274,10 @@ h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; colo
 @media (max-width: 40rem) { .list.wide { grid-column: auto; } }
 .toplist { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.84rem; }
 .toplist li a { font-weight: 600; color: var(--text); margin-right: 0.4rem; }
-.toplist .n { float: right; font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 0.78rem; }
+/* A long title wraps in its own column; the time and plays stay on the right, on its first line (3.4.0). */
+.toplist .row { display: flex; align-items: baseline; gap: 0.75rem; }
+.toplist .what { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.toplist .n { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 0.78rem; }
 .bar-row { display: grid; grid-template-columns: minmax(0, 8rem) 1fr auto; gap: 0.5rem; align-items: center; font-size: 0.8rem; padding: 0.1rem 0; }
 .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar { height: 0.45rem; background: var(--panel-hover); border-radius: 999px; overflow: hidden; }

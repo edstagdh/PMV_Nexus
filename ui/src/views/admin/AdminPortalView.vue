@@ -17,6 +17,8 @@ import LogsView from "./LogsView.vue";
 import ToolsView from "./ToolsView.vue";
 import { hasPermission, isAdmin, hasAny } from "../../stores/session.js";
 import { PORTAL_TABS } from "../../lib/portalTabs.js";
+import { orderTabs } from "../../lib/tabOrder.js";
+import TabBar from "../../components/TabBar.vue";
 
 const VIEWS = {
   users: UsersView, duplicates: DuplicatesView, names: NamesView, songs: SongsView, maintenance: MaintenanceView, scheduler: SchedulerView,
@@ -25,7 +27,8 @@ const VIEWS = {
 
 const route = useRoute();
 const router = useRouter();
-const tabs = computed(() => PORTAL_TABS.filter((t) => (t.admin ? isAdmin() : hasAny(t.permission))));
+// In your order (3.4.0): the first one opens when you come to Management.
+const tabs = computed(() => orderTabs(PORTAL_TABS.filter((t) => (t.admin ? isAdmin() : hasAny(t.permission))), "portal"));
 const current = computed(() => tabs.value.find((t) => t.key === route.params.tab) || tabs.value[0]);
 function open(key) { router.push({ name: "portal", params: { tab: key } }); }
 </script>
@@ -34,10 +37,7 @@ function open(key) { router.push({ name: "portal", params: { tab: key } }); }
   <div class="portal">
     <header class="portal-head">
       <h1>Management</h1>
-      <nav class="tabs scroll-thin" role="tablist" aria-label="Management">
-        <button v-for="t in tabs" :key="t.key" role="tab" class="tab" :class="{ active: current?.key === t.key }"
-                :aria-selected="current?.key === t.key" @click="open(t.key)">{{ t.label }}</button>
-      </nav>
+      <TabBar :tabs="tabs" :active="current?.key" page="portal" label="Management" @select="open" />
     </header>
     <p v-if="!tabs.length" class="empty">This part is for the admin.</p>
     <div v-else class="portal-body"><component :is="VIEWS[current.key]" :key="current.key" /></div>
@@ -47,8 +47,6 @@ function open(key) { router.push({ name: "portal", params: { tab: key } }); }
 <style scoped>
 .portal-head { padding: 1rem 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .portal-head h1 { font-size: 1.4rem; }
-.tabs { flex-wrap: nowrap; }
-.tabs .tab { white-space: nowrap; }
 /* The tab names the page: hide each page's own title (its description stays). */
 .portal-body :deep(h1) { display: none; }
 @media (max-width: 56rem) { .portal-head { padding: 0.75rem 1rem 0; } }

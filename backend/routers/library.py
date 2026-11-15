@@ -443,7 +443,8 @@ async def reencode_item(video_id: str, body: Optional[ReencodeRequest] = None,
     try:
         item = await library_manager.request_reencode(
             video_id, codec=body.codec if body else None,
-            options=body.options.model_dump() if body and body.options else None)
+            options=body.options.model_dump() if body and body.options else None,
+            same_codec=bool(body and body.same_codec))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return item.model_dump()

@@ -42,12 +42,14 @@ def reencode_options(codec: str, options: Optional[dict]) -> dict:
 class ReencodeWorkerMixin:
 
     async def request_reencode(self, video_id: str, codec: Optional[str] = None,
-                               options: Optional[dict] = None) -> LibraryItem:
+                               options: Optional[dict] = None, same_codec: bool = False) -> LibraryItem:
         """Queues a re-encode to `codec` ("hevc" / "av1" / "h264"; default: the codec
         chosen in Server Settings -> Re-encode), with `options` for this one
         re-encode (Re-encode dialog; see reencode_options()). Refused when the
         file is already in that codec (re-encoding it again would only lose
-        quality), or when re-encoding is switched off."""
+        quality), or when re-encoding is switched off. `same_codec` (3.4.0, the
+        Re-encode window only): the same codec is allowed when the re-encode
+        downscales the video to 1080p (e.g. an 8K HEVC video -> 1080p HEVC)."""
         if not self.settings.features.reencode:
             raise ValueError("Re-encoding is switched off (Server Settings → Re-encode)")
         target = codec or self.settings.reencode.codec
@@ -70,9 +72,16 @@ class ReencodeWorkerMixin:
         # probing. Also cheaper: no reason to hold the lock during it.
         source = await asyncio.to_thread(media_tools.video_codec, video_path)
         if source == target:
-            raise ValueError(
-                f"This file is already {CODEC_LABELS[target]} -- re-encoding it again would only reduce quality"
-            )
+            why = ""
+            if same_codec:
+                info = await asyncio.to_thread(media_tools.probe_streams, video_path)
+                if not media_tools.above_1080p(info.get("width"), info.get("height")):
+                    why = " (it's 1080p or smaller, so there's nothing to downscale)"
+                elif not options.get("downscale", self.settings.reencode.downscale):
+                    why = " (turn on \"Downscale to 1080p\" to keep the codec and only make it smaller)"
+            if not same_codec or why:
+                raise ValueError(
+                    f"This file is already {CODEC_LABELS[target]} -- re-encoding it again would only reduce quality{why}")
         encoders = await asyncio.to_thread(media_tools.available_encoders)
         if encoders and media_tools.REENCODE_ENCODERS[target] not in encoders:
             raise ValueError(

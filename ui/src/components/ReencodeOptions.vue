@@ -1,13 +1,19 @@
 <script setup>
 // Re-encode dialog body (2.22.0): pick the codec, see the server's settings for it
 // and change them for this re-encode only. Used for one video and for picked ones.
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { AV1_PRESETS, CODEC_INFO, isChanged, reencodeState } from "../lib/reencodeOptions.js";
 
 const props = defineProps({
   defaults: Object,     // GET /api/reencode/defaults
   state: Object,        // reencodeState(); edited in place
   exclude: String,      // the codec the video already is in (one video)
+  big: Boolean,         // 3.4.0: larger than 1080p -- its own codec is allowed when downscaling (8K HEVC -> 1080p HEVC)
+});
+const blocked = (key) => (key === props.exclude && !(props.big && props.state.downscale)) || props.defaults.encoders?.[key] === false;
+// Its own codec was picked to downscale, then Downscale was switched off: back to another codec.
+watch(() => props.state.downscale, () => {
+  if (blocked(props.state.codec)) props.state.codec = Object.keys(CODEC_INFO).find((k) => !blocked(k)) || props.state.codec;
 });
 const c = computed(() => props.state.codec);
 const info = computed(() => CODEC_INFO[c.value]);
@@ -22,10 +28,12 @@ const presetLabel = (p) => (c.value === "av1" ? AV1_PRESETS.find((x) => x.value 
     <div class="row">
       <span class="lbl">Codec</span>
       <div class="codecs" role="radiogroup" aria-label="Codec">
-        <label v-for="(ci, key) in CODEC_INFO" :key="key" class="codec" :class="{ on: c === key, off: key === exclude || defaults.encoders?.[key] === false }">
-          <input v-model="state.codec" type="radio" :value="key" :disabled="key === exclude || defaults.encoders?.[key] === false">
+        <label v-for="(ci, key) in CODEC_INFO" :key="key" class="codec" :class="{ on: c === key, off: blocked(key) }">
+          <input v-model="state.codec" type="radio" :value="key" :disabled="blocked(key)">
           <strong>{{ ci.label }}</strong>
-          <small v-if="key === exclude">The video already is {{ ci.label.split(" ")[0] }}</small>
+          <small v-if="key === exclude && big && state.downscale">Its own codec: stays {{ ci.label.split(" ")[0] }}, only made 1080p</small>
+          <small v-else-if="key === exclude && big">The video already is {{ ci.label.split(" ")[0] }} (turn on Downscale to keep it and only make it 1080p)</small>
+          <small v-else-if="key === exclude">The video already is {{ ci.label.split(" ")[0] }}</small>
           <small v-else-if="defaults.encoders?.[key] === false">Your FFmpeg has no encoder for it</small>
           <small v-else>{{ ci.help }}<template v-if="key === defaults.codec"> · server default</template></small>
         </label>

@@ -89,7 +89,7 @@ def _keyframe_gap(video_path: str, duration: float) -> Optional[float]:
     """Average seconds between key frames (reads the packet list, decodes nothing)."""
     cmd = ["ffprobe", "-v", "error", "-select_streams", "V:0", "-show_entries", "packet=flags", "-of", "csv=p=0", video_path]
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=300,
+        out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
                              creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0).stdout
     except (OSError, subprocess.SubprocessError):
         return None

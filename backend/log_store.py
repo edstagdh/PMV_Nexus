@@ -223,8 +223,12 @@ class LogStore:
 
     # ------------------------------------------------------------ reading
     @staticmethod
-    def _where(min_level: str, kind, category, event, user, ip, source, q) -> tuple[list[str], list]:
+    def _where(min_level: str, kind, category, event, user, ip, source, q, since=None, until=None) -> tuple[list[str], list]:
         where, args = ["level_no >= ?"], [LEVELS.get((min_level or "INFO").upper(), 20)]
+        if since is not None:  # 3.4.0: a time window (seconds since 1970), e.g. while a task ran
+            where.append("ts >= ?"); args.append(float(since))
+        if until is not None:
+            where.append("ts <= ?"); args.append(float(until))
         if kind in ("action", "system"):
             where.append("kind = ?"); args.append(kind)
         if category:
@@ -256,8 +260,9 @@ class LogStore:
     def query(self, *, before_id: Optional[int] = None, after_id: Optional[int] = None, limit: int = 200,
               min_level: str = "INFO", kind: Optional[str] = None, category: Optional[str] = None,
               event: Optional[str] = None, user: Optional[str] = None, ip: Optional[str] = None,
-              source: Optional[str] = None, q: Optional[str] = None, with_total: bool = True) -> dict:
-        where, args = self._where(min_level, kind, category, event, user, ip, source, q)
+              source: Optional[str] = None, q: Optional[str] = None, with_total: bool = True,
+              since: Optional[float] = None, until: Optional[float] = None) -> dict:
+        where, args = self._where(min_level, kind, category, event, user, ip, source, q, since, until)
         base_where, base_args = list(where), list(args)
         if after_id is not None:
             where.append("id > ?"); args.append(after_id)  # live tail: only newer
@@ -287,7 +292,7 @@ class LogStore:
         """Matching entries, newest first, as JSON-ready dicts (for a .jsonl download)."""
         where, args = self._where(filters.get("min_level", "INFO"), filters.get("kind"), filters.get("category"),
                                   filters.get("event"), filters.get("user"), filters.get("ip"),
-                                  filters.get("source"), filters.get("q"))
+                                  filters.get("source"), filters.get("q"), filters.get("since"), filters.get("until"))
         conn = self._connect()
         try:
             rows = conn.execute(f"SELECT * FROM logs WHERE {' AND '.join(where)} ORDER BY id DESC LIMIT ?",

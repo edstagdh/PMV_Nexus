@@ -10,6 +10,8 @@ import CredentialsPanel from "../../components/admin/CredentialsPanel.vue";
 import ProxyPanel from "../../components/admin/ProxyPanel.vue";
 import ExtensionsPanel from "../../components/admin/ExtensionsPanel.vue";
 import { ext } from "../../stores/extensions.js";
+import { orderTabs } from "../../lib/tabOrder.js";
+import TabBar from "../../components/TabBar.vue";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
@@ -27,9 +29,10 @@ const BASE_TABS = [
   { key: "opening", label: "Opening the app" },
 ];
 // Extensions (2.30.0): a tab only when there are any.
-const TABS = computed(() => (ext.extensions.length || ext.panels.length
-  ? [...BASE_TABS, { key: "extensions", label: "Extensions" }] : BASE_TABS));
-const tab = computed(() => (TABS.value.some((t) => t.key === route.query.tab) ? route.query.tab : "download"));
+// In your order (3.4.0, lib/tabOrder.js): the first one opens when no tab is asked for.
+const TABS = computed(() => orderTabs(ext.extensions.length || ext.panels.length
+  ? [...BASE_TABS, { key: "extensions", label: "Extensions" }] : BASE_TABS, "server"));
+const tab = computed(() => (TABS.value.some((t) => t.key === route.query.tab) ? route.query.tab : TABS.value[0].key));
 const openTab = (key) => router.replace({ query: { ...route.query, tab: key } });
 
 const PRESETS = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"];
@@ -243,13 +246,11 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
     <header class="page-head">
       <div>
         <h1>Server Settings</h1>
-        <p>App-wide settings for everyone. Your own interface preferences are under <RouterLink to="/settings">Settings</RouterLink>.</p>
+        <p>App-wide settings for everyone. Your own interface preferences are under <RouterLink to="/settings">My Settings</RouterLink>.</p>
       </div>
     </header>
 
-    <nav class="tabs" role="tablist">
-      <button v-for="t in TABS" :key="t.key" role="tab" class="tab" :class="{ active: tab === t.key }" :aria-selected="tab === t.key" @click="openTab(t.key)">{{ t.label }}</button>
-    </nav>
+    <TabBar :tabs="TABS" :active="tab" page="server" label="Server settings" @select="openTab" />
 
     <CredentialsPanel v-if="tab === 'credentials'" />
     <ExtensionsPanel v-else-if="tab === 'extensions'" />

@@ -7,6 +7,7 @@ import { askConfirm } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import Icon from "./Icon.vue";
 import { formatDateTime } from "../lib/format.js";
+import { hasPermission } from "../stores/session.js";
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
 
@@ -51,6 +52,17 @@ const upcoming = computed(() => props.data?.upcoming || []);
 const showAll = ref(false);
 const finishedShown = computed(() => (showAll.value ? finished.value : finished.value.slice(0, 5)));
 const link = (a) => (a.kind === "upload" ? { name: "upload" } : a.job_id ? { name: "portal", params: { tab: "scheduler" } } : null);
+
+// 3.4.0: a task that failed or says "see the log" links to Management -> Logs, showing just the time it
+// ran (everything logged then, system entries too; only warnings and errors when it ran long).
+function logLink(a) {
+  if (!hasPermission("logs.view") || !a.started_at || !a.finished_at) return null;
+  if (!(a.status === "failed" || a.status === "interrupted" || /see the log/i.test(a.summary || ""))) return null;
+  const long = a.finished_at - a.started_at > 600;
+  return { name: "portal", params: { tab: "logs" }, query: {
+    cat: "all", ...(long ? { level: "WARNING" } : {}), task: a.title,
+    from: Math.floor(a.started_at - 2), to: Math.ceil(a.finished_at + 2) } };
+}
 </script>
 
 <template>
@@ -101,7 +113,8 @@ const link = (a) => (a.kind === "upload" ? { name: "upload" } : a.job_id ? { nam
         <span class="name">{{ a.title }}</span>
         <span class="pill" :class="a.status === 'success' ? 'ok' : a.status === 'blocked' || a.status === 'cancelled' ? 'pos' : 'bad'">{{ STATUS[a.status] || a.status }}</span>
         <span class="muted">{{ formatDateTime(a.finished_at) }} · took {{ duration(a.finished_at - a.started_at) || "0s" }}</span>
-        <span v-if="a.summary" class="summary" :class="{ bad: a.status === 'failed' || a.status === 'interrupted' }">{{ a.summary }}</span>
+        <span v-if="a.summary" class="summary" :class="{ bad: a.status === 'failed' || a.status === 'interrupted' }">{{ a.summary }}
+          <RouterLink v-if="logLink(a)" :to="logLink(a)" class="log-link">See the log</RouterLink></span>
       </li>
     </ul>
     <button v-if="finished.length > 5" class="btn btn-ghost btn-sm more" @click="showAll = !showAll">
@@ -141,6 +154,7 @@ a.title:hover { color: var(--accent); text-decoration: none; }
 .compact :deep(svg) { color: var(--text-dim); flex-shrink: 0; }
 .summary { flex-basis: 100%; padding-left: 1.6rem; color: var(--text-2); font-size: 0.78rem; overflow-wrap: anywhere; }
 .summary.bad { color: var(--danger); }
+.log-link { margin-left: 0.4rem; white-space: nowrap; }
 .more { margin-top: 0.375rem; }
 .stop { margin-left: auto; }
 </style>

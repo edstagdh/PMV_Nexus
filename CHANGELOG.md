@@ -4,6 +4,31 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.4.0] - 2026-11-15
+
+### Added
+- **Your own tab order in Management and Server Settings**: drag a tab, or the ⠿ button → up / down (phones,
+  keyboard) → "Back to the usual order". Saved with your account; the first tab opens when you come to the page.
+- **"See the log" on Tasks**: a finished task that failed or says "see the log" links to Management → Logs showing
+  only the time it ran (the error and what led to it). The Logs page (and its export) can be limited to a time window.
+- **Re-encode to the same codec to downscale** a video larger than 1080p (e.g. 8K HEVC → 1080p HEVC), from the
+  Re-encode window with "Downscale to 1080p if larger" on.
+
+### Changed
+- **Find songs shows each song as soon as it's heard** (it can be added while the scan goes on), and its "song(s) so
+  far" count keeps up, through Gemini's clips too.
+- **Video frames under the player**: a vertical video's frames are as tall as a horizontal video's (they were about
+  three times taller).
+- Server Settings' link to your own settings says **My Settings**.
+
+### Fixed
+- **Seekbar previews / video frames failed with "Couldn't read the video's length"** for files whose name or title
+  has characters like "＊（）" on some Windows setups: FFmpeg's answers were read in Windows' code page instead of
+  UTF-8. All FFmpeg/ffprobe output is now read as UTF-8, a probe that finds nothing says
+  why in the log, and an MKV/WebM track's DURATION tag is used when the file gives no length.
+- **Stats → Most watched**: a long title wraps in its column instead of pushing the time and plays onto a line of
+  their own.
+
 ## [3.3.1] - 2026-11-15
 
 ### Added

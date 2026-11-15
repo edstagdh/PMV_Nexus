@@ -366,6 +366,7 @@ class ReencodeOptions(BaseModel):
 class ReencodeRequest(BaseModel):
     codec: Optional[str] = Field(None, pattern="^(hevc|av1|h264)$")  # None = the configured codec
     options: Optional[ReencodeOptions] = None
+    same_codec: bool = False  # 3.4.0: the codec it's in, allowed only to downscale it to 1080p
 
 
 class TraySettingsRequest(BaseModel):

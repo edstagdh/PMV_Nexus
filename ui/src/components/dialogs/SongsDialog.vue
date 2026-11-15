@@ -57,7 +57,8 @@ onBeforeUnmount(() => { clearTimeout(timer); stop?.(); });
       <section class="block">
         <div v-if="running" class="progress">
           <strong>{{ running.state === "waiting" ? "Waiting for another scan to finish…" : "Listening…" }}</strong>
-          <span v-if="running.total" class="muted small">sample {{ running.done }} of {{ running.total }} · {{ running.found }} song(s) so far</span>
+          <span v-if="running.total" class="muted small">sample {{ running.done }} of {{ running.total }} · {{ running.found }} song(s) so far
+            <template v-if="running.found"> — listed below as they're heard; you can add them now</template></span>
           <div class="bar" :class="{ indeterminate: !running.total }"><div :style="{ width: `${running.total ? (running.done / running.total) * 100 : 30}%` }" /></div>
         </div>
         <div v-else class="scan-row">
@@ -70,7 +71,7 @@ onBeforeUnmount(() => { clearTimeout(timer); stop?.(); });
       </section>
 
       <section v-if="data.suggestions.length" class="block">
-        <h4>Heard in this video</h4>
+        <h4>{{ running ? "Heard so far" : "Heard in this video" }}</h4>
         <SongSuggestion v-for="s in data.suggestions" :key="s.id" :s="s" @done="load" />
       </section>
       <p v-else-if="last && !running" class="muted small">No new songs to suggest.</p>

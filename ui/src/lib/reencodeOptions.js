@@ -20,7 +20,7 @@ export async function loadReencodeDefaults() {
 /** Editable state from the server's settings; `exclude` = the codec the video already is in. */
 export function reencodeState(d, exclude = null) {
   const usable = (c) => c !== exclude && d.encoders?.[c] !== false;
-  const codec = usable(d.codec) ? d.codec : ["hevc", "av1"].find(usable) || d.codec;
+  const codec = usable(d.codec) ? d.codec : ["hevc", "av1", "h264"].find(usable) || d.codec;
   return {
     codec,
     hevc: { ...d.hevc }, av1: { ...d.av1 }, h264: { ...(d.h264 || { crf: 20, preset: "medium" }) },
