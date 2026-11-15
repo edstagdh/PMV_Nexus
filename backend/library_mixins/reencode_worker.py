@@ -15,12 +15,12 @@ from ..notifications import notify, title_of, video_link
 
 PROGRESS_SAVE_EVERY = 10  # seconds between database writes of a running re-encode's progress
 
-CODEC_LABELS = {"hevc": "HEVC", "av1": "AV1", "h264": "H.264"}
+CODEC_LABELS = {"hevc": "HEVC", "av1": "AV1", "h264": "AVC (H.264)"}
 
 
 def reencode_options(codec: str, options: Optional[dict]) -> dict:
-    """Checks one re-encode's settings for `codec` (HEVC: CRF 0-51 and an x265
-    preset name; AV1: CRF 1-63 and preset 0-13); leaves out what isn't set."""
+    """Checks one re-encode's settings for `codec` (HEVC / AVC: CRF 0-51 and an
+    x265 / x264 preset name; AV1: CRF 1-63 and preset 0-13); leaves out what isn't set."""
     out = {k: v for k, v in (options or {}).items() if v is not None}
     crf, preset = out.get("crf"), out.get("preset")
     if codec == "av1":
@@ -31,10 +31,11 @@ def reencode_options(codec: str, options: Optional[dict]) -> dict:
                 raise ValueError("AV1 speed preset is 0-13")
             out["preset"] = str(int(preset))
     else:
+        name = CODEC_LABELS.get(codec, "HEVC")
         if crf is not None and not 0 <= crf <= 51:
-            raise ValueError("HEVC quality (CRF) is 0-51")
+            raise ValueError(f"{name} quality (CRF) is 0-51")
         if preset is not None and preset not in HEVC_PRESETS:
-            raise ValueError(f"Unknown HEVC preset '{preset}'")
+            raise ValueError(f"Unknown {name} preset '{preset}'")
     return out
 
 
@@ -42,7 +43,7 @@ class ReencodeWorkerMixin:
 
     async def request_reencode(self, video_id: str, codec: Optional[str] = None,
                                options: Optional[dict] = None) -> LibraryItem:
-        """Queues a re-encode to `codec` ("hevc" / "av1"; default: the codec
+        """Queues a re-encode to `codec` ("hevc" / "av1" / "h264"; default: the codec
         chosen in Server Settings -> Re-encode), with `options` for this one
         re-encode (Re-encode dialog; see reencode_options()). Refused when the
         file is already in that codec (re-encoding it again would only lose

@@ -489,6 +489,7 @@ def get_reencode_defaults(user: AuthContext = Depends(require_permission("videos
         "codec": r.codec,
         "hevc": {"crf": r.target_crf, "preset": r.preset},
         "av1": {"crf": r.av1_crf, "preset": str(r.av1_preset)},
+        "h264": {"crf": r.h264_crf, "preset": r.h264_preset},
         "copy_audio": r.copy_audio, "downscale": r.downscale,
         "remove_chapters": r.remove_chapters, "keep_original_file": r.keep_original_file,
         "hevc_presets": list(HEVC_PRESETS),

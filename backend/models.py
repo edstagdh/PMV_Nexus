@@ -284,11 +284,13 @@ class DownloadSettingsRequest(BaseModel):
 
 
 class ReencodeSettingsRequest(BaseModel):
-    codec: str = Field("hevc", pattern="^(hevc|av1)$")
+    codec: str = Field("hevc", pattern="^(hevc|av1|h264)$")
     target_crf: int = Field(ge=0, le=51)
     preset: str = Field(pattern="^(ultrafast|superfast|veryfast|faster|fast|medium|slow|slower|veryslow)$")
     av1_crf: int = Field(32, ge=1, le=63)
     av1_preset: int = Field(8, ge=0, le=13)
+    h264_crf: int = Field(20, ge=0, le=51)
+    h264_preset: str = Field("medium", pattern="^(ultrafast|superfast|veryfast|faster|fast|medium|slow|slower|veryslow)$")
     warn_crf: bool = True
     copy_audio: bool
     downscale: bool
@@ -362,7 +364,7 @@ class ReencodeOptions(BaseModel):
 
 
 class ReencodeRequest(BaseModel):
-    codec: Optional[str] = Field(None, pattern="^(hevc|av1)$")  # None = the configured codec
+    codec: Optional[str] = Field(None, pattern="^(hevc|av1|h264)$")  # None = the configured codec
     options: Optional[ReencodeOptions] = None
 
 

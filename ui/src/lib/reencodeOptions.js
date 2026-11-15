@@ -9,6 +9,7 @@ export const AV1_PRESETS = Array.from({ length: 14 }, (_, i) => ({
 export const CODEC_INFO = {
   hevc: { label: "HEVC (H.265)", help: "Plays almost everywhere (TVs, phones, browsers).", crf: [0, 51], crfHelp: "22–26 is typical" },
   av1: { label: "AV1", help: "Smaller at the same quality; slower, and some older devices can't play it.", crf: [1, 63], crfHelp: "28–35 is typical" },
+  h264: { label: "AVC (H.264)", help: "Plays on every device; bigger files. For compatibility, not to save space.", crf: [0, 51], crfHelp: "18–22 from HEVC/AV1" },
 };
 const TOGGLES = ["copy_audio", "downscale", "remove_chapters", "keep_original_file"];
 
@@ -22,7 +23,7 @@ export function reencodeState(d, exclude = null) {
   const codec = usable(d.codec) ? d.codec : ["hevc", "av1"].find(usable) || d.codec;
   return {
     codec,
-    hevc: { ...d.hevc }, av1: { ...d.av1 },
+    hevc: { ...d.hevc }, av1: { ...d.av1 }, h264: { ...(d.h264 || { crf: 20, preset: "medium" }) },
     ...Object.fromEntries(TOGGLES.map((k) => [k, d[k]])),
   };
 }

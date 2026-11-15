@@ -402,9 +402,9 @@ def _parse_ffmpeg_time(t: str) -> float:
 
 
 _ENCODERS: Optional[set[str]] = None
-REENCODE_ENCODERS = {"hevc": "libx265", "av1": "libsvtav1"}
-# Converting an upload may also go to AVC (x264): the most compatible choice.
-UPLOAD_ENCODERS = {"h264": "libx264", **REENCODE_ENCODERS}
+# Re-encodes may go to any of the three (3.3.1: also AVC, e.g. from HEVC/AV1 for an older device).
+REENCODE_ENCODERS = {"hevc": "libx265", "av1": "libsvtav1", "h264": "libx264"}
+UPLOAD_ENCODERS = {"h264": "libx264", "hevc": "libx265", "av1": "libsvtav1"}
 
 
 def available_encoders() -> set[str]:
@@ -479,7 +479,7 @@ def reencode_video(
         subtitles: bool = True,
 ) -> Optional[str]:
     """Re-encodes file_path to `codec` ("hevc" with x265, "av1" with
-    SVT-AV1, "h264" with x264 -- the last only for uploads) at `crf`/`preset`. cpu_cores limits the encode to that many
+    SVT-AV1, "h264" with x264) at `crf`/`preset`. cpu_cores limits the encode to that many
     cores (None = all). BLOCKING -- call via asyncio.to_thread from async
     code. Returns the temp output path on success, or None on failure.
 

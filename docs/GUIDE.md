@@ -155,9 +155,15 @@ codec, each codec's quality (CRF) and speed preset, the options (copy AAC audio,
 keep the original as "_old") and how many CPU cores an encode may use are set under **Server Settings → Re-encode**:
 - **HEVC (H.265)** plays almost everywhere — the usual choice.
 - **AV1** makes smaller files but encodes slower, and some older devices can't play it.
+- **AVC (H.264)** (3.3.1) plays on every device, but files get bigger: for an HEVC or AV1 video an older TV, phone
+  or editor can't play, not to save space. The video was already compressed once, so each re-encode loses a little;
+  the default **CRF 20** (preset medium) keeps that loss too small to see, and the file usually ends up bigger than
+  the HEVC/AV1 one (up to about twice). 18 is safer still (bigger); above 23 the loss starts to show.
 
-**Re-encode…** opens a window to pick the codec (the one the video is already in can't be picked, so AV1 videos can be
-turned into HEVC for devices that struggle with AV1). It shows that codec's settings from Server Settings, which you
+Any codec can go to any other (HEVC ↔ AV1, either to AVC, AVC to either), only not to the one the video is already in.
+
+**Re-encode…** opens a window to pick the codec (the one the video is already in can't be picked; AV1 videos can be
+turned into HEVC or AVC for devices that struggle with AV1). It shows that codec's settings from Server Settings, which you
 can change for **this re-encode only** (switching codec shows the other codec's settings; **Back to the server's
 settings** undoes your changes). Many at once: **Select** in the library → **Re-encode…**, the same window.
 **Without the window:** untick **Ask for the codec and settings each time** (Server Settings → Re-encode) and

@@ -36,6 +36,7 @@ const PRESETS = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium
 const CODECS = [
   { key: "hevc", label: "HEVC (H.265)", encoder: "x265", help: "Plays almost everywhere (TVs, phones, browsers). The usual choice." },
   { key: "av1", label: "AV1", encoder: "SVT-AV1", help: "Smaller files at the same quality, but slower to encode and some older devices can't play it." },
+  { key: "h264", label: "AVC (H.264)", encoder: "x264", help: "Plays on every device, but files get bigger: for videos an older TV or phone can't play, not to save space." },
 ];
 // SVT-AV1 presets: 0 = slowest / smallest ... 13 = fastest.
 const AV1_PRESETS = Array.from({ length: 14 }, (_, n) => ({
@@ -175,6 +176,7 @@ function saveReencode() {
     body: {
       codec: r.codec, target_crf: int(r.target_crf, 0, 51), preset: r.preset,
       av1_crf: int(r.av1_crf, 1, 63), av1_preset: int(r.av1_preset, 0, 13),
+      h264_crf: int(r.h264_crf ?? 20, 0, 51), h264_preset: r.h264_preset || "medium",
       warn_crf: !!r.warn_crf, copy_audio: !!r.copy_audio, downscale: !!r.downscale,
       cpu_limit_mode: r.cpu_limit_mode, cpu_limit_cores: int(r.cpu_limit_cores, 1, cpuCount.value),
       cpu_limit_percent: int(r.cpu_limit_percent, 5, 100),
@@ -337,7 +339,7 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
         <p class="help-text">Off: “Re-encode” disappears from every menu and page for everyone, and the server refuses new re-encodes
           (ones already queued still finish). Converting uploads (Uploads tab) isn't affected.</p>
       </div>
-      <p class="help-text">Re-encoding makes videos smaller in a more efficient codec. Start it from a video's ⋮ menu (“Re-encode…”), which
+      <p class="help-text">Re-encoding makes videos smaller in a more efficient codec (HEVC, AV1), or playable on older devices (AVC). Start it from a video's ⋮ menu (“Re-encode…”), which
         asks for the codec and starts from the settings below — they can be changed there for that one re-encode.</p>
       <div class="form-row">
         <span class="label">Codec</span>
@@ -358,6 +360,19 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
           <label class="label" for="re-av1-preset">Speed preset<small>Lower = slower, smaller file at the same quality.</small></label>
           <select id="re-av1-preset" v-model.number="re.av1_preset" class="select" style="max-width: 14rem">
             <option v-for="p in AV1_PRESETS" :key="p.value" :value="p.value">{{ p.label }}</option>
+          </select>
+        </div>
+      </template>
+      <template v-else-if="re.codec === 'h264'">
+        <div class="form-row">
+          <label class="label" for="re-h264-crf">Quality (CRF)<small>0–51. Lower = better and bigger. The video was already compressed, so
+            keep it low (18–22) to lose nothing more you can see; default 20.</small></label>
+          <div class="range"><input id="re-h264-crf" v-model.number="re.h264_crf" type="range" min="0" max="51" step="1"><output>{{ re.h264_crf }}</output></div>
+        </div>
+        <div class="form-row">
+          <label class="label" for="re-h264-preset">Encoding preset<small>Slower = smaller file at the same quality.</small></label>
+          <select id="re-h264-preset" v-model="re.h264_preset" class="select" style="max-width: 14rem">
+            <option v-for="p in PRESETS" :key="p" :value="p">{{ p }}</option>
           </select>
         </div>
       </template>

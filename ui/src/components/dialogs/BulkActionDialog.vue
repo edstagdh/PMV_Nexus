@@ -66,7 +66,8 @@ async function go() {
       <SongMethodPicker v-if="action === 'songs' && songs" v-model="songs.method" :gemini="songs.gemini" label="Listen with" />
       <ReencodeOptions v-if="action === 'reencode' && reDefaults && reState.codec && reDefaults.ask" :defaults="reDefaults" :state="reState" />
       <p v-else-if="action === 'reencode' && reDefaults" class="lead">With the server's settings:
-        <strong>{{ reDefaults.codec === "av1" ? `AV1, CRF ${reDefaults.av1.crf}, preset ${reDefaults.av1.preset}` : `HEVC, CRF ${reDefaults.hevc.crf}, ${reDefaults.hevc.preset}` }}</strong>
+        <strong>{{ reDefaults.codec === "av1" ? `AV1, CRF ${reDefaults.av1.crf}, preset ${reDefaults.av1.preset}`
+          : reDefaults.codec === "h264" ? `AVC, CRF ${reDefaults.h264.crf}, ${reDefaults.h264.preset}` : `HEVC, CRF ${reDefaults.hevc.crf}, ${reDefaults.hevc.preset}` }}</strong>
         (Server Settings → Re-encode).</p>
     </template>
     <template v-else>

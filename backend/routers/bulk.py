@@ -30,7 +30,7 @@ _PERMISSION = {"songs": "songs.manage", "repair": "videos.maintain", "reencode":
 
 class BulkRequest(BaseModel):
     ids: list[str] = Field(..., min_length=1, max_length=MAX_IDS)
-    codec: Optional[str] = Field(None, pattern="^(hevc|av1)$")
+    codec: Optional[str] = Field(None, pattern="^(hevc|av1|h264)$")
     options: Optional[ReencodeOptions] = None  # this re-encode's settings (2.22.0)
     method: Optional[str] = Field(None, pattern="^(shazam|shazam_gemini|both|gemini)$")  # songs (2.34.0)
 

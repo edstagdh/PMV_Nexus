@@ -176,12 +176,16 @@ class SongsConfig(BaseModel):
 class ReencodeConfig(BaseModel):
     """Re-encode settings (Admin -> Server Settings -> Re-encode). Each codec
     keeps its own quality/preset: HEVC uses x265 (CRF 0-51, named presets),
-    AV1 uses SVT-AV1 (CRF 1-63, presets 0 = slowest/best ... 13 = fastest)."""
-    codec: str = Field("hevc", pattern="^(hevc|av1)$")
+    AV1 uses SVT-AV1 (CRF 1-63, presets 0 = slowest/best ... 13 = fastest),
+    AVC (3.3.1) uses x264 (CRF 0-51, named presets) -- from an already compressed
+    HEVC/AV1 file, so a low CRF: it's for compatibility, not to save space."""
+    codec: str = Field("hevc", pattern="^(hevc|av1|h264)$")
     target_crf: int = Field(24, ge=0, le=51)  # HEVC
     preset: str = "medium"  # HEVC
     av1_crf: int = Field(32, ge=1, le=63)
     av1_preset: int = Field(8, ge=0, le=13)
+    h264_crf: int = Field(20, ge=0, le=51)
+    h264_preset: str = "medium"
     warn_crf: bool = True
     copy_audio: bool = True
     downscale: bool = True
@@ -203,6 +207,8 @@ class ReencodeConfig(BaseModel):
             data = {**data, "cpu_limit_mode": "percent" if data["limit_cpu_usage"] else "off", "cpu_limit_percent": 70}
         if isinstance(data, dict) and data.get("preset") not in (None, *HEVC_PRESETS):
             data = {**data, "preset": "medium"}
+        if isinstance(data, dict) and data.get("h264_preset") not in (None, *HEVC_PRESETS):
+            data = {**data, "h264_preset": "medium"}
         return data
 
     def cpu_cores(self) -> int | None:
@@ -219,6 +225,8 @@ class ReencodeConfig(BaseModel):
         codec = codec or self.codec
         if codec == "av1":
             return "av1", self.av1_crf, str(self.av1_preset)
+        if codec == "h264":
+            return "h264", self.h264_crf, self.h264_preset
         return "hevc", self.target_crf, self.preset
 
 

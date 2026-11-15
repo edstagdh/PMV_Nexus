@@ -10,10 +10,10 @@ import { live } from "../stores/live.js";
 import { siteLabel } from "./format.js";
 import { extensionActions } from "../stores/extensions.js";
 
-/** "hevc" / "av1" / null: the codec the video is in now. */
+/** "hevc" / "av1" / "h264" / null: the codec the video is in now. */
 export function currentCodec(item) {
   const c = item?.tech_codec || "";
-  return /hevc|h\.?265/i.test(c) ? "hevc" : /av1/i.test(c) ? "av1" : null;
+  return /hevc|h\.?265/i.test(c) ? "hevc" : /av1/i.test(c) ? "av1" : /avc|h\.?264/i.test(c) ? "h264" : null;
 }
 
 /** Whole features switched off in Server Settings are hidden everywhere (2.22.0). */
@@ -62,11 +62,11 @@ export function itemActions(item, { context = "library" } = {}) {
       } else if (featureOn("reencode")) {
         // One entry; the dialog picks the codec and this re-encode's settings (2.22.0) --
         // or, with "Ask each time" off in Server Settings, straight away with the server's (2.22.1).
-        const def = live.summary?.reencode_codec === "av1" ? "av1" : "hevc";
+        const def = ["av1", "h264"].includes(live.summary?.reencode_codec) ? live.summary.reencode_codec : "hevc";
         const direct = live.summary?.reencode_ask === false && currentCodec(item) !== def;
         out.push(direct
           ? { key: "reencode", label: "Re-encode", icon: "cpu",
-              run: () => call(`/api/library/${id}/reencode`, `Queued for re-encode to ${def === "av1" ? "AV1" : "HEVC"}`, { codec: def }) }
+              run: () => call(`/api/library/${id}/reencode`, `Queued for re-encode to ${{ av1: "AV1", h264: "AVC" }[def] || "HEVC"}`, { codec: def }) }
           : { key: "reencode", label: "Re-encode…", icon: "cpu", run: () => openDialog("reencode", item) });
       }
     }

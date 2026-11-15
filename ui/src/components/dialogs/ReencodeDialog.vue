@@ -39,7 +39,7 @@ async function go() {
 
 <template>
   <ModalDialog title="Re-encode" width="40rem" @close="emit('close')">
-    <p class="lead">Makes “{{ item.title || item.url }}” smaller in a more efficient codec. It's queued and runs on the server; follow it on Tasks.</p>
+    <p class="lead">Re-encodes “{{ item.title || item.url }}”: smaller in a more efficient codec, or AVC for older devices. It's queued and runs on the server; follow it on Tasks.</p>
     <ReencodeOptions v-if="defaults && state.codec" :defaults="defaults" :state="state" :exclude="current" />
     <p v-else-if="!error" class="muted">Loading…</p>
     <p v-if="error" class="error-text">{{ error }}</p>

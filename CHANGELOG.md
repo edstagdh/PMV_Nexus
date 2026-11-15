@@ -4,6 +4,14 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.3.1] - 2026-11-15
+
+### Added
+- **Re-encode to AVC (H.264)**, next to HEVC and AV1 — for an HEVC/AV1 video an older device can't play. Its own
+  quality and preset in Server Settings → Re-encode (default CRF 20, medium: the source was already compressed, so
+  a low CRF keeps the extra loss invisible; files get bigger). Every codec can now go to every other one, except the
+  one the video is already in.
+
 ## [3.3.0] - 2026-11-15
 
 ### Changed
