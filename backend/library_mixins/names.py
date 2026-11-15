@@ -97,9 +97,10 @@ class NamesMixin:
         old, new = _clean(old), _clean(new)
         if not old or not new:
             raise ValueError("Both names are needed")
-        if old == new:
-            raise ValueError("That's the same name")
         old_key = fold(old)
+        # 3.3.0: a change of upper / lower case only ("Pmv" -> "PMV") is a rename too: every
+        # video gets that writing. Refused only when every video already has it.
+        case_only = old_key == fold(new)
 
         def swap(values: Optional[list]) -> tuple[list, bool]:
             values = list(values or [])
@@ -136,6 +137,12 @@ class NamesMixin:
                     changed.append(item)
             if changed:
                 self.db.save_items(changed)
+        if case_only:
+            if not changed and spellings.canonical(field, new) == new:
+                raise ValueError("Every video already has that writing")
+            # An earlier pick (Maintenance -> Spellings) would still show the old writing:
+            # "Remember" makes the new one the pick, otherwise it goes back to automatic.
+            spellings.pin(field, new, new if remember else None)
         if field == "performers":
             self._carry_performer_link(old, new)
         if remember:

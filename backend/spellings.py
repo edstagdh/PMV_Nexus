@@ -20,11 +20,16 @@ video, and -- when "remember" is on -- kept as a rule, so the same typo
 arriving later (a new download, a sync) shows as the fixed name too.
 Rules are applied first, before the performer alias hook and the spelling.
 
+Shown tags and performers (3.3.0) start every word with a capital letter -- the rest of
+the word as it is, so "alpha vs beta" shows as "Alpha Vs Beta" and "PMV" stays "PMV" --
+and are listed A to Z.
+
 LibraryItem serializes its tags/performers/music through canon_list();
 LibraryDB stores the raw values (model_dump(context={"raw": True})).
 """
 from __future__ import annotations
 
+import re
 import threading
 import time
 from typing import Callable, Iterable, Optional
@@ -37,6 +42,20 @@ _REFRESH_SECONDS = 2.0  # the counts are rebuilt at most this often while the li
 
 def fold(value: str) -> str:
     return " ".join(str(value).split()).casefold()
+
+
+CAPITALIZED = ("tags", "performers")   # music keeps its own writing ("feat.", band names...)
+_WORD_START = re.compile(r"(^|\s)(\S)")
+
+
+def cap_words(value: str) -> str:
+    """Every word's first letter upper case, the rest as it is: "alpha vs beta" -> "Alpha Vs Beta"."""
+    return _WORD_START.sub(lambda m: m.group(1) + m.group(2).upper(), value)
+
+
+def name_order(value: str) -> tuple:
+    """A to Z, ignoring case; numbers in their order ("Part 2" before "Part 10")."""
+    return tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in re.split(r"(\d+)", fold(value)) if p)
 
 
 class Spellings:
@@ -105,10 +124,11 @@ class Spellings:
         if resolver is not None:
             merged = resolver(value)
             if merged:
-                return merged
+                return cap_words(merged) if field in CAPITALIZED else merged
         self._fresh()
         key = fold(value)
-        return self._pins.get(field, {}).get(key) or self._chosen.get(field, {}).get(key) or value
+        shown = self._pins.get(field, {}).get(key) or self._chosen.get(field, {}).get(key) or value
+        return cap_words(shown) if field in CAPITALIZED else shown
 
     def key(self, field: str, value: str) -> str:
         """The folded shown value -- what filters and comparisons use."""
@@ -125,6 +145,8 @@ class Spellings:
                 continue
             seen.add(key)
             out.append(shown)
+        if field in CAPITALIZED:
+            out.sort(key=name_order)
         return out
 
     # ---------------------------------------------------------------- admin

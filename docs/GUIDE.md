@@ -230,6 +230,9 @@ app starts.
   (Main@L4.0)", "AV1 (Main@L5.1)"…). To pick exact versions, turn off **My Settings → Library → Group codec
   versions**.
 - Tags, performers and music that differ only in upper/lower case count as one value (see **Spellings** below).
+  Tags and performers are shown with every word capitalized ("Alpha vs beta" shows as "Alpha Vs Beta"; words
+  already in capitals, like "PMV", stay so) and in A→Z order (numbers in order: "Part 2" before "Part 10") — on the
+  video page, in **Edit details** (also right after you add one) and everywhere else. Music keeps its own writing.
 - Click a video to open its page with the player, details and actions (rename, thumbnail, re-encode,
   repair, remove, and any extensions' actions).
 
@@ -287,6 +290,14 @@ when they were re-packed), and for videos already in the library with the Schedu
 adds that job once, to run the first night after updating (02:00) and then switch itself off; **Run now** on the
 Scheduler page starts it at once, and it can be added again any time. It changes files, so it doesn't run at the same
 time as a duplicate scan or a repair (it waits and tries again 30 minutes later).
+
+**Hover previews are H.264 (3.3.0):** a preview in another format (AV1, VP9, or 10-bit H.264 from the site) is
+converted to 8-bit H.264 — quick to play on every device, even with many previews on the library page. The videos
+themselves stay as they are (AV1 is fine there). This happens when a preview first plays, right after a download, and
+for previews already in the library with the Scheduler job **Make previews H.264**: 3.3.0 adds it once for the first
+night after updating (02:30; **Run now** starts it at once). The app uses the computer's graphics card for this
+(NVIDIA NVENC, Intel Quick Sync, AMD AMF or Apple VideoToolbox) when one works and a short test shows it's faster than
+the processor; otherwise the processor (x264). The log says which on the first conversion ("Preview encoder: …").
 
 **720p (converting while watching):** **⚙ → 720p** (shows On / Off) plays a copy the server converts while you
 watch — H.264 at 720p or less, much less data, for watching over a slow connection or VPN. Seeking works as usual
@@ -519,6 +530,8 @@ shazamio fixes that). Mash-ups, sped-up or pitched songs and songs under loud so
 
 **Names** lists every tag, performer and music name with how many videos use it. **Rename / merge** changes a
 name in every video that has it; typing an existing name merges into it (e.g. "aurora vael" → "aurora vale").
+Typing the same name in other capitals rewrites every way it's written (e.g. "PMV" shown as "Pmv" → "PMV": all
+videos get "PMV", and that's the spelling shown).
 With **Remember** (on by default) the misspelling is also kept as a fix, so it shows corrected when it turns up again
 on a new download or a sync (**Remembered fixes** lists them; **Forget** stops that without changing any video).
 **Possible typos** suggests names only a letter or two apart (numbers that differ, like "Vol 2" / "Vol 3", aren't

@@ -349,6 +349,11 @@ class DownloadWorkerMixin:
                 await self._convert_audio_in_place(str(video_path))
             except Exception as exc:  # noqa: BLE001 -- the download itself is fine
                 logger.warning("Download for {}: the audio couldn't be made playable: {}", item.id, exc)
+            # Previews are 8-bit H.264 (3.3.0): the site's AV1/10-bit ones are converted now.
+            try:
+                await self.check_preview(item.id)
+            except Exception as exc:  # noqa: BLE001 -- the download itself is fine
+                logger.warning("Download for {}: the preview couldn't be converted to H.264: {}", item.id, exc)
 
             if self.settings.download.save_metadata_json:
                 # Always (re)written here -- even if _fetch_metadata() already

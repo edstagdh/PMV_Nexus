@@ -33,6 +33,7 @@ import random
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Optional
@@ -1011,22 +1012,23 @@ def _run_preview_ffmpeg(file_path: str, output_path: str, timestamps: list, clip
         concat_labels.append(f"[v{idx}]")
     filters.append(f"{''.join(concat_labels)}concat=n={len(timestamps)}:v=1:a=0[outv]")
 
-    cmd += [
-        "-filter_complex", ";".join(filters),
-        "-map", "[outv]",
-        "-an",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
-        tmp_output,
-    ]
-    logger.debug("FFmpeg preview-generation command: {}", " ".join(cmd))
-
-    try:
-        result = subprocess.run(cmd, capture_output=True, timeout=180)
-    except subprocess.TimeoutExpired:
-        logger.error("Preview generation timed out for {}", file_path)
-        if os.path.exists(tmp_output):
-            os.remove(tmp_output)
-        return False
+    cmd += ["-filter_complex", ";".join(filters), "-map", "[outv]", "-an"]
+    result = None
+    for encoder in dict.fromkeys((preview_encoder(), "libx264")):  # a hardware encoder that fails: once more on the CPU
+        run = cmd + _h264_args(encoder, 28) + [tmp_output]
+        logger.debug("FFmpeg preview-generation command: {}", " ".join(run))
+        try:
+            result = subprocess.run(run, capture_output=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            logger.error("Preview generation timed out for {}", file_path)
+            if os.path.exists(tmp_output):
+                os.remove(tmp_output)
+            return False
+        if result.returncode == 0 and os.path.exists(tmp_output):
+            break
+        if encoder != "libx264":
+            logger.warning("Preview generation with {} failed for {}; using libx264: {}", encoder, file_path,
+                           result.stderr.decode(errors="replace")[-500:])
 
     if result.returncode != 0 or not os.path.exists(tmp_output):
         log = logger.warning if bsf else logger.error  # with a bsf, a retry without it follows
@@ -1430,18 +1432,72 @@ def convert_audio_to_aac(path: str, info: dict, timeout: Optional[int] = None) -
     return tmp
 
 
-# Browser-playable preview clips
+# Preview clips: 8-bit H.264
 # --------------------------------------------------------------------------
-# Browsers only decode 8-bit 4:2:0 video. Some previews served by the site are
-# H.264 "High 10" (10-bit) -- they play in desktop players but stay blank in a
-# browser. Such files are converted once, on first request (see
-# ItemExtrasMixin.ensure_playable_preview).
-_BROWSER_CODECS = {"h264", "vp8", "vp9", "av1"}
+# Browsers only decode 8-bit 4:2:0 video, and some previews served by the site
+# are H.264 "High 10" (10-bit) -- blank in a browser. Since 3.3.0 every preview
+# is also H.264 (an AV1 or VP9 one is slow to decode on many devices, and the
+# library page plays many at once). Other previews are converted once: on first
+# request, after a download, and by the Scheduler job "Make previews H.264"
+# (ItemExtrasMixin.check_preview, library_mixins/preview_fix.py).
+_PREVIEW_CODECS = {"h264"}
 _BROWSER_PIX_FMTS = {"yuv420p", "yuvj420p"}
+
+# H.264 encoders tried for previews, in this order; one is used only when a test
+# encode works and is faster than libx264 (preview_encoder).
+_HW_H264 = ("h264_nvenc", "h264_qsv", "h264_amf", "h264_videotoolbox")
+_PREVIEW_ENCODER: Optional[str] = None
+_PREVIEW_ENCODER_LOCK = threading.Lock()
+
+
+def _h264_args(encoder: str, quality: int) -> list[str]:
+    """ffmpeg output options for `encoder` at about libx264's CRF `quality`, 8-bit 4:2:0."""
+    if encoder == "h264_nvenc":
+        return ["-c:v", encoder, "-preset", "p4", "-rc", "vbr", "-cq", str(quality), "-b:v", "0", "-pix_fmt", "yuv420p"]
+    if encoder == "h264_qsv":
+        return ["-c:v", encoder, "-preset", "veryfast", "-global_quality", str(quality), "-pix_fmt", "nv12"]
+    if encoder == "h264_amf":
+        return ["-c:v", encoder, "-quality", "speed", "-rc", "cqp", "-qp_i", str(quality), "-qp_p", str(quality + 2),
+                "-pix_fmt", "nv12"]
+    if encoder == "h264_videotoolbox":
+        return ["-c:v", encoder, "-b:v", "3M", "-pix_fmt", "nv12"]
+    return ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(quality), "-pix_fmt", "yuv420p"]
+
+
+def _time_test_encode(encoder: str) -> Optional[float]:
+    """Seconds `encoder` takes for a 4-second 720p test clip, None when it doesn't work here
+    (an encoder can be in ffmpeg without the graphics card or driver it needs)."""
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=4",
+           "-an", *_h264_args(encoder, 23), "-f", "null", "-"]
+    start = time.monotonic()
+    try:
+        ok = subprocess.run(cmd, capture_output=True, timeout=60).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    return time.monotonic() - start if ok else None
+
+
+def preview_encoder() -> str:
+    """The H.264 encoder for previews: the fastest hardware encoder that works on this
+    computer when it beats libx264, else libx264. Chosen once (a few test encodes).
+    BLOCKING."""
+    global _PREVIEW_ENCODER
+    with _PREVIEW_ENCODER_LOCK:
+        if _PREVIEW_ENCODER is None:
+            have = available_encoders()
+            times = {e: t for e in ("libx264", *(e for e in _HW_H264 if e in have)) if (t := _time_test_encode(e)) is not None}
+            hw = {e: t for e, t in times.items() if e != "libx264"}
+            best = min(hw, key=hw.get) if hw else None
+            cpu = times.get("libx264")
+            _PREVIEW_ENCODER = best if best and (cpu is None or hw[best] < cpu) else "libx264"
+            logger.info("Preview encoder: {} (test clip: {})", _PREVIEW_ENCODER,
+                        ", ".join(f"{e} {t:.2f}s" for e, t in times.items()) or "no encoder worked")
+        return _PREVIEW_ENCODER
 
 
 def is_browser_playable(file_path: str) -> Optional[bool]:
-    """True/False from ffprobe, or None when the file can't be probed."""
+    """For a preview: True when it's 8-bit H.264 (see above), False when it needs
+    converting; None when the file can't be probed."""
     try:
         result = subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
@@ -1454,23 +1510,29 @@ def is_browser_playable(file_path: str) -> Optional[bool]:
     if not streams:
         return None
     s = streams[0]
-    return s.get("codec_name") in _BROWSER_CODECS and s.get("pix_fmt") in _BROWSER_PIX_FMTS
+    return s.get("codec_name") in _PREVIEW_CODECS and s.get("pix_fmt") in _BROWSER_PIX_FMTS
 
 
 def convert_preview_for_browser(src_path: str, dst_path: str) -> bool:
-    """Re-encodes a preview clip to 8-bit H.264 (no audio: previews play muted).
-    BLOCKING -- call via asyncio.to_thread."""
+    """Re-encodes a preview clip to 8-bit H.264 (no audio: previews play muted), with
+    the hardware encoder when that's faster (preview_encoder). BLOCKING -- call via
+    asyncio.to_thread."""
     tmp_output = f"{dst_path}.part.mp4"
-    cmd = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", src_path,
-        "-map", "0:v:0", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart", tmp_output,
-    ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, timeout=180)
-    except subprocess.TimeoutExpired:
-        logger.error("Preview conversion timed out for {}", src_path)
-        result = None
+    result = None
+    for encoder in dict.fromkeys((preview_encoder(), "libx264")):  # a hardware encoder that fails: once more on the CPU
+        cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", src_path, "-map", "0:v:0", "-an",
+               *_h264_args(encoder, 23), "-movflags", "+faststart", tmp_output]
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            logger.error("Preview conversion timed out for {}", src_path)
+            result = None
+            break
+        if result.returncode == 0 and os.path.exists(tmp_output):
+            break
+        if encoder != "libx264":
+            logger.warning("Preview conversion with {} failed for {}; using libx264: {}", encoder, src_path,
+                           result.stderr.decode(errors="replace")[-500:])
     if result is None or result.returncode != 0 or not os.path.exists(tmp_output):
         if result is not None:
             logger.error("Preview conversion failed for {}: {}", src_path, result.stderr.decode(errors="replace")[-1000:])

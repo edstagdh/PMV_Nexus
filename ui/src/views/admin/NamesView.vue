@@ -60,9 +60,14 @@ function startEdit(n) { editing.value = n.value; target.value = n.shown !== n.va
 
 async function rename(old, to, rememberIt = remember.value) {
   to = to.trim();
-  if (!to || to === old) return;
-  const into = countOf(to);
-  const msg = into
+  if (!to) return;
+  // Same name in other capitals (3.3.0): every video gets this writing, and it's the one shown.
+  const caseOnly = to.toLowerCase() === old.toLowerCase();
+  if (caseOnly && to === old && data.value?.names.find((n) => n.value === old)?.shown === old) return;
+  const into = caseOnly ? 0 : countOf(to);
+  const msg = caseOnly
+    ? `Write “${old}” as “${to}” in every video (all its writings)?`
+    : into
     ? `Merge “${old}” into “${to}”? Every video with “${old}” gets “${to}” instead (${to} already has ${into} ${into === 1 ? "video" : "videos"}).`
     : `Rename “${old}” to “${to}” in every video?`;
   if (!(await askConfirm(msg, { ok: into ? "Merge" : "Rename" }))) return;
@@ -125,7 +130,8 @@ async function forget(rule) {
               <span class="nm">{{ n.value }}</span><Icon name="right" :size="14" />
               <input v-model="target" class="input" list="names-all" maxlength="120" aria-label="New name" autofocus>
               <label class="switch small"><input v-model="remember" type="checkbox">Remember</label>
-              <button class="btn btn-sm btn-primary" :disabled="busy || !target.trim() || target.trim() === n.value">
+              <!-- 3.3.0: a change of upper/lower case only ("Pmv" -> "PMV") counts as a change -->
+              <button class="btn btn-sm btn-primary" :disabled="busy || !target.trim() || (target.trim() === n.value && n.shown === n.value)">
                 {{ countOf(target) && target.trim().toLowerCase() !== n.value.toLowerCase() ? "Merge" : "Rename" }}</button>
               <button type="button" class="btn btn-ghost btn-sm" @click="editing = null">Cancel</button>
             </form>

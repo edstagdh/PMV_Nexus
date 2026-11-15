@@ -4,6 +4,22 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.3.0] - 2026-11-15
+
+### Changed
+- **Tags and performers are sorted A→Z** on the video page, in Edit details (sorted again as soon as you add or edit
+  one) and everywhere else; numbers sort in order ("Part 2" before "Part 10").
+- **Every word of a tag or performer name is capitalized** ("Alpha vs beta" shows as "Alpha Vs Beta"; "PMV" stays
+  "PMV"). Music keeps its own writing.
+- **Hover previews are always 8-bit H.264**: AV1, VP9 and 10-bit previews are converted when they first play, right
+  after a download, and by the new Scheduler job "Make previews H.264" (added once, for the first night after
+  updating). A graphics card's H.264 encoder (NVENC, Quick Sync, AMF, VideoToolbox) is used when it works and a short
+  test encode shows it's faster than x264. The videos themselves are not changed.
+
+### Fixed
+- **Names → Rename / merge couldn't change only the capitals** ("PMV" shown as "Pmv" → "PMV"): the new writing wasn't
+  seen as a change. It now rewrites every way the name is written in every video and becomes the spelling shown.
+
 ## [3.2.1] - 2026-11-14
 
 ### Changed

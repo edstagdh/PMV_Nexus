@@ -6,6 +6,7 @@ import { ref, onMounted } from "vue";
 import { normalizeMetadata } from "../../lib/metadata.js";
 import ModalDialog from "../ModalDialog.vue";
 import TagInput from "../TagInput.vue";
+import { capWords, sortNames } from "../../lib/format.js";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 import { session } from "../../stores/session.js";
@@ -23,12 +24,14 @@ const FIELDS = [
 ];
 const edits = props.item.user_edits || {};
 const initial = {
-  performers: [...(props.item.performers || [])],
-  tags: [...(props.item.tags || [])],
+  performers: sortNames(props.item.performers || []),
+  tags: sortNames(props.item.tags || []),
   music: [...(props.item.music || [])],
   flags: [...(edits.flags ?? [])],
 };
 const values = ref(JSON.parse(JSON.stringify(initial)));
+// Performers and tags: written like the app shows them and kept A to Z as you add them (3.3.0).
+const NAMED = new Set(["performers", "tags"]);
 const reset = ref(new Set());
 const busy = ref(false);
 const error = ref("");
@@ -43,10 +46,11 @@ onMounted(async () => {
 const isEdited = (k) => k in edits && !reset.value.has(k);
 function useSite(k) {
   const r = new Set(reset.value); r.add(k); reset.value = r;
-  values.value[k] = k === "flags" ? [...siteFlags.value] : [...(props.item.site_values?.[k] || [])];
+  values.value[k] = k === "flags" ? [...siteFlags.value]
+    : NAMED.has(k) ? sortNames((props.item.site_values?.[k] || []).map(capWords)) : [...(props.item.site_values?.[k] || [])];
 }
 function onChange(k, v) {
-  values.value[k] = v;
+  values.value[k] = NAMED.has(k) ? sortNames(v.map(capWords)) : v;
   if (reset.value.has(k)) { const r = new Set(reset.value); r.delete(k); reset.value = r; }
 }
 

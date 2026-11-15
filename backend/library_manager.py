@@ -20,6 +20,7 @@ from .library_mixins.songs import SongsMixin
 from .library_mixins.storyboards import StoryboardsMixin
 from .library_mixins.frames import FramesMixin
 from .library_mixins.audio_fix import AudioFixMixin
+from .library_mixins.preview_fix import PreviewFixMixin
 from .library_mixins.watch_positions import WatchPositionsMixin
 from .library_mixins.core import CoreMixin
 from .library_mixins.performers import PerformersMixin
@@ -64,6 +65,7 @@ class LibraryManager(
     StoryboardsMixin,
     FramesMixin,
     AudioFixMixin,
+    PreviewFixMixin,
     WatchPositionsMixin,
 ):
     """Composes every mixin above into the one class the rest of the app

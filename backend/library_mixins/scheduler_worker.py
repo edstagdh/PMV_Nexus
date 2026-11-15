@@ -93,6 +93,11 @@ JOB_REGISTRY: dict[str, dict] = {
         "method": "run_audio_fix",  # see library_mixins/audio_fix.py (3.2.0)
         "category": "invasive",
     },
+    "preview_fix": {
+        "label": "Make previews H.264 (convert hover previews in other formats)",
+        "method": "run_preview_fix",  # see library_mixins/preview_fix.py (3.3.0)
+        "category": "non_invasive",
+    },
     "backup": {
         "label": "Backup database + settings",
         "method": "run_backup",  # see library_mixins/system_worker.py

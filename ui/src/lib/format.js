@@ -150,3 +150,10 @@ export function formatUptime(seconds) {
   if (h) return `${h}h ${m}m`;
   return `${m}m`;
 }
+
+// Tags and performers as the app shows them (3.3.0, like backend/spellings.py): every word
+// starts with a capital letter (the rest as written) and the list goes A to Z, numbers in
+// their order.
+export const capWords = (v) => String(v).replace(/(^|\s)(\S)/g, (m, sp, ch) => sp + ch.toUpperCase());
+const NAME_ORDER = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+export const sortNames = (list) => [...list].sort((a, b) => NAME_ORDER.compare(a, b));

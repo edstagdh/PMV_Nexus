@@ -529,30 +529,43 @@ class ItemExtrasMixin:
 
     async def ensure_playable_preview(self, video_id: str) -> Optional[str]:
         """Returns the item's preview path, first converting the file in place
-        if browsers can't decode it (e.g. 10-bit H.264 from the site). Checked
-        once per file version, so later requests cost one dict lookup."""
+        when it isn't 8-bit H.264 (check_preview)."""
+        await self.check_preview(video_id)
+        item = self._items.get(video_id)
+        return item.preview_path if item else None
+
+    async def check_preview(self, video_id: str) -> Optional[bool]:
+        """Converts the item's preview to 8-bit H.264 when it's something else
+        (10-bit H.264 from the site, AV1, VP9...; media_tools.is_browser_playable).
+        Checked once per file version, so later calls cost one dict lookup.
+        True: converted; False: needed but didn't work; None: nothing to do."""
         item = self._items.get(video_id)
         path = item.preview_path if item else None
         if not path or not Path(path).exists():
-            return path
+            return None
         if self._preview_ok.get(path) == Path(path).stat().st_mtime:
-            return path
+            return None
         lock = self._preview_locks.setdefault(video_id, asyncio.Lock())
         async with lock:
             if self._preview_ok.get(path) == Path(path).stat().st_mtime:
-                return path
+                return None
             playable = await asyncio.to_thread(is_browser_playable, path)
+            converted = None
             if playable is False:
-                logger.info("Preview of [{}] can't play in a browser; converting it to 8-bit H.264", video_id)
+                logger.info("Preview of [{}] isn't 8-bit H.264; converting it", video_id)
                 try:
                     converted = await asyncio.to_thread(convert_preview_for_browser, path, path)
                 except OSError as exc:  # e.g. the file is open elsewhere on Windows
                     logger.warning("Could not replace the preview of [{}]: {}", video_id, exc)
                     converted = False
                 if not converted:
-                    return path
+                    return False
+                async with self._lock:
+                    if video_id in self._items:
+                        item.preview_updated_at = time.time()  # new URL, so browsers don't keep the old clip
+                        self.db.save_item(item)
             self._preview_ok[path] = Path(path).stat().st_mtime
-        return path
+        return converted
 
     async def set_item_details(self, video_id: str, changes: dict) -> dict:
         """Hand edits from the video page. `changes` maps a field in
