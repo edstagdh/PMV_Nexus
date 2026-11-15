@@ -17,8 +17,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 - **Find songs shows each song as soon as it's heard** (it can be added while the scan goes on), and its "song(s) so
   far" count keeps up, through Gemini's clips too.
-- **Video frames under the player**: a vertical video's frames are as tall as a horizontal video's (they were about
-  three times taller).
+- **Video frames under the player, vertical videos**: 24 frames made from the file instead of 8 (the site has only
+  8), so they fill the row at about the height of a horizontal video's 8 instead of being about three times taller;
+  every third shows its time. Vertical videos that already have frames get the 24 once, in the background, after
+  updating. If they can't be made, the usual 8 are kept, shown as before.
 - Server Settings' link to your own settings says **My Settings**.
 
 ### Fixed

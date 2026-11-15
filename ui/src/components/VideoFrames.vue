@@ -1,5 +1,5 @@
 <script setup>
-// The row of frames under the player (3.2.0, backend/video_frames.py): small
+// The row of frames under the player (3.2.0, backend/video_frames.py; vertical videos: 24 since 3.4.0): small
 // pictures from across the video with their time -- clicking one jumps there.
 // The site's own timeline frames when the video has them, else made from the
 // file. A video without them yet gets them now (the server queues it first);
@@ -65,14 +65,14 @@ onBeforeUnmount(() => window.removeEventListener("pmv-frames-redo", onRedone));
 </script>
 
 <template>
-  <section v-if="frames.length || data?.pending" class="frames" :class="{ portrait }" aria-label="Video frames">
+  <section v-if="frames.length || data?.pending" class="frames" :class="{ portrait, many: frames.length > 12 }" aria-label="Video frames">
     <div class="frames-row" :style="{ '--n': frames.length || 8 }">
       <template v-if="frames.length">
         <button v-for="(f, i) in frames" :key="f.url" type="button" class="frame" :class="{ on: i === current }"
                 :aria-label="`Jump to ${formatDuration(f.seconds)}`" :title="`Jump to ${formatDuration(f.seconds)}`"
                 @click="seekPlayer(f.seconds)">
           <span class="pic"><img :src="f.url" alt="" loading="lazy" decoding="async"></span>
-          <span class="time">{{ formatDuration(f.seconds) }}</span>
+          <span class="time">{{ frames.length <= 12 || i % 3 === 0 || i === current ? formatDuration(f.seconds) : "\u00a0" }}</span>
         </button>
       </template>
       <template v-else>
@@ -84,14 +84,11 @@ onBeforeUnmount(() => window.removeEventListener("pmv-frames-redo", onRedone));
 
 <style scoped>
 .frames { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
-.frames-row { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0.5rem; container-type: inline-size; }
+.frames-row { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0.5rem; }
 .frame { display: flex; flex-direction: column; gap: 0.3rem; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; min-width: 0; font: inherit; }
 .pic { display: block; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: var(--panel-2); outline: 2px solid transparent; outline-offset: 1px;
   transition: outline-color 0.15s, transform 0.15s; }
-/* Vertical videos (3.4.0): as tall as a horizontal video's frames (one column's width at 16:9), so narrower and
-   centred in their column -- not 9:16 at the full column width, about three times as tall. */
-.portrait .pic { aspect-ratio: 9 / 16; height: calc((100cqw - (var(--n) - 1) * 0.5rem) / var(--n) * 9 / 16);
-  width: auto; align-self: center; }
+.portrait .pic { aspect-ratio: 9 / 16; }
 .pic img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.15s; }
 .time { font-size: 0.78rem; font-variant-numeric: tabular-nums; text-align: center; color: var(--text-dim); }
 .frame:hover .pic img { filter: brightness(1.12); }
@@ -101,12 +98,14 @@ onBeforeUnmount(() => window.removeEventListener("pmv-frames-redo", onRedone));
 .frame.on .pic { outline-color: var(--accent); }
 .frame.on .time { color: var(--accent); font-weight: 600; }
 .placeholder { cursor: default; }
+/* A vertical video's 24 (3.4.0, backend/video_frames.py): narrower columns, about as tall as a horizontal video's 8. */
+.many .frames-row { gap: 0.25rem; }
+.many .time { font-size: 0.7rem; white-space: nowrap; overflow: visible; }  /* every third one, and the current one */
 /* Phones / narrow windows: one scrollable row of fixed-size frames. */
 @media (max-width: 640px) {
   .frames-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 6rem; overflow-x: auto;
     scroll-snap-type: x proximity; padding-bottom: 0.25rem; }
   .portrait .frames-row { grid-auto-columns: 4.25rem; }
-  .portrait .pic { height: auto; width: 100%; }
   .frame { scroll-snap-align: start; }
 }
 </style>

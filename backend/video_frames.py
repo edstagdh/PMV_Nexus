@@ -9,6 +9,9 @@ Where they come from:
   - otherwise -- uploaded videos, videos gone from the site, sites without
     them, or a download that failed -- COUNT frames made from the file,
     evenly spread (the middle of each eighth of the video).
+  - vertical videos (3.4.0): PORTRAIT_COUNT frames made from the file, even
+    when the site has its 8 -- 24 narrow frames fill the row at about the
+    height of a horizontal video's 8. When that fails, the usual 8 above.
 
 Files: <cache folder>/.frames/<video id>/{0..n}.webp + info.json. Every frame
 is WebP and fits in MAX_SIDE x MAX_SIDE (bigger ones are scaled down, smaller
@@ -31,7 +34,10 @@ from . import images, media_tools
 
 FOLDER = ".frames"
 COUNT = 8            # frames made from the file
+PORTRAIT_COUNT = 24  # vertical videos (3.4.0)
+PORTRAIT_MIN = 20    # ... fewer made than this counts as failed (the usual 8 then)
 MAX_SIDE = 320       # pixels, long side: 320 x 180 landscape, 180 x 320 portrait
+PORTRAIT_SIDE = 240  # long side of the 24 vertical ones (shown smaller): 136 x 240
 QUALITY = 75         # WebP quality
 
 
@@ -112,8 +118,15 @@ def from_site(entries: list[dict], folder: Path, fetch: Callable[[str], bytes], 
         raise
 
 
-def from_video(video_path: str, folder: Path, stop=None) -> dict:
-    """COUNT frames made from the file, evenly spread. `stop()` -> True ends it (InterruptedError)."""
+def is_portrait(info: dict) -> bool:
+    """`info` from media_tools.probe_streams: taller than wide."""
+    return bool(info.get("width") and info.get("height") and info["height"] > info["width"])
+
+
+def from_video(video_path: str, folder: Path, stop=None, count: int = COUNT, max_side: int = MAX_SIDE,
+               at_least: int = 1) -> dict:
+    """`count` frames made from the file, evenly spread. `stop()` -> True ends it
+    (InterruptedError). Fewer than `at_least` made: ValueError (nothing is replaced)."""
     info = media_tools.probe_streams(video_path)
     duration = float(info.get("duration") or 0)
     if duration <= 0:
@@ -121,8 +134,8 @@ def from_video(video_path: str, folder: Path, stop=None) -> dict:
     work = _work_folder(folder)
     try:
         frames = []
-        vf = f"scale={MAX_SIDE}:{MAX_SIDE}:force_original_aspect_ratio=decrease:force_divisible_by=2"
-        for seconds in _even_times(duration, COUNT):
+        vf = f"scale={max_side}:{max_side}:force_original_aspect_ratio=decrease:force_divisible_by=2"
+        for seconds in _even_times(duration, count):
             if stop and stop():
                 raise InterruptedError
             name = f"{len(frames)}.webp"
@@ -138,8 +151,8 @@ def from_video(video_path: str, folder: Path, stop=None) -> dict:
                 frames.append({"file": name, "seconds": seconds})
             else:
                 logger.debug("Frame at {}s of {}: {}", seconds, video_path, result.stderr.decode(errors="replace")[-300:])
-        if not frames:
-            raise ValueError("FFmpeg made no frames")
+        if len(frames) < at_least:
+            raise ValueError(f"FFmpeg made {len(frames)} of {count} frames" if frames else "FFmpeg made no frames")
         return _finish(work, folder, frames, "video", duration)
     except BaseException:
         shutil.rmtree(work, ignore_errors=True)

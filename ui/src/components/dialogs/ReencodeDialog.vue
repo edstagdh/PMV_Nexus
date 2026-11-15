@@ -53,7 +53,7 @@ async function go() {
     <p v-if="error" class="error-text">{{ error }}</p>
     <template #footer>
       <button class="btn" @click="emit('close')">Cancel</button>
-      <button class="btn btn-primary" :disabled="busy || !defaults || state.codec === current" @click="go">{{ busy ? "Queuing…" : "Re-encode" }}</button>
+      <button class="btn btn-primary" :disabled="busy || !defaults || (state.codec === current && !(big && state.downscale))" @click="go">{{ busy ? "Queuing…" : "Re-encode" }}</button>
     </template>
   </ModalDialog>
 </template>

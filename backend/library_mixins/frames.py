@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import time
 import tempfile
 from collections import deque
 from pathlib import Path
@@ -51,6 +52,12 @@ class FramesMixin:
         if not video_id or "/" in video_id or "\\" in video_id or video_id.startswith("."):
             return
         shutil.rmtree(self.frames_folder(video_id), ignore_errors=True)
+
+    @staticmethod
+    def _fr_wants_more(info: dict) -> bool:
+        """Vertical with the 8 (made before 3.4.0, or 24 didn't work): only ever queued again by
+        seed_portrait_frames (once) or "Make them again" -- request_frames skips videos that have frames."""
+        return (info.get("height") or 0) > (info.get("width") or 0) and len(info["frames"]) < video_frames.PORTRAIT_COUNT
 
     def _fr_candidate(self, video_id: str) -> bool:
         item = self._items.get(video_id)
@@ -147,6 +154,43 @@ class FramesMixin:
             logger.debug("Video frames: the site's frames for {} can't be used: {}", item.id, exc)
             return None
 
+    async def _portrait_frames(self, item) -> Optional[dict]:
+        """A vertical video (3.4.0): 24 frames from the file (video_frames.PORTRAIT_COUNT).
+        None when it isn't vertical or that didn't work -- then the usual 8."""
+        from .. import media_tools
+        info = await asyncio.to_thread(media_tools.probe_streams, item.video_path)
+        if not video_frames.is_portrait(info):
+            return None
+        try:
+            return await asyncio.to_thread(
+                video_frames.from_video, item.video_path, self.frames_folder(item.id),
+                lambda: self._fr_stop or item.id not in self._items, video_frames.PORTRAIT_COUNT,
+                video_frames.PORTRAIT_SIDE, video_frames.PORTRAIT_MIN)
+        except InterruptedError:
+            raise
+        except Exception as exc:  # noqa: BLE001 -- the usual 8 instead
+            logger.info("Video frames for vertical '{}' [{}]: {} of them didn't work ({}); making the usual {}",
+                        item.title, item.id, video_frames.PORTRAIT_COUNT, exc, video_frames.COUNT)
+            return None
+
+    def seed_portrait_frames(self) -> None:
+        """3.4.0, once: vertical videos that have the 8 frames get 24 instead (in the background)."""
+        flag = "portrait_frames_24_340"
+        if self.db.get_app_state(flag, False):
+            return
+        self.db.set_app_state(flag, time.time())
+        redo = [i for i in self._items.values() if (info := self.frames_info(i.id))
+                and (info.get("height") or 0) > (info.get("width") or 0) and len(info["frames"]) < video_frames.PORTRAIT_COUNT]
+        for item in redo:
+            if self._fr_candidate(item.id):
+                if self._fr_queue is None:
+                    self._fr_queue = deque()
+                self._fr_queue.append(item.id)  # made again; the old ones stay until the new ones are done
+        if redo:
+            logger.info("Video frames: {} vertical video(s) get 24 frames instead of 8", len(redo))
+            if self._fr_task is None or self._fr_task.done():
+                self._fr_task = asyncio.create_task(self._fr_worker())
+
     async def _fr_worker(self) -> None:
         state = self._fr_state = {"done": 0, "failed": 0, "current": None}
         self._fr_stop = False
@@ -168,12 +212,13 @@ class FramesMixin:
             while self._fr_queue and not self._fr_stop:
                 video_id = self._fr_queue.popleft()
                 item = self._items.get(video_id)
-                if not item or not self._fr_candidate(video_id) or self.frames_info(video_id):
+                info = self.frames_info(video_id)
+                if not item or not self._fr_candidate(video_id) or (info and not self._fr_wants_more(info)):
                     continue
                 state["current"] = video_id
                 try:
-                    meta = None
-                    timeline = await self._site_timeline(item)
+                    meta = await self._portrait_frames(item)
+                    timeline = await self._site_timeline(item) if meta is None else []
                     if timeline and item.site != "local":
                         meta = await self._frames_from_site(item, timeline)
                     if meta is None:

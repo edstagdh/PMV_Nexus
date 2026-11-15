@@ -278,11 +278,12 @@ skip in fullscreen: **My Settings → Video page → Sides of the video in fulls
 screen turns to suit each video in fullscreen and stays turned while a playlist moves on to a video of the same shape.
 
 **Video frames** (off by default — switch them on in **My Settings → Video page → Frames under the player**): under
-the player, a row of pictures from across the video, each with its time (a vertical video's are as tall as a
-horizontal video's, so narrower) — click one to
+the player, a row of pictures from across the video, each with its time — click one to
 jump there (the one you're in is highlighted). They're PMVHaven's own timeline frames when the video has them (usually
 8); for uploaded videos, videos gone from the site or when those can't be downloaded, 8 are made from the file, one from
-the middle of each eighth of the video. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
+the middle of each eighth of the video. **Vertical videos** (3.4.0) get 24 made from the file instead, so the row
+is about as tall as a horizontal video's (every third shows its time; point at one for its time); if those can't be
+made, the usual 8. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
 are scaled down) in the cache folder (`.frames`, about 20–60 KB per video), deleted with the video, moved with the cache
 folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
 the whole library at once from **Management → Maintenance → Video frames → Make the … missing** (one job on Tasks;
