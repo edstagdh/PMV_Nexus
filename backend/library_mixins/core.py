@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import json
 import math
+import zlib
 import re
 import time
 from datetime import datetime, timezone
@@ -330,7 +331,8 @@ class CoreMixin:
         return item.model_dump() if item else None
 
     _SORT_KEYS = {"title", "creator", "status", "tech_duration", "ratings", "tech_resolution", "tech_codec",
-                  "tech_filesize", "created_at", "download_datetime", "reencode_status", "views", "upload_date"}
+                  "tech_filesize", "created_at", "download_datetime", "reencode_status", "views", "upload_date",
+                  "random"}
 
     def query_items(
             self,
@@ -343,6 +345,7 @@ class CoreMixin:
             statuses: Optional[list[str]] = None,
             sort_key: str = "created_at",
             sort_dir: str = "desc",
+            sort_seed: Optional[int] = None,
             creators: Optional[list[str]] = None,
             match_all: bool = False,
             min_duration: Optional[int] = None,
@@ -517,8 +520,13 @@ class CoreMixin:
             value = getattr(item, sort_key, "") or ""
             return value.lower() if isinstance(value, str) else value
 
-        reverse = sort_dir == "desc"
-        filtered.sort(key=sort_value, reverse=reverse)
+        if sort_key == "random":
+            # 3.4.1: shuffled by `sort_seed` -- the same seed gives the same order, so paging and Back
+            # stay put; the page asks for a new one ("Shuffle again"). crc32, not hash(): stable across restarts.
+            seed = f"{sort_seed if sort_seed is not None else 0}:"
+            filtered.sort(key=lambda i: zlib.crc32((seed + i.id).encode()))
+        else:
+            filtered.sort(key=sort_value, reverse=sort_dir == "desc")
         if sort_key == "upload_date":  # unknown dates last, whichever direction
             filtered = [i for i in filtered if i.upload_date] + [i for i in filtered if not i.upload_date]
 

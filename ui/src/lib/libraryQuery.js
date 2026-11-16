@@ -13,7 +13,8 @@ export function toApiParams(s) {
     // performer details (2.19.0): one of the video's performers has them all
     p_cups: s.pcup, p_hair: s.phair, p_eyes: s.peyes, p_age_min: s.pamin ?? undefined, p_age_max: s.pamax ?? undefined,
     p_enhanced: s.penh ?? undefined,
-    sort_key: s.sort, sort_dir: s.dir,
+    sort_key: s.sort, sort_dir: s.sort === "random" ? undefined : s.dir,
+    sort_seed: s.sort === "random" ? s.seed : undefined,  // Random (3.4.1): the same seed, the same order
   };
   for (const [k, v] of Object.entries(out)) {
     if (v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)) delete out[k];
@@ -46,13 +47,18 @@ export function toLibraryQuery(p = {}) {
   if (p.p_enhanced != null) q.penh = p.p_enhanced ? "1" : "0";
   if (p.sort_key) q.sort = p.sort_key;
   if (p.sort_dir) q.dir = p.sort_dir;
+  if (p.sort_seed != null) q.seed = String(p.sort_seed);
   return q;
 }
 
 const SORT_LABELS = {
   download_datetime: "date acquired", upload_date: "upload date", created_at: "date acquired", title: "title", creator: "creator", ratings: "rating",
   views: "views", tech_duration: "duration", tech_filesize: "file size", tech_resolution: "resolution",
+  random: "random order",
 };
+
+/** A new order for sort "random" (the URL's ?seed=). */
+export const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 
 /** "performer Aurora Vale · tag pmv · 10+ min · sorted by rating" */
 export function describeQuery(p = {}) {

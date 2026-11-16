@@ -9,7 +9,7 @@ const THEMES = ["midnight", "slate", "daylight"];
 const VIEWS = ["grid", "list", "table"];
 // Multiples of 30, so full rows fit both 5 per row (sidebar open) and 6 (collapsed).
 const PAGE_SIZES = [30, 60, 90, 120];
-const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution"];
+const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution", "random"];
 export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "favorite", "status"];
 // Badges on the small related-video thumbnails. The bottom row has room for
 // RELATED_BADGE_MAX; rating and 💀 sit in the top corners and don't count.

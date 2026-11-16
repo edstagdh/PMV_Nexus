@@ -30,6 +30,7 @@ const THEME_LABELS = { midnight: "Midnight", slate: "Slate", daylight: "Daylight
 const SORT_LABELS = {
   download_datetime: "Date acquired", upload_date: "Uploaded to PMVHaven", title: "Title", creator: "Creator",
   ratings: "Rating", views: "Views on PMVHaven", tech_duration: "Duration (length)", tech_filesize: "File size", tech_resolution: "Resolution",
+  random: "Random (a new order each time you open the library)",
 };
 const BADGE_LABELS = {
   duration: "Duration", quality: "Quality", codec: "Codec (H.264 / HEVC / AV1)", filesize: "File size",
@@ -245,7 +246,7 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
           <select class="select" :value="session.prefs.defaultSort" @change="savePref('defaultSort', $event.target.value)">
             <option v-for="k in PREF_OPTIONS.SORT_KEYS" :key="k" :value="k">{{ SORT_LABELS[k] }}</option>
           </select>
-          <select class="select" :value="session.prefs.defaultDir" @change="savePref('defaultDir', $event.target.value)">
+          <select v-if="session.prefs.defaultSort !== 'random'" class="select" :value="session.prefs.defaultDir" @change="savePref('defaultDir', $event.target.value)">
             <option value="desc">Descending</option><option value="asc">Ascending</option>
           </select>
         </div>

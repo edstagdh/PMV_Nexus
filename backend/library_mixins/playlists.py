@@ -24,7 +24,7 @@ from typing import Optional
 # fixed (finished videos, everything).
 SMART_QUERY_KEYS = {
     "search", "tags", "performers", "codecs", "creators", "match_all", "min_duration", "max_duration",
-    "min_rating", "gone", "qualities", "min_quality", "orientation", "sort_key", "sort_dir",
+    "min_rating", "gone", "qualities", "min_quality", "orientation", "sort_key", "sort_dir", "sort_seed",
     "p_cups", "p_hair", "p_eyes", "p_age_min", "p_age_max", "p_enhanced",
 }
 _LIST_KEYS = {"tags", "performers", "codecs", "creators", "qualities", "p_cups", "p_hair", "p_eyes"}
@@ -52,7 +52,7 @@ def clean_smart_query(raw: Optional[dict]) -> dict:
                 continue
         elif key in ("match_all", "gone", "p_enhanced"):
             value = value in (True, "true", "1", 1)
-        elif key in ("min_duration", "max_duration", "p_age_min", "p_age_max"):
+        elif key in ("min_duration", "max_duration", "p_age_min", "p_age_max", "sort_seed"):
             value = int(float(value))
         elif key == "min_rating":
             value = float(value)

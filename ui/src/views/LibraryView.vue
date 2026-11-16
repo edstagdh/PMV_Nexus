@@ -16,7 +16,7 @@ import { api, qs } from "../lib/api.js";
 import { session, savePref, PREF_OPTIONS, isAdmin } from "../stores/session.js";
 import { live, onLibraryChange } from "../stores/live.js";
 import { openDialog } from "../stores/dialogs.js";
-import { toApiParams } from "../lib/libraryQuery.js";
+import { toApiParams, newSeed } from "../lib/libraryQuery.js";
 import BulkEditDialog from "../components/dialogs/BulkEditDialog.vue";
 import { featureOn } from "../lib/actions.js";
 import BulkActionDialog from "../components/dialogs/BulkActionDialog.vue";
@@ -38,7 +38,10 @@ const SORTS = [
   { key: "tech_duration", label: "Duration (length)" },
   { key: "tech_filesize", label: "File size" },
   { key: "tech_resolution", label: "Resolution" },
+  { key: "random", label: "Random" },  // 3.4.1: the order button shuffles again
 ];
+// Random without a seed in the URL (e.g. it's your default sort): one per visit to the page.
+const visitSeed = newSeed();
 
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 const num = (v) => (v === undefined || v === null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
@@ -66,6 +69,7 @@ const state = computed(() => {
     // "created_at" (Date added) was merged into Date acquired in 2.4.0; old links still work.
     sort: (q.sort === "created_at" ? "download_datetime" : q.sort) || session.prefs.defaultSort,
     dir: q.dir === "asc" || q.dir === "desc" ? q.dir : q.sort ? "desc" : session.prefs.defaultDir,
+    seed: Number.isInteger(Number(q.seed)) && q.seed !== "" && q.seed != null ? Number(q.seed) : visitSeed,
     page: Math.max(1, num(q.page) || 1),
   };
 });
@@ -268,10 +272,15 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
         <Icon name="filter" />Filters<span v-if="activeFilterCount" class="count-pill">{{ activeFilterCount }}</span>
       </button>
       <div class="sort">
-        <select class="select" :value="state.sort" aria-label="Sort by" @change="setQuery({ sort: $event.target.value })">
+        <select class="select" :value="state.sort" aria-label="Sort by"
+                @change="setQuery({ sort: $event.target.value, seed: $event.target.value === 'random' ? String(newSeed()) : undefined })">
           <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
         </select>
-        <button class="btn btn-icon" :title="state.dir === 'asc' ? 'Ascending' : 'Descending'"
+        <button v-if="state.sort === 'random'" class="btn btn-icon" title="Shuffle again" aria-label="Shuffle again"
+                @click="setQuery({ seed: String(newSeed()) })">
+          <Icon name="shuffle" />
+        </button>
+        <button v-else class="btn btn-icon" :title="state.dir === 'asc' ? 'Ascending' : 'Descending'"
                 @click="setQuery({ dir: state.dir === 'asc' ? 'desc' : 'asc' })">
           <Icon :name="state.dir === 'asc' ? 'sortAsc' : 'sortDesc'" />
         </button>

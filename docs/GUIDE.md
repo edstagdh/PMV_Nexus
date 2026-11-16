@@ -223,7 +223,10 @@ app starts.
 
 - Admins switch between **Grid**, **List** and **Table** views; everyone else always gets the grid.
 - Sort by **date acquired** (when the file arrived — downloaded or uploaded), **uploaded to PMVHaven**, title,
-  creator, rating, views, duration, size or resolution (videos with no known upload date come last).
+  creator, rating, views, duration, size or resolution (videos with no known upload date come last) — or
+  **Random** (3.4.1): the order button becomes **Shuffle again** (🔀), a new order each click. The order is kept in
+  the address, so the next page, Back and a reload keep it; a smart playlist saved from it keeps that order too.
+  As your default sort (My Settings → Library), every visit to the library starts with a new order.
 - **Filters** opens over the videos and stays at the top while you scroll, until you close it.
 - **Filters → Clear all filters** removes every filter but keeps the search and sort.
 - Filter by tags, performers, codec, quality, orientation, duration, rating and 💀 removed-from-site, and sort by any column.

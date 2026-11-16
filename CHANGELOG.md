@@ -4,6 +4,12 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.4.1] - 2026-11-16
+
+### Added
+- **Library: sort Random.** The order button becomes "Shuffle again": a new order each click. The order is kept
+  in the address (next page, Back and reload keep it). Can also be your default sort (a new order each visit).
+
 ## [3.4.0] - 2026-11-15
 
 ### Added

@@ -107,6 +107,7 @@ def get_library(
         statuses: list[str] = Query(default=[]),
         sort_key: str = "created_at",
         sort_dir: str = "desc",
+        sort_seed: Optional[int] = Query(default=None, ge=0, le=2**31),  # sort_key=random (3.4.1)
         creators: list[str] = Query(default=[]),
         match_all: bool = False,
         min_duration: Optional[int] = None,
@@ -144,6 +145,7 @@ def get_library(
         statuses=statuses,
         sort_key=sort_key,
         sort_dir=sort_dir,
+        sort_seed=sort_seed,
     )
     result["items"] = library_manager.with_watch([scrub_item(i, user) for i in result.get("items", [])], user)  # regular users: no server paths; my place in each
     return result
