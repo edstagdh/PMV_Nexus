@@ -111,6 +111,22 @@ def codec_family(codec: str) -> str:
     return (codec or "").split(" (", 1)[0].strip()
 
 
+def parse_exclude(raw: str) -> list[tuple[Optional[str], str]]:
+    """3.5.0, Library -> Exclude: "tag:avc title:downbad pov "big ass" music:\"x y\"" ->
+    [("tags", "avc"), ("title", "downbad"), (None, "pov"), (None, "big ass"), ("music", "x y")].
+    A video is left out when ANY of them is found (in that field, or anywhere for None).
+    An unknown "word:" is just text. * works as in the search."""
+    out = []
+    for field, quoted, word in re.findall(r'(?:(\w+):)?(?:"([^"]+)"|(\S+))', raw or ""):
+        value = (quoted or word).strip().casefold()
+        known = SEARCH_FIELD_ALIASES.get(field.lower()) if field else None
+        if field and not known:
+            value = f"{field.casefold()}:{value}"
+        if value:
+            out.append((known, value))
+    return out[:30]
+
+
 def parse_search_query(raw: str) -> tuple[Optional[str], str]:
     """Splits a search string on a leading 'field:value' prefix -- e.g.
     'title:sunset' -> ('title', 'sunset') -- so query_items() can search

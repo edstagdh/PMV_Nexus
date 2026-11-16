@@ -2,6 +2,7 @@
 import VideoThumb from "./VideoThumb.vue";
 import ActionMenu from "./ActionMenu.vue";
 import { itemUrlTitle } from "../lib/format.js";
+import { perfClass, perfTitle } from "../stores/performerBadges.js";
 
 defineProps({ item: Object, small: Boolean });
 const emit = defineEmits(["filter"]);
@@ -21,7 +22,7 @@ const emit = defineEmits(["filter"]);
         <button v-if="item.creator" class="linkish text-creator" :title="`Show videos by ${item.creator}`" @click="emit('filter', 'creator', item.creator)">{{ item.creator }}</button>
       </div>
       <div v-if="!small && item.performers?.length" class="vcard-people">
-        <button v-for="p in item.performers.slice(0, 3)" :key="p" class="chip chip-performer" @click="emit('filter', 'performer', p)">{{ p }}</button>
+        <button v-for="p in item.performers.slice(0, 3)" :key="p" class="chip chip-performer" :class="perfClass(p)" :title="perfTitle(p)" @click="emit('filter', 'performer', p)">{{ p }}</button>
         <span v-if="item.performers.length > 3" class="muted more" :title="item.performers.slice(3).join(', ')">+{{ item.performers.length - 3 }}</span>
       </div>
     </div>

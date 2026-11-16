@@ -26,6 +26,7 @@ from ._helpers import (
     parse_filesize_mb,
     parse_rating_percent,
     parse_search_query,
+    parse_exclude,
 )
 
 
@@ -332,7 +333,7 @@ class CoreMixin:
 
     _SORT_KEYS = {"title", "creator", "status", "tech_duration", "ratings", "tech_resolution", "tech_codec",
                   "tech_filesize", "created_at", "download_datetime", "reencode_status", "views", "upload_date",
-                  "random"}
+                  "random", "fav_performers"}
 
     def query_items(
             self,
@@ -361,6 +362,10 @@ class CoreMixin:
             p_age_min: Optional[int] = None,
             p_age_max: Optional[int] = None,
             p_enhanced: Optional[bool] = None,
+            exclude: str = "",
+            no_music: bool = False,
+            no_performers: bool = False,
+            favorite_performers: Optional[set] = None,
     ) -> dict:
         """Filters + sorts + paginates entirely in memory -- self._items
         already holds every item as the in-run source of truth (see db.py's
@@ -404,6 +409,8 @@ class CoreMixin:
         search_terms = [t for t in search_terms if "*" not in t]
 
         quality_set = {q.upper() for q in (qualities or []) if q}
+        # 3.5.0: Exclude ("tag:avc title:downbad pov") -- left out when any of them is found.
+        excludes = [(f, _wildcard(t) if "*" in t and t.strip("*") else t) for f, t in parse_exclude(exclude)]
 
         min_quality_rank = QUALITY_RANK.get((min_quality or "").upper()) if min_quality else None
 
@@ -471,6 +478,14 @@ class CoreMixin:
                 return False
             if performer_filter and not any(fits(facts.get(fold(n))) for n in item.performers or []):
                 return False
+            if no_music and item.music:
+                return False
+            if no_performers and item.performers:
+                return False
+            for field, term in excludes:
+                lines = _search_lines(item, field).casefold()
+                if (term in lines) if isinstance(term, str) else term.search(lines):
+                    return False
             if search_terms or wild_terms:
                 if search_field == "title":
                     haystack = item.title.lower()
@@ -520,7 +535,13 @@ class CoreMixin:
             value = getattr(item, sort_key, "") or ""
             return value.lower() if isinstance(value, str) else value
 
-        if sort_key == "random":
+        if sort_key == "fav_performers":
+            # 3.5.0: videos with one of your favourite performers first (desc) or last (asc); newest
+            # acquired first within each group (a stable sort keeps that order).
+            favs = favorite_performers or set()
+            filtered.sort(key=_acquired, reverse=True)
+            filtered.sort(key=lambda i: any(fold(p) in favs for p in i.performers or []), reverse=sort_dir == "desc")
+        elif sort_key == "random":
             # 3.4.1: shuffled by `sort_seed` -- the same seed gives the same order, so paging and Back
             # stay put; the page asks for a new one ("Shuffle again"). crc32, not hash(): stable across restarts.
             seed = f"{sort_seed if sort_seed is not None else 0}:"

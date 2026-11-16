@@ -17,6 +17,7 @@ import { onLibraryChange } from "../stores/live.js";
 import { session, hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
 import { discover } from "../lib/discover.js";
+import { perfClass, perfTitle } from "../stores/performerBadges.js";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -196,7 +197,7 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
           <div v-if="performers.length" class="group">
             <h4>Performers<span v-if="edited('performers')" class="edited" title="Edited by hand">✎</span></h4>
             <div class="chips"><RouterLink v-for="p in performers" :key="p" :to="{ name: 'performer', params: { name: p } }" class="chip chip-performer"
-                                           :title="`${p}: profile and videos`">{{ p }}</RouterLink></div>
+                                           :class="perfClass(p)" :title="`${perfTitle(p)} — profile and videos`">{{ p }}</RouterLink></div>
           </div>
           <div v-if="tags.length" class="group">
             <h4>Tags<span v-if="edited('tags')" class="edited" title="Edited by hand">✎</span></h4>

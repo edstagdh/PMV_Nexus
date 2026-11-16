@@ -108,6 +108,9 @@ def get_library(
         sort_key: str = "created_at",
         sort_dir: str = "desc",
         sort_seed: Optional[int] = Query(default=None, ge=0, le=2**31),  # sort_key=random (3.4.1)
+        exclude: str = Query(default="", max_length=500),  # 3.5.0: "tag:avc title:downbad pov"
+        no_music: bool = False,       # 3.5.0: only videos without music
+        no_performers: bool = False,  # 3.5.0: only videos without performers
         creators: list[str] = Query(default=[]),
         match_all: bool = False,
         min_duration: Optional[int] = None,
@@ -146,6 +149,8 @@ def get_library(
         sort_key=sort_key,
         sort_dir=sort_dir,
         sort_seed=sort_seed,
+        exclude=exclude, no_music=no_music, no_performers=no_performers,
+        favorite_performers=set(library_manager.db.favorite_performers(user.id)) if sort_key == "fav_performers" else None,
     )
     result["items"] = library_manager.with_watch([scrub_item(i, user) for i in result.get("items", [])], user)  # regular users: no server paths; my place in each
     return result

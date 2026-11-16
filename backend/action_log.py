@@ -109,6 +109,7 @@ _LABELS = {
     "performers_split": "Split performer names",
     "performers_match_now": "Match performers now",
     "performers_refresh": "Refresh performer profile",
+    "performer_favorite": "Favourite performer (add / remove)",
     "performers_convert_photos": "Convert performer photos to WebP",
     "performers_add_photo": "Add photo to performer",
     "performers_remove_photo": "Remove performer photo",

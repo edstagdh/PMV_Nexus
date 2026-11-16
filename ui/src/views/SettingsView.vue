@@ -30,6 +30,7 @@ const THEME_LABELS = { midnight: "Midnight", slate: "Slate", daylight: "Daylight
 const SORT_LABELS = {
   download_datetime: "Date acquired", upload_date: "Uploaded to PMVHaven", title: "Title", creator: "Creator",
   ratings: "Rating", views: "Views on PMVHaven", tech_duration: "Duration (length)", tech_filesize: "File size", tech_resolution: "Resolution",
+  fav_performers: "Favourite performers (theirs first or last)",
   random: "Random (a new order each time you open the library)",
 };
 const BADGE_LABELS = {
@@ -39,7 +40,11 @@ const BADGE_LABELS = {
 };
 const GONE_COLORS = ["#dc2626", "#b91c1c", "#e11d48", "#7c3aed", "#ea580c", "#111827"];
 const CHIP_KINDS = [
-  { key: "performer", label: "Performers", sample: ["Aurora Vale", "Luna Prism"] },
+  // 3.5.0: performers by gender (from ThePornDB, or the silhouette set on their page)
+  { key: "female", label: "Performers: female", sample: ["Aurora Vale"], g: "female" },
+  { key: "male", label: "Performers: male", sample: ["Rex Steel"], g: "male" },
+  { key: "trans", label: "Performers: trans / non-binary", sample: ["Sky Rivera"], g: "trans" },
+  { key: "unknown", label: "Performers: not known", sample: ["Luna Prism"], g: "unknown" },
   { key: "tag", label: "Tags", sample: ["#pmv", "#compilation"] },
   { key: "music", label: "Music", sample: ["Track — Artist"] },
   { key: "creator", label: "Uploader", sample: ["CreatorName"], text: true },
@@ -222,7 +227,7 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
               <span>{{ k.label }}</span>
             </label>
             <template v-if="k.text"><span v-for="s in k.sample" :key="s" class="text-creator uploader-sample">{{ s }}</span></template>
-            <template v-else><span v-for="s in k.sample" :key="s" class="chip" :class="`chip-${k.key}`">{{ s }}</span></template>
+            <template v-else><span v-for="s in k.sample" :key="s" class="chip" :class="k.g ? ['chip-performer', `g-${k.g}`] : `chip-${k.key}`">{{ s }}</span></template>
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ const THEMES = ["midnight", "slate", "daylight"];
 const VIEWS = ["grid", "list", "table"];
 // Multiples of 30, so full rows fit both 5 per row (sidebar open) and 6 (collapsed).
 const PAGE_SIZES = [30, 60, 90, 120];
-const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution", "random"];
+const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution", "fav_performers", "random"];
 export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "favorite", "status"];
 // Badges on the small related-video thumbnails. The bottom row has room for
 // RELATED_BADGE_MAX; rating and 💀 sit in the top corners and don't count.
@@ -33,6 +33,7 @@ export const DEFAULT_UI = Object.freeze({
   abRepeat: false,              // player: an A-B button to repeat one part of a video (2.18.0)
   resumePlayback: true,         // continue a video where I left off (2.24.0)
   videoFrames: false,           // the row of frames under the player, click to jump (3.2.0; off: the seekbar previews do it)
+  savedSearches: [],             // 3.5.0: [{name, query}] -- Library -> Saved (components/SavedSearches.vue)
   tabOrder: {},                 // your order of the tabs, per page: {portal: [keys], server: [keys]} (3.4.0, lib/tabOrder.js)
   frameSearch: null,            // Search this frame: [{name, url, field}]; null = Google Lens (lib/frameSearch.js)
   rememberVolume: true,         // each browser keeps the volume you last set (3.2.0)
@@ -48,7 +49,9 @@ export const DEFAULT_UI = Object.freeze({
   relatedCount: 15,
   relatedBadges: ["quality", "duration", "rating", "gone"],
   chipColorsOn: true,
-  chipColors: { performer: "#ec4899", tag: "#38bdf8", music: "#22c55e", creator: "#f97316" },
+  // 3.5.0: performers by gender (female / male / trans / unknown); tags yellow (blue is now male).
+  chipColors: { female: "#ec4899", male: "#38bdf8", trans: "#c084fc", unknown: "#94a3b8",
+                tag: "#eab308", music: "#22c55e", creator: "#f97316" },
   // A custom theme starts from a dark or light base and overrides four colours;
   // the rest (borders, hover, dimmed text) are derived from them.
   customTheme: { enabled: false, base: "midnight", bg: "#0b0b0d", panel: "#17171b", text: "#f2f2f3", accent: "#f97316" },
@@ -78,6 +81,11 @@ export function normalizeUi(raw) {
     resumePlayback: r.resumePlayback !== false,
     videoFrames: r.videoFrames === true,
     frameSearch: Array.isArray(r.frameSearch) ? r.frameSearch : null,
+    savedSearches: (Array.isArray(r.savedSearches) ? r.savedSearches : [])
+      .filter((x) => x && typeof x.name === "string" && x.name.trim() && x.query && typeof x.query === "object")
+      .map((x) => ({ name: x.name.trim().slice(0, 80), query: Object.fromEntries(Object.entries(x.query)
+        .filter(([k, v]) => /^[a-z]{1,12}$/.test(k) && (typeof v === "string" || (Array.isArray(v) && v.every((e) => typeof e === "string"))))) }))
+      .slice(0, 50),
     tabOrder: Object.fromEntries(Object.entries(r.tabOrder && typeof r.tabOrder === "object" ? r.tabOrder : {})
       .filter(([page, keys]) => /^[a-z]{1,20}$/.test(page) && Array.isArray(keys))
       .map(([page, keys]) => [page, [...new Set(keys.filter((k) => typeof k === "string" && /^[a-z_-]{1,30}$/.test(k)))].slice(0, 30)])),
@@ -100,7 +108,7 @@ export function normalizeUi(raw) {
       ]
       : [...DEFAULT_UI.relatedBadges],
     chipColorsOn: typeof r.chipColorsOn === "boolean" ? r.chipColorsOn : DEFAULT_UI.chipColorsOn,
-    chipColors: pickColors(r.chipColors, DEFAULT_UI.chipColors),
+    chipColors: pickColors(oldChipColors(r.chipColors), DEFAULT_UI.chipColors),
     customTheme: {
       ...pickColors(r.customTheme, DEFAULT_UI.customTheme),
       enabled: r.customTheme?.enabled === true,
@@ -114,6 +122,15 @@ function nearestPageSize(v) {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_UI.pageSize;
   return PAGE_SIZES.reduce((best, s) => (Math.abs(s - n) < Math.abs(best - n) ? s : best), PAGE_SIZES[0]);
+}
+
+/** Before 3.5.0: one "performer" colour (now female's), and tags had male's blue as default. */
+function oldChipColors(raw) {
+  if (!raw || typeof raw !== "object" || "female" in raw) return raw;
+  const out = { ...raw };
+  if (raw.performer) out.female = raw.performer;
+  if ((raw.tag || "").toLowerCase() === "#38bdf8") delete out.tag;
+  return out;
 }
 
 function pickColors(raw, defaults) {
@@ -183,7 +200,7 @@ function uiSnapshot() {
   const p = session.prefs;
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
-    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
+    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
     relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });

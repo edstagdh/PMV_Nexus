@@ -447,6 +447,14 @@ CREATE TABLE IF NOT EXISTS performer_names (
     checked_at   REAL
 );
 CREATE INDEX IF NOT EXISTS idx_performer_names_performer ON performer_names(performer_id);
+-- 3.5.0: each user's favourite performers (by folded name, so every spelling counts)
+CREATE TABLE IF NOT EXISTS performer_favorites (
+    user_id    TEXT NOT NULL,
+    name_key   TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    PRIMARY KEY (user_id, name_key)
+);
 """
 
 
@@ -804,6 +812,19 @@ class LibraryDB:
     # 2.17.0 performers not on ThePornDB
     def performer_local_rows(self) -> list[dict]:
         return [dict(r) for r in self._conn.execute("SELECT * FROM performer_local")]
+
+    def favorite_performers(self, user_id: str) -> dict[str, str]:
+        """3.5.0: folded name -> name, the user's favourite performers."""
+        return {r["name_key"]: r["name"] for r in self._conn.execute(
+            "SELECT name_key, name FROM performer_favorites WHERE user_id = ? ORDER BY name COLLATE NOCASE", (user_id,))}
+
+    def set_favorite_performer(self, user_id: str, name_key: str, name: str, on: bool) -> None:
+        if on:
+            self._conn.execute("INSERT OR REPLACE INTO performer_favorites (user_id, name_key, name, created_at) "
+                               "VALUES (?, ?, ?, ?)", (user_id, name_key, name, time.time()))
+        else:
+            self._conn.execute("DELETE FROM performer_favorites WHERE user_id = ? AND name_key = ?", (user_id, name_key))
+        self._conn.commit()
 
     def upsert_performer_local(self, local_id: str, name_key: str, name: str, gender: str) -> None:
         self._conn.execute("INSERT INTO performer_local (local_id, name_key, name, gender) VALUES (?, ?, ?, ?) "

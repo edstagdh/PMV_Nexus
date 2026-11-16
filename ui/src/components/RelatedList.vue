@@ -2,6 +2,7 @@
 import VideoThumb from "./VideoThumb.vue";
 import ActionMenu from "./ActionMenu.vue";
 import { itemUrlTitle } from "../lib/format.js";
+import { perfClass, perfTitle } from "../stores/performerBadges.js";
 
 defineProps({ items: Array });
 </script>
@@ -15,7 +16,7 @@ defineProps({ items: Array });
           <div class="rel-title">{{ itemUrlTitle(item) }}</div>
           <div class="muted rel-meta text-creator">{{ item.creator }}</div>
           <div v-if="item.performers?.length" class="muted rel-meta">
-            <template v-for="(p, i) in item.performers.slice(0, 3)" :key="p"><span v-if="i">, </span><span class="text-performer">{{ p }}</span></template>
+            <template v-for="(p, i) in item.performers.slice(0, 3)" :key="p"><span v-if="i">, </span><span class="text-performer" :class="perfClass(p)">{{ p }}</span></template>
           </div>
         </div>
       </router-link>

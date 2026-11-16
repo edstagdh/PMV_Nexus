@@ -17,6 +17,7 @@ import { hasPermission } from "../stores/session.js";
 import { onLibraryChange } from "../stores/live.js";
 import { setPageTitle } from "../lib/title.js";
 import { toast } from "../stores/toast.js";
+import { isFavorite, setFavorite, loadBadges } from "../stores/performerBadges.js";
 
 const props = defineProps({ name: String });
 const router = useRouter();
@@ -49,7 +50,7 @@ const p = computed(() => prof.value?.performer);
 const owner = computed(() => p.value || prof.value?.local || null);
 async function setGender(gender) {
   busy.value = "gender";
-  try { await api("/api/performers/gender", { method: "POST", body: { name: props.name, gender } }); await load(); }
+  try { await api("/api/performers/gender", { method: "POST", body: { name: props.name, gender } }); await load(); loadBadges(true); }
   catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
   finally { busy.value = ""; }
 }
@@ -72,6 +73,9 @@ const facts = computed(() => {
   return out;
 });
 const otherNames = computed(() => (prof.value?.names || []).filter((n) => !n.main));
+// 3.5.0: favourite performer -- all her names in the library count.
+const allNames = computed(() => [...new Set([props.name, prof.value?.name, ...(prof.value?.names || []).map((n) => n.name)].filter(Boolean))]);
+const favorite = computed(() => allNames.value.some((n) => isFavorite(n)));
 const longBio = computed(() => (p.value?.bio || "").length > 420);
 
 function inLibrary() { router.push({ name: "library", query: { performer: prof.value.names.map((n) => n.name) } }); }
@@ -112,14 +116,17 @@ const STATUS_TEXT = {
           </dl>
           <div class="actions">
             <button class="btn btn-sm btn-primary" @click="inLibrary"><Icon name="library" :size="15" />Her videos in the library</button>
+            <button class="btn btn-sm fav-btn" :class="{ on: favorite }" :aria-pressed="favorite"
+                    :title="favorite ? 'Remove from your favourite performers' : 'Add to your favourite performers (♥ on her badges; Library → sort Favourite performers)'"
+                    @click="setFavorite(allNames, !favorite, prof.name)"><Icon name="heart" :size="14" />{{ favorite ? "Favourite" : "Add to favourites" }}</button>
             <a v-if="p?.url" :href="p.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />ThePornDB</a>
             <a v-for="(url, site) in p?.links || {}" :key="site" :href="url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">{{ site }}</a>
             <button v-if="canManage && owner && !owner.custom_photos?.length" class="btn btn-ghost btn-sm" @click="showPhotos = !showPhotos">
               <Icon name="plus" :size="14" />Add your photo</button>
-            <span v-if="canManage && !p && prof.local && !prof.local.photos.length" class="gender" role="group" aria-label="Placeholder">
-              <span class="muted small">Placeholder</span>
-              <button v-for="g in ['female', 'male']" :key="g" class="btn btn-sm" :class="{ 'btn-primary': prof.local.gender === g }"
-                      :disabled="busy === 'gender'" @click="setGender(g)">{{ g === "female" ? "Female" : "Male" }}</button>
+            <span v-if="canManage && !p && prof.local" class="gender" role="group" aria-label="Gender">
+              <span class="muted small" title="Her badge colour, and the placeholder picture when she has no photo">Gender</span>
+              <button v-for="g in ['female', 'male', 'trans']" :key="g" class="btn btn-sm" :class="{ 'btn-primary': prof.local.gender === g }"
+                      :disabled="busy === 'gender'" @click="setGender(g)">{{ { female: "Female", male: "Male", trans: "Trans" }[g] }}</button>
             </span>
             <template v-if="canManage && prof.configured">
               <button v-if="p" class="btn btn-ghost btn-sm" :disabled="busy === 'refresh'" @click="refresh">{{ busy === "refresh" ? "Refreshing…" : "Refresh" }}</button>
@@ -206,4 +213,5 @@ const STATUS_TEXT = {
   .facts { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.75rem), 1fr)); }
 }
+.fav-btn.on { color: var(--chip-female, #ec4899); border-color: currentColor; }
 </style>

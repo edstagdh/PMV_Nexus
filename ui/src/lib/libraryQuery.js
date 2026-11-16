@@ -8,7 +8,8 @@ export function toApiParams(s) {
   const out = {
     search: s.q, tags: s.tags, performers: s.performers, creators: s.creators, codecs: s.codecs,
     match_all: s.all || undefined, gone: s.gone ?? undefined,
-    min_duration: s.dmin != null ? s.dmin * 60 : undefined, max_duration: s.dmax != null ? s.dmax * 60 : undefined,
+    min_duration: s.dsmin ?? undefined, max_duration: s.dsmax ?? undefined,
+    exclude: s.x?.trim() || undefined, no_music: s.nomusic || undefined, no_performers: s.noperf || undefined,  // 3.5.0
     min_rating: s.rating ?? undefined, qualities: s.quality, min_quality: s.qmin ?? undefined, orientation: s.orient ?? undefined,
     // performer details (2.19.0): one of the video's performers has them all
     p_cups: s.pcup, p_hair: s.phair, p_eyes: s.peyes, p_age_min: s.pamin ?? undefined, p_age_max: s.pamax ?? undefined,
@@ -33,8 +34,11 @@ export function toLibraryQuery(p = {}) {
   if (p.match_all) q.match = "all";
   if (p.gone === true) q.gone = "1";
   if (p.gone === false) q.gone = "0";
-  if (p.min_duration != null) q.dmin = String(Math.round(p.min_duration / 60));
-  if (p.max_duration != null) q.dmax = String(Math.round(p.max_duration / 60));
+  if (p.min_duration != null) q.dsmin = String(Math.round(p.min_duration));
+  if (p.max_duration != null) q.dsmax = String(Math.round(p.max_duration));
+  if (p.exclude) q.x = p.exclude;
+  if (p.no_music) q.nomusic = "1";
+  if (p.no_performers) q.noperf = "1";
   if (p.min_rating != null) q.rating = String(p.min_rating);
   if (p.qualities?.length) q.quality = p.qualities;
   if (p.min_quality) q.qmin = p.min_quality;
@@ -54,7 +58,7 @@ export function toLibraryQuery(p = {}) {
 const SORT_LABELS = {
   download_datetime: "date acquired", upload_date: "upload date", created_at: "date acquired", title: "title", creator: "creator", ratings: "rating",
   views: "views", tech_duration: "duration", tech_filesize: "file size", tech_resolution: "resolution",
-  random: "random order",
+  random: "random order", fav_performers: "favourite performers",
 };
 
 /** A new order for sort "random" (the URL's ?seed=). */
@@ -74,6 +78,9 @@ export function describeQuery(p = {}) {
     const b = p.max_duration != null ? Math.round(p.max_duration / 60) : null;
     parts.push(a != null && b != null ? `${a}–${b} min` : a != null ? `${a}+ min` : `up to ${b} min`);
   }
+  if (p.exclude) parts.push(`not ${p.exclude}`);
+  if (p.no_music) parts.push("no music");
+  if (p.no_performers) parts.push("no performers");
   if (p.min_rating != null) parts.push(`rating ${p.min_rating}%+`);
   const who = [];
   if (p.p_cups?.length) who.push(`cup ${p.p_cups.join("/")}`);

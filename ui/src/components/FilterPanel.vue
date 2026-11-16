@@ -13,6 +13,7 @@ export const ORIENTATIONS = [
 
 <script setup>
 import MultiSelect from "./MultiSelect.vue";
+import DurationRange from "./DurationRange.vue";
 import { computed, ref, onMounted } from "vue";
 import { session } from "../stores/session.js";
 import { api } from "../lib/api.js";
@@ -34,6 +35,13 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
 
 <template>
   <section class="fpanel card">
+    <div class="field exclude">
+      <label class="field-title" for="flt-exclude">Exclude</label>
+      <input id="flt-exclude" class="input" type="search" :value="state.x" maxlength="500" autocomplete="off"
+             placeholder="Leave out… e.g. tag:avc title:downbad music:remix pov"
+             title="Videos with any of these are left out. A word alone: anywhere. field:word: only there (tag:, performer:, title:, creator:, music:, description:, codec:). &quot;Two words&quot; together; * as in the search."
+             @change="emit('set', { x: $event.target.value.trim() })" @keydown.enter="emit('set', { x: $event.target.value.trim() })">
+    </div>
     <div class="field">
       <label class="field-title" for="flt-performers">Performers</label>
       <MultiSelect input-id="flt-performers" :options="facets?.performers || []" :model-value="state.performers" placeholder="Search performers…"
@@ -54,15 +62,10 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
       <MultiSelect input-id="flt-codecs" :options="codecOptions" :model-value="state.codecs" placeholder="Search codecs…"
                    @update:model-value="emit('set', { codec: $event })" />
     </div>
-    <div class="field">
-      <span>Duration (minutes)</span>
-      <div class="range">
-        <input class="input" type="number" min="0" placeholder="Min" :value="state.dmin ?? ''"
-               @change="emit('set', { dmin: $event.target.value })">
-        <span class="muted">to</span>
-        <input class="input" type="number" min="0" placeholder="Max" :value="state.dmax ?? ''"
-               @change="emit('set', { dmax: $event.target.value })">
-      </div>
+    <div class="field duration">
+      <span>Duration</span>
+      <DurationRange :min="state.dsmin" :max="state.dsmax"
+                     @change="emit('set', { dsmin: $event.min ?? '', dsmax: $event.max ?? '', dmin: '', dmax: '' })" />
     </div>
     <div class="field quality">
       <span>Quality</span>
@@ -94,6 +97,14 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
       <label class="switch" title="Off: videos with ANY selected tag/performer. On: videos with ALL of them.">
         <input type="checkbox" :checked="state.all" @change="emit('set', { match: $event.target.checked ? 'all' : '' })">
         Must match all tags / performers
+      </label>
+      <label class="switch" title="Only videos with no music listed (e.g. to run Find songs on them)">
+        <input type="checkbox" :checked="state.nomusic" @change="emit('set', { nomusic: $event.target.checked ? '1' : '' })">
+        Only without music
+      </label>
+      <label class="switch" title="Only videos with no performers listed">
+        <input type="checkbox" :checked="state.noperf" @change="emit('set', { noperf: $event.target.checked ? '1' : '' })">
+        Only without performers
       </label>
       <label class="site-status">
         <span>On PMVHaven</span>
@@ -146,9 +157,7 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
       </div>
     </div>
     <div class="foot">
-      <span class="muted">{{ activeCount ? `${activeCount} ${activeCount === 1 ? "filter" : "filters"} on` : "No filters on" }}</span>
-      <button class="btn btn-sm" :disabled="!activeCount" title="Remove every filter (search and sorting stay)" @click="emit('clear')">
-        Clear all filters</button>
+      <span class="muted">{{ activeCount ? `${activeCount} ${activeCount === 1 ? "filter" : "filters"} on — ✕ next to the search box clears them` : "No filters on" }}</span>
     </div>
   </section>
 </template>
@@ -167,6 +176,9 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
 .range .input { width: 100%; }
 .foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem;
   padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.8125rem; }
+.exclude { grid-column: 1 / -1; }
+.duration { grid-column: span 2; min-width: 0; }
+@media (max-width: 40rem) { .duration { grid-column: 1 / -1; } }
 .pdetails { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 0.75rem; }
 .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.625rem 1rem; }
 .field-title.sub { font-size: 0.75rem; }

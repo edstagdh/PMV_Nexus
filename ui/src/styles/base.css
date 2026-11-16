@@ -105,11 +105,19 @@ button.chip:hover, a.chip:hover { border-color: var(--accent); color: var(--text
   background: color-mix(in srgb, var(--chip-c) 28%, transparent);
   color: var(--text);
 }
-.chip-performer { --chip-c: var(--chip-performer, #ec4899); }
-.chip-tag { --chip-c: var(--chip-tag, #38bdf8); }
+/* Performers by gender (3.5.0, stores/performerBadges.js): grey until known. */
+.chip-performer { --chip-c: var(--chip-unknown, #94a3b8); }
+.chip-performer.g-female { --chip-c: var(--chip-female, #ec4899); }
+.chip-performer.g-male { --chip-c: var(--chip-male, #38bdf8); }
+.chip-performer.g-trans { --chip-c: var(--chip-trans, #c084fc); }
+.chip-performer.fav::before { content: "♥"; margin-right: 0.3em; font-size: 0.85em; }
+.chip-tag { --chip-c: var(--chip-tag, #eab308); }
 .chip-music { --chip-c: var(--chip-music, #22c55e); }
 /* Names shown as plain text (related videos, uploader): just the colour. */
-html.chips-colored .text-performer { color: color-mix(in srgb, var(--chip-performer) 75%, var(--text)); }
+html.chips-colored .text-performer { color: color-mix(in srgb, var(--chip-unknown) 75%, var(--text)); }
+html.chips-colored .text-performer.g-female { color: color-mix(in srgb, var(--chip-female) 75%, var(--text)); }
+html.chips-colored .text-performer.g-male { color: color-mix(in srgb, var(--chip-male) 75%, var(--text)); }
+html.chips-colored .text-performer.g-trans { color: color-mix(in srgb, var(--chip-trans) 75%, var(--text)); }
 html.chips-colored .text-creator { color: var(--chip-creator); }
 
 /* ---------- admin / settings pages: shared layout ---------- */

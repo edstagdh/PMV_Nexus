@@ -4,6 +4,25 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.5.0] - 2026-11-17
+
+### Added
+- **Performer badges coloured by gender**: female pink, male blue, trans / non-binary / intersex light purple, not
+  known grey (from the ThePornDB profile, or set by hand on the performer's page — now also "Trans"). Each colour
+  is in My Settings → Appearance; the tooltip says the gender.
+- **Favourite performers**: ♥ on a performer's page (yours only, all her names count); her badges get a ♥.
+  New library sort **Favourite performers**: their videos first, or last with the order button.
+- **Saved searches** (🔖 next to Filters): save the whole view (search, filters, exclude, sort) under a name and open
+  it again later; saved with your account.
+- **Exclude** (Filters): leave out videos by word, or by field — `tag:avc title:downbad music:remix`.
+- **Filters: Only without music / Only without performers.**
+- **Duration filter as a slider** with two handles snapping to 0–10, 12, 15, 20, 25, 30, 45, 60 minutes and no limit,
+  plus exact m:ss boxes (seconds now count; older links in minutes still work).
+
+### Changed
+- **Clear filters** is now the ✕ next to the search box (it was at the bottom of the Filters panel).
+- **Tags are yellow** by default (blue is now male performers'); a custom tag colour you chose is kept.
+
 ## [3.4.2] - 2026-11-16
 
 ### Fixed

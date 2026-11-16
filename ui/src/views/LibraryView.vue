@@ -12,11 +12,13 @@ import VideoTable from "../components/VideoTable.vue";
 import FilterPanel, { qualityLabel, ORIENTATIONS } from "../components/FilterPanel.vue";
 import PageNav from "../components/PageNav.vue";
 import SearchHelp from "../components/SearchHelp.vue";
+import SavedSearches from "../components/SavedSearches.vue";
 import { api, qs } from "../lib/api.js";
 import { session, savePref, PREF_OPTIONS, isAdmin } from "../stores/session.js";
 import { live, onLibraryChange } from "../stores/live.js";
 import { openDialog } from "../stores/dialogs.js";
 import { toApiParams, newSeed } from "../lib/libraryQuery.js";
+import { formatDuration } from "../lib/format.js";
 import BulkEditDialog from "../components/dialogs/BulkEditDialog.vue";
 import { featureOn } from "../lib/actions.js";
 import BulkActionDialog from "../components/dialogs/BulkActionDialog.vue";
@@ -38,6 +40,7 @@ const SORTS = [
   { key: "tech_duration", label: "Duration (length)" },
   { key: "tech_filesize", label: "File size" },
   { key: "tech_resolution", label: "Resolution" },
+  { key: "fav_performers", label: "Favourite performers" },  // 3.5.0: desc = theirs first, asc = last
   { key: "random", label: "Random" },  // 3.4.1: the order button shuffles again
 ];
 // Random without a seed in the URL (e.g. it's your default sort): one per visit to the page.
@@ -58,7 +61,12 @@ const state = computed(() => {
     tags: arr(q.tag), performers: arr(q.performer), creators: arr(q.creator), codecs: arr(q.codec),
     // gone: "1" only videos removed from PMVHaven 💀, "0" only ones still there.
     all: q.match === "all", gone: q.gone === "1" ? true : q.gone === "0" ? false : null,
-    dmin: num(q.dmin), dmax: num(q.dmax), rating: num(q.rating),
+    // Duration in seconds (3.5.0: ?dsmin / ?dsmax); older links' ?dmin / ?dmax are minutes.
+    dsmin: num(q.dsmin) ?? (num(q.dmin) != null ? num(q.dmin) * 60 : null),
+    dsmax: num(q.dsmax) ?? (num(q.dmax) != null ? num(q.dmax) * 60 : null),
+    rating: num(q.rating),
+    // 3.5.0: exclude ("tag:avc title:downbad pov"), only videos without music / performers
+    x: q.x || "", nomusic: q.nomusic === "1", noperf: q.noperf === "1",
     // quality: exact quality buckets (any of them); qmin: that quality or better.
     quality: arr(q.quality), qmin: q.qmin || null,
     orient: ["landscape", "portrait", "square"].includes(q.orient) ? q.orient : null,
@@ -76,7 +84,7 @@ const state = computed(() => {
 const activeFilterCount = computed(() => {
   const s = state.value;
   return s.tags.length + s.performers.length + s.creators.length + s.codecs.length
-    + (s.dmin != null) + (s.dmax != null) + (s.rating != null) + (s.gone !== null)
+    + (s.dsmin != null || s.dsmax != null) + (s.rating != null) + (s.gone !== null) + !!s.x.trim() + s.nomusic + s.noperf
     + s.quality.length + (s.qmin !== null) + (s.orient !== null)
     + s.pcup.length + s.phair.length + s.peyes.length + (s.pamin != null || s.pamax != null) + (s.penh !== null);
 });
@@ -207,7 +215,10 @@ const chips = computed(() => {
   s.tags.forEach((v) => out.push({ label: `#${v}`, key: "tag", value: v }));
   s.creators.forEach((v) => out.push({ label: `by ${v}`, key: "creator", value: v }));
   s.codecs.forEach((v) => out.push({ label: v, key: "codec", value: v }));
-  if (s.dmin != null || s.dmax != null) out.push({ label: `${s.dmin ?? 0}–${s.dmax ?? "∞"} min`, key: "duration" });
+  if (s.dsmin != null || s.dsmax != null) out.push({ label: `${formatDuration(s.dsmin || 0)}–${s.dsmax != null ? formatDuration(s.dsmax) : "∞"}`, key: "duration" });
+  if (s.x.trim()) out.push({ label: `not: ${s.x.trim()}`, key: "x" });
+  if (s.nomusic) out.push({ label: "No music", key: "nomusic" });
+  if (s.noperf) out.push({ label: "No performers", key: "noperf" });
   if (s.rating != null) out.push({ label: `★ ${s.rating}%+`, key: "rating" });
   s.quality.forEach((v) => out.push({ label: qualityLabel(v), key: "quality", value: v }));
   if (s.qmin) out.push({ label: `${qualityLabel(s.qmin)} or better`, key: "qmin" });
@@ -221,7 +232,7 @@ const chips = computed(() => {
   return out;
 });
 function removeChip(c) {
-  if (c.key === "duration") setQuery({ dmin: "", dmax: "" });
+  if (c.key === "duration") setQuery({ dsmin: "", dsmax: "", dmin: "", dmax: "" });
   else if (c.key === "page") setQuery({ pamin: "", pamax: "" });
   else if (c.value !== undefined) setQuery({ [c.key]: arr(query.value[c.key]).filter((v) => v !== c.value) });
   else setQuery({ [c.key]: "" });
@@ -268,9 +279,13 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
                placeholder="Search… (try performer:, tag:, creator:, title:)" aria-label="Search the library">
         <span class="search-end"><SearchHelp @pick="(q) => { searchText = q; searchInput?.focus(); }" /><kbd class="kbd">/</kbd></span>
       </div>
+      <!-- 3.5.0: Clear filters, out of the Filters panel (the search and the sort stay). -->
+      <button class="btn btn-icon clear-x" :disabled="!activeFilterCount" title="Clear filters" aria-label="Clear filters"
+              @click="clearFilters"><Icon name="x" :size="20" /></button>
       <button class="btn" :class="{ active: showFilters }" @click="showFilters = !showFilters">
         <Icon name="filter" />Filters<span v-if="activeFilterCount" class="count-pill">{{ activeFilterCount }}</span>
       </button>
+      <SavedSearches />
       <div class="sort">
         <select class="select" :value="state.sort" aria-label="Sort by"
                 @change="setQuery({ sort: $event.target.value, seed: $event.target.value === 'random' ? String(newSeed()) : undefined })">
@@ -280,7 +295,8 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
                 @click="setQuery({ seed: String(newSeed()) })">
           <Icon name="shuffle" />
         </button>
-        <button v-else class="btn btn-icon" :title="state.dir === 'asc' ? 'Ascending' : 'Descending'"
+        <button v-else class="btn btn-icon" :title="state.sort === 'fav_performers' ? (state.dir === 'asc' ? 'Favourite performers last' : 'Favourite performers first')
+                  : state.dir === 'asc' ? 'Ascending' : 'Descending'"
                 @click="setQuery({ dir: state.dir === 'asc' ? 'desc' : 'asc' })">
           <Icon :name="state.dir === 'asc' ? 'sortAsc' : 'sortDesc'" />
         </button>
@@ -383,7 +399,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.75rem 0 0.5rem; }
 /* Long filter lists scroll inside the panel, so it never covers the whole screen. */
 .filters-pop { max-height: min(32rem, 60vh); overflow-y: auto; overscroll-behavior: contain; box-shadow: var(--shadow); margin-bottom: 0.5rem; }
-.search { position: relative; z-index: 12; flex: 1 1 20rem; min-width: 0; } /* its tips pop-up opens over the Filters panel */
+.search { position: relative; z-index: 12; flex: 1 1 15rem; min-width: 0; } /* its tips pop-up opens over the Filters panel */
 .search-icon { position: absolute; left: 0.6875rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
 .search-input { width: 100%; padding-left: 2.25rem; padding-right: 3.75rem; height: 2.5rem; }
 .search-end { position: absolute; right: 0.375rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.25rem; }
@@ -426,4 +442,6 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 .picking .pick-wrap.picked { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-lg); }
 .pick-bar { position: sticky; bottom: 0.75rem; z-index: 20; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
   padding: 0.625rem 0.875rem; margin-top: 1rem; box-shadow: var(--shadow); }
+.clear-x:not(:disabled) { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.clear-x:disabled { opacity: 0.4; }
 </style>

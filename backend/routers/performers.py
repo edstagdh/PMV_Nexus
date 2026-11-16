@@ -46,6 +46,30 @@ async def _run(coro):
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+class FavoriteBody(BaseModel):
+    names: list[str] = Field(..., min_length=1, max_length=50)  # every name she has in the library
+    on: bool = True
+
+
+@router.get("/api/performers/badges")
+def performer_badges(user: AuthContext = Depends(_viewer)):
+    """3.5.0: what performer badges show -- each known performer's gender (folded name ->
+    female / male / trans; others are unknown, grey) and your favourite performers."""
+    return {"genders": library_manager.performer_genders(),
+            "favorites": list(library_manager.db.favorite_performers(user.id).values())}
+
+
+@router.post("/api/performers/favorites")
+def performer_favorite(body: FavoriteBody, user: AuthContext = Depends(_viewer)):
+    """3.5.0: adds / removes a favourite performer (yours only), with all her names."""
+    from ..spellings import fold
+    for raw in body.names:
+        name = " ".join(str(raw).split())[:200]
+        if name:
+            library_manager.db.set_favorite_performer(user.id, fold(name), name, body.on)
+    return {"favorite": body.on, "favorites": list(library_manager.db.favorite_performers(user.id).values())}
+
+
 @router.get("/api/performers/profile")
 def performer_profile(name: str, user: AuthContext = Depends(_viewer)):
     """Her profile by any of her names: details, photo, names in the library, similar performers."""
@@ -68,7 +92,7 @@ def performers_browse(user: AuthContext = Depends(_viewer)):
 
 class GenderBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    gender: str = Field(..., pattern="^(female|male)$")
+    gender: str = Field(..., pattern="^(female|male|trans)$")  # trans: 3.5.0 (badge colour)
 
 
 @router.post("/api/performers/gender")

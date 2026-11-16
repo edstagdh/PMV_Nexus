@@ -72,7 +72,8 @@ Tips:
 
 - **My Settings** has five tabs:
   - **Appearance:** theme (or a custom theme with your own colours), text size, coloured performer/tag/music
-    chips and the 💀 badge colour.
+    chips and the 💀 badge colour. Performer badges are coloured by gender (3.5.0): female pink, male blue, trans /
+    non-binary light purple, not known grey; tags yellow — each colour can be changed.
   - **Library:** default sort, which thumbnail badges show, and the table hover-preview size.
   - **Video page:** how many related videos to show and which badges they get, the frames under the player, the
     starting volume, the sites for Search frame, and whether Edit details'
@@ -227,9 +228,20 @@ app starts.
   **Random** (3.4.1): the order button becomes **Shuffle again** (🔀), a new order each click. The order is kept in
   the address, so the next page, Back and a reload keep it; a smart playlist saved from it keeps that order too.
   As your default sort (My Settings → Library), every visit to the library starts with a new order.
+- **Favourite performers** (3.5.0): videos with one of your favourite performers first; the order button puts them
+  last instead. Within each group, newest acquired first.
 - **Filters** opens over the videos and stays at the top while you scroll, until you close it.
-- **Filters → Clear all filters** removes every filter but keeps the search and sort.
+- **✕** next to the search box (3.5.0) clears every filter but keeps the search and sort.
 - Filter by tags, performers, codec, quality, orientation, duration, rating and 💀 removed-from-site, and sort by any column.
+- **Duration** (3.5.0): a slider with two handles (shortest, longest) that snap to 0–10 minutes, then 12, 15, 20, 25,
+  30, 45, 60 minutes and **∞** (no limit); the boxes under it take any exact length (`3`, `3:30`, `1:05:00`).
+- **Only without music / Only without performers** (3.5.0): videos that have none listed, e.g. to run Find songs on them.
+- **Exclude** (3.5.0, top of Filters): leaves out videos with any of the words — a word alone anywhere, or one field:
+  `tag:avc title:downbad music:remix performer:luna creator:… description:… codec:…`; `"two words"` together;
+  `*` as in the search.
+- **Saved searches** (🔖, 3.5.0): **Name this view → Save** keeps the search, filters, exclude and sort under a name
+  (with your account; the same name replaces it); pick one to open it, ✕ removes it. While a saved search is open,
+  its name shows on the button.
 - Search finds videos with **every word** you type, in any order (`alyx star natasha` finds "… Natasha Nice and
   Alyx Star"); put words in "quotes" to need them together as written. Field prefixes search one field: `title:`,
   `creator:`, `tag:`, `performer:`, `description:`, `music:`, `codec:` — the **?** in the search box lists them with examples.
@@ -406,6 +418,12 @@ Click a performer on a video's page to open her profile. If ThePornDB is set up 
 Credentials → ThePornDB**), the profile shows:
 - photo, age, details, bio and aliases;
 - similar performers you have, and all her videos (**Her videos in the library** opens them in the library).
+
+**♥ Add to favourites** (3.5.0, on her page) makes her one of *your* favourite performers (each person has their own):
+her badges get a ♥, and **Library → sort Favourite performers** puts her videos first or last. All her names in the
+library count. **Gender** (3.5.0): her badge colour comes from her ThePornDB profile; for someone not on ThePornDB,
+**Gender: Female / Male / Trans** on her page sets it (and her placeholder picture). Until then her badges are grey —
+matching her to ThePornDB fills it in.
 
 How it works:
 - **Matching:** each performer name is matched once to a ThePornDB profile, and that link is kept.

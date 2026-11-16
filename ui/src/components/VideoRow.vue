@@ -3,6 +3,7 @@ import { computed } from "vue";
 import VideoThumb from "./VideoThumb.vue";
 import ActionBar from "./ActionBar.vue";
 import { itemUrlTitle, formatDate, workStatus } from "../lib/format.js";
+import { perfClass, perfTitle } from "../stores/performerBadges.js";
 
 const props = defineProps({ item: Object });
 const emit = defineEmits(["filter"]);
@@ -21,7 +22,7 @@ const status = computed(() => workStatus(props.item));
         <span v-if="status" class="status" :class="status.kind" :title="status.detail">{{ status.label }}</span>
       </div>
       <div v-if="item.performers?.length" class="vrow-chips">
-        <button v-for="p in item.performers" :key="p" class="chip chip-performer" @click="emit('filter', 'performer', p)">{{ p }}</button>
+        <button v-for="p in item.performers" :key="p" class="chip chip-performer" :class="perfClass(p)" :title="perfTitle(p)" @click="emit('filter', 'performer', p)">{{ p }}</button>
       </div>
       <div v-if="item.tags?.length" class="vrow-chips">
         <button v-for="t in item.tags.slice(0, 12)" :key="t" class="chip chip-tag" @click="emit('filter', 'tag', t)">#{{ t }}</button>

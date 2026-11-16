@@ -9,6 +9,7 @@
 // instead of floating over what's below.
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { api, qs } from "../lib/api.js";
+import { perfClass, perfTitle } from "../stores/performerBadges.js";
 
 const props = defineProps({
   modelValue: Array, field: String, placeholder: String, chipClass: String,
@@ -88,7 +89,8 @@ function onBlur() {
 <template>
   <div class="tag-input-wrap">
     <div class="tag-input input" @click="box?.focus()">
-      <span v-for="(v, i) in modelValue" :key="v" class="chip" :class="chipClass">
+      <span v-for="(v, i) in modelValue" :key="v" class="chip" :class="[chipClass, field === 'performers' ? perfClass(v) : null]"
+            :title="field === 'performers' ? perfTitle(v) : undefined">
         {{ v }}<button type="button" class="chip-x" :aria-label="`Remove ${v}`" @click.stop="remove(i)">×</button>
       </span>
       <input :id="inputId" ref="box" v-model="text" role="combobox" autocomplete="off" :aria-expanded="open && shown.length > 0"

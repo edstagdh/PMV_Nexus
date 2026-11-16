@@ -641,8 +641,8 @@ class PerformersMixin:
 
     def set_performer_gender(self, name: str, gender: str) -> dict:
         """The placeholder of a performer without a ThePornDB profile."""
-        if gender not in ("female", "male"):
-            raise PerformerError("Gender must be female or male")
+        if gender not in ("female", "male", "trans"):  # trans (3.5.0): badge colour; female silhouette
+            raise PerformerError("Gender must be female, male or trans")
         self._perf_load()
         key = fold(name)
         lib = self._library_performer_names()
@@ -673,6 +673,36 @@ class PerformersMixin:
         }
 
     # ---------------------------------------------------------------- library filters (2.19.0)
+    @staticmethod
+    def badge_gender(raw: str) -> Optional[str]:
+        """ThePornDB's gender -> the badge colour (3.5.0): female / male / trans (trans women and
+        men, non-binary, intersex); None when it's not given."""
+        g = " ".join(str(raw or "").replace("-", " ").lower().split())
+        if not g:
+            return None
+        if "trans" in g or "non binary" in g or "nonbinary" in g or "intersex" in g:
+            return "trans"
+        return {"female": "female", "male": "male"}.get(g)
+
+    def performer_genders(self) -> dict[str, str]:
+        """folded name -> "female" / "male" / "trans" (3.5.0, performer badge colours): from the
+        ThePornDB profile it's linked to, else the silhouette set on its page; unknown ones left out."""
+        self._perf_load()
+        out: dict[str, str] = {}
+        for key, row in self._perf_local.items():
+            if row.get("gender") in ("female", "male", "trans"):
+                out[key] = row["gender"]
+        for key, row in self._perf_names.items():
+            if row.get("status") != "linked" or not row.get("performer_id"):
+                continue
+            p = self._perf_by_id.get(row["performer_id"])
+            g = self.badge_gender(((p or {}).get("data") or {}).get("extras", {}).get("gender")) if p else None
+            if g:
+                out[key] = g
+            else:
+                out.pop(key, None)  # linked: the profile decides, even when it doesn't say
+        return out
+
     def performer_facts_by_name(self) -> dict[str, dict]:
         """folded performer name -> _browse_details() of the ThePornDB profile it's linked to
         (names not on ThePornDB are left out: nothing is known about them)."""

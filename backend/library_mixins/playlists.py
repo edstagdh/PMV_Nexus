@@ -24,7 +24,7 @@ from typing import Optional
 # fixed (finished videos, everything).
 SMART_QUERY_KEYS = {
     "search", "tags", "performers", "codecs", "creators", "match_all", "min_duration", "max_duration",
-    "min_rating", "gone", "qualities", "min_quality", "orientation", "sort_key", "sort_dir", "sort_seed",
+    "min_rating", "gone", "qualities", "min_quality", "orientation", "sort_key", "sort_dir", "sort_seed", "exclude", "no_music", "no_performers",
     "p_cups", "p_hair", "p_eyes", "p_age_min", "p_age_max", "p_enhanced",
 }
 _LIST_KEYS = {"tags", "performers", "codecs", "creators", "qualities", "p_cups", "p_hair", "p_eyes"}
@@ -50,7 +50,7 @@ def clean_smart_query(raw: Optional[dict]) -> dict:
             value = [str(v) for v in (value if isinstance(value, list) else [value]) if str(v).strip()]
             if not value:
                 continue
-        elif key in ("match_all", "gone", "p_enhanced"):
+        elif key in ("match_all", "gone", "p_enhanced", "no_music", "no_performers"):
             value = value in (True, "true", "1", 1)
         elif key in ("min_duration", "max_duration", "p_age_min", "p_age_max", "sort_seed"):
             value = int(float(value))
@@ -92,12 +92,15 @@ class PlaylistsMixin:
         it = self._items.get(item_id)
         return it if it is not None and it.status == "done" else None
 
-    def query_all_item_ids(self, query: dict) -> list[str]:
-        """Every finished video matching a library query, in its sort order."""
+    def query_all_item_ids(self, query: dict, owner_id: Optional[str] = None) -> list[str]:
+        """Every finished video matching a library query, in its sort order. `owner_id`: whose
+        favourite performers sort "Favourite performers" (3.5.0)."""
         ids: list[str] = []
         page = 1
+        q = clean_smart_query(query)
+        favs = set(self.db.favorite_performers(owner_id)) if owner_id and q.get("sort_key") == "fav_performers" else None
         while True:
-            res = self.query_items(page=page, page_size=200, statuses=["done"], **clean_smart_query(query))
+            res = self.query_items(page=page, page_size=200, statuses=["done"], favorite_performers=favs, **q)
             ids.extend(i["id"] for i in res["items"])
             if page >= res["total_pages"]:
                 return ids
@@ -105,7 +108,7 @@ class PlaylistsMixin:
 
     def _playlist_ids(self, row: dict) -> list[str]:
         if row["kind"] == "smart":
-            return self.query_all_item_ids(json.loads(row["smart_query"] or "{}"))
+            return self.query_all_item_ids(json.loads(row["smart_query"] or "{}"), row["owner_id"])
         return [i for i in self.db.playlist_item_ids(row["id"]) if self._done(i)]
 
     def _playlist_public(self, row: dict, user, owners: dict[str, str], covers: Optional[list[str]] = None,
@@ -315,7 +318,7 @@ class PlaylistsMixin:
         every page, not just the visible one). Already-present videos are
         skipped. Returns {"added", "skipped"}."""
         self._editable(playlist_id, user, manual=True)
-        ids = self.query_all_item_ids(query) if query is not None else [i for i in (item_ids or []) if self._done(i)]
+        ids = self.query_all_item_ids(query, user.id) if query is not None else [i for i in (item_ids or []) if self._done(i)]
         added = self.db.add_playlist_items(playlist_id, ids)
         return {"added": added, "skipped": len(ids) - added}
 
