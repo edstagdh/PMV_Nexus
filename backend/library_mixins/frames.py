@@ -11,6 +11,7 @@ the site); otherwise they're made from the file.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import shutil
 import time
 import tempfile
@@ -28,6 +29,7 @@ class FramesMixin:
     _fr_task: Optional[asyncio.Task] = None
     _fr_stop = False
     _fr_state: dict = {}
+    _fr_from_file: set = set()  # ids whose next frames are made from the file ("Redo Frames")
 
     # ---------------------------------------------------------------- files
     def frames_root(self) -> Path:
@@ -100,9 +102,11 @@ class FramesMixin:
                 "queued": len(self._fr_queue or ()), "running": bool(self._fr_task and not self._fr_task.done())}
 
     def redo_frames(self, video_id: str) -> bool:
-        """Video page -> frames -> "Make them again" (e.g. after the site's frames changed)."""
+        """Video page -> "Redo Frames": made again FROM THE FILE (3.4.2) -- the site's are what was
+        there already, and the reason to redo them (blank, placeholder or wrong ones)."""
         if not self._fr_candidate(video_id):
             return False
+        self._fr_from_file.add(video_id)
         self.remove_frames(video_id)
         return self.request_frames(video_id, first=True)
 
@@ -191,6 +195,38 @@ class FramesMixin:
             if self._fr_task is None or self._fr_task.done():
                 self._fr_task = asyncio.create_task(self._fr_worker())
 
+    def seed_placeholder_frames(self) -> None:
+        """3.4.2, once: videos whose saved site frames are all one placeholder picture get
+        theirs made from the file (in the background)."""
+        flag = "placeholder_frames_342"
+        if self.db.get_app_state(flag, False):
+            return
+        self.db.set_app_state(flag, time.time())
+
+        def find() -> list[str]:
+            out = []
+            for video_id in list(self._items):
+                info = self.frames_info(video_id)
+                if not info or info.get("source") != "site" or len(info["frames"]) < 2:
+                    continue
+                try:
+                    pics = {hashlib.sha1((self.frames_folder(video_id) / f["file"]).read_bytes()).hexdigest()
+                            for f in info["frames"]}
+                except OSError:
+                    continue
+                if len(pics) * 2 <= len(info["frames"]):
+                    out.append(video_id)
+            return out
+
+        async def run() -> None:
+            ids = await asyncio.to_thread(find)
+            for video_id in ids:
+                self.redo_frames(video_id)
+            if ids:
+                logger.info("Video frames: {} video(s) had placeholder frames from the site; making them from the file", len(ids))
+
+        asyncio.create_task(run())
+
     async def _fr_worker(self) -> None:
         state = self._fr_state = {"done": 0, "failed": 0, "current": None}
         self._fr_stop = False
@@ -217,8 +253,10 @@ class FramesMixin:
                     continue
                 state["current"] = video_id
                 try:
+                    from_file = video_id in self._fr_from_file
+                    self._fr_from_file.discard(video_id)
                     meta = await self._portrait_frames(item)
-                    timeline = await self._site_timeline(item) if meta is None else []
+                    timeline = await self._site_timeline(item) if meta is None and not from_file else []
                     if timeline and item.site != "local":
                         meta = await self._frames_from_site(item, timeline)
                     if meta is None:

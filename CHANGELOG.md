@@ -4,6 +4,14 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.4.2] - 2026-11-16
+
+### Fixed
+- **Video frames: "Redo Frames" brought back the same placeholder pictures** for videos PMVHaven has no real
+  timeline frames for. Redo Frames now makes them from the video file. Site frames that are all one placeholder
+  picture are no longer used (the app makes them from the file), and videos that already have such frames get
+  theirs made from the file once, in the background, after updating.
+
 ## [3.4.1] - 2026-11-16
 
 ### Added

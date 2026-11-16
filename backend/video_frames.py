@@ -20,6 +20,7 @@ asyncio.to_thread.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -97,9 +98,12 @@ def from_site(entries: list[dict], folder: Path, fetch: Callable[[str], bytes], 
         usable = [e for e in entries if e.get("url")]
         times = _even_times(duration, len(usable)) if duration > 0 else [None] * len(usable)
         frames = []
+        seen = set()  # 3.4.2: a site without real frames sends one placeholder picture for all of them
         for n, entry in enumerate(usable):
             try:
-                data = fit_webp(fetch(entry["url"]))
+                raw = fetch(entry["url"])
+                seen.add(hashlib.sha1(raw).hexdigest())
+                data = fit_webp(raw)
             except Exception as exc:  # noqa: BLE001 -- one bad frame mustn't lose the others
                 logger.debug("Video frame {} couldn't be downloaded: {}", n, exc)
                 continue
@@ -109,6 +113,8 @@ def from_site(entries: list[dict], folder: Path, fetch: Callable[[str], bytes], 
             frames.append({"file": name, "seconds": float(seconds) if seconds is not None else times[n]})
         if not frames:
             raise ValueError("None of the site's frames could be downloaded")
+        if len(frames) > 1 and len(seen) * 2 <= len(frames):
+            raise ValueError(f"The site's frames are placeholders ({len(frames)} frames, {len(seen)} different picture(s))")
         if any(f["seconds"] is None for f in frames):
             raise ValueError("The site's frames have no times")
         frames.sort(key=lambda f: f["seconds"])

@@ -291,7 +291,9 @@ are scaled down) in the cache folder (`.frames`, about 20–60 KB per video), de
 folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
 the whole library at once from **Management → Maintenance → Video frames → Make the … missing** (one job on Tasks;
 older videos without saved timeline frames ask PMVHaven for them once). **Redo Frames** (with the video's other buttons,
-while the frames are shown; needs Edit details) makes them again.
+while the frames are shown; needs Edit details) makes them again **from the video file** (3.4.2) — e.g. when
+PMVHaven's are blank or placeholders. Site frames that are all one placeholder picture are never used: the app makes
+them from the file instead (3.4.2 also fixes the ones saved before, once, after updating).
 
 **Search frame:** **⚙ → Search frame** pauses the video and looks up the picture on screen on a reverse image search
 site, in a new tab — **Google Lens** and **Yandex** by default (with both, you pick one each time). The picture is

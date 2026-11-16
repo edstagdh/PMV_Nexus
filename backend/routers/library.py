@@ -263,7 +263,7 @@ def get_video_frame(video_id: str, n: int, user: AuthContext = Depends(require_p
 
 @router.post("/api/library/{video_id}/frames/redo")
 async def redo_video_frames(video_id: str, user: AuthContext = Depends(require_permission("videos.edit"))):
-    """Makes the video's frames again (from the site when it has them, else from the file)."""
+    """Makes the video's frames again, from the file (3.4.2; the site's are the ones it had)."""
     if not library_manager.redo_frames(video_id):
         raise HTTPException(status_code=404, detail="Only downloaded videos have frames")
     return {"queued": True}

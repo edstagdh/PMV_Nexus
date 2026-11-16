@@ -41,7 +41,7 @@ export function itemActions(item, { context = "library" } = {}) {
       // The frames under the player (3.2.0), when they're shown: made again by the app.
       if (context === "page" && session.prefs.videoFrames === true) {
         out.push({ key: "redo-frames", label: "Redo Frames", icon: "image",
-          title: "Make the frames under the player again — from PMVHaven's video timeline when the video has one, otherwise from the file",
+          title: "Make the frames under the player again from the video file (e.g. when PMVHaven's are blank or placeholders)",
           run: async () => {
             await call(`/api/library/${id}/frames/redo`, "Making the frames again");
             window.dispatchEvent(new CustomEvent("pmv-frames-redo", { detail: item.id }));

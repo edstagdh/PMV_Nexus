@@ -1013,6 +1013,7 @@ class CoreMixin:
         self.seed_audio_fix_job()  # 3.2.0: once, for the videos already in the library
         self.seed_preview_fix_job()  # 3.3.0: once, for the previews already in the library
         self.seed_portrait_frames()  # 3.4.0: once, vertical videos' frames: 24 instead of 8
+        self.seed_placeholder_frames()  # 3.4.2: once, site frames that are one placeholder -> from the file
         asyncio.get_running_loop().create_task(self._backfill_upload_dates())
 
     async def _backfill_upload_dates(self) -> None:
