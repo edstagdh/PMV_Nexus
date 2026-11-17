@@ -236,7 +236,7 @@ class FramesMixin:
             total = state["done"] + state["failed"] + left + (1 if state["current"] else 0)
             item = self._items.get(state["current"] or "")
             return {"stage": "Making", "done": state["done"] + state["failed"], "total": total,
-                    "detail": item.title if item else None}
+                    "detail": item.title if item else None, "item": activity.item_ref(item)}
 
         def stop() -> None:
             self._fr_stop = True

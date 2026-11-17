@@ -206,6 +206,7 @@ class LiveTranscoder:
         s.activity = activity.start("live_convert", f"Converting for watching ({height}p): {title or item_id}",
                                     source=username or "manual", progress=lambda s=s: self._progress(s))
         s.activity.stopper = lambda sid=sid: self.end(sid, reason="stopped on Tasks")
+        s.activity.item = {"id": item_id, "title": title} if title else None  # Tasks links it (3.5.0)
         logger.info("Converting while watching: item {} at {}p for user {} (session {})", item_id, height, user_id, sid[:6])
         return s
 

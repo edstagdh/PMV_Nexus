@@ -205,7 +205,8 @@ class SongsMixin:
             self._set_song_state(item.id, done=done, total=total, found=found)
 
         try:
-            async with activity.track("song_scan", f"Finding songs: {title_of(item)}", stop=True, progress=progress) as act:
+            async with activity.track("song_scan", f"Finding songs: {title_of(item)}", stop=True, progress=progress,
+                                      item=activity.item_ref(item)) as act:
                 async with lock:
                     self._set_song_state(item.id, state="scanning")
                     result = await self._scan_video(item, on_sample, method)
@@ -275,13 +276,15 @@ class SongsMixin:
             if state["waiting"] and lock.locked():
                 return {"stage": "Waiting for the song scan that's running", "done": 0, "total": state["total"]}
             return {"stage": f"Listening to {state['title']}" if state["title"] else "Starting",
-                    "done": state["done"], "total": state["total"], "detail": f"songs found in {found_in} so far"}
+                    "done": state["done"], "total": state["total"], "detail": f"songs found in {found_in} so far",
+                    "item": state.get("item")}
 
         async with activity.track("song_scan", title, stop=True, progress=progress) as act:
             async with lock:
                 state["waiting"] = False
                 for item in todo:
                     state["title"] = title_of(item)
+                    state["item"] = activity.item_ref(item)
                     self._set_song_state(item.id, state="scanning", done=0, total=None, found=0)
                     try:
                         result = await self._scan_video(

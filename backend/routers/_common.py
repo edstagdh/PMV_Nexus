@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 from fastapi import Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from ..open_files import stream_chunks
 
@@ -41,7 +41,7 @@ def safe_folder_name(name: str) -> str:
     return cleaned
 
 
-def stream_file(file_path: Path, request: Request) -> StreamingResponse:
+def stream_file(file_path: Path, request: Request) -> Response:
     """Serves file_path with HTTP range-request support -- what lets the
     video player seek instead of only ever playing from the start. Used by
     library.py's /stream and /preview routes. Open files are tracked (see
@@ -56,6 +56,11 @@ def stream_file(file_path: Path, request: Request) -> StreamingResponse:
             start = int(match.group(1))
             end = int(match.group(2)) if match.group(2) else file_size - 1
             end = min(end, file_size - 1)
+            if start >= file_size or start > end:
+                # 3.5.0: a range past the end (e.g. the file got smaller -- a preview converted or a video
+                # re-encoded while a tab still had its old size) is refused as HTTP asks; before, it sent a
+                # negative Content-Length and the server logged "Response content longer than Content-Length".
+                return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}", "Accept-Ranges": "bytes"})
             chunk_size = end - start + 1
 
             headers = {
@@ -66,4 +71,5 @@ def stream_file(file_path: Path, request: Request) -> StreamingResponse:
             return StreamingResponse(stream_chunks(file_path, start, chunk_size), status_code=206, media_type=media_type, headers=headers)
 
     headers = {"Content-Length": str(file_size), "Accept-Ranges": "bytes"}
-    return StreamingResponse(stream_chunks(file_path), media_type=media_type, headers=headers)
+    # The length it said, not "to the end": a file still growing must not send more than Content-Length.
+    return StreamingResponse(stream_chunks(file_path, 0, file_size), media_type=media_type, headers=headers)

@@ -1,6 +1,9 @@
 # Blank issues stay on: the app's Help -> Report an issue opens one with the details filled in.
 blank_issues_enabled: true
 contact_links:
+  - name: Questions and help (Discord)
+    url: https://discord.gg/zphkcKtfTW
+    about: Ask how to install or use the app, or chat about ideas, on the PMV Nexus Discord.
   - name: Security problem
     url: https://github.com/edstagdh/PMV_Nexus/security/advisories/new
     about: Please report security problems privately, not as a public issue.

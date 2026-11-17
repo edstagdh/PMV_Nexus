@@ -7,6 +7,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icon from "../../components/Icon.vue";
 import { api, qs } from "../../lib/api.js";
+import { copyText } from "../../lib/clipboard.js";
+import { toast } from "../../stores/toast.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -124,9 +126,15 @@ const userOptions = computed(() => Object.entries(facets.value.user || {}));
 const exportHref = computed(() => `/api/admin/logs/export?${qs(filters.value)}`);
 
 function toggle(id) {
+  if (String(window.getSelection?.() || "")) return;  // selecting text in a row doesn't open / close it (3.5.0)
   const s = new Set(open.value);
   s.has(id) ? s.delete(id) : s.add(id);
   open.value = s;
+}
+async function copyEntry(r, detailOnly = false) {
+  const ok = await copyText(detailOnly ? r.detail : JSON.stringify(r, null, 2));
+  toast(ok ? (detailOnly ? "Error details copied" : "Entry copied") : "The browser blocked copying — select the text and copy it by hand",
+        { type: ok ? "success" : "error" });
 }
 function onRowKey(e, id) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(id); } }
 const fmtWhen = (ts) => new Date(ts * 1000).toLocaleString([], { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -212,7 +220,16 @@ const summary = computed(() => {
               </td>
               <td class="msg">{{ r.message }}<span v-if="r.detail" class="trace" title="Has error details"> ⋯</span></td>
             </tr>
-            <tr v-if="open.has(r.id)" class="details"><td colspan="6"><pre>{{ JSON.stringify(r, null, 2) }}</pre></td></tr>
+            <tr v-if="open.has(r.id)" class="details"><td colspan="6" @click.stop>
+              <div class="copy-bar">
+                <button class="btn btn-sm" type="button" title="Copy this entry as JSON" @click="copyEntry(r)"><Icon name="copy" :size="14" />Copy</button>
+                <button v-if="r.detail" class="btn btn-ghost btn-sm" type="button" title="Copy only the error details (traceback)"
+                        @click="copyEntry(r, true)">Copy error details</button>
+              </div>
+              <pre>{{ JSON.stringify(r, null, 2) }}</pre>
+              <!-- The traceback readable, with its line breaks (in the JSON above they're \n). -->
+              <pre v-if="r.detail" class="trace-text">{{ r.detail }}</pre>
+            </td></tr>
           </template>
         </tbody>
       </table>
@@ -260,4 +277,6 @@ pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.75rem/1
 .none { text-align: center; color: var(--text-dim); padding: 1.5rem; }
 .foot { display: flex; justify-content: center; }
 @media (max-width: 56rem) { .logs { padding: 0.75rem 1rem 1.5rem; } }
+.copy-bar { display: flex; gap: 0.4rem; justify-content: flex-end; margin-bottom: 0.4rem; }
+.trace-text { margin-top: 0.5rem; white-space: pre-wrap; }
 </style>

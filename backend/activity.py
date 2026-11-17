@@ -78,6 +78,9 @@ class Activity:
         self.stopper: Optional[Callable[[], None]] = None
         self.stop_when: Optional[Callable[[], bool]] = None
         self.stopped_by: Optional[str] = None
+        # 3.5.0: the video it's about ({"id", "title"}) -- the Tasks page links its title. A job
+        # going through many videos returns the current one as "item" from its progress instead.
+        self.item: Optional[dict] = None
 
     def can_stop(self) -> bool:
         if self.finished_at is not None or self.stopper is None or self.stopped_by is not None:
@@ -122,13 +125,13 @@ class Activity:
                "status": self.status, "stage": self.stage, "summary": self.summary,
                "started_at": self.started_at, "finished_at": self.finished_at,
                "done": None, "total": None, "percent": None, "detail": None,
-               "can_stop": self.can_stop(), "stopped_by": self.stopped_by}
+               "can_stop": self.can_stop(), "stopped_by": self.stopped_by, "item": self.item}
         if self.progress is not None:
             try:
                 p = self.progress() or {}
             except Exception:  # noqa: BLE001 -- a progress probe must never break the Tasks page
                 p = {}
-            for k in ("stage", "done", "total", "detail"):
+            for k in ("stage", "done", "total", "detail", "item"):
                 if p.get(k) is not None:
                     out[k] = p[k]
             if p.get("percent") is not None:
@@ -163,7 +166,8 @@ def current() -> Optional[Activity]:
 
 @asynccontextmanager
 async def track(kind: str, title: str, progress: Optional[Callable[[], dict]] = None, source: str = "manual",
-                stage: Optional[str] = None, stop=None, stop_when: Optional[Callable[[], bool]] = None):
+                stage: Optional[str] = None, stop=None, stop_when: Optional[Callable[[], bool]] = None,
+                item: Optional[dict] = None):
     """Shows the wrapped work on the Tasks page. Inside a Scheduler run (or
     another track()), the existing activity is used -- this only gives it
     its progress / stage / stop. stop=True: the Stop button cancels the
@@ -186,6 +190,7 @@ async def track(kind: str, title: str, progress: Optional[Callable[[], dict]] = 
         return
     act = start(kind, title, source, progress=progress)
     act.stage = stage
+    act.item = item
     if stop:
         act.stopper = stop if callable(stop) else act._cancel_task
         act.stop_when = stop_when
@@ -205,6 +210,11 @@ async def track(kind: str, title: str, progress: Optional[Callable[[], dict]] = 
                    f"Stopped by {act.stopped_by}" if act.stopped_by else act.summary)
     finally:
         _current.reset(token)
+
+
+def item_ref(item) -> Optional[dict]:
+    """{"id", "title"} of a library video for Activity.item / a progress's "item" (3.5.0)."""
+    return {"id": item.id, "title": item.title} if item is not None and getattr(item, "title", None) else None
 
 
 def summarize(result) -> Optional[str]:

@@ -31,7 +31,8 @@ class PreviewFixMixin:
 
         def progress() -> dict:
             return {"stage": "Checking", "done": state["checked"], "total": state["total"],
-                    "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else "")}
+                    "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else ""),
+                    "item": state.get("item") if state["current"] else None}
 
         def stop_now() -> None:
             stop["now"] = True
@@ -44,6 +45,7 @@ class PreviewFixMixin:
                 if item.id not in self._items or not item.preview_path or not Path(item.preview_path).is_file():
                     continue
                 state["current"] = item.title
+                state["item"] = activity.item_ref(item)
                 try:
                     done = await self.check_preview(item.id)
                     if done:

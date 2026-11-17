@@ -2,15 +2,20 @@
 
 <img src="ui/src/assets/logo.svg" alt="" width="72">
 
+[![Latest release](https://img.shields.io/github/v/release/edstagdh/PMV_Nexus?label=release&color=f97316)](https://github.com/edstagdh/PMV_Nexus/releases/latest)
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/zphkcKtfTW)
+
 A self-hosted web app for building and managing your own library of PMVs (porn music videos): add a video by its
 link, and PMV Nexus fetches its details through the site's official API, downloads it (where the site offers a
-download), and keeps it in a searchable, filterable library with a built-in player, playlists, performers, songs,
-duplicate detection, optional HEVC / AV1 re-encoding and backups. It runs on your own computer or home server.
+download), and keeps it in a searchable, filterable library with a built-in player (with on-the-fly conversion for
+slow connections), playlists, ThePornDB performer profiles, song recognition, duplicate detection, HEVC / AV1 / AVC
+re-encoding, multiple users and backups. It runs on your own computer or home server and works on phones too.
 
 Works with **PMVHaven** and its sister sites porntubeai.com and hmvhaven.com.
 
 **Open beta.** Download the Windows installer from [Releases](https://github.com/edstagdh/PMV_Nexus/releases), or
 see [Installation](#installation) for Linux / macOS. Problems and ideas: [Issues](https://github.com/edstagdh/PMV_Nexus/issues).
+Questions, help and news: [Discord](https://discord.gg/zphkcKtfTW).
 
 > **Independent, unofficial project.** PMV Nexus is not affiliated with, endorsed by or connected to PMVHaven or
 > any other site it works with. **Adults only (18+).** You are responsible for following each site's terms
@@ -59,65 +64,106 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 
 ## Features
 
-### Adding & downloading
-- Add a video by pasting its PMVHaven page URL — the video id is parsed straight out of it.
-- Video details read from the site's API on add: title, creator (name/url/subscriber count), upload date, duration, views, rating %, description, tags, music credits, performer/model list, content-flag chips, and the site's own video details.
-- Thumbnail, hover-preview clip, and funscript (if present) are downloaded alongside the video; all are optional/toggleable.
-- Downloads use the site's API only: the video's details from `/api/videos/<id>`, the original-quality file from the site's own download endpoint (only videos the site offers for download). The app never reads the sites' web pages and never signs in to them.
-- A per-video metadata JSON file can be saved alongside the download, enriched with real technical details (codec, resolution, bitrate, duration) read from the file itself via MediaInfo rather than trusting whatever the page displayed.
-- Separate worker pools for metadata fetching vs. the actual download, each with its own concurrency limit, so a title/thumbnail shows up immediately instead of waiting behind whatever's currently downloading.
-- Failed items retry automatically up to a configurable limit, then land in a `failed` state you can manually retry.
+### Adding videos
+- **Paste links** (one or many) or use the **userscript** on PMVHaven: a button on every video page, and badges on
+  every listing for what you already have. Works with PMVHaven and its sister sites porntubeai.com and hmvhaven.com.
+- Details come from the site's **official API**: title, creator, upload date, duration, views, rating, description,
+  tags, performers, music and content flags. The file comes from the site's own download endpoint, only for videos
+  the site offers for download. The app never signs in to a site or reads its pages.
+- Thumbnail, hover preview, funscript and a metadata file are saved alongside (each optional).
+- **Proxy** (SOCKS5 / HTTP): use it for everything, or **split downloads** so some go through the proxy and some
+  direct, at the same time. It has a built-in speed test, and nothing is sent while the proxy is down.
+- The **download queue** can be reordered. Failed downloads retry automatically. Downloads pause by themselves when
+  the disk is nearly full and resume when there's room.
+- **Upload your own videos** with all their details. Each file is checked (type, contents, antivirus, optional
+  VirusTotal lookup), then re-packed or converted (AVC / HEVC / AV1) so every browser can play it.
 
-### Library management
-- **Rename** — renames the video file and every sidecar (funscript, metadata JSON, thumbnail, preview, pre-reencode backup) to match, with filesystem-safe name sanitization.
-- **Remove** — removes the library entry, optionally deleting the files from disk too; cleans up now-empty creator folders afterward. Deletion retries briefly on Windows to ride out a file lock left by the in-browser video player.
-- **Change download folder** — optionally moves every already-downloaded file into the new folder in one operation; blocked while a re-encode is in progress.
-- **Sync database from files** — re-reads every completed video's metadata JSON on disk and backfills tags/performers/technical details for items that predate those fields (or were downloaded with metadata saving off).
-- **Repair broken thumbnails/previews/metadata** — sweeps every completed item, re-fetching anything missing or 0 bytes from PMVHaven and regenerating technical details locally from the file. Never touches the video file itself; a missing/corrupt video is reported as an error instead of silently re-downloaded. Runs in the background with live progress and is cancellable.
+### The library
+- **Grid, List and Table** views, with hover previews and badges (duration, quality, codec, size, orientation,
+  rating, ♥, removed from the site).
+- **Search** every field at once, or one field (`performer:`, `tag:`, `title:`, `creator:`, `music:`, …), with
+  `*` wildcards and `"exact phrases"`.
+- **Filters:** tags, performers, creators, codec, quality, orientation, rating, a **duration slider** (plus exact
+  m:ss boxes), removed from the site, **only without music / performers**, and **performer details** (cup size, age,
+  hair, eyes) from ThePornDB. **Exclude** leaves out videos by word or by field (`tag:avc title:downbad`).
+- **Saved searches:** save any view (search, filters, exclude, sort) under a name and reopen it in one click.
+- **Sort** by date acquired, upload date, title, creator, rating, views, duration, size, resolution, **favourite
+  performers** (first or last) or **random** (with Shuffle again).
+- **Edit details** of one video or many at once (**Select** → add or remove tags, performers, music). Your edits
+  survive syncs.
+- **Names:** rename and merge tags, performers and music across the whole library; it suggests likely typos,
+  remembers fixes, and shows one spelling per name. Tags and performers are shown capitalised and sorted.
+- **Playlists:** manual or **smart** (a saved filter that fills itself), private or shared, with shuffle, repeat
+  and autoplay. Everyone gets a private **Favorites** playlist.
+- **Discover** (a random video you haven't seen lately), **Currently Playing** (what's being watched right now) and
+  **related videos** next to the player.
 
-### Re-encoding (HEVC / AV1)
-- Re-encodes any completed download to HEVC (`libx265`) or AV1 (`libsvtav1`) via ffmpeg, with:
-  - The target codec chosen in Server Settings, each codec with its own CRF and preset
-  - Optional downscale to 1080p (vertical videos are scaled by height, not squashed)
-  - Optional CPU limit: a number of cores or a percentage of them (the encoder is pinned to those cores)
-  - Optional chapter removal
-  - Audio copied as-is when it's already AAC, otherwise transcoded to AAC 128kbps stereo
-  - Subtitle streams preserved as `mov_text`; all metadata stripped so stale tags don't survive the re-encode
-- Refuses to re-encode a file into the codec it already has; a file already in the default codec is offered the other one (e.g. AV1 → HEVC for devices that can't play AV1).
-- One FIFO queue, one encode running at a time, with move-up/move-down reordering for anything still waiting (the item currently encoding can't be reordered, since it's already running).
-- Live progress %, ETA, and encode speed while a file is encoding.
-- Cancel a queued or in-progress re-encode at any time (terminates the ffmpeg process cleanly).
-- The pre-encode metadata JSON is preserved as a `_original.json` backup ("Original details" stays viewable from the UI); optionally the original video file itself is kept too, renamed with an `_old` suffix.
-- Queue state survives a server restart — anything that was mid-encode when the server stopped is safely restarted from scratch.
+### Watching
+- A full video player with **seekbar previews** (a picture for every moment of the video), optional **frames under
+  the player** to jump around, precise volume, loop, speed and keyboard shortcuts.
+- **Converting while you watch:** ⚙ → **720p** plays a copy the server converts on the fly (H.264, 720p or 480p).
+  It's useful on a slow connection or VPN, and is also used automatically for files a browser can't play.
+- **Search this frame:** look up the picture on screen with **Google Lens** or **Yandex** reverse image search
+  (add your own sites too).
+- **Mini-player:** a playing video keeps going in a floating player while you browse.
+- **Phones and tablets:** the whole app works on a phone. In the player, tap to show the controls, double-tap to
+  skip, swipe for brightness and volume in fullscreen, and the screen turns to suit each video.
+
+### Performers (ThePornDB)
+- Every performer name is matched to a **ThePornDB** profile: photos, age, measurements, bio, aliases, links and
+  similar performers you have. Clear matches link themselves; doubtful ones wait for you to pick.
+- **Aliases merge:** different names of the same person show as one, and each performer has a page with all her
+  videos. You can add your own photos.
+- **Performer badges are coloured by gender** (female, male, trans / non-binary, unknown). For performers who aren't
+  on ThePornDB, set it by hand.
+- **Favourite performers** (per user): ♥ on her badges, and a library sort that puts her videos first or last.
+
+### Songs
+- **Find songs:** listens to a video and suggests the songs in it, using **Shazam** (free, no key) and optionally
+  **Google Gemini** (AI) for what Shazam misses. Nothing is added without your OK. It works for one video, picked
+  videos or on a schedule, and songs show up while the scan runs.
+
+### Keeping the library tidy
+- **Sync with PMVHaven:** updates tags, performers, music, ratings and stats from the site, and flags videos the
+  site removed (💀). There's a preview first, and your own edits are kept.
+- **Duplicate detection:** compares the pictures (perceptual hashes), not just the files. It runs daily and after
+  downloads, and you review the pairs side by side.
+- **Re-encoding:** HEVC, AV1 or AVC (H.264), from any codec to any other. Downscale to 1080p, even keeping the same
+  codec (e.g. 8K HEVC → 1080p HEVC). Choose quality and preset, limit CPU use, keep the original if you like.
+  A reorderable queue shows live progress, ETA and speed.
+- **Repair / update** missing thumbnails, previews and details. **Make audio playable** (AAC) for files with
+  audio a browser can't play. Hover previews are made **H.264**, with a graphics card's encoder when it's faster.
+  **Untracked files** finds leftovers to delete.
+
+### Running it
+- **Multi-user:** accounts with **roles, groups and per-person permissions** (e.g. a helper who may only fix names).
+  Everyone has their own settings, favourites, playlists, saved searches and watch history.
+- **Tasks:** everything running, with live progress, Stop buttons and links to the videos involved. A failed task
+  links to the log entries from when it ran.
+- **Scheduler** (daily, weekly, every few hours, one time or cron) for syncs, scans, backups, song finding and more.
+- **Notifications** (bell, plus pop-ups) for finished and failed downloads, re-encodes, uploads and jobs.
+- **Stats:** live CPU, memory, network and disks; library growth; watching and failures over time.
+- **Logs:** every action and change, searchable and exportable. Passwords and keys are never logged.
+- **Backups:** scheduled or by hand, optionally password-protected (AES-256), tested and restorable from the app.
+  Credentials are stored encrypted.
+- **Windows installer** (runs from the tray or as a Windows service), or `install.sh` on Linux / macOS.
+  **Update check** built in.
+- **Security:** made for a home network or VPN. Sign-in throttling, a strict Content-Security-Policy, cross-site
+  request protection, and regular users never see server paths.
 
 ### Extensions
 Optional add-ons, each a Python package in an `extensions/` folder next to `run.py`. The folder isn't part of
 the app and isn't created by it: with no extensions, nothing about them shows anywhere. An extension can add
 actions to a video's menu and to the picked-videos bar, settings panels (Server Settings → Extensions),
-credentials, permissions, sources and API routes; it draws no interface of its own — the app shows the forms it
-describes. See [Extensions](#extensions-1) below and the comments at the top of `backend/extensions.py`.
+credentials, permissions, sources, Tasks entries and API routes. It draws no interface of its own: the app shows
+the forms it describes. See [Extensions](#extensions-1) below and the comments at the top of `backend/extensions.py`.
 
-### Web UI
-- **Library** tab (paginated, filterable, sortable — everything that's finished downloading) and a **Tasks** tab (unpaginated, everything still in progress: fetching, pending, downloading, or done-but-still-encoding/uploading).
-- Three view modes for the Library — **List**, **Grid**, **Table** — with card/row DOM nodes reused in place across polls instead of being torn down, so nothing flickers and hover-preview playback is never interrupted.
-- Filters modal: tags, performers, codec, a duration range slider, plus free-text search across title/creator/url/tags/performers.
-- Sortable by title, creator, re-encode status, download date, duration, resolution, codec, size, or tags — from a toolbar control or by clicking table column headers.
-- A dedicated video page (not a modal) with a Video.js 10 player supporting HTTP range-request streaming, a loop toggle, a download button, remembered volume, and a 720p button that converts the video while you watch (HLS via FFmpeg, also used automatically when the browser can't play a file); it moves into a floating mini-player while you browse.
-- Hover-preview clips on thumbnails in List/Grid views.
-- Three themes (Midnight, Slate, Daylight), remembered per browser.
-- The whole library polls every 2 seconds; requests are sequence-guarded so a slower, older response can never overwrite fresher state.
-
-### Settings (all live-editable from the UI, no restart needed)
-- **Download** — folder (with an in-app folder browser), whether to move existing files when the folder changes, max concurrent downloads, max retries, chunk size, funscript toggle, metadata-JSON toggle.
-- **Re-encode** — codec (HEVC / AV1), per-codec CRF and preset, copy-audio, downscale, CPU limit (cores or %), chapter removal, keep-original-file.
-- **Interface** — theme, items per page.
-
-### Reliability & design notes
-- Single-process architecture: one background worker set, one SQLite database (WAL mode + busy-timeout tuned for a bursty single-process workload) — there's no need for anything heavier.
-- Every write is a per-row upsert, not a full-table rewrite, so frequent progress ticks (download %, re-encode %, upload %) stay cheap even with a large library.
-- Downloads, re-encodes, and queue state are rebuilt from the database on every restart rather than assumed to still be in memory — nothing gets silently orphaned by a crash or restart.
-- The Tasks tab always sees *every* active item regardless of library size (it hits a dedicated uncapped endpoint rather than the paginated one).
-- `/api/health` reports SQLite reachability, whether `ffmpeg` is on `PATH`, and free disk space on the output folder.
+### Under the hood
+- Single process: one background worker set and one SQLite database (WAL mode), so there's nothing else to run.
+  Every write is a per-row upsert, so frequent progress updates stay cheap even with a large library.
+- Downloads, re-encodes and queues are rebuilt from the database on every restart, so nothing gets lost in a crash.
+- Live updates reach every open browser tab as they happen (Server-Sent Events), with no polling.
+- `/api/health` reports the database, FFmpeg and free disk space.
 
 ---
 
@@ -128,7 +174,7 @@ describes. See [Extensions](#extensions-1) below and the comments at the top of 
 | Backend | Python, FastAPI, Uvicorn |
 | Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`) |
 | Site access | httpx (the sites' API and downloads) |
-| Media | ffmpeg (re-encoding, HLS remuxing), PyMediaInfo, OpenCV (duration/fps probing) |
+| Media | ffmpeg (re-encoding, live HLS conversion, previews, seekbar previews, frames), PyMediaInfo, OpenCV (duration/fps probing) |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
 | Song recognition | shazamio (Shazam); optional Google Gemini API (AI) |
 | Images | Pillow (performer photos stored as WebP) |
@@ -175,7 +221,7 @@ project-root/
     ├── library.db              # SQLite database
     ├── backups/                 # backup zips (Management → Backups)
     ├── settings_overrides.json  # settings changed from the UI, layered on top of config.yaml
-    ├── logs/                    # rotated backend.log + app_logs.db (Admin → Logs)
+    ├── logs/                    # rotated backend.log + app_logs.db (Management → Logs)
     ├── pmv_session/             # extensions' saved sign-ins (e.g. Telegram)
     └── cache/                   # thumbnails / previews / metadata JSON (path is configurable)
 ```
@@ -272,7 +318,7 @@ python -m Tools.install_extensions
 
 ## Configuration
 
-Non-secret settings live in **`config.yaml`** (created from `config.example.yaml` on first start, not committed); credentials are managed in the app under **Admin → Server Settings → Credentials** (stored encrypted). Anything changed under Admin → Server Settings is stored separately in `data/settings_overrides.json` and layered on top of `config.yaml` at runtime — you don't need to hand-edit the YAML for day-to-day tweaks.
+Non-secret settings live in **`config.yaml`** (created from `config.example.yaml` on first start, not committed); credentials are managed in the app under **Server Settings → Credentials** (stored encrypted). Anything changed under Server Settings is stored separately in `data/settings_overrides.json` and layered on top of `config.yaml` at runtime — you don't need to hand-edit the YAML for day-to-day tweaks.
 
 **Key names in `config.yaml` must match the field names on the corresponding Pydantic model in `backend/config.py` exactly.** Unrecognized keys are silently dropped (Pydantic ignores unknown fields on a plain `BaseModel` rather than erroring), and any field `config.yaml` doesn't set falls back to that model's own default — with no warning that your intended value never took effect. If a setting doesn't seem to be applying, check it against the table below and against `config.py` directly.
 
@@ -295,11 +341,11 @@ Non-secret settings live in **`config.yaml`** (created from `config.example.yaml
 | | `save_metadata_json` | `true` | Write a `<name>.json` metadata file next to every video. |
 | `auth` | `session_ttl_hours` | `720` (30 days) | How long the web UI's login cookie stays valid. |
 | `logging` | `log_dir`, `rotation`, `retention`, `level` | `./data/logs`, `1 month`, `12 months`, `INFO` | loguru configuration. `rotation`/`retention` must be strings loguru understands (e.g. `"1 month"`, `"500 MB"`) — a plain word like `"monthly"` won't parse. |
-| `reencode` | `codec`, `target_crf`, `preset`, `av1_crf`, `av1_preset`, `copy_audio`, `downscale`, `cpu_limit_mode`, `cpu_limit_cores`, `cpu_limit_percent`, `remove_chapters`, `keep_original_file` | `hevc`, `24`, `medium`, `32`, `8`, `true`, `true`, `percent`, `4`, `70`, `false`, `false` | Editable under Admin → Server Settings → Re-encode (the old `limit_cpu_usage` is read as 70% / off). |
+| `reencode` | `codec` (`hevc` / `av1` / `h264`), `target_crf`, `preset`, `av1_crf`, `av1_preset`, `h264_crf`, `h264_preset`, `copy_audio`, `downscale`, `cpu_limit_mode`, `cpu_limit_cores`, `cpu_limit_percent`, `remove_chapters`, `keep_original_file` | `hevc`, `24`, `medium`, `32`, `8`, `20`, `medium`, `true`, `true`, `percent`, `4`, `70`, `false`, `false` | Editable under Server Settings → Re-encode (the old `limit_cpu_usage` is read as 70% / off). |
 
 Windows paths like `D:/PH_DATA` work fine — forward slashes are fine cross-platform since everything is read through `pathlib`.
 
-### Credentials (Admin → Server Settings → Credentials)
+### Credentials (Server Settings → Credentials)
 
 All passwords, API keys and account settings are managed in the app and stored encrypted
 (`data/secrets.db`, key in `data/secret.key` — keep the `data` folder private):
@@ -351,7 +397,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 
 ### First run
 1. On a fresh install the console prints a **setup code**. Open `http://localhost:8676` (or the port you set), enter the code and create the admin account.
-2. Enter your **PMVHaven API key** (and any other keys) in **Admin → Server Settings → Credentials** (PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. The app uses the site's **API only** — video details and the site's own download endpoint; it never signs in to the site or reads its pages.
+2. Enter your **PMVHaven API key** (and any other keys) in **Server Settings → Credentials** (PMVHaven API, from pmvhaven.com/api-keys) so the site knows the requests are yours. The app uses the site's **API only** — video details and the site's own download endpoint; it never signs in to the site or reads its pages.
 3. Click **+ Add videos**, paste a `pmvhaven.com/video/...` URL; it appears under **Tasks** while it downloads, then in the **Library**.
 
 ---
@@ -360,14 +406,15 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 
 - **Library vs. Tasks** — Library only ever shows finished downloads; anything still fetching, pending, downloading, or done-but-still-encoding/uploading lives in **Tasks** instead.
 - **Views** — admins can switch between Grid, List and Table from the toolbar; other users see the grid.
-- **Filters & search** — the Filters panel has tags, performers, codec, quality, orientation, duration, rating and removed-from-site; the search box takes `title:`, `creator:`, `tag:`, `performer:`, `description:`, `music:` prefixes.
-- **Per-item actions** — from the ⋮ menu or the video page: Edit details, Rename, Change thumbnail, Repair / update, Re-encode… (HEVC or AV1, with this time's settings), Add to playlist, Remove (plus any extensions' actions).
+- **Filters & search** — the Filters panel has tags, performers, creators, codec, quality, orientation, a duration slider, rating, removed-from-site, only without music / performers, performer details and an Exclude box; the search box takes `title:`, `creator:`, `tag:`, `performer:`, `description:`, `music:` prefixes and `*` wildcards. Views can be kept as **saved searches** (🔖); ✕ next to the search box clears the filters.
+- **Per-item actions** — from the ⋮ menu or the video page: Edit details, Rename, Change thumbnail, Find songs, Repair / update, Re-encode… (HEVC, AV1 or AVC, with this time's settings), Add to playlist, Remove (plus any extensions' actions).
 - **Playlists** — manual (ordered by hand) or smart (filled by a saved library filter), private or public to the app's other users; play in order or shuffled with next / previous, repeat and autoplay.
 - **Mini-player** — leave a playing video's page and it keeps playing in a floating, draggable player while you browse; a tab reload brings it back paused at the same moment.
 - **Upload** — add videos from your own computer with all their details; thumbnail, preview and technical details are made from the file.
 - **Queues** — waiting downloads can be moved to the front/back or up/down on the Tasks page; waiting re-encodes up/down.
-- **Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Admin → Server Settings**.
-- **Maintenance** — **Admin → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything and untracked files.
+- **My Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Server Settings**.
+- **Maintenance** — **Management → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames and untracked files.
+- **Everything else** — performers, songs, names, duplicates, the Scheduler, users and permissions, backups, stats and logs: see the [Guide](docs/GUIDE.md).
 
 ---
 
@@ -482,7 +529,7 @@ Downloaded videos themselves go to `<output_dir>/<creator>/<creator> - <upload d
 
 ## External API (userscript integration)
 
-These endpoints authenticate via a static `X-API-Key` header (generate the key in **Admin → Server Settings → Credentials → External API** to enable them) instead of the cookie-based session, for tools like a browser userscript that can't hold a login session:
+These endpoints authenticate via a static `X-API-Key` header (generate the key in **Server Settings → Credentials → External API** to enable them) instead of the cookie-based session, for tools like a browser userscript that can't hold a login session:
 
 - `POST /api/external/library` — body `{"url": "..."}`, adds a video to the library.
 - `GET /api/external/exists?url=...` — returns `{"exists": bool, "status": ..., "title": ..., "label": ...}` for dedupe checks before adding (an item that previously `failed` is reported as not existing, since it's re-addable). A duplicate removed on the Duplicates page has `status: "merged"` and `duplicate_of: {id, title, url}` (the copy that was kept).
@@ -497,7 +544,7 @@ the extension installed and it offers to install it; it then updates itself from
 ## Notes, limitations & fragility
 
 - The sites are used through their API only: if PMVHaven changes its API, `backend/pmv_details.py` (reading the details), `backend/pmv_api.py` (sync) and `backend/sources/pmv_platform.py` are the places to look.
-- Video/re-encode progress is polled every 2 seconds; there's no push/websocket layer.
+- Live updates use Server-Sent Events; a browser that loses the connection shows "Can't reach the server" and catches up by itself when it's back.
 - This is designed around a single instance with one SQLite file — it isn't built for multiple concurrent installs sharing one database.
 
 ---
@@ -517,6 +564,7 @@ the extension installed and it offers to install it; it then updates itself from
 - In-app **Help** menu: Guide (`docs/GUIDE.md`), Changelog (`CHANGELOG.md`) and About.
 - The current version is in `VERSION`; click the version label in the header to check for updates.
 - Report bugs at <https://github.com/edstagdh/PMV_Nexus/issues> (Help → Report an issue prefills one).
+- Questions, help and release news: the [PMV Nexus Discord](https://discord.gg/zphkcKtfTW).
 - Security problems: please report them privately — see [SECURITY.md](SECURITY.md).
 
 ### Making a release (maintainers)
@@ -525,7 +573,12 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) — nothi
 2. Tag the commit and push the tag: `git tag v3.2.0 && git push origin v3.2.0`.
 3. The **Release** workflow checks that the tag matches `VERSION`, compiles the Python code, downloads WinSW and checks
    the Python installer's signature, builds `Setup.exe` with Inno Setup, and publishes a GitHub Release with the
-   `.exe`, its `.sha256` and the CHANGELOG section as release notes (the source zip is added by GitHub).
+   `.exe`, its `.sha256` and the release notes (the source zip is added by GitHub). The notes are every CHANGELOG
+   section newer than the previous release tag, so versions that were never tagged on their own (e.g. 3.4.2 when
+   tagging 3.5.0 right after 3.4.1) are included, newest first.
+4. If Discord is set up, it renames the server's version channel to "📦 Latest: v<version>". This needs the
+   repository secret `DISCORD_BOT_TOKEN` (a bot with *Manage Channels* on that channel) and the repository variable
+   `DISCORD_VERSION_CHANNEL_ID`. Without them the step is skipped, and a Discord problem never fails the release.
 
 To try the installer without releasing: **Actions → Release → Run workflow** — the `.exe` is attached to that run
 as an artifact. To build on a Windows PC instead: install Inno Setup 6, put WinSW-x64.exe at

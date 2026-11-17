@@ -116,6 +116,8 @@ with the download status, before the file has finished downloading.
 - **Converting for watching:** every video being converted while someone watches it (**⚙ → 720p** in the player), with
   who's watching, the size and how far it got. **Stop** ends it; the viewer's player switches to the original file.
 - **Coming up:** the next Scheduler runs, and a duplicate scan about to start after downloads.
+- **Links to the videos** (3.5.0): a task about one video ("Finding songs: “After Party”") links its title to the
+  video's page, and a job going through many videos links the one it's on now.
 - **Finished in the last day:** jobs that ended, with how they went (e.g. "matched 7 · refreshed 0"). One that
   failed or says "see the log" has a **See the log** link (with permission to see the log): it opens **Management →
   Logs** showing only what was logged while it ran — the error and what led to it (only warnings and errors when it
@@ -527,7 +529,8 @@ themselves. Only the admin manages users, roles, groups and permissions, and the
 someone may not use aren't shown to them, and the server refuses them anyway.
 
 **Logs** has search and filters (category, event, user, level, text). Click an entry for its full JSON
-record; **Export** downloads the matching entries as JSON Lines. Client addresses are hashed by default.
+record (**Copy** copies it; **Copy error details** only the traceback, which also shows readably below);
+**Export** downloads the matching entries as JSON Lines. Client addresses are hashed by default.
 
 **Server Settings → Logging** switches logging off altogether (nothing is recorded anywhere) or chooses where it
 goes — Management → Logs, the log file (`data/logs/backend.log`) and the console — the level (Debug, Info, Warning,

@@ -16,12 +16,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   it again later; saved with your account.
 - **Exclude** (Filters): leave out videos by word, or by field — `tag:avc title:downbad music:remix`.
 - **Filters: Only without music / Only without performers.**
+- **Tasks: the video a task is about is a link** to its page, e.g. "Finding songs: “After Party”", and the video
+  being worked on in jobs that go through many (seekbar previews, video frames, Find songs for many, Make audio
+  playable, Make previews H.264, converting while watching), also after the task finished.
 - **Duration filter as a slider** with two handles snapping to 0–10, 12, 15, 20, 25, 30, 45, 60 minutes and no limit,
   plus exact m:ss boxes (seconds now count; older links in minutes still work).
 
 ### Changed
 - **Clear filters** is now the ✕ next to the search box (it was at the bottom of the Filters panel).
 - **Tags are yellow** by default (blue is now male performers'); a custom tag colour you chose is kept.
+- **Logs: Copy** an entry (as JSON) or only its error details, and the traceback is shown readably under the
+  JSON. Clicking or selecting text inside an open entry no longer closes it. Copy buttons also work when the app
+  is opened over plain http on the home network.
+- **Release notes** cover every version since the previous release (a version that wasn't released on its own is
+  included instead of left out).
+- **Release workflow:** renames the Discord server's version channel to the new version when a release is
+  published (optional; see README → Making a release).
+- **README** brought up to date with everything the app does (proxy, phones, converting while watching, Search this
+  frame, ThePornDB performers, songs, multi-user, Scheduler, …).
+- **Discord community:** link in the README (badge), on GitHub's "New issue" page and in the support section.
+
+### Fixed
+- **"Response content longer than Content-Length" errors in the log** when a browser asked for part of a video or
+  preview beyond its end (e.g. the file got smaller after a preview conversion or a re-encode while a tab still had
+  its old size). Such a request now gets the proper "range not satisfiable" answer, and a full download never sends
+  more than the size it announced.
 
 ## [3.4.2] - 2026-11-16
 

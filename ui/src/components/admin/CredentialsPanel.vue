@@ -6,6 +6,7 @@ import { askConfirm } from "../../stores/confirm.js";
 import { ref, onMounted } from "vue";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
+import { copyText } from "../../lib/clipboard.js";
 
 const data = ref(null);
 const error = ref("");
@@ -79,7 +80,7 @@ async function generate(field) {
   } catch (err) { toast(err.message || "Could not generate a key", { type: "error" }); }
 }
 async function copy(text) {
-  try { await navigator.clipboard.writeText(text); toast("Copied"); } catch { toast("Copy it by hand (the browser blocked copying)"); }
+  toast(await copyText(text) ? "Copied" : "Copy it by hand (the browser blocked copying)");  // works over plain http too (3.5.0)
 }
 // Groups with a "Test key" button: the field typed in, and the test endpoint.
 const KEY_TESTS = {

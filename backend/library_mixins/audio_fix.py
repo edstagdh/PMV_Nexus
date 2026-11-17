@@ -114,7 +114,8 @@ class AudioFixMixin:
 
             def progress() -> dict:
                 return {"stage": "Checking", "done": state["checked"], "total": state["total"],
-                        "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else "")}
+                        "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else ""),
+                    "item": state.get("item") if state["current"] else None}
 
             def stop_now() -> None:
                 stop["now"] = True
@@ -127,6 +128,7 @@ class AudioFixMixin:
                     if item.id not in self._items or item.reencode_status in _ACTIVE or not Path(item.video_path).is_file():
                         continue
                     state["current"] = item.title
+                    state["item"] = activity.item_ref(item)
                     try:
                         sizes = await self.fix_item_audio(item)
                         if sizes:

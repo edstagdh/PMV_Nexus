@@ -10,6 +10,7 @@ import { formatDateTime } from "../lib/format.js";
 import { hasPermission } from "../stores/session.js";
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
+import ItemText from "./ItemText.vue";
 
 const props = defineProps({ data: Object, part: { type: String, default: "running" } });
 const emit = defineEmits(["changed"]);
@@ -73,17 +74,17 @@ function logLink(a) {
       <div class="main">
         <div class="line">
           <router-link v-if="link(a)" :to="link(a)" class="title">{{ a.title }}</router-link>
-          <span v-else class="title">{{ a.title }}</span>
+          <span v-else class="title"><ItemText :text="a.title" :item="a.item" /></span>
           <span class="pill" :class="a.status === 'waiting' ? 'pos' : 'run'">{{ STATUS[a.status] || a.status }}</span>
           <span class="muted small">{{ SOURCE[a.source] || "" }}<template v-if="a.started_at"> · for {{ duration(now - a.started_at) }}</template></span>
           <button v-if="a.can_stop" class="btn btn-sm stop" :disabled="stopping.has(a.id)" @click="stop(a)"><Icon name="stop" :size="14" />Stop</button>
           <span v-else-if="a.stopped_by" class="muted small">Stopping…</span>
         </div>
         <div class="state">
-          <strong>{{ a.stage || "Working…" }}</strong>
+          <strong><ItemText :text="a.stage || 'Working…'" :item="a.item" /></strong>
           <span v-if="a.total" class="muted">{{ (a.done || 0).toLocaleString() }} of {{ a.total.toLocaleString() }} done</span>
           <span v-if="a.percent != null" class="pct">{{ Math.round(a.percent) }}%</span>
-          <span v-if="a.detail" class="detail">{{ a.detail }}</span>
+          <span v-if="a.detail" class="detail"><ItemText :text="a.detail" :item="a.item" /></span>
         </div>
         <div class="progress" :class="{ indeterminate: a.percent == null && a.status === 'running' }" role="progressbar"
              :aria-valuenow="a.percent == null ? undefined : Math.round(a.percent)" aria-valuemin="0" aria-valuemax="100" :aria-label="a.title">
@@ -110,7 +111,7 @@ function logLink(a) {
     <ul class="card compact">
       <li v-for="a in finishedShown" :key="a.id" :class="a.status">
         <Icon :name="ICONS[a.kind] || 'tool'" :size="16" />
-        <span class="name">{{ a.title }}</span>
+        <span class="name"><ItemText :text="a.title" :item="a.item" /></span>
         <span class="pill" :class="a.status === 'success' ? 'ok' : a.status === 'blocked' || a.status === 'cancelled' ? 'pos' : 'bad'">{{ STATUS[a.status] || a.status }}</span>
         <span class="muted">{{ formatDateTime(a.finished_at) }} · took {{ duration(a.finished_at - a.started_at) || "0s" }}</span>
         <span v-if="a.summary" class="summary" :class="{ bad: a.status === 'failed' || a.status === 'interrupted' }">{{ a.summary }}

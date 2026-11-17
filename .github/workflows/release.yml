@@ -26,6 +26,8 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the tags too: the release notes cover every version since the previous release
 
       - name: Version
         shell: pwsh
@@ -79,9 +81,24 @@ jobs:
       - name: Release notes from CHANGELOG.md
         shell: pwsh
         run: |
+          # 3.5.0: every CHANGELOG section newer than the previous release tag (e.g. v3.5.0 after v3.4.1 also
+          # gets 3.4.2, which was never released on its own), newest first; one version = just its section.
           $text = Get-Content CHANGELOG.md -Raw
-          $m = [regex]::Match($text, "(?ms)^## \[$([regex]::Escape($env:APP_VERSION))\][^\n]*\n(.*?)(?=^## \[|\z)")
-          $notes = if ($m.Success) { $m.Groups[1].Value.Trim() } else { "See CHANGELOG.md." }
+          $current = [version]$env:APP_VERSION
+          $previous = [version]"0.0.0"
+          foreach ($t in (git tag --list "v*.*.*")) {
+            try { $v = [version]$t.Substring(1) } catch { continue }
+            if ($v -lt $current -and $v -gt $previous) { $previous = $v }
+          }
+          $sections = [regex]::Matches($text, "(?ms)^## \[(\d+\.\d+\.\d+)\]([^\n]*)\n(.*?)(?=^## \[|\z)") | Where-Object {
+            $v = [version]$_.Groups[1].Value; $v -le $current -and $v -gt $previous }
+          if (-not $sections) { $notes = "See CHANGELOG.md." }
+          elseif (@($sections).Count -eq 1) { $notes = $sections[0].Groups[3].Value.Trim() }
+          else {
+            $notes = "Everything since $previous`:`n`n" + (($sections | ForEach-Object {
+              "## $($_.Groups[1].Value)$($_.Groups[2].Value)`n`n$($_.Groups[3].Value.Trim())" }) -join "`n`n")
+          }
+          Write-Host "Release notes: versions after $previous up to $current"
           $notes += "`n`n---`n**Windows:** download ``PMV-Nexus-Setup-$env:APP_VERSION.exe`` and run it. " +
                     "Windows may say it protected your PC (the installer isn't code-signed): **More info -> Run anyway**.`n" +
                     "**Linux / macOS:** download the source code below and run ``./install.sh``."
@@ -102,3 +119,25 @@ jobs:
           files: |
             installer/windows/build/out/PMV-Nexus-Setup-${{ env.APP_VERSION }}.exe
             installer/windows/build/out/PMV-Nexus-Setup-${{ env.APP_VERSION }}.exe.sha256
+
+      # 3.5.0: the Discord server's locked voice channel shows the latest version ("📦 Latest: v3.5.0").
+      # Needs the repository secret DISCORD_BOT_TOKEN (a bot with "Manage Channels" on that channel) and the
+      # repository variable DISCORD_VERSION_CHANNEL_ID; skipped when they're not set. A Discord problem never
+      # fails the release (Discord allows 2 renames per channel per 10 minutes).
+      - name: Show the version on Discord
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        shell: pwsh
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_VERSION_CHANNEL_ID: ${{ vars.DISCORD_VERSION_CHANNEL_ID }}
+        run: |
+          if (-not $env:DISCORD_BOT_TOKEN -or -not $env:DISCORD_VERSION_CHANNEL_ID) {
+            Write-Host "Discord isn't set up (DISCORD_BOT_TOKEN / DISCORD_VERSION_CHANNEL_ID); skipped."
+            exit 0
+          }
+          $body = @{ name = "📦 Latest: v$env:APP_VERSION" } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Patch -Uri "https://discord.com/api/v10/channels/$env:DISCORD_VERSION_CHANNEL_ID" `
+            -Headers @{ Authorization = "Bot $env:DISCORD_BOT_TOKEN"; "X-Audit-Log-Reason" = "Release v$env:APP_VERSION" } `
+            -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) | Out-Null
+          Write-Host "Discord channel renamed to: 📦 Latest: v$env:APP_VERSION"
