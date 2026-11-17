@@ -137,7 +137,9 @@ jobs:
             exit 0
           }
           $body = @{ name = "📦 Latest: v$env:APP_VERSION" } | ConvertTo-Json -Compress
+          # Discord refuses bot requests without a "DiscordBot (url, version)" User-Agent (error 40333).
           Invoke-RestMethod -Method Patch -Uri "https://discord.com/api/v10/channels/$env:DISCORD_VERSION_CHANNEL_ID" `
+            -UserAgent "DiscordBot (https://github.com/$env:GITHUB_REPOSITORY, $env:APP_VERSION)" `
             -Headers @{ Authorization = "Bot $env:DISCORD_BOT_TOKEN"; "X-Audit-Log-Reason" = "Release v$env:APP_VERSION" } `
             -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) | Out-Null
           Write-Host "Discord channel renamed to: 📦 Latest: v$env:APP_VERSION"
