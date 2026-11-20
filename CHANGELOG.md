@@ -4,6 +4,34 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.6.0] - 2026-11-20
+
+### Added
+- **Creators**, separate from the uploader: PMVHaven's "creator" list (who made the video, sometimes several people)
+  is now read, next to the account that uploaded it. A video is listed under its creators and its uploader alike
+  (filter, `creator:` search, sort, "More from…", related videos), and the video page shows "uploaded by …" when
+  that's someone else. Videos already in the library get their creators from the details saved when they were
+  downloaded (also for videos gone from the site), once, in the background; Sync with PMVHaven keeps them current.
+- **Edit details → Creators**: add or change who made a video (suggestions from existing creators and uploaders);
+  kept through syncs like tags. With none, the uploader counts as the creator.
+- **Notifications menu**: clicking a notification opens a small menu instead of jumping straight away — open the
+  video or page it's about, open Tasks (for downloads, re-encodes, repairs, uploads and jobs), see the log from
+  around that moment (warnings and errors for a problem), or copy it.
+- **Performers page: favourites** — a **♥ Favourites** button shows only your favourite performers, and the new
+  **Favourites** sort puts them first (or last, with the order button), then by most videos. Favourites have a ♥
+  before their name.
+- **Re-encode queue: First and Last** on Tasks, as downloads have — First puts a video next, right after the one
+  encoding now.
+
+### Changed
+- A finished or failed job about one video (e.g. finding songs) now links that video; Tasks is in its menu.
+- **Library: ✕ next to the search box also clears the search text** (it cleared only the filters). The sort stays.
+
+### Fixed
+- **Tasks → Waiting wasn't in queue order for re-encodes** (e.g. after picking several videos to re-encode): only
+  downloads were sorted. Everything waiting is now listed in the order it will run — downloads, then re-encodes,
+  then repairs, each by its #.
+
 ## [3.5.0] - 2026-11-17
 
 ### Added

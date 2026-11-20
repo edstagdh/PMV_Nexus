@@ -23,6 +23,7 @@ from .. import activity
 from ..pmv_api import BULK_LIMIT, PMVApiClient, PMVApiError
 from ..pmv_details import _format_rating
 from ._helpers import extract_tags_performers_music_from_meta_dict
+from ..pmv_details import extract_creators
 from .core import JobBlockedError
 
 STATE_KEY = "site_sync_last_result"
@@ -55,6 +56,10 @@ def compute_changes(item, video: dict) -> tuple[dict, dict]:
     # Compared with the site's own last value: a field the user edited by hand
     # keeps the edit (see LibraryItem.apply_user_edits) and isn't a "change".
     site_tags, site_performers, site_music = (item.site_value(f) for f in ("tags", "performers", "music"))
+    creators = extract_creators(video)  # 3.6.0: who made it (the uploader stays the uploader)
+    if "creator" in video and creators and creators != item.site_value("creators"):
+        apply["creators"] = creators
+        report["creators"] = _list_diff(item.site_value("creators"), creators)
     if "tagVotes" in video and tags and tags != site_tags:
         apply["tags"] = tags
         report["tags"] = _list_diff(site_tags, tags)

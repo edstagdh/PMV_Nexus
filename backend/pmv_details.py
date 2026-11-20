@@ -200,6 +200,24 @@ def extract_tags_from_votes(data: dict) -> list[str]:
     return ordered
 
 
+def extract_creators(data: dict) -> list[str]:
+    """3.6.0: who made the video, from a metadata dict -- the API's "creator" (a list of
+    names, or one name), or "creators" in files this app wrote. The older curated file shape
+    has "creator": {"name", "url"}: that's the uploader, not a creator, so it's skipped."""
+    raw = data.get("creators") if isinstance(data.get("creators"), list) else data.get("creator")
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for entry in raw:
+        name = entry if isinstance(entry, str) else (entry.get("name") or entry.get("username")) if isinstance(entry, dict) else None
+        name = " ".join(str(name or "").split())[:200]
+        if name and name.casefold() not in {n.casefold() for n in out}:
+            out.append(name)
+    return out[:20]
+
+
 def parse_metadata_from_json(data: dict, page_url: str) -> VideoMetadata:
     """Builds a VideoMetadata from one video's PMVHaven JSON-API response
     (the `data` object inside {"success": true, "data": {...}}, NOT the
@@ -211,6 +229,7 @@ def parse_metadata_from_json(data: dict, page_url: str) -> VideoMetadata:
     meta.creator_name = data.get("uploader") or data.get("uploaderUsername") or ""
     uploader_username = data.get("uploaderUsername")
     meta.creator_url = f"/users/{uploader_username}" if uploader_username else None
+    meta.creators = extract_creators(data)  # 3.6.0
     meta.subscribers = None  # not exposed by this endpoint
 
     meta.upload_date = _format_upload_date(data.get("uploadDate"))

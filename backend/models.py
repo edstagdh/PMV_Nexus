@@ -17,7 +17,7 @@ class DownloadDirRequest(BaseModel):
 
 # Fields of LibraryItem the user can edit by hand (flags live only in the
 # metadata file, so they are kept in user_edits alone).
-EDITABLE_ITEM_FIELDS = ("tags", "performers", "music")
+EDITABLE_ITEM_FIELDS = ("tags", "performers", "music", "creators")  # creators: 3.6.0
 EDITABLE_DETAIL_FIELDS = (*EDITABLE_ITEM_FIELDS, "flags")
 
 
@@ -215,6 +215,10 @@ class LibraryItem(BaseModel):
     # to get backfilled, same as any other field added after the fact.
     description: str = ""
     music: list[str] = Field(default_factory=list)
+    # 3.6.0: who made the video -- the site's "creator" list (PMVHaven), which can differ from
+    # the uploader (`creator` above, the account that uploaded it) and can name several people.
+    # Empty: not known, the uploader counts as the creator (LibraryItem.creators_or_uploader).
+    creators: list[str] = Field(default_factory=list)
     # When the video was published on the site, "YYYY-MM-DD" (None = unknown).
     upload_date: Optional[str] = None
     # Extensions' own data on this video: extension name -> anything (2.30.0, backend/extensions.py).
@@ -253,6 +257,14 @@ class LibraryItem(BaseModel):
                 # aside, then put the user's edit back.
                 self.site_values[field] = list(current)
                 setattr(self, field, list(self.user_edits[field]))
+
+    def creators_or_uploader(self) -> list[str]:
+        """Who made it (3.6.0): the creators when known, else the uploader."""
+        return list(self.creators) if self.creators else ([self.creator] if self.creator else [])
+
+    def made_or_uploaded_by(self) -> list[str]:
+        """Everyone the video is listed under (3.6.0): its creators and its uploader."""
+        return list(dict.fromkeys([*self.creators, *([self.creator] if self.creator else [])]))
 
     @property
     def download_rank(self) -> float:
@@ -380,7 +392,7 @@ class FeaturesSettingsRequest(BaseModel):
 
 
 class ReencodeMoveRequest(BaseModel):
-    direction: str  # "up" | "down" (re-encode queue); downloads also take "top" | "bottom"
+    direction: str  # "up" | "down" | "top" | "bottom" (re-encode queue: top/bottom since 3.6.0)
 
 
 class ScheduledJobCreateRequest(BaseModel):
@@ -452,6 +464,7 @@ class ItemDetailsRequest(BaseModel):
     tags: Optional[list[str]] = None
     performers: Optional[list[str]] = None
     music: Optional[list[str]] = None
+    creators: Optional[list[str]] = None  # 3.6.0: who made it (the uploader stays as it is)
     flags: Optional[list[str]] = None
 
 

@@ -13,6 +13,7 @@ import {
 import { session } from "../stores/session.js";
 import { formatDuration } from "../lib/format.js";
 import { resumePoint, itemDuration, setWatch } from "../stores/watchProgress.js";
+import { creatorText } from "../lib/creators.js";
 
 const stage = ref(null);
 const dock = ref(null);
@@ -141,7 +142,7 @@ onBeforeUnmount(() => { window.removeEventListener("resize", clamp); window.remo
       <button class="mini-title" :title="`Open the video page: ${title} (drag to move)`" @click="onTitleClick">
         <span class="t">{{ title }}</span>
         <span v-if="queue" class="q muted">{{ queue.name }} · {{ queue.index + 1 }}/{{ queue.order.length }}</span>
-        <span v-else-if="player.item?.creator" class="q muted">{{ player.item.creator }}</span>
+        <span v-else-if="creatorText(player.item)" class="q muted">{{ creatorText(player.item) }}</span>
       </button>
       <template v-if="queue">
         <button class="btn btn-ghost btn-icon btn-sm" title="Previous" @click="queuePrev"><Icon name="skipPrev" :size="15" /></button>

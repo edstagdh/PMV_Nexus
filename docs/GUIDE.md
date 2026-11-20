@@ -66,6 +66,12 @@ updates live without refreshing.
 Tips:
 - Press **/** to jump to the search box; the **?** inside it shows search examples.
 - Click a performer, tag or creator anywhere to filter the library by it.
+- **Creators and uploader** (3.6.0): PMVHaven names who *made* a video (its creators, sometimes several) separately
+  from the account that *uploaded* it. A video is listed under both: filtering, searching (`creator:`) and "More
+  from…" find it by either. The video page shows the creators, plus "uploaded by …" when that's someone else. When
+  the site names no creator, the uploader counts as the creator — **Edit details → Creators** lets you add the real
+  one(s) (pick an existing name or type a new one); like tags, your edit is kept through syncs. Files stay in the
+  uploader's folder.
 - The address bar holds the whole view (filters, sorting, page), so you can bookmark it or use Back.
 
 ![My Settings → Appearance](screenshots/settings.webp)
@@ -131,7 +137,9 @@ takes the videos still waiting out of the queue and lets the ones being repaired
 metadata syncs can't be stopped halfway, because stopping them midway could leave files half-written.
 
 Waiting downloads can be moved with **First / Up / Down / Last**. That's handy when a long download is running and
-something else should go next. Waiting re-encodes can be moved **Up / Down** too.
+something else should go next. Waiting re-encodes have the same **First / Up / Down / Last** (3.6.0; **First** =
+next, right after the one encoding now). **Waiting** lists everything in the order it will run: the download queue,
+then the re-encode queue, then repairs, each by its #.
 Removing a video that hasn't finished downloading also deletes its thumbnail, preview clip and details file.
 
 ### Notifications
@@ -140,7 +148,9 @@ The **bell** (top of the sidebar; top right on a phone) keeps what happened in t
 - for admins, also jobs (scans, syncs, backups, performer matching) and low disk space.
 
 Its badge counts unread **problems**. **Problems** shows only failures and warnings; **All** shows everything.
-Clicking one opens the video or page it's about. Each person is told about the videos they added; videos from
+Clicking one opens its menu: **Open the video** (or the page it's about), **Open Tasks** for downloads,
+re-encodes, repairs, uploads and jobs, **See the log from then** (for those allowed to view logs: the couple of
+minutes before it, only warnings and errors for a problem) and **Copy**. Each person is told about the videos they added; videos from
 before 2.10.0, and ones added through the API, notify the admins.
 
 New ones also pop up in the corner. **My Settings → Notifications** turns the pop-ups off per kind: downloads,
@@ -233,7 +243,7 @@ app starts.
 - **Favourite performers** (3.5.0): videos with one of your favourite performers first; the order button puts them
   last instead. Within each group, newest acquired first.
 - **Filters** opens over the videos and stays at the top while you scroll, until you close it.
-- **✕** next to the search box (3.5.0) clears every filter but keeps the search and sort.
+- **✕** next to the search box (3.5.0) clears the search and every filter (the search too since 3.6.0); the sort stays.
 - Filter by tags, performers, codec, quality, orientation, duration, rating and 💀 removed-from-site, and sort by any column.
 - **Duration** (3.5.0): a slider with two handles (shortest, longest) that snap to 0–10 minutes, then 12, 15, 20, 25,
   30, 45, 60 minutes and **∞** (no limit); the boxes under it take any exact length (`3`, `3:30`, `1:05:00`).
@@ -453,8 +463,9 @@ How it works:
 - **Performers page** (sidebar → Performers): everyone in your videos, one card per person (names linked to the same
   ThePornDB profile together). Performers matched to ThePornDB always come first, then the others under "Not on
   ThePornDB" with a grey placeholder (female by default; on their page **Placeholder: Female / Male** switches it,
-  for people with the Performers permission). Find by name, sort by number of videos or name, either way (the arrow button), or show only
-  one group; the choice is remembered in this browser.
+  for people with the Performers permission). Find by name, sort by number of videos, name or **Favourites** (yours
+  first, then most videos; the arrow button puts them last), either way (the arrow button), or show only one group —
+  **♥ Favourites** shows only your favourite performers (♥ before their names). The choice is remembered in this browser.
   **Filters** narrows it by what ThePornDB says about them: gender, nationality, ethnicity, hair, eyes, cup size
   (several values each), age, height (cm) and weight (kg) ranges, and still active / enhanced breasts / tattoos /
   piercings (yes or no). Only details someone has are offered; while a detail is filtered on, performers without it are

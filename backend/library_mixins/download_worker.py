@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..pmv_details import extract_creators
 
 import asyncio
 import json
@@ -389,6 +390,7 @@ class DownloadWorkerMixin:
                 item.tags = tags
                 item.performers = performers
                 item.music = music
+                item.creators = extract_creators(meta_dict) or list(meta.creators or []) or item.creators  # 3.6.0
                 item.description = meta_dict.get("description") or meta.description or item.description
                 item.timeline_thumbnails = meta.timeline_thumbnails
 

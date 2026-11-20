@@ -3,6 +3,7 @@ import VideoThumb from "./VideoThumb.vue";
 import ActionMenu from "./ActionMenu.vue";
 import { itemUrlTitle } from "../lib/format.js";
 import { perfClass, perfTitle } from "../stores/performerBadges.js";
+import { creatorText } from "../lib/creators.js";
 
 defineProps({ items: Array });
 </script>
@@ -14,7 +15,7 @@ defineProps({ items: Array });
         <VideoThumb :item="item" compact class="rel-thumb" />
         <div class="rel-body">
           <div class="rel-title">{{ itemUrlTitle(item) }}</div>
-          <div class="muted rel-meta text-creator">{{ item.creator }}</div>
+          <div class="muted rel-meta text-creator">{{ creatorText(item) }}</div>
           <div v-if="item.performers?.length" class="muted rel-meta">
             <template v-for="(p, i) in item.performers.slice(0, 3)" :key="p"><span v-if="i">, </span><span class="text-performer" :class="perfClass(p)">{{ p }}</span></template>
           </div>

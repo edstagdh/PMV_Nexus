@@ -17,6 +17,7 @@ import { openDialog } from "../stores/dialogs.js";
 import { hasPermission } from "../stores/session.js";
 import { onLibraryChange } from "../stores/live.js";
 import { toast } from "../stores/toast.js";
+import { creatorText } from "../lib/creators.js";
 
 const canManage = computed(() => hasPermission("tasks.manage"));
 const items = ref(null);
@@ -52,10 +53,14 @@ function isFailed(it) {
 }
 const all = computed(() => items.value || []);
 const running = computed(() => all.value.filter(isRunning));
+// Waiting, in the order things will run (3.6.0): the download queue, then the re-encode queue,
+// then the repair queue -- each by its own #n (before, only downloads were in order).
 const waiting = computed(() => {
-  const order = new Map(pendingOrder.value.map((id, n) => [id, n]));
+  const order = new Map();
+  [pendingOrder.value, summary.value.reencode_queue_order || [], summary.value.repair_queue_order || []]
+    .forEach((list, q) => list.forEach((id, n) => { if (!order.has(id)) order.set(id, q * 1e6 + n); }));
   return all.value.filter((it) => !isRunning(it) && !isFailed(it))
-    .sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+    .sort((a, b) => (order.get(a.id) ?? 9e6) - (order.get(b.id) ?? 9e6));
 });
 const failed = computed(() => all.value.filter((it) => !isRunning(it) && isFailed(it)));
 
@@ -149,7 +154,7 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
             <router-link v-if="it.status === 'done' || it.metadata_path" :to="{ name: 'video', params: { id: it.id } }" class="title">{{ itemUrlTitle(it) }}</router-link>
             <span v-else class="title">{{ itemUrlTitle(it) }}</span>
             <div class="sub muted">
-              <span v-if="it.creator" class="text-creator">{{ it.creator }}</span>
+              <span v-if="creatorText(it)" class="text-creator">{{ creatorText(it) }}</span>
               <span v-if="it.tech_filesize">{{ it.tech_filesize }}</span>
               <span v-if="it.tech_resolution">{{ it.tech_resolution }}</span>
             </div>
@@ -173,8 +178,10 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
               <button class="qbtn" title="Download last" :disabled="pendingOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="moveDownload(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>Last</span></button>
             </div>
             <div v-if="it.reencode_status === 'queued'" class="qgroup" role="group" aria-label="Re-encode queue position">
+              <button class="qbtn" title="Re-encode next (right after the one encoding now)" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'top')" @click="move(it, 'top')"><Icon name="to-top" :size="20" /><span>First</span></button>
               <button class="qbtn" title="Move up in the re-encode queue" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'up')" @click="move(it, 'up')"><Icon name="arrow-up" :size="20" /><span>Up</span></button>
               <button class="qbtn" title="Move down in the re-encode queue" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'down')" @click="move(it, 'down')"><Icon name="arrow-down" :size="20" /><span>Down</span></button>
+              <button class="qbtn" title="Re-encode last" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="move(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>Last</span></button>
             </div>
             <button v-if="it.status === 'failed'" class="btn btn-sm btn-primary" :disabled="isBusy(it, 'retry')" @click="retry(it)"><Icon name="repeat" />Retry</button>
             <button v-if="it.reencode_status === 'queued' || it.reencode_status === 'encoding'" class="btn btn-sm" :disabled="isBusy(it, 'reenc')" @click="cancelReencode(it)">Cancel re-encode</button>

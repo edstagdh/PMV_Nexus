@@ -44,7 +44,9 @@ def _announce_job(act) -> None:
     if act.status == "success" and (act.source == "auto" or act.kind in ("stats_snapshot", "upload_dates", "update_check")):
         return
     level, verb = _JOB_RESULT.get(act.status, ("info", act.status))
-    notifications.notify("job", level, f"{verb}: {act.title}", body=act.summary, link="/tasks")
+    # A job about one video links that video (3.6.0); the notification's menu also offers Tasks.
+    link = f"/video/{act.item['id']}" if act.item and act.item.get("id") else "/tasks"
+    notifications.notify("job", level, f"{verb}: {act.title}", body=act.summary, link=link)
 
 
 def _wildcard(term: str) -> "re.Pattern[str]":
@@ -61,10 +63,10 @@ def _wildcard(term: str) -> "re.Pattern[str]":
 def _search_lines(item, field: Optional[str]) -> str:
     """The searched values one per line, so a wildcard can't run from one tag into the next."""
     values = {
-        "title": [item.title], "creator": [item.creator], "tags": item.tags, "music": item.music,
+        "title": [item.title], "creator": item.made_or_uploaded_by(), "tags": item.tags, "music": item.music,
         "description": [item.description], "codec": [item.tech_codec],
         "performers": [*item.performers, *spellings.canon_list("performers", item.performers)],
-    }.get(field) or [item.title, item.creator, item.url, item.description, *item.tags, *item.performers,
+    }.get(field) or [item.title, *item.made_or_uploaded_by(), item.url, item.description, *item.tags, *item.performers,
                      *spellings.canon_list("performers", item.performers), *item.music]
     return "\n".join(v or "" for v in values)
 
@@ -454,7 +456,8 @@ class CoreMixin:
                 return False
             if performers_set and not has(performers_set, item.performers, "performers"):
                 return False
-            if creators_set and (item.creator or "").lower() not in creators_set:
+            # 3.6.0: listed under its creators and its uploader alike.
+            if creators_set and not any(c.lower() in creators_set for c in item.made_or_uploaded_by()):
                 return False
             if gone is not None and (item.site_status == "removed") != gone:
                 return False
@@ -490,7 +493,7 @@ class CoreMixin:
                 if search_field == "title":
                     haystack = item.title.lower()
                 elif search_field == "creator":
-                    haystack = item.creator.lower()
+                    haystack = " ".join(item.made_or_uploaded_by()).lower()
                 elif search_field == "tags":
                     haystack = " ".join(item.tags).lower()
                 elif search_field == "performers":
@@ -503,7 +506,7 @@ class CoreMixin:
                     haystack = (item.tech_codec or "").lower()
                 else:
                     haystack = " ".join(
-                        [item.title, item.creator, item.url, item.description,
+                        [item.title, *item.made_or_uploaded_by(), item.url, item.description,
                          *item.tags, *item.performers, *spellings.canon_list("performers", item.performers), *item.music]
                     ).casefold()
                 haystack = haystack.casefold()
@@ -532,6 +535,8 @@ class CoreMixin:
                 return _resolution_height(item.tech_resolution)
             if sort_key == "views":
                 return (item.site_stats or {}).get("views") or -1
+            if sort_key == "creator":  # 3.6.0: by who made it (the uploader when not known)
+                return ((item.creators_or_uploader() or [""])[0]).lower()
             value = getattr(item, sort_key, "") or ""
             return value.lower() if isinstance(value, str) else value
 
@@ -581,7 +586,7 @@ class CoreMixin:
             if field == "flags":
                 values = item.user_edits.get("flags", [])
             elif field == "creators":
-                values = [item.creator] if item.creator else []
+                values = item.made_or_uploaded_by()  # 3.6.0: creators and uploaders
             else:
                 # One entry per value however it's capitalised, in its shown spelling.
                 values = spellings.canon_list(field, getattr(item, field, None) or [])
@@ -615,14 +620,14 @@ class CoreMixin:
             raise KeyError(item_id)
         performers = {spellings.key("performers", v) for v in base.performers}
         tags = {fold(v) for v in base.tags}
-        creator = (base.creator or "").lower()
+        makers = {c.lower() for c in base.made_or_uploaded_by()}  # 3.6.0: creators and uploader
         scored = []
         for item in self._items.values():
             if item.id == item_id or item.status != "done":
                 continue
             score = 3 * len(performers.intersection(spellings.key("performers", v) for v in item.performers)) \
                 + len(tags.intersection(fold(v) for v in item.tags))
-            if creator and (item.creator or "").lower() == creator:
+            if makers and makers.intersection(c.lower() for c in item.made_or_uploaded_by()):
                 score += 2
             if score:
                 scored.append((score, item.download_datetime or "", item))
@@ -693,8 +698,7 @@ class CoreMixin:
 
             tags.update(item.tags)
             performers.update(item.performers)
-            if item.creator:
-                creators.add(item.creator)
+            creators.update(item.made_or_uploaded_by())  # 3.6.0
             if item.site_status == "removed":
                 gone_count += 1
             if item.status == "done":
@@ -1035,6 +1039,7 @@ class CoreMixin:
         self.seed_preview_fix_job()  # 3.3.0: once, for the previews already in the library
         self.seed_portrait_frames()  # 3.4.0: once, vertical videos' frames: 24 instead of 8
         self.seed_placeholder_frames()  # 3.4.2: once, site frames that are one placeholder -> from the file
+        self.seed_creators()  # 3.6.0: once, creators from the saved site details
         asyncio.get_running_loop().create_task(self._backfill_upload_dates())
 
     async def _backfill_upload_dates(self) -> None:
@@ -1079,17 +1084,27 @@ class CoreMixin:
 
     async def reorder_reencode(self, video_id: str, direction: str) -> None:
         """Moves video_id one slot earlier ('up') or later ('down') among
-        items still *waiting* to be re-encoded. The item currently encoding
-        (tracked separately in self._current_reencode_id, already popped off
-        self._reencode_queue by the time it starts -- see
+        items still *waiting* to be re-encoded, or to the front / back
+        ('top' / 'bottom', 3.6.0: "next after the one encoding now"). The item
+        currently encoding (tracked separately in self._current_reencode_id,
+        already popped off self._reencode_queue by the time it starts -- see
         _reencode_worker_loop) can't be reordered, since it's already
         running; only the FIFO order of what runs after it can change."""
-        if direction not in ("up", "down"):
-            raise ValueError("direction must be 'up' or 'down'")
+        if direction not in ("up", "down", "top", "bottom"):
+            raise ValueError("direction must be 'up', 'down', 'top' or 'bottom'")
         async with self._lock:
             if video_id not in self._reencode_queue:
                 raise ValueError("This item isn't currently waiting in the re-encode queue")
             idx = self._reencode_queue.index(video_id)
+            if direction in ("top", "bottom"):
+                if idx == (0 if direction == "top" else len(self._reencode_queue) - 1):
+                    raise ValueError("Already next in line" if direction == "top" else "Already last in the queue")
+                self._reencode_queue.pop(idx)
+                if direction == "top":
+                    self._reencode_queue.insert(0, video_id)
+                else:
+                    self._reencode_queue.append(video_id)
+                return
             if direction == "up":
                 if idx == 0:
                     raise ValueError("Already next in line")

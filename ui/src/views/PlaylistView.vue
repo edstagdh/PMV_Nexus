@@ -20,6 +20,7 @@ import { player, playPlaylist } from "../stores/player.js";
 import { toast } from "../stores/toast.js";
 import { setPageTitle } from "../lib/title.js";
 import { loadFavorites } from "../stores/favorites.js";
+import { creatorText } from "../lib/creators.js";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -192,7 +193,7 @@ onBeforeUnmount(() => clearTimeout(findTimer));
             <li v-for="it in found.items" :key="it.id">
               <span class="fthumb"><VideoThumb :item="it" compact /></span>
               <span class="text"><span class="t">{{ it.title || it.url }}</span>
-                <span class="muted small">{{ it.creator }}<template v-if="it.tech_duration"> · {{ it.tech_duration }}</template></span></span>
+                <span class="muted small">{{ creatorText(it) }}<template v-if="it.tech_duration"> · {{ it.tech_duration }}</template></span></span>
               <span v-if="inPlaylist.has(it.id)" class="pill pill-ok">Added</span>
               <button v-else class="btn btn-sm" :disabled="findBusy === it.id" @click="addOne(it)"><Icon name="plus" :size="14" />Add</button>
             </li>
@@ -217,7 +218,7 @@ onBeforeUnmount(() => clearTimeout(findTimer));
             <span class="thumb"><VideoThumb :item="it" compact /></span>
             <span class="text">
               <span class="t">{{ it.title || it.url }}</span>
-              <span class="muted small">{{ it.creator }}<template v-if="it.tech_duration"> · {{ it.tech_duration }}</template></span>
+              <span class="muted small">{{ creatorText(it) }}<template v-if="it.tech_duration"> · {{ it.tech_duration }}</template></span>
             </span>
           </button>
           <span v-if="pl.can_edit && manual" class="tools">
@@ -241,7 +242,7 @@ onBeforeUnmount(() => clearTimeout(findTimer));
             <RouterLink :to="{ name: 'video', params: { id: it.id } }" class="t" title="Open the video page without playing the playlist">{{ it.title || it.url }}</RouterLink>
             <ActionMenu :item="it" context="playlist" :extra="menuExtra(it)" />
           </div>
-          <span class="muted small">{{ it.creator }}</span>
+          <span class="muted small">{{ creatorText(it) }}</span>
         </li>
       </ol>
     </template>

@@ -17,6 +17,8 @@ const siteFlags = ref([]);
 const emit = defineEmits(["close"]);
 
 const FIELDS = [
+  // 3.6.0: who made it -- empty: the uploader counts as the creator (placeholder says who).
+  { key: "creators", label: "Creators", chip: "chip-creator", placeholder: "Add a creator…" },
   { key: "performers", label: "Performers", chip: "chip-performer", placeholder: "Add a performer…" },
   { key: "tags", label: "Tags", chip: "chip-tag", placeholder: "Add a tag…" },
   { key: "music", label: "Music", chip: "chip-music", placeholder: "Add music (Song — Artist)…" },
@@ -24,6 +26,7 @@ const FIELDS = [
 ];
 const edits = props.item.user_edits || {};
 const initial = {
+  creators: [...(props.item.creators || [])],
   performers: sortNames(props.item.performers || []),
   tags: sortNames(props.item.tags || []),
   music: [...(props.item.music || [])],
@@ -88,7 +91,8 @@ async function save() {
                 @click="useSite(f.key)">Use the site's</button>
         <span v-else-if="reset.has(f.key)" class="muted small">will use the site's on save</span>
       </div>
-      <TagInput :model-value="values[f.key]" :field="f.key" :placeholder="f.placeholder" :chip-class="f.chip"
+      <TagInput :model-value="values[f.key]" :field="f.key" :chip-class="f.chip"
+                :placeholder="f.key === 'creators' && !values.creators?.length && item.creator ? `Same as uploader: ${item.creator}` : f.placeholder"
                 :keep-open="session.prefs.suggestKeepOpen" show-all inline
                 @update:model-value="onChange(f.key, $event)" />
     </div>

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..pmv_details import extract_creators
 
 import asyncio
 import json
@@ -653,6 +654,7 @@ class RepairWorkerMixin:
                 item.tags = new_tags
                 item.performers = new_performers
                 item.music = new_music
+                item.creators = extract_creators(meta_dict) or item.creators  # 3.6.0
                 item.description = new_description
                 item.ratings = new_ratings
                 item.touch()

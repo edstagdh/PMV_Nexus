@@ -16,6 +16,7 @@ class VideoMetadata:
     title: str = ""
     creator_name: str = ""
     creator_url: Optional[str] = None
+    creators: list = field(default_factory=list)  # 3.6.0: the site's "creator" list (who made it)
     subscribers: Optional[str] = None
     upload_date: Optional[str] = None
     duration: Optional[str] = None
@@ -56,6 +57,7 @@ class VideoMetadata:
             "views": self.views,
             "rating_percent": self.rating_percent,
             "description": self.description,
+            "creators": self.creators,
             "tags": self.tags,
             "music": self.music,
             "models": self.models,

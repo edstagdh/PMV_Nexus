@@ -18,6 +18,7 @@ import { session, hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
 import { discover } from "../lib/discover.js";
 import { perfClass, perfTitle } from "../stores/performerBadges.js";
+import { makers, creatorText, uploadedBy } from "../lib/creators.js";
 
 const props = defineProps({ id: String });
 const router = useRouter();
@@ -63,8 +64,8 @@ async function loadNeighbours(it) {
   const id = it.id;
   const [rel, same] = await Promise.all([
     api(`/api/library/${encodeURIComponent(id)}/related?limit=${session.prefs.relatedCount || 1}`).catch(() => ({ items: [] })),
-    it.creator
-      ? api(`/api/library?${qs({ statuses: "done", creators: it.creator, page_size: 9, sort_key: "download_datetime", sort_dir: "desc" })}`).catch(() => ({ items: [] }))
+    makers(it).length
+      ? api(`/api/library?${qs({ statuses: "done", creators: makers(it), page_size: 9, sort_key: "download_datetime", sort_dir: "desc" })}`).catch(() => ({ items: [] }))
       : Promise.resolve({ items: [] }),
   ]);
   if (id !== props.id) return;
@@ -147,6 +148,10 @@ const downloadStatus = computed(() => {
 });
 
 function filterLibrary(key, value) { router.push({ name: "library", query: { [key]: value } }); }
+// All the creators' videos (3.6.0; one creator = the same as clicking it).
+function viewAllFrom(names) {
+  router.push({ name: "library", query: { creator: names } });
+}
 </script>
 
 <template>
@@ -174,7 +179,11 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 
         <PlayQueue v-if="narrow" />
         <div class="byline">
-          <button v-if="item.creator" class="creator text-creator" :title="`Show videos by ${item.creator}`" @click="filterLibrary('creator', item.creator)">{{ item.creator }}</button>
+          <!-- 3.6.0: who made it (the site's creators), and who uploaded it when that's someone else -->
+          <span v-if="makers(item).length" class="makers"><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">,&nbsp;</span><button
+            class="creator text-creator" :title="`Show videos by ${c}`" @click="filterLibrary('creator', c)">{{ c }}</button></template></span>
+          <span v-if="uploadedBy(item)" class="muted uploaded-by">uploaded by <button class="creator uploader text-creator" :title="`Show videos uploaded by ${uploadedBy(item)}`"
+            @click="filterLibrary('creator', uploadedBy(item))">{{ uploadedBy(item) }}</button></span>
           <span v-for="m in metaLine" :key="m" class="muted">{{ m }}</span>
           <FavoriteButton v-if="item.status === 'done'" :item-id="item.id" class="byline-fav" />
         </div>
@@ -225,8 +234,8 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
 
         <section v-if="sameCreator.length" class="same">
           <div class="section-head">
-            <h3>More from {{ item.creator }}</h3>
-            <button class="btn btn-ghost btn-sm" @click="filterLibrary('creator', item.creator)">View all</button>
+            <h3>More from {{ creatorText(item) }}</h3>
+            <button class="btn btn-ghost btn-sm" @click="viewAllFrom(makers(item))">View all</button>
           </div>
           <div class="same-grid"><VideoCard v-for="v in sameCreator" :key="v.id" :item="v" small @filter="filterLibrary" /></div>
         </section>
@@ -293,4 +302,7 @@ function filterLibrary(key, value) { router.push({ name: "library", query: { [ke
   .watch { grid-template-columns: 1fr; } .secondary { position: static; }
 }
 @media (max-width: 56rem) { .video-page { padding: 0.5rem 0.75rem 1.5rem; } }
+.makers { display: inline; }
+.creator.uploader { font-weight: 500; font-size: inherit; }
+.uploaded-by { font-size: 0.85rem; }
 </style>

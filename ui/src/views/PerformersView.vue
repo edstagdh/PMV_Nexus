@@ -10,16 +10,20 @@ import PerformerPlaceholder from "../components/PerformerPlaceholder.vue";
 import MultiSelect from "../components/MultiSelect.vue";
 import { api } from "../lib/api.js";
 import { onLibraryChange } from "../stores/live.js";
+import { isFavorite, loadBadges } from "../stores/performerBadges.js";
 
 // Sort by a field, either way (2.31.0); each field starts in its natural direction.
 const SORTS = [
   { key: "videos", label: "Videos", dir: "desc", asc: "Fewest videos first", desc: "Most videos first" },
   { key: "name", label: "Name", dir: "asc", asc: "A to Z", desc: "Z to A" },
+  // 3.6.0: your favourites first (or last), then most videos.
+  { key: "favorites", label: "Favourites", dir: "desc", asc: "Favourites last", desc: "Favourites first" },
 ];
 const SHOWS = [
   { key: "all", label: "Everyone" },
   { key: "linked", label: "On ThePornDB" },
   { key: "unlinked", label: "Not on ThePornDB" },
+  { key: "favorites", label: "♥ Favourites" },
 ];
 const PREF = "pmv-performers-view";
 let saved = {};
@@ -49,6 +53,7 @@ let timer = null;
 let stop = null;
 onMounted(() => {
   load();
+  loadBadges();
   // A performer linked, a photo added, videos added or removed: reload quietly.
   stop = onLibraryChange((c) => {
     if (!c || c.some((id) => id === "performers" || String(id).startsWith("performer:"))) { clearTimeout(timer); timer = setTimeout(load, 1500); }
@@ -117,24 +122,31 @@ function passes(p) {
 }
 const num = (e) => (e.target.value === "" ? null : Number(e.target.value));
 
+// A favourite (3.6.0): any of her names is one of yours (her page favourites all of them).
+const fav = (p) => isFavorite(p.link) || isFavorite(p.name);
+const SHOW_TEST = { all: () => true, linked: (p) => p.linked, unlinked: (p) => !p.linked, favorites: fav };
 const list = computed(() => {
   const s = q.value.trim().toLowerCase();
-  const rows = (all.value || []).filter((p) => (show.value === "all" || (show.value === "linked") === p.linked)
+  const rows = (all.value || []).filter((p) => SHOW_TEST[show.value](p)
     && (!s || p.name.toLowerCase().includes(s) || p.link.toLowerCase().includes(s)) && passes(p));
   const sign = dir.value === "asc" ? 1 : -1;
+  const mostVideos = (a, b) => (b.videos - a.videos) || collator.compare(a.name, b.name);
   const by = {
     videos: (a, b) => sign * (a.videos - b.videos) || collator.compare(a.name, b.name),
     name: (a, b) => sign * collator.compare(a.name, b.name),
+    favorites: (a, b) => sign * (fav(a) - fav(b)) || mostVideos(a, b),
   }[sort.value];
-  // ThePornDB matches first, always.
+  // ThePornDB matches first, always -- except when sorting by favourites, which come first (or last) on their own.
+  if (sort.value === "favorites") return rows.sort(by);
   return rows.sort((a, b) => (b.linked - a.linked) || by(a, b));
 });
 const counts = computed(() => ({
   linked: (all.value || []).filter((p) => p.linked).length,
   unlinked: (all.value || []).filter((p) => !p.linked).length,
+  favorites: (all.value || []).filter(fav).length,
 }));
 // Where the "not on ThePornDB" part starts, for a divider line.
-const firstUnlinked = computed(() => (show.value === "all" ? list.value.findIndex((p) => !p.linked) : -1));
+const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "favorites" ? list.value.findIndex((p) => !p.linked) : -1));
 </script>
 
 <template>
@@ -197,7 +209,7 @@ const firstUnlinked = computed(() => (show.value === "all" ? list.value.findInde
     </div>
     <template v-else>
       <p class="muted small">{{ list.length.toLocaleString() }} {{ list.length === 1 ? "performer" : "performers" }}
-        <template v-if="show === 'all'"> · matched to ThePornDB first</template></p>
+        <template v-if="show === 'all' && sort !== 'favorites'"> · matched to ThePornDB first</template></p>
       <p v-if="!list.length" class="muted">Nobody matches.</p>
       <div class="grid">
         <template v-for="(p, n) in list.slice(0, shown)" :key="p.name + p.linked">
@@ -207,7 +219,7 @@ const firstUnlinked = computed(() => (show.value === "all" ? list.value.findInde
               <img v-if="p.photo" :src="p.photo" alt="" loading="lazy" decoding="async" @error="p.photo = null">
               <PerformerPlaceholder v-else :gender="p.gender" />
             </span>
-            <span class="name">{{ p.name }}</span>
+            <span class="name"><span v-if="fav(p)" class="fav-mark" title="One of your favourites">♥ </span>{{ p.name }}</span>
             <span class="meta muted">{{ p.videos }} {{ p.videos === 1 ? "video" : "videos" }}<template v-if="p.names > 1"> · {{ p.names }} names</template></span>
           </RouterLink>
         </template>
@@ -223,6 +235,7 @@ const firstUnlinked = computed(() => (show.value === "all" ? list.value.findInde
 .search-wrap svg { position: absolute; left: 0.7rem; color: var(--text-dim); pointer-events: none; }
 .search-wrap .input { padding-left: 2.1rem; width: 100%; height: 2.4rem; }
 .seg { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.fav-mark { color: var(--chip-female, #ec4899); }
 .n { margin-left: 0.35rem; font-size: 0.72rem; opacity: 0.75; }
 .sortbox { display: flex; gap: 0.25rem; }
 .sort { width: auto; height: 2.4rem; }

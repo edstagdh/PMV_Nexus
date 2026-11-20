@@ -6,6 +6,7 @@ import Icon from "./Icon.vue";
 import { itemUrlTitle, formatDate, qualityInfo, codecLabel, ratingTier } from "../lib/format.js";
 import { session } from "../stores/session.js";
 import { isFavorite } from "../stores/favorites.js";
+import { makers, uploadedBy } from "../lib/creators.js";
 
 defineProps({ items: Array, sort: String, dir: String, picked: { type: Object, default: null } });
 const emit = defineEmits(["sort", "filter"]);
@@ -68,7 +69,8 @@ onBeforeUnmount(() => clearTimeout(timer));
             <span v-if="session.prefs.badges.gone && item.site_status === 'removed'" class="gone" title="Gone from the site (not found during the last sync)">💀</span>
             <span v-if="session.prefs.badges.favorite !== false && isFavorite(item.id)" class="fav" title="In your Favorites">♥</span>
           </td>
-          <td><button v-if="item.creator" class="linkish" @click="emit('filter', 'creator', item.creator)">{{ item.creator }}</button></td>
+          <td><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i">, </span><button class="linkish" :title="uploadedBy(item) ? `Uploaded by ${uploadedBy(item)}` : undefined"
+            @click="emit('filter', 'creator', c)">{{ c }}</button></template></td>
           <td class="nowrap">{{ formatDate(item.upload_date) }}</td>
           <td class="nowrap">{{ item.download_datetime ? formatDate(item.download_datetime) : formatDate(new Date(item.created_at * 1000).toISOString()) }}</td>
           <td class="nowrap">{{ item.tech_duration }}</td>

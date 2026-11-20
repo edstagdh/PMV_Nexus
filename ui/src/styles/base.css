@@ -112,6 +112,7 @@ button.chip:hover, a.chip:hover { border-color: var(--accent); color: var(--text
 .chip-performer.g-trans { --chip-c: var(--chip-trans, #c084fc); }
 .chip-performer.fav::before { content: "♥"; margin-right: 0.3em; font-size: 0.85em; }
 .chip-tag { --chip-c: var(--chip-tag, #eab308); }
+.chip-creator { --chip-c: var(--chip-creator, #f97316); }  /* 3.6.0: Edit details -> Creators */
 .chip-music { --chip-c: var(--chip-music, #22c55e); }
 /* Names shown as plain text (related videos, uploader): just the colour. */
 html.chips-colored .text-performer { color: color-mix(in srgb, var(--chip-unknown) 75%, var(--text)); }

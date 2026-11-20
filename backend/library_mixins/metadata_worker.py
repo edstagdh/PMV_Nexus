@@ -181,6 +181,7 @@ class MetadataWorkerMixin:
                     return
                 item.title = meta.title or item.title
                 item.creator = meta.creator_name
+                item.creators = list(meta.creators or [])  # 3.6.0
                 item.tags = tags
                 item.performers = performers
                 item.ratings = meta.rating_percent

@@ -5,6 +5,7 @@ import { computed, ref, watch, nextTick } from "vue";
 import { RouterLink } from "vue-router";
 import Icon from "./Icon.vue";
 import VideoThumb from "./VideoThumb.vue";
+import { creatorText } from "../lib/creators.js";
 import {
   player, queueNext, queuePrev, playQueueItem, toggleShuffle, toggleRepeat, toggleQueueAutoplay, clearQueue,
 } from "../stores/player.js";
@@ -44,7 +45,7 @@ watch(() => q.value?.index, async () => {
           <span class="thumb"><VideoThumb :item="r.item" compact /></span>
           <span class="text">
             <span class="t">{{ r.item.title || r.item.url }}</span>
-            <span class="muted small">{{ r.item.creator }}</span>
+            <span class="muted small">{{ creatorText(r.item) }}</span>
           </span>
         </button>
       </li>

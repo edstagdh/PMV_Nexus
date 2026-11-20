@@ -102,9 +102,11 @@ function addFilter(kind, value) {
   const current = arr(query.value[key]);
   if (!current.includes(value)) setQuery({ [key]: [...current, value] }, { push: true });
 }
-function clearFilters() {
-  const { q, sort, dir } = query.value;
-  router.replace({ name: "library", query: { ...(q ? { q } : {}), ...(sort ? { sort } : {}), ...(dir ? { dir } : {}) } });
+function clearFilters({ search = false } = {}) {
+  const { q, sort, dir, seed } = query.value;
+  if (search) { clearTimeout(searchTimer); searchText.value = ""; }
+  router.replace({ name: "library", query: { ...(q && !search ? { q } : {}), ...(sort ? { sort } : {}), ...(dir ? { dir } : {}),
+    ...(seed && sort === "random" ? { seed } : {}) } });
 }
 
 // ---------- search box (debounced into the URL) ----------
@@ -279,9 +281,9 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
                placeholder="Search… (try performer:, tag:, creator:, title:)" aria-label="Search the library">
         <span class="search-end"><SearchHelp @pick="(q) => { searchText = q; searchInput?.focus(); }" /><kbd class="kbd">/</kbd></span>
       </div>
-      <!-- 3.5.0: Clear filters, out of the Filters panel (the search and the sort stay). -->
-      <button class="btn btn-icon clear-x" :disabled="!activeFilterCount" title="Clear filters" aria-label="Clear filters"
-              @click="clearFilters"><Icon name="x" :size="20" /></button>
+      <!-- Clear search and filters (3.5.0; the search too since 3.6.0) -- the sort stays. -->
+      <button class="btn btn-icon clear-x" :disabled="!activeFilterCount && !searchText.trim()" title="Clear search and filters"
+              aria-label="Clear search and filters" @click="clearFilters({ search: true })"><Icon name="x" :size="20" /></button>
       <button class="btn" :class="{ active: showFilters }" @click="showFilters = !showFilters">
         <Icon name="filter" />Filters<span v-if="activeFilterCount" class="count-pill">{{ activeFilterCount }}</span>
       </button>
@@ -336,7 +338,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
       <div class="empty-icon">{{ chips.length || state.q ? "🔍" : "🎞️" }}</div>
       <template v-if="chips.length || state.q">
         <h3>No videos match</h3>
-        <button class="btn" @click="clearFilters(); searchText = ''">Clear search and filters</button>
+        <button class="btn" @click="clearFilters({ search: true })">Clear search and filters</button>
       </template>
       <template v-else><h3>Your library is empty</h3><span>Use <strong>Add videos</strong> in the sidebar to get started.</span></template>
     </div>

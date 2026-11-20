@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..pmv_details import extract_creators
 
 import asyncio
 import json
@@ -527,6 +528,44 @@ class ItemExtrasMixin:
     _preview_ok: dict = {}
     _preview_locks: dict = {}
 
+    def seed_creators(self) -> None:
+        """3.6.0, once: fills in who made each video (LibraryItem.creators) from the site's answer
+        saved next to it when it was downloaded -- also for videos gone from the site. No requests
+        to the site; Sync with PMVHaven fills in the rest later. In the background."""
+        flag = "creators_from_files_360"
+        if self.db.get_app_state(flag, False):
+            return
+        self.db.set_app_state(flag, time.time())
+
+        def read() -> dict[str, list[str]]:
+            found = {}
+            for item in list(self._items.values()):
+                if item.creators or "creators" in item.user_edits or not item.metadata_path:
+                    continue
+                try:
+                    creators = extract_creators(json.loads(Path(item.metadata_path).read_text(encoding="utf-8")))
+                except (OSError, ValueError):
+                    continue
+                if creators:
+                    found[item.id] = creators
+            return found
+
+        async def run() -> None:
+            found = await asyncio.to_thread(read)
+            n = 0
+            async with self._lock:
+                for video_id, creators in found.items():
+                    item = self._items.get(video_id)
+                    if item and not item.creators:
+                        item.creators = creators
+                        self.db.save_item(item)
+                        n += 1
+            differ = sum(1 for v in found if self._items.get(v) and self._items[v].creators != [self._items[v].creator])
+            logger.info("Creators: filled in for {} video(s) from their saved details ({} made by someone else than "
+                        "the uploader)", n, differ)
+
+        asyncio.create_task(run())
+
     async def ensure_playable_preview(self, video_id: str) -> Optional[str]:
         """Returns the item's preview path, first converting the file in place
         when it isn't 8-bit H.264 (check_preview)."""
@@ -694,6 +733,10 @@ class ItemExtrasMixin:
                     changed = True
                 if music != item.music:
                     item.music = music
+                    changed = True
+                creators = extract_creators(meta_dict)  # 3.6.0
+                if creators and creators != item.site_value("creators"):
+                    item.creators = creators
                     changed = True
 
                 description = meta_dict.get("description") or ""

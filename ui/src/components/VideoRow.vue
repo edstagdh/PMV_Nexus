@@ -4,6 +4,7 @@ import VideoThumb from "./VideoThumb.vue";
 import ActionBar from "./ActionBar.vue";
 import { itemUrlTitle, formatDate, workStatus } from "../lib/format.js";
 import { perfClass, perfTitle } from "../stores/performerBadges.js";
+import { makers, uploadedBy } from "../lib/creators.js";
 
 const props = defineProps({ item: Object });
 const emit = defineEmits(["filter"]);
@@ -16,7 +17,8 @@ const status = computed(() => workStatus(props.item));
     <div class="vrow-body">
       <router-link :to="{ name: 'video', params: { id: item.id } }" class="vrow-title">{{ itemUrlTitle(item) }}</router-link>
       <div class="vrow-meta">
-        <button v-if="item.creator" class="linkish text-creator" @click="emit('filter', 'creator', item.creator)">{{ item.creator }}</button>
+        <template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">, </span><button class="linkish text-creator"
+          :title="uploadedBy(item) ? `Show videos by ${c} (uploaded by ${uploadedBy(item)})` : `Show videos by ${c}`" @click="emit('filter', 'creator', c)">{{ c }}</button></template>
         <span v-if="item.download_datetime" class="muted">Downloaded {{ formatDate(item.download_datetime) }}</span>
         <span v-if="item.site_stats?.views != null" class="muted">{{ item.site_stats.views.toLocaleString() }} views</span>
         <span v-if="status" class="status" :class="status.kind" :title="status.detail">{{ status.label }}</span>

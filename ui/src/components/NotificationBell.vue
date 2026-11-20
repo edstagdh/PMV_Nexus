@@ -9,6 +9,8 @@ import Icon from "./Icon.vue";
 import { notes, markAllRead, clearNotifications } from "../stores/notifications.js";
 import { toast } from "../stores/toast.js";
 import { formatDateTime } from "../lib/format.js";
+import { hasPermission } from "../stores/session.js";
+import { copyText } from "../lib/clipboard.js";
 
 defineProps({ compact: Boolean });
 const router = useRouter();
@@ -21,10 +23,33 @@ function toggle() {
   open.value = !open.value;
   if (open.value) show.value = notes.unread || !notes.items.length ? "problems" : "all";
 }
-function go(n) {
-  if (!n.link) return;
+// Clicking a notification opens its menu (3.6.0): where it points, Tasks for work that ran there,
+// the log from around that moment, and Copy.
+const openId = ref(null);
+const PLACES = [[/^\/video\//, "Open the video"], [/^\/tasks/, "Open Tasks"], [/songs/, "Open Songs"],
+  [/duplicates/, "Open Duplicates"], [/backups/, "Open Backups"], [/logs/, "Open Logs"]];
+const WORK = new Set(["download", "reencode", "repair", "upload", "job", "duplicate"]);
+function linksOf(n) {
+  const out = [];
+  if (n.link) out.push({ label: (PLACES.find(([re]) => re.test(n.link)) || [null, "Open"])[1], to: n.link, icon: "external" });
+  if (WORK.has(n.category) && !String(n.link || "").startsWith("/tasks")) out.push({ label: "Open Tasks", to: "/tasks", icon: "list" });
+  if (hasPermission("logs.view") && n.created_at) {
+    const at = Number(n.created_at);
+    out.push({ label: "See the log from then", icon: "logs", to: { name: "portal", params: { tab: "logs" }, query: {
+      cat: "all", ...(n.level === "error" || n.level === "warning" ? { level: "WARNING" } : {}),
+      from: Math.floor(at - 120), to: Math.ceil(at + 5) } } });
+  }
+  return out;
+}
+function toggleMenu(n) { openId.value = openId.value === n.id ? null : n.id; }
+function go(to) {
   open.value = false;
-  router.push(n.link);
+  openId.value = null;
+  router.push(to);
+}
+async function copyNote(n) {
+  const ok = await copyText([n.title, n.body, formatDateTime(n.created_at)].filter(Boolean).join("\n"));
+  toast(ok ? "Copied" : "The browser blocked copying", { type: ok ? "success" : "error" });
 }
 async function readAll() {
   try { await markAllRead(); } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
@@ -63,12 +88,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <button class="btn btn-ghost btn-sm" :disabled="!notes.items.length" @click="clearAll">Clear</button>
         </div>
         <ul v-if="items.length" class="nc-list scroll-thin">
-          <li v-for="n in items" :key="n.id" :class="[n.level, { unread: !n.read && (n.level === 'error' || n.level === 'warning'), link: n.link }]" @click="go(n)">
-            <span class="ic"><Icon :name="ICON[n.level] || 'bell'" :size="16" /></span>
-            <div class="txt">
-              <div class="t">{{ n.title }}</div>
-              <div v-if="n.body" class="b">{{ n.body }}</div>
-              <div class="when">{{ formatDateTime(n.created_at) }}</div>
+          <li v-for="n in items" :key="n.id" :class="[n.level, { unread: !n.read && (n.level === 'error' || n.level === 'warning'), open: openId === n.id }]">
+            <button class="row" type="button" :aria-expanded="openId === n.id" @click="toggleMenu(n)">
+              <span class="ic"><Icon :name="ICON[n.level] || 'bell'" :size="16" /></span>
+              <span class="txt">
+                <span class="t">{{ n.title }}</span>
+                <span v-if="n.body" class="b">{{ n.body }}</span>
+                <span class="when">{{ formatDateTime(n.created_at) }}</span>
+              </span>
+            </button>
+            <div v-if="openId === n.id" class="nmenu" role="menu">
+              <button v-for="l in linksOf(n)" :key="l.label" class="btn btn-sm" role="menuitem" type="button" @click="go(l.to)">{{ l.label }}</button>
+              <button class="btn btn-ghost btn-sm" role="menuitem" type="button" @click="copyNote(n)">Copy</button>
             </div>
           </li>
         </ul>
@@ -94,9 +125,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 .seg button.on { background: var(--panel-hover); color: var(--text); font-weight: 650; }
 .seg .n { background: var(--danger); color: #fff; border-radius: 999px; font-size: 0.65rem; padding: 0 0.35rem; font-weight: 800; }
 .nc-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-.nc-list li { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem; padding: 0.625rem 1rem; border-bottom: 1px solid var(--border); }
-.nc-list li.link { cursor: pointer; }
-.nc-list li.link:hover { background: var(--panel-hover); }
+.nc-list li { border-bottom: 1px solid var(--border); }
+.row { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem; width: 100%; padding: 0.625rem 1rem; border: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.row:hover, li.open .row { background: var(--panel-hover); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.txt { display: flex; flex-direction: column; min-width: 0; }
+.nmenu { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 1rem 0.65rem 3.25rem; background: var(--panel-hover); }
 .nc-list li.unread { background: color-mix(in srgb, var(--danger) 7%, transparent); }
 .ic { width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center; background: var(--panel-hover); color: var(--text-2); }
 .success .ic { color: var(--success); }
