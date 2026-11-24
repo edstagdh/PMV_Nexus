@@ -1,8 +1,10 @@
 <script setup>
+// i18n-ignore-file: the decoy page imitates an ordinary site, in English, whatever the app's language.
 // Where the panic keys lead (2.24.0; 2.24.4: an ordinary-looking article instead of a
 // white page). One of lib/decoyPages.js, a different one each time; the tab title
 // and icon are the article's; dark or light to match the app's theme. Nothing on
 // it does anything (links are inert); the browser's Back button returns to the app.
+import { t } from "../lib/i18n.js";
 import { computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
 import { DECOY_PAGES, pickDecoy } from "../lib/decoyPages.js";
@@ -22,7 +24,7 @@ const dark = isDark();
 const icon = computed(() => {
   const letter = page.value.site[0];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${page.value.accent}"/>`
-    + `<text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`;
+    + `<text x="16" y="22" font-family=t("Georgia,serif") font-size="18" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 });
 let icons = [];
@@ -45,13 +47,13 @@ const inert = (e) => e.preventDefault();
       <div class="d-wrap d-bar">
         <a href="#" class="d-brand">{{ page.site }}</a>
         <nav class="d-nav"><a v-for="n in page.nav" :key="n" href="#">{{ n }}</a></nav>
-        <button type="button" class="d-sub">Subscribe</button>
+        <button type="button" class="d-sub">{{ $t("Subscribe") }}</button>
       </div>
     </header>
 
     <div class="d-wrap d-ad-wide">
       <a href="#" class="d-ad wide" :style="{ '--ad': page.ads[0].color }">
-        <span class="d-ad-tag">Ad</span><span class="d-ad-icon">{{ page.ads[0].icon }}</span>
+        <span class="d-ad-tag">{{ $t("Ad") }}</span><span class="d-ad-icon">{{ page.ads[0].icon }}</span>
         <span class="d-ad-text"><strong>{{ page.ads[0].brand }}</strong><span>{{ page.ads[0].line }}</span></span>
         <span class="d-ad-cta">{{ page.ads[0].cta }}</span>
       </a>
@@ -61,29 +63,29 @@ const inert = (e) => e.preventDefault();
       <article class="d-article">
         <p class="d-section">{{ page.section }}</p>
         <h1>{{ page.title }}</h1>
-        <p class="d-meta">By <strong>{{ page.author }}</strong> · {{ page.date }} · {{ page.read }}</p>
+        <p class="d-meta">{{ $t("By") }} <strong>{{ page.author }}</strong> · {{ page.date }} · {{ page.read }}</p>
         <div class="d-hero" aria-hidden="true"><span>{{ page.hero }}</span></div>
         <template v-for="(b, i) in page.body" :key="i">
           <h2 v-if="b[0] === 'h2'">{{ b[1] }}</h2>
           <p v-else>{{ b[1] }}</p>
           <a v-if="i === 4" href="#" class="d-ad inline" :style="{ '--ad': page.ads[2].color }">
-            <span class="d-ad-tag">Ad</span><span class="d-ad-icon">{{ page.ads[2].icon }}</span>
+            <span class="d-ad-tag">{{ $t("Ad") }}</span><span class="d-ad-icon">{{ page.ads[2].icon }}</span>
             <span class="d-ad-text"><strong>{{ page.ads[2].brand }}</strong><span>{{ page.ads[2].line }}</span></span>
             <span class="d-ad-cta">{{ page.ads[2].cta }}</span>
           </a>
         </template>
-        <div class="d-share"><span>Share</span><button type="button">Copy link</button><button type="button">Email</button></div>
+        <div class="d-share"><span>{{ $t("Share") }}</span><button type="button">{{ $t("Copy link") }}</button><button type="button">{{ $t("Email") }}</button></div>
       </article>
 
       <aside class="d-side">
         <a v-for="ad in page.ads.slice(1)" :key="ad.brand" href="#" class="d-ad tall" :style="{ '--ad': ad.color }">
-          <span class="d-ad-tag">Ad</span>
+          <span class="d-ad-tag">{{ $t("Ad") }}</span>
           <span class="d-ad-icon big">{{ ad.icon }}</span>
           <strong>{{ ad.brand }}</strong><span>{{ ad.line }}</span>
           <span class="d-ad-cta">{{ ad.cta }}</span>
         </a>
         <div class="d-box">
-          <strong>Most read</strong>
+          <strong>{{ $t("Most read") }}</strong>
           <a v-for="p in DECOY_PAGES.filter((x) => x.slug !== page.slug).slice(0, 3)" :key="p.slug" href="#">{{ p.title }}</a>
         </div>
       </aside>
@@ -104,7 +106,7 @@ const inert = (e) => e.preventDefault();
 .d-bar { display: flex; align-items: center; gap: 1.5rem; height: 3.75rem; font-family: system-ui, sans-serif; }
 .d-brand { font: 700 1.35rem/1 Georgia, serif; color: var(--accent-d) !important; white-space: nowrap; }
 .d-nav { display: flex; gap: 1.1rem; font-size: 0.9rem; color: var(--muted-d); flex: 1; overflow: hidden; }
-.d-sub { margin-left: auto; border: 0; border-radius: 999px; padding: 0.45rem 1rem; background: var(--accent-d); color: #fff; font: 600 0.85rem system-ui, sans-serif; cursor: pointer; }
+.d-sub { margin-inline-start: auto; border: 0; border-radius: 999px; padding: 0.45rem 1rem; background: var(--accent-d); color: #fff; font: 600 0.85rem system-ui, sans-serif; cursor: pointer; }
 .d-ad-wide { margin-top: 1.25rem; }
 .d-main { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 3rem; padding-top: 1.75rem; padding-bottom: 3rem; }
 .d-article h1 { font-size: clamp(1.7rem, 3.2vw, 2.4rem); line-height: 1.2; margin: 0.25rem 0 0.75rem; }
@@ -132,7 +134,7 @@ const inert = (e) => e.preventDefault();
 .d-ad-icon { font-size: 1.7rem; }
 .d-ad-icon.big { font-size: 2.4rem; }
 .d-ad-cta { white-space: nowrap; border-radius: 999px; padding: 0.35rem 0.85rem; background: var(--ad); color: #fff; font-size: 0.8rem; font-weight: 600; margin-top: 0.3rem; }
-.d-ad-tag { position: absolute; top: 0.35rem; right: 0.5rem; font-size: 0.62rem; letter-spacing: 0.05em; color: var(--muted-d); border: 1px solid var(--line-d); border-radius: 3px; padding: 0 0.25rem; }
+.d-ad-tag { position: absolute; top: 0.35rem; inset-inline-end: 0.5rem; font-size: 0.62rem; letter-spacing: 0.05em; color: var(--muted-d); border: 1px solid var(--line-d); border-radius: 3px; padding: 0 0.25rem; }
 .d-foot { border-top: 1px solid var(--line-d); padding: 1.5rem 0 2rem; font: 0.8rem system-ui, sans-serif; color: var(--muted-d); }
 @media (max-width: 52rem) {
   .d-main { grid-template-columns: 1fr; gap: 1.5rem; }

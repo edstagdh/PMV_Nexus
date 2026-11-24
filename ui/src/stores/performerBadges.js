@@ -1,6 +1,7 @@
 // Performer badges (3.5.0): each known performer's gender (the badge colour: female / male /
 // trans; unknown = grey) and your favourite performers (♥, the "Favourite performers" sort).
 // From GET /api/performers/badges, loaded once and again when performers change.
+import { N_, t } from "../lib/i18n.js";
 import { reactive } from "vue";
 import { api } from "../lib/api.js";
 import { onLibraryChange } from "./live.js";
@@ -28,7 +29,7 @@ export function genderOf(name) {
   if (!badges.loaded) loadBadges();
   return badges.genders[fold(name)] || "unknown";
 }
-const LABEL = { female: "Female", male: "Male", trans: "Trans / non-binary", unknown: "Gender not known (not matched to ThePornDB)" };
+const LABEL = { female: N_("Female"), male: N_("Male"), trans: N_("Trans / non-binary"), unknown: N_("Gender not known (not matched to ThePornDB)") };
 
 /** Classes for a performer badge: its gender colour, ♥ when it's a favourite. */
 export function perfClass(name) {
@@ -36,7 +37,7 @@ export function perfClass(name) {
 }
 /** Tooltip: "Aurora Vale · Female · ♥ favourite". */
 export function perfTitle(name) {
-  return [name, LABEL[genderOf(name)], isFavorite(name) ? "♥ favourite" : ""].filter(Boolean).join(" · ");
+  return [name, t(LABEL[genderOf(name)]), isFavorite(name) ? t("♥ favourite") : ""].filter(Boolean).join(" · ");
 }
 
 export function isFavorite(name) {
@@ -45,14 +46,14 @@ export function isFavorite(name) {
   return badges.loaded && favKeys.has(fold(name));
 }
 
-/** `names`: all of her names in the library (so every spelling counts); `label`: the one shown. */
+/** `names`: all of the performer's names in the library (so every spelling counts); `label`: the one shown. */
 export async function setFavorite(names, on, label = names[0]) {
   try {
     const r = await api("/api/performers/favorites", { method: "POST", body: { names, on } });
     badges.favorites = r.favorites || [];
     favKeys = new Set(badges.favorites.map(fold));
-    toast(on ? `♥ ${label} is a favourite` : `${label} is no longer a favourite`, { type: "success" });
+    toast(on ? t("♥ {name} is a favourite", { name: label }) : t("{name} is no longer a favourite", { name: label }), { type: "success" });
   } catch (e) {
-    toast(e.message || "Couldn't change the favourite", { type: "error" });
+    toast(e.message || t("Couldn't change the favourite"), { type: "error" });
   }
 }

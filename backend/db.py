@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS performer_custom_photos (
     id           TEXT PRIMARY KEY,
     performer_id TEXT NOT NULL,
     path         TEXT NOT NULL,       -- data/performer_photos/<id>.webp
-    main         INTEGER NOT NULL DEFAULT 0,  -- shown first (her main photo)
+    main         INTEGER NOT NULL DEFAULT 0,  -- shown first (the main photo)
     created_at   REAL NOT NULL,
     created_by   TEXT
 );
@@ -571,6 +571,10 @@ class LibraryDB:
         self._ensure_column("duplicate_matches", "details", "TEXT")
         # 2.5.0: built-in playlists ("favorites", one per user) can't be deleted or renamed.
         self._ensure_column("playlists", "system_key", "TEXT")
+        # 3.7.0: the English templates of a notification / a job run's summary, so they can be
+        # shown in each reader's language later (backend/i18n.py to_stored / from_stored).
+        self._ensure_column("notifications", "msg", "TEXT")
+        self._ensure_column("scheduled_job_runs", "result_msg", "TEXT")
         # 2.10.1: Favorites are always private (one made public before is made private again).
         self._conn.execute("UPDATE playlists SET visibility = 'private' WHERE system_key = 'favorites' AND visibility != 'private'")
         self._conn.commit()
@@ -834,8 +838,8 @@ class LibraryDB:
         self._note_change([f"performer:{local_id}", "performers"])
 
     def move_custom_photos(self, from_owner: str, to_owner: str) -> int:
-        """Photos of a name that just got its ThePornDB profile go with her; one stays
-        "shown first" only if she had none."""
+        """Photos of a name that just got its ThePornDB profile go with it; one stays
+        "shown first" only if there was none."""
         has_main = self._conn.execute("SELECT 1 FROM performer_custom_photos WHERE performer_id = ? AND main = 1",
                                       (to_owner,)).fetchone()
         if has_main:
@@ -865,7 +869,7 @@ class LibraryDB:
             self._note_change([f"performer:{row['performer_id']}"])
 
     def set_custom_photo_main(self, performer_id: str, photo_id: str | None) -> None:
-        """photo_id first for her (None: ThePornDB's main photo first again)."""
+        """photo_id first (None: ThePornDB's main photo first again)."""
         self._conn.execute("UPDATE performer_custom_photos SET main = (id = ?) WHERE performer_id = ?", (photo_id, performer_id))
         self._conn.commit()
         self._note_change([f"performer:{performer_id}"])
@@ -1198,10 +1202,10 @@ class LibraryDB:
     # ------------------------------------------------------ stats snapshots
     # ------------------------------------------------------------ notifications
     def add_notification(self, user_id: Optional[str], category: str, level: str, title: str,
-                         body: Optional[str], link: Optional[str]) -> int:
+                         body: Optional[str], link: Optional[str], msg: Optional[str] = None) -> int:
         cur = self._conn.execute(
-            "INSERT INTO notifications (created_at, user_id, category, level, title, body, link) VALUES (?,?,?,?,?,?,?)",
-            (time.time(), user_id, category, level, title, body, link))
+            "INSERT INTO notifications (created_at, user_id, category, level, title, body, link, msg) VALUES (?,?,?,?,?,?,?,?)",
+            (time.time(), user_id, category, level, title, body, link, msg))
         self._conn.commit()
         return cur.lastrowid
 
@@ -1313,10 +1317,10 @@ class LibraryDB:
         self._conn.commit()
         return run_id
 
-    def finish_job_run(self, run_id: str, status: str, result_summary: Optional[str]) -> None:
+    def finish_job_run(self, run_id: str, status: str, result_summary: Optional[str], result_msg: Optional[str] = None) -> None:
         self._conn.execute(
-            "UPDATE scheduled_job_runs SET finished_at = ?, status = ?, result_summary = ? WHERE id = ?",
-            (time.time(), status, result_summary, run_id),
+            "UPDATE scheduled_job_runs SET finished_at = ?, status = ?, result_summary = ?, result_msg = ? WHERE id = ?",
+            (time.time(), status, result_summary, result_msg, run_id),
         )
         self._conn.commit()
 

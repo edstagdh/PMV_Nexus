@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 from loguru import logger
 
+from ..i18n import L
 from . import ProgressCallback, Source
 from ..config import get_settings
 from ..pmv_details import build_api_url, is_metadata_usable, parse_metadata_from_json
@@ -59,10 +60,9 @@ class PMVPlatformSource(Source):
     async def details(self, item, need_file: bool = True) -> tuple[VideoMetadata, Optional[dict]]:
         found = await self.api_details(item.id, item.url)
         if found is None:
-            raise RuntimeError("The site's API didn't return this video (removed, private, a link the API doesn't "
-                               "know, or the site is unreachable).")
+            raise RuntimeError(L("The site's API didn't return this video (removed, private, a link the API doesn't know, or the site is unreachable)."))
         if need_file and not found[0].video_url:
-            raise RuntimeError("The site's API gave no download for this video.")
+            raise RuntimeError(L("The site's API gave no download for this video."))
         return found
 
     async def download(self, url: str, dest: Path, progress: ProgressCallback = None,

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../lib/i18n.js";
 import { PORTAL_TABS } from "../lib/portalTabs.js";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
@@ -19,8 +20,8 @@ defineProps({ open: Boolean });
 const emit = defineEmits(["close", "add"]);
 
 const taskCount = computed(() => {
-  const t = live.summary?.tasks;
-  return t ? t.active_total + t.queued_total : 0;
+  const tasks = live.summary?.tasks;
+  return tasks ? tasks.active_total + tasks.queued_total : 0;
 });
 const collapsed = computed(() => session.prefs.sidebarCollapsed);
 const adminFolded = computed(() => session.prefs.adminFolded);
@@ -29,9 +30,9 @@ const adminFolded = computed(() => session.prefs.adminFolded);
 // views/admin/AdminPortalView.vue) and the server's Settings
 // (views/admin/ServerSettingsView.vue). Personal settings stay at the bottom.
 const ADMIN_LINKS = [
-  { to: "/tasks", label: "Tasks", icon: "tasks", permission: "tasks.view", count: true },
-  { to: "/admin/portal", label: "Management", icon: "admin", anyOf: PORTAL_TABS.flatMap((t) => (t.admin ? ["*"] : [t.permission].flat())) },
-  { to: "/admin/server", label: "Settings", title: "Server Settings", icon: "server", admin: true },
+  { to: "/tasks", label: t("Tasks"), icon: "tasks", permission: "tasks.view", count: true },
+  { to: "/admin/portal", label: t("Management"), icon: "admin", anyOf: PORTAL_TABS.flatMap((tab) => (tab.admin ? ["*"] : [tab.permission].flat())) },
+  { to: "/admin/server", label: t("Settings"), title: t("Server Settings"), icon: "server", admin: true },
 ];
 const adminLinks = computed(() => ADMIN_LINKS.filter((l) => (l.admin ? isAdmin() : l.anyOf ? isAdmin() || l.anyOf.some(hasPermission) : hasPermission(l.permission))));
 
@@ -48,39 +49,39 @@ function nav(fn) { emit("close"); fn?.(); }
         <div class="brand-sub">Nexus <span v-if="live.version">v{{ live.version }}</span></div>
       </div>
       <span class="side-bell"><NotificationBell compact /></span>
-      <button class="btn btn-ghost btn-icon btn-sm collapse-btn" :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      <button class="btn btn-ghost btn-icon btn-sm collapse-btn" :title="collapsed ? $t('Expand sidebar') : $t('Collapse sidebar')"
               @click="savePref('sidebarCollapsed', !collapsed)"><Icon name="sidebar" /></button>
     </div>
 
     <div v-if="hasPermission('videos.add') || hasPermission('videos.upload')" class="add-group">
-      <button v-if="hasPermission('videos.add')" class="btn btn-primary add-btn" title="Add videos" @click="nav(() => emit('add'))">
-        <Icon name="plus" /><span class="label">Add videos</span>
+      <button v-if="hasPermission('videos.add')" class="btn btn-primary add-btn" :title="$t('Add videos')" @click="nav(() => emit('add'))">
+        <Icon name="plus" /><span class="label">{{ $t("Add videos") }}</span>
       </button>
-      <router-link v-if="hasPermission('videos.upload')" to="/upload" class="btn btn-primary add-btn" title="Upload a video from this computer" @click="nav()">
-        <Icon name="upload" /><span class="label">Upload</span>
+      <router-link v-if="hasPermission('videos.upload')" to="/upload" class="btn btn-primary add-btn" :title="$t('Upload a video from this computer')" @click="nav()">
+        <Icon name="upload" /><span class="label">{{ $t("Upload") }}</span>
       </router-link>
     </div>
 
     <nav class="nav">
-      <router-link :to="libraryLink" class="nav-item" :class="{ active: route.name === 'library' }" title="Library" @click="nav()">
-        <Icon name="library" /><span class="label">Library</span>
+      <router-link :to="libraryLink" class="nav-item" :class="{ active: route.name === 'library' }" :title="$t('Library')" @click="nav()">
+        <Icon name="library" /><span class="label">{{ $t("Library") }}</span>
         <span v-if="live.summary" class="nav-count muted">{{ live.summary.done_count }}</span>
       </router-link>
-      <button class="nav-item" title="Discover a random video" @click="nav(discover)">
-        <Icon name="dice" /><span class="label">Discover</span>
+      <button class="nav-item" :title="$t('Discover a random video')" @click="nav(discover)">
+        <Icon name="dice" /><span class="label">{{ $t("Discover") }}</span>
       </button>
-      <router-link to="/playlists" class="nav-item" :class="{ active: $route.name === 'playlist' }" active-class="active" title="Playlists" @click="nav()">
-        <Icon name="playlist" /><span class="label">Playlists</span>
+      <router-link to="/playlists" class="nav-item" :class="{ active: $route.name === 'playlist' }" active-class="active" :title="$t('Playlists')" @click="nav()">
+        <Icon name="playlist" /><span class="label">{{ $t("Playlists") }}</span>
       </router-link>
-      <router-link to="/performers" class="nav-item" :class="{ active: $route.name === 'performer' }" active-class="active" title="Performers" @click="nav()">
-        <Icon name="user" /><span class="label">Performers</span>
+      <router-link to="/performers" class="nav-item" :class="{ active: $route.name === 'performer' }" active-class="active" :title="$t('Performers')" @click="nav()">
+        <Icon name="user" /><span class="label">{{ $t("Performers") }}</span>
       </router-link>
-      <router-link v-if="hasPermission('live.view')" to="/playing" class="nav-item" active-class="active" title="Currently Playing" @click="nav()">
-        <Icon name="play" /><span class="label">Currently Playing</span>
+      <router-link v-if="hasPermission('live.view')" to="/playing" class="nav-item" active-class="active" :title="$t('Currently Playing')" @click="nav()">
+        <Icon name="play" /><span class="label">{{ $t("Currently Playing") }}</span>
       </router-link>
       <template v-if="adminLinks.length">
         <button class="nav-section section-toggle" :aria-expanded="!adminFolded" @click="savePref('adminFolded', !adminFolded)">
-          <span>Server</span><Icon name="chevron" :size="14" :class="{ folded: adminFolded }" />
+          <span>{{ $t("Server") }}</span><Icon name="chevron" :size="14" :class="{ folded: adminFolded }" />
         </button>
         <template v-if="!adminFolded || collapsed">
           <router-link v-for="l in adminLinks" :key="l.to" :to="l.to" class="nav-item" active-class="active" :title="l.title || l.label" @click="nav()">
@@ -89,21 +90,21 @@ function nav(fn) { emit("close"); fn?.(); }
           </router-link>
         </template>
         <!-- Folded: Tasks still shows while something is running, so it isn't missed. -->
-        <router-link v-else-if="taskCount && hasPermission('tasks.view')" to="/tasks" class="nav-item" active-class="active" title="Tasks" @click="nav()">
-          <Icon name="tasks" /><span class="label">Tasks</span><span class="count-pill">{{ taskCount }}</span>
+        <router-link v-else-if="taskCount && hasPermission('tasks.view')" to="/tasks" class="nav-item" active-class="active" :title="$t('Tasks')" @click="nav()">
+          <Icon name="tasks" /><span class="label">{{ $t("Tasks") }}</span><span class="count-pill">{{ taskCount }}</span>
         </router-link>
       </template>
     </nav>
 
     <div class="sidebar-foot">
-      <router-link :to="{ name: 'help', params: { tab: 'guide' } }" class="nav-item" :class="{ active: $route.name === 'help' }" title="Help" @click="nav()">
-        <Icon name="help" /><span class="label">Help</span>
+      <router-link :to="{ name: 'help', params: { tab: 'guide' } }" class="nav-item" :class="{ active: $route.name === 'help' }" :title="$t('Help')" @click="nav()">
+        <Icon name="help" /><span class="label">{{ $t("Help") }}</span>
       </router-link>
-      <router-link to="/settings" class="nav-item" active-class="active" title="My Settings" @click="nav()">
-        <Icon name="settings" /><span class="label">My Settings</span>
+      <router-link to="/settings" class="nav-item" active-class="active" :title="$t('My Settings')" @click="nav()">
+        <Icon name="settings" /><span class="label">{{ $t("My Settings") }}</span>
       </router-link>
-      <button class="nav-item" :title="`Sign out (${session.user?.username})`" @click="logout">
-        <Icon name="logout" /><span class="label">Sign out <span class="muted">· {{ session.user?.username }}</span></span>
+      <button class="nav-item" :title="$t('Sign out ({name})', { name: session.user?.username })" @click="logout">
+        <Icon name="logout" /><span class="label">{{ $t("Sign out") }} <span class="muted">· {{ session.user?.username }}</span></span>
       </button>
     </div>
   </aside>
@@ -111,9 +112,9 @@ function nav(fn) { emit("close"); fn?.(); }
 
 <style scoped>
 .sidebar {
-  position: fixed; inset: 0 auto 0 0; z-index: 40; width: var(--sidebar-w);
+  position: fixed; inset-block: 0 0; inset-inline: 0 auto; z-index: 40; width: var(--sidebar-w);
   display: flex; flex-direction: column; gap: 0.875rem; padding: 0.875rem 0.75rem;
-  background: var(--bg-elev); border-right: 1px solid var(--border); overflow-y: auto;
+  background: var(--bg-elev); border-inline-end: 1px solid var(--border); overflow-y: auto;
   transition: width 0.2s var(--ease), transform 0.2s var(--ease);
 }
 .brand { display: flex; align-items: center; gap: 0.625rem; padding: 2px 0.25rem; }
@@ -130,7 +131,7 @@ function nav(fn) { emit("close"); fn?.(); }
 .nav-item {
   display: flex; align-items: center; gap: 0.75rem; width: 100%; height: 2.375rem; padding: 0 0.625rem;
   border: 0; border-radius: var(--radius); background: none; color: var(--text-2);
-  font: 550 0.875rem var(--font); text-align: left; cursor: pointer; text-decoration: none;
+  font: 550 0.875rem var(--font); text-align: start; cursor: pointer; text-decoration: none;
 }
 .nav-item:hover { background: var(--panel-2); color: var(--text); text-decoration: none; }
 .nav-item.active { background: var(--accent-soft); color: var(--accent); }
@@ -148,12 +149,12 @@ function nav(fn) { emit("close"); fn?.(); }
 .sidebar.collapsed .nav-section { display: none; }
 .sidebar.collapsed .brand { flex-direction: column; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 0; position: relative; }
-.sidebar.collapsed .count-pill { position: absolute; top: 2px; right: 0.25rem; min-width: 1rem; height: 1rem; line-height: 1rem; font-size: 0.625rem; padding: 0 0.25rem; }
+.sidebar.collapsed .count-pill { position: absolute; top: 2px; inset-inline-end: 0.25rem; min-width: 1rem; height: 1rem; line-height: 1rem; font-size: 0.625rem; padding: 0 0.25rem; }
 .sidebar.collapsed .add-btn { padding: 0; }
 
 .nav-overlay { display: none; }
 @media (max-width: 56.25rem) {
-  .sidebar, .sidebar.collapsed { width: 16.5rem; transform: translateX(-100%); box-shadow: var(--shadow); }
+  .sidebar, .sidebar.collapsed { width: 16.5rem; transform: translateX(calc(-100% * var(--dir-x))); box-shadow: var(--shadow); }
   .sidebar.open { transform: none; }
   .sidebar.collapsed .brand-text, .sidebar.collapsed .label, .sidebar.collapsed .nav-count, .sidebar.collapsed .nav-section { display: revert; }
   .sidebar.collapsed .brand { flex-direction: row; }

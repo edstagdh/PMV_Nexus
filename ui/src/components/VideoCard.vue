@@ -21,11 +21,11 @@ const emit = defineEmits(["filter"]);
       </div>
       <div class="vcard-meta">
         <template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">, </span><button class="linkish text-creator"
-          :title="uploadedBy(item) ? `Show videos by ${c} (uploaded by ${uploadedBy(item)})` : `Show videos by ${c}`" @click="emit('filter', 'creator', c)">{{ c }}</button></template>
+          :title="uploadedBy(item) ? $t('Show videos by {name} (uploaded by {uploader})', { name: c, uploader: uploadedBy(item) }) : $t('Show videos by {name}', { name: c })" @click="emit('filter', 'creator', c)">{{ c }}</button></template>
       </div>
       <div v-if="!small && item.performers?.length" class="vcard-people">
         <button v-for="p in item.performers.slice(0, 3)" :key="p" class="chip chip-performer" :class="perfClass(p)" :title="perfTitle(p)" @click="emit('filter', 'performer', p)">{{ p }}</button>
-        <span v-if="item.performers.length > 3" class="muted more" :title="item.performers.slice(3).join(', ')">+{{ item.performers.length - 3 }}</span>
+        <span v-if="item.performers.length > 3" class="muted more num" :title="item.performers.slice(3).join(', ')">+{{ item.performers.length - 3 }}</span>
       </div>
     </div>
   </article>
@@ -37,7 +37,7 @@ const emit = defineEmits(["filter"]);
 .vcard-link:hover { transform: translateY(-2px); }
 .vcard-body { display: flex; flex-direction: column; gap: 0.25rem; padding: 0 0.125rem; min-width: 0; }
 .vcard-head { display: flex; align-items: flex-start; gap: 0.25rem; }
-.vcard-head :deep(.kebab) { margin: -0.25rem -0.25rem 0 auto; }
+.vcard-head :deep(.kebab) { margin-block: -0.25rem 0; margin-inline: auto -0.25rem; }
 .vcard-title { flex: 1; min-width: 0; color: var(--text); font-weight: 600; font-size: 0.875rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .vcard-title:hover { color: var(--accent); text-decoration: none; }
 .vcard-meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; min-width: 0; }

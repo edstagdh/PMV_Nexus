@@ -1,4 +1,5 @@
 <script setup>
+import { t, tn, N_ } from "../lib/i18n.js";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import Icon from "../components/Icon.vue";
@@ -12,7 +13,7 @@ import FavoriteButton from "../components/FavoriteButton.vue";
 import VideoFrames from "../components/VideoFrames.vue";
 import { api, qs } from "../lib/api.js";
 import { normalizeMetadata } from "../lib/metadata.js";
-import { thumbUrl, compactNumber, workStatus } from "../lib/format.js";
+import { thumbUrl, compactNumber, workStatus, formatDateTime } from "../lib/format.js";
 import { onLibraryChange } from "../stores/live.js";
 import { session, hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
@@ -49,7 +50,7 @@ async function load(full = true) {
     error.value = "";
     if (full) loadNeighbours(it);
   } catch (err) {
-    if (id === props.id) error.value = err.status === 404 ? "This video is not in the library." : err.message;
+    if (id === props.id) error.value = err.status === 404 ? t("This video is not in the library.") : err.message;
   }
 }
 
@@ -111,39 +112,47 @@ watch([slot, () => item.value?.id, playable], () => {
 }, { flush: "post" });
 watch(error, (e) => { if (e && player.mode === "page") leavePage(); });
 const status = computed(() => (item.value ? workStatus(item.value) : null));
+// Names of the fields kept as edited by hand (3.7.0: shown in the reader's language).
+const FIELD_NAMES = { title: t("Title"), tags: t("Tags"), performers: t("Performers"), music: t("Music"), creators: t("Creators"), description: t("Description") };
+const fieldName = (k) => FIELD_NAMES[k] || k;
 const metaLine = computed(() => {
   const v = view.value || {};
   return [
-    v.views != null ? `${Number(v.views).toLocaleString()} views` : null,
-    v.uploadDate ? `Uploaded ${v.uploadDate}` : null,
+    v.views != null ? tn("{n} view", "{n} views", Number(v.views)) : null,
+    v.uploadDate ? t("Uploaded {date}", { date: v.uploadDate }) : null,
     v.rating || item.value?.ratings ? `★ ${v.rating || item.value.ratings}` : null,
-    v.likes != null ? `${compactNumber(v.likes)} likes` : null,
-    v.favorites != null ? `${compactNumber(v.favorites)} favorites` : null,
+    v.likes != null ? t("{n} likes", { n: compactNumber(v.likes) }) : null,
+    v.favorites != null ? t("{n} favorites", { n: compactNumber(v.favorites) }) : null,
     item.value?.tech_duration || v.duration,
   ].filter(Boolean);
 });
-watch([title, error], ([t, e]) => setPageTitle(`/video/${props.id}`, e ? "Video not found" : t), { immediate: true });
+watch([title, error], ([name, e]) => setPageTitle(`/video/${props.id}`, e ? t("Video not found") : name), { immediate: true });
 // Technical Details in sections (3.2.0): side by side when there's room, else one under the other.
-const TECH_GENERAL = ["Duration", "File Size", "Overall Bitrate", "Container", "Format"];
+// The keys are the server's English field names: they are matched, not shown translated.
+const TECH_GENERAL = ["Duration", "File Size", "Overall Bitrate", "Container", "Format"];  // i18n-ignore
+const TECH_GROUP_LABELS = { General: N_("General"), Video: N_("Video"), Audio: N_("Audio"), Other: N_("Other") };
 const techGroups = computed(() => {
   const groups = { General: [], Video: [], Audio: [], Other: [] };
   for (const [k, v] of Object.entries(view.value?.technical || {})) {
     if (v === null || v === undefined || v === "") continue;
-    const name = TECH_GENERAL.includes(k) ? "General"
-      : /^video\b|^resolution$|^fps$|^frame rate|^hdr|^bit depth|^pixel|^colou?r/i.test(k) ? "Video"
-      : /^audio\b|^sample rate|^channels?$/i.test(k) ? "Audio" : "Other";
-    groups[name].push([k, typeof v === "boolean" ? (v ? "Yes" : "No") : v]);
+    const name = TECH_GENERAL.includes(k) ? "General"  // i18n-ignore
+      : /^video\b|^resolution$|^fps$|^frame rate|^hdr|^bit depth|^pixel|^colou?r/i.test(k) ? "Video"  // i18n-ignore
+      : /^audio\b|^sample rate|^channels?$/i.test(k) ? "Audio" : "Other";  // i18n-ignore
+    groups[name].push([k, typeof v === "boolean" ? (v ? t("Yes") : t("No")) : v]);
   }
-  return Object.entries(groups).filter(([, rows]) => rows.length).map(([name, rows]) => ({ name, rows }));
+  return Object.entries(groups).filter(([, rows]) => rows.length).map(([name, rows]) => ({ name, label: TECH_GROUP_LABELS[name], rows }));
 });
 const longDescription = computed(() => (view.value?.description || "").length > 300);
 const downloadStatus = computed(() => {
   const it = item.value;
   if (!it || it.status === "done") return null;
-  if (it.status === "fetching") return "Fetching details…";
-  if (it.status === "pending") return "Queued for download";
-  if (it.status === "downloading") return `Downloading ${Math.round(it.progress_percent || 0)}%${it.speed ? ` · ${it.speed}` : ""}`;
-  if (it.status === "failed") return `Download failed${it.error ? `: ${it.error}` : ""}`;
+  if (it.status === "fetching") return t("Fetching details…");
+  if (it.status === "pending") return t("Queued for download");
+  if (it.status === "downloading") {
+    const percent = Math.round(it.progress_percent || 0);
+    return it.speed ? t("Downloading {percent}% · {speed}", { percent, speed: it.speed }) : t("Downloading {percent}%", { percent });
+  }
+  if (it.status === "failed") return it.error ? t("Download failed: {error}", { error: it.error }) : t("Download failed");
   return it.status;
 });
 
@@ -165,7 +174,7 @@ function viewAllFrom(names) {
              videos start at the top on the right, and go below everything else in a narrow window) -->
         <div class="watch-head">
           <h1 class="title">{{ title }}</h1>
-          <button class="btn btn-primary random" title="Open a random video from the library (like Discover)" @click="discover"><Icon name="dice" />Random</button>
+          <button class="btn btn-primary random" :title="$t('Open a random video from the library (like Discover)')" @click="discover"><Icon name="dice" />{{ $t("Random") }}</button>
         </div>
         <div v-if="playable" ref="slot" class="player-slot" />
         <VideoFrames v-if="playable && session.prefs.videoFrames === true" :item-id="item.id" />
@@ -180,62 +189,62 @@ function viewAllFrom(names) {
         <PlayQueue v-if="narrow" />
         <div class="byline">
           <!-- 3.6.0: who made it (the site's creators), and who uploaded it when that's someone else -->
-          <span v-if="makers(item).length" class="makers"><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">,&nbsp;</span><button
-            class="creator text-creator" :title="`Show videos by ${c}`" @click="filterLibrary('creator', c)">{{ c }}</button></template></span>
-          <span v-if="uploadedBy(item)" class="muted uploaded-by">uploaded by <button class="creator uploader text-creator" :title="`Show videos uploaded by ${uploadedBy(item)}`"
+          <span v-if="makers(item).length" class="makers"><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">{{ ",\u00a0" }}</span><button
+            class="creator text-creator" :title="$t('Show videos by {name}', { name: c })" @click="filterLibrary('creator', c)">{{ c }}</button></template></span>
+          <span v-if="uploadedBy(item)" class="muted uploaded-by">{{ $t("uploaded by") }} <button class="creator uploader text-creator" :title="$t('Show videos uploaded by {name}', { name: uploadedBy(item) })"
             @click="filterLibrary('creator', uploadedBy(item))">{{ uploadedBy(item) }}</button></span>
           <span v-for="m in metaLine" :key="m" class="muted">{{ m }}</span>
           <FavoriteButton v-if="item.status === 'done'" :item-id="item.id" class="byline-fav" />
         </div>
         <ActionBar :item="item" context="page" />
         <div v-if="status" class="work" :class="status.kind">{{ status.label }}<span v-if="status.detail" class="muted"> — {{ status.detail }}</span></div>
-        <div v-if="syncInfo.status === 'removed'" class="gone">💀 This video is no longer available on PMVHaven (not found during the last sync). Your downloaded copy is unaffected.</div>
+        <div v-if="syncInfo.status === 'removed'" class="gone">{{ $t("💀 This video is no longer available on PMVHaven (not found during the last sync). Your downloaded copy is unaffected.") }}</div>
 
         <section class="card details">
           <div v-if="view?.description" class="group">
-            <h4>Description</h4>
+            <h4>{{ $t("Description") }}</h4>
             <p class="description" :class="{ clamp: longDescription && !showFullDescription }">{{ view.description }}</p>
             <button v-if="longDescription" class="btn btn-ghost btn-sm more" @click="showFullDescription = !showFullDescription">
-              {{ showFullDescription ? "Show less" : "Show more" }}
+              {{ showFullDescription ? $t("Show less") : $t("Show more") }}
             </button>
           </div>
           <div v-if="item.user_edits && Object.keys(item.user_edits).length" class="muted small">
-            ✎ Edited by hand: {{ Object.keys(item.user_edits).join(", ") }} — kept when syncing or repairing.
-            <button v-if="canEdit" class="btn btn-ghost btn-sm" @click="openDialog('details', item)">Edit</button>
+            ✎ {{ $t("Edited by hand: {fields} — kept when syncing or repairing.", { fields: Object.keys(item.user_edits).map(fieldName).join(", ") }) }}
+            <button v-if="canEdit" class="btn btn-ghost btn-sm" @click="openDialog('details', item)">{{ $t("Edit") }}</button>
           </div>
           <div v-if="performers.length" class="group">
-            <h4>Performers<span v-if="edited('performers')" class="edited" title="Edited by hand">✎</span></h4>
+            <h4>{{ $t("Performers") }}<span v-if="edited('performers')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
             <div class="chips"><RouterLink v-for="p in performers" :key="p" :to="{ name: 'performer', params: { name: p } }" class="chip chip-performer"
-                                           :class="perfClass(p)" :title="`${perfTitle(p)} — profile and videos`">{{ p }}</RouterLink></div>
+                                           :class="perfClass(p)" :title="$t('{name} — profile and videos', { name: perfTitle(p) })">{{ p }}</RouterLink></div>
           </div>
           <div v-if="tags.length" class="group">
-            <h4>Tags<span v-if="edited('tags')" class="edited" title="Edited by hand">✎</span></h4>
+            <h4>{{ $t("Tags") }}<span v-if="edited('tags')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
             <div class="chips"><button v-for="t in tags" :key="t" class="chip chip-tag" @click="filterLibrary('tag', t)">#{{ t }}</button></div>
           </div>
           <div v-if="music.length" class="group">
-            <h4>Music<span v-if="edited('music')" class="edited" title="Edited by hand">✎</span></h4>
+            <h4>{{ $t("Music") }}<span v-if="edited('music')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
             <div class="chips"><span v-for="m in music" :key="m" class="chip chip-music">{{ m }}</span></div>
           </div>
           <div v-if="flags.length" class="group">
-            <h4>Content flags<span v-if="edited('flags')" class="edited" title="Edited by hand">✎</span></h4>
+            <h4>{{ $t("Content flags") }}<span v-if="edited('flags')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
             <div class="chips"><span v-for="f in flags" :key="f" class="chip">{{ f }}</span></div>
           </div>
           <details v-if="view && Object.keys(view.technical).length" class="tech">
-            <summary>Technical Details</summary>
+            <summary>{{ $t("Technical Details") }}</summary>
             <div class="tech-groups">
               <div v-for="g in techGroups" :key="g.name" class="tech-group">
-                <h5>{{ g.name }}</h5>
+                <h5>{{ $t(g.label) }}</h5>
                 <dl class="facts"><template v-for="[k, v] in g.rows" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
               </div>
             </div>
           </details>
-          <div v-if="syncInfo.synced_at" class="muted small">Last synced with PMVHaven {{ new Date(syncInfo.synced_at * 1000).toLocaleString() }}</div>
+          <div v-if="syncInfo.synced_at" class="muted small">{{ $t("Last synced with PMVHaven {time}", { time: formatDateTime(syncInfo.synced_at) }) }}</div>
         </section>
 
         <section v-if="sameCreator.length" class="same">
           <div class="section-head">
-            <h3>More from {{ creatorText(item) }}</h3>
-            <button class="btn btn-ghost btn-sm" @click="viewAllFrom(makers(item))">View all</button>
+            <h3>{{ $t("More from {name}", { name: creatorText(item) }) }}</h3>
+            <button class="btn btn-ghost btn-sm" @click="viewAllFrom(makers(item))">{{ $t("View all") }}</button>
           </div>
           <div class="same-grid"><VideoCard v-for="v in sameCreator" :key="v.id" :item="v" small @filter="filterLibrary" /></div>
         </section>
@@ -244,9 +253,9 @@ function viewAllFrom(names) {
       <aside v-if="session.prefs.relatedCount > 0 || (player.queue && !narrow)" class="secondary">
         <PlayQueue v-if="!narrow" />
         <template v-if="session.prefs.relatedCount > 0">
-          <h3 class="side-title" title="Ranked by shared performers (strongest), same creator, then shared tags">Related videos</h3>
+          <h3 class="side-title" :title="$t('Ranked by shared performers (strongest), same creator, then shared tags')">{{ $t("Related videos") }}</h3>
           <RelatedList v-if="related.length" :items="related" />
-          <p v-else class="muted small">No related videos yet — they're matched by shared performers, creator and tags.</p>
+          <p v-else class="muted small">{{ $t("No related videos yet — they're matched by shared performers, creator and tags.") }}</p>
         </template>
       </aside>
     </div>
@@ -263,11 +272,11 @@ function viewAllFrom(names) {
 .primary { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
 .title { font-size: 1.3rem; letter-spacing: -0.01em; }
 .byline { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; align-items: center; font-size: 0.875rem; }
-.byline-fav { margin-left: auto; }
+.byline-fav { margin-inline-start: auto; }
 .creator { border: 0; background: none; padding: 0; color: var(--accent); font: 600 0.9rem var(--font); cursor: pointer; }
 .poster { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); overflow: hidden; background: #000; }
 .poster img { width: 100%; height: 100%; object-fit: contain; opacity: 0.55; }
-.poster-status { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; padding: 0.75rem 0.875rem; border-radius: var(--radius); background: rgba(0, 0, 0, 0.75); color: #fff; font-weight: 600; }
+.poster-status { position: absolute; inset-inline-start: 1rem; inset-inline-end: 1rem; bottom: 1rem; padding: 0.75rem 0.875rem; border-radius: var(--radius); background: rgba(0, 0, 0, 0.75); color: #fff; font-weight: 600; }
 .poster-status.failed { color: #fca5a5; }
 .progress { height: 0.375rem; border-radius: 3px; background: rgba(255, 255, 255, 0.2); margin-top: 0.5rem; overflow: hidden; }
 .progress div { height: 100%; background: var(--accent); transition: width 0.4s; }
@@ -281,7 +290,7 @@ function viewAllFrom(names) {
 .description { margin: 0; white-space: pre-line; color: var(--text-2); font-size: 0.875rem; }
 .description.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .more { align-self: flex-start; padding: 0 0.375rem; margin-top: -0.5rem; }
-.edited { margin-left: 0.375rem; color: var(--accent); text-transform: none; }
+.edited { margin-inline-start: 0.375rem; color: var(--accent); text-transform: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
 .tech summary { cursor: pointer; font-weight: 600; font-size: 0.84rem; }
 .tech-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 0.75rem 1.5rem; margin-top: 0.625rem; }

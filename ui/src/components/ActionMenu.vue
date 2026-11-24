@@ -43,7 +43,7 @@ onBeforeUnmount(close);
 </script>
 
 <template>
-  <button ref="btn" class="btn btn-ghost btn-icon btn-sm kebab" :class="{ active: open }" title="Actions" aria-haspopup="menu"
+  <button ref="btn" class="btn btn-ghost btn-icon btn-sm kebab" :class="{ active: open }" :title="$t('Actions')" aria-haspopup="menu"
           :aria-expanded="open" @click.stop.prevent="toggle"><Icon name="more" /></button>
   <Teleport to="body">
     <div v-if="open" ref="menu" class="menu card" role="menu" :style="{ top: `${pos.top}px`, left: `${pos.left}px` }">
@@ -63,7 +63,7 @@ onBeforeUnmount(close);
 <style scoped>
 .kebab { flex-shrink: 0; }
 .menu { position: fixed; z-index: 120; min-width: 12.5rem; padding: 0.25rem; box-shadow: var(--shadow); animation: pop 0.12s var(--ease); }
-.menu-item { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.5rem 0.625rem; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font: 0.84rem var(--font); text-align: left; cursor: pointer; text-decoration: none; }
+.menu-item { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.5rem 0.625rem; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text-2); font: 0.84rem var(--font); text-align: start; cursor: pointer; text-decoration: none; }
 .menu-item:hover { background: var(--panel-2); color: var(--text); text-decoration: none; }
 .menu-item.danger { color: var(--danger); }
 .menu-divider { height: 1px; margin: 0.25rem 0; background: var(--border); }

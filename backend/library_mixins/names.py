@@ -23,6 +23,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from ..models import EDITABLE_ITEM_FIELDS
 from ..spellings import fold, spellings
 
@@ -41,7 +42,7 @@ class NamesMixin:
     def name_list(self, field: str) -> dict:
         """[{value, count, shown}] for every value as stored, most used first, plus the remembered fixes."""
         if field not in EDITABLE_ITEM_FIELDS:
-            raise ValueError("Unknown field")
+            raise ValueError(L('Unknown field'))
         counts: Counter = Counter()
         for item in self._named_items():
             for v in set(getattr(item, field) or []):
@@ -93,10 +94,10 @@ class NamesMixin:
         """Replaces `old` (any upper/lower case) with `new` in every video --
         merging when a video already has `new`. Returns {"videos": n}."""
         if field not in EDITABLE_ITEM_FIELDS:
-            raise ValueError("Unknown field")
+            raise ValueError(L('Unknown field'))
         old, new = _clean(old), _clean(new)
         if not old or not new:
-            raise ValueError("Both names are needed")
+            raise ValueError(L('Both names are needed'))
         old_key = fold(old)
         # 3.3.0: a change of upper / lower case only ("Pmv" -> "PMV") is a rename too: every
         # video gets that writing. Refused only when every video already has it.
@@ -139,7 +140,7 @@ class NamesMixin:
                 self.db.save_items(changed)
         if case_only:
             if not changed and spellings.canonical(field, new) == new:
-                raise ValueError("Every video already has that writing")
+                raise ValueError(L('Every video already has that writing'))
             # An earlier pick (Maintenance -> Spellings) would still show the old writing:
             # "Remember" makes the new one the pick, otherwise it goes back to automatic.
             spellings.pin(field, new, new if remember else None)
@@ -155,7 +156,7 @@ class NamesMixin:
         return {"videos": len(changed)}
 
     def _carry_performer_link(self, old: str, new: str) -> None:
-        """A performer's ThePornDB link moves with her name when the new name has none yet."""
+        """A performer's ThePornDB link moves with the name when the new name has none yet."""
         old_row, new_key = self._perf_names.get(fold(old)), fold(new)
         if old_row and new_key not in self._perf_names and old_row.get("status") in ("linked", "skipped"):
             self._save_name(new_key, new, status=old_row["status"], performer_id=old_row.get("performer_id"),
@@ -163,7 +164,7 @@ class NamesMixin:
 
     def remove_name_rule(self, field: str, old: str) -> None:
         if field not in EDITABLE_ITEM_FIELDS:
-            raise ValueError("Unknown field")
+            raise ValueError(L('Unknown field'))
         spellings.remove_rule(field, old)
         self.db._note_change(["spellings", "names"])
 
@@ -179,7 +180,7 @@ class NamesMixin:
             if add or remove:
                 plan[field] = (add, remove)
         if not plan:
-            raise ValueError("Nothing to change")
+            raise ValueError(L('Nothing to change'))
         ids = list(dict.fromkeys(item_ids or []))[:5000]
         changed = []
         async with self._lock:

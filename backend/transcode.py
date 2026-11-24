@@ -40,6 +40,7 @@ from typing import Optional
 
 from loguru import logger
 
+from .i18n import L
 from . import activity, media_tools, open_files
 
 SEG = 6                 # seconds per segment
@@ -179,20 +180,19 @@ class LiveTranscoder:
     async def start(self, settings, item_id: str, user_id: str, source: str, title: str = "", username: str = "") -> Session:
         cfg = settings.playback
         if not cfg.live_convert:
-            raise TranscodeError("Converting while watching is turned off (Server Settings → Re-encode)")
+            raise TranscodeError(L('Converting while watching is turned off (Server Settings → Re-encode)'))
         if not os.path.isfile(source):
-            raise TranscodeError("The video file is missing")
+            raise TranscodeError(L('The video file is missing'))
         # One per person: their previous playback ends.
         for s in [s for s in self._sessions.values() if s.user_id == user_id]:
             self.end(s.sid, reason="replaced")
         if len(self._sessions) >= cfg.max_sessions:
             n = len(self._sessions)
-            raise TranscodeError(f"{n} {'video is' if n == 1 else 'videos are'} already being converted for watching -- "
-                                 "try again when one stops, or play the original")
+            raise TranscodeError((L('One video is already being converted for watching -- try again when it stops, or play the original') if n == 1 else L('Videos already being converted for watching: {n} -- try again when one stops, or play the original', n=n)))
         info = await asyncio.to_thread(media_tools.probe_streams, source)
         duration = float(info.get("duration") or 0)
         if not info.get("video") or duration <= 0:
-            raise TranscodeError("FFmpeg can't read this video")
+            raise TranscodeError(L("FFmpeg can't read this video"))
         sid = secrets.token_urlsafe(12)
         folder = self.root(settings) / sid
         folder.mkdir(parents=True, exist_ok=True)
@@ -203,7 +203,7 @@ class LiveTranscoder:
         open_files.register(source, s)
         self._ensure_reaper()
         # On Tasks while it runs (2.18.0); Stop there ends it (the player falls back to the original).
-        s.activity = activity.start("live_convert", f"Converting for watching ({height}p): {title or item_id}",
+        s.activity = activity.start("live_convert", L('Converting for watching ({height}p): {title}', height=height, title=title or item_id),
                                     source=username or "manual", progress=lambda s=s: self._progress(s))
         s.activity.stopper = lambda sid=sid: self.end(sid, reason="stopped on Tasks")
         s.activity.item = {"id": item_id, "title": title} if title else None  # Tasks links it (3.5.0)
@@ -221,7 +221,7 @@ class LiveTranscoder:
     def _progress(s: Session) -> dict:
         at = s.wanted * SEG
         made = max(s.made_up_to(), s.wanted)
-        return {"stage": "Paused — far enough ahead of the viewer" if s.paused else "Converting",
+        return {"stage": L('Paused — far enough ahead of the viewer') if s.paused else L('Converting'),
                 "done": min(made + 1, s.segments), "total": s.segments,
                 "detail": f"watching at {int(at // 60)}:{int(at % 60):02d} of {int(s.duration // 60)}:{int(s.duration % 60):02d}"}
 
@@ -234,7 +234,7 @@ class LiveTranscoder:
                 self.stopped = {k: t for k, t in self.stopped.items() if now - t < 3600}
                 self.stopped[sid] = now
             if s.activity is not None:
-                s.activity.finish("stopped" if "Tasks" in reason else "done", f"Ended ({reason})")
+                s.activity.finish("stopped" if "Tasks" in reason else "done", L('Ended ({reason})', reason=reason))
             logger.info("Converting while watching ended ({}): item {} (session {})", reason, s.item_id, sid[:6])
 
     def end_all(self) -> None:
@@ -254,7 +254,7 @@ class LiveTranscoder:
 
     async def segment(self, settings, s: Session, n: int) -> Path:
         if n < 0 or n >= s.segments:
-            raise TranscodeError("No such segment")
+            raise TranscodeError(L('No such segment'))
         s.wanted = n
         f = s.seg_file(n)
         async with s.lock:
@@ -268,14 +268,14 @@ class LiveTranscoder:
         deadline = time.time() + WAIT
         while not f.exists():
             if s.closed:
-                raise TranscodeError("The conversion was stopped")
+                raise TranscodeError(L('The conversion was stopped'))
             if not s.running() and not f.exists():
                 if s.proc is not None and s.proc.returncode not in (0, None):
-                    raise TranscodeError(f"FFmpeg stopped (exit code {s.proc.returncode})")
+                    raise TranscodeError(L('FFmpeg stopped (exit code {returncode})', returncode=s.proc.returncode))
                 if s.proc is None:
-                    raise TranscodeError("The conversion was stopped")
+                    raise TranscodeError(L('The conversion was stopped'))
             if time.time() > deadline:
-                raise TranscodeError("The conversion is too slow for this video on this server")
+                raise TranscodeError(L('The conversion is too slow for this video on this server'))
             await asyncio.sleep(0.2)
         s.last_seen = time.time()
         return f

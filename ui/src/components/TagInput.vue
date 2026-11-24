@@ -91,7 +91,7 @@ function onBlur() {
     <div class="tag-input input" @click="box?.focus()">
       <span v-for="(v, i) in modelValue" :key="v" class="chip" :class="[chipClass, field === 'performers' ? perfClass(v) : null]"
             :title="field === 'performers' ? perfTitle(v) : undefined">
-        {{ v }}<button type="button" class="chip-x" :aria-label="`Remove ${v}`" @click.stop="remove(i)">×</button>
+        {{ v }}<button type="button" class="chip-x" :aria-label="$t('Remove {name}', { name: v })" @click.stop="remove(i)">×</button>
       </span>
       <input :id="inputId" ref="box" v-model="text" role="combobox" autocomplete="off" :aria-expanded="open && shown.length > 0"
              :aria-controls="listId" :aria-activedescendant="active >= 0 ? `${listId}-${active}` : undefined"
@@ -110,7 +110,7 @@ function onBlur() {
 .tag-input-wrap { position: relative; }
 .tag-input { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; min-height: 2.5rem; height: auto; padding: 0.3rem 0.4rem; cursor: text; }
 .tag-input input { flex: 1; min-width: 8rem; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; padding: 0.2rem; }
-.suggestions { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 0.25rem); margin: 0; padding: 0.25rem; list-style: none; max-height: 16rem; overflow-y: auto;
+.suggestions { position: absolute; z-index: 30; inset-inline-start: 0; inset-inline-end: 0; top: calc(100% + 0.25rem); margin: 0; padding: 0.25rem; list-style: none; max-height: 16rem; overflow-y: auto;
   background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,.4)); }
 .suggestions.inline { position: static; margin-top: 0.25rem; box-shadow: none; max-height: 14rem; }
 .suggestions li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.875rem; }

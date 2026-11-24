@@ -36,10 +36,10 @@ function open(key) { router.push({ name: "portal", params: { tab: key } }); }
 <template>
   <div class="portal">
     <header class="portal-head">
-      <h1>Management</h1>
-      <TabBar :tabs="tabs" :active="current?.key" page="portal" label="Management" @select="open" />
+      <h1>{{ $t("Management") }}</h1>
+      <TabBar :tabs="tabs" :active="current?.key" page="portal" :label="$t('Management')" @select="open" />
     </header>
-    <p v-if="!tabs.length" class="empty">This part is for the admin.</p>
+    <p v-if="!tabs.length" class="empty">{{ $t("This part is for the admin.") }}</p>
     <div v-else class="portal-body"><component :is="VIEWS[current.key]" :key="current.key" /></div>
   </div>
 </template>

@@ -12,6 +12,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from ..i18n import L
 from .. import secrets_store
 from ..config import get_settings
 from ..security import AuthContext, require_permission
@@ -69,11 +70,11 @@ def update_credentials(payload: CredentialsUpdate, user: AuthContext = Depends(_
     for name, value in payload.values.items():
         d = secrets_store.FIELDS.get(name)
         if d is None or d.get("internal"):
-            raise HTTPException(status_code=400, detail=f"Unknown credential: {name}")
+            raise HTTPException(status_code=400, detail=L('Unknown credential: {name}', name=name))
         if d["kind"] == "number" and value and not value.strip().isdigit():
-            raise HTTPException(status_code=400, detail=f"{d['label']} must be a number")
+            raise HTTPException(status_code=400, detail=L('{label} must be a number', label=d['label']))
         if d["kind"] == "toggle" and value not in ("1", "0", "", None):
-            raise HTTPException(status_code=400, detail=f"{d['label']} must be on or off")
+            raise HTTPException(status_code=400, detail=L('{label} must be on or off', label=d['label']))
     secrets_store.write(payload.values)
     reload_settings()
     return {"ok": True}
@@ -83,7 +84,7 @@ def update_credentials(payload: CredentialsUpdate, user: AuthContext = Depends(_
 def generate_credential(name: str, user: AuthContext = Depends(_admin)):
     d = secrets_store.FIELDS.get(name)
     if not d or not d.get("generate"):
-        raise HTTPException(status_code=400, detail="This credential cannot be generated")
+        raise HTTPException(status_code=400, detail=L('This credential cannot be generated'))
     value = secrets_store.generate_token()
     secrets_store.write({name: value})
     reload_settings()
@@ -94,7 +95,7 @@ def generate_credential(name: str, user: AuthContext = Depends(_admin)):
 def reveal_credential(name: str, user: AuthContext = Depends(_admin)):
     d = secrets_store.FIELDS.get(name)
     if not d or not d.get("revealable"):
-        raise HTTPException(status_code=403, detail="This credential cannot be revealed")
+        raise HTTPException(status_code=403, detail=L('This credential cannot be revealed'))
     return {"value": secrets_store.values().get(name)}
 
 
@@ -105,7 +106,7 @@ async def test_pmvhaven_api_key(payload: ApiKeyTest, user: AuthContext = Depends
     settings = get_settings()
     key = (payload.api_key or "").strip() or settings.pmvhaven_api_key
     if not key:
-        return {"ok": False, "message": "No API key saved yet"}
+        return {"ok": False, "message": L('No API key saved yet')}
     site = settings.sites.get("pmvhaven")
     base = (site.base_url if site else "https://pmvhaven.com").rstrip("/")
     try:
@@ -113,14 +114,14 @@ async def test_pmvhaven_api_key(payload: ApiKeyTest, user: AuthContext = Depends
             resp = await client.get(f"{base}/api/user/favorites", params={"limit": 1},
                                     headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
     except httpx.HTTPError as exc:
-        return {"ok": False, "message": f"Could not reach PMVHaven: {exc.__class__.__name__}"}
+        return {"ok": False, "message": L('Could not reach PMVHaven: {name}', name=exc.__class__.__name__)}
     if resp.status_code == 200:
-        return {"ok": True, "message": "API key accepted by PMVHaven"}
+        return {"ok": True, "message": L('API key accepted by PMVHaven')}
     if resp.status_code in (401, 403):
-        return {"ok": False, "message": "PMVHaven rejected this API key"}
+        return {"ok": False, "message": L('PMVHaven rejected this API key')}
     if resp.status_code == 429:
-        return {"ok": False, "message": "Rate limited by PMVHaven -- try again in a minute"}
-    return {"ok": False, "message": f"Unexpected response from PMVHaven (HTTP {resp.status_code})"}
+        return {"ok": False, "message": L('Rate limited by PMVHaven -- try again in a minute')}
+    return {"ok": False, "message": L('Unexpected response from PMVHaven (HTTP {status})', status=resp.status_code)}
 
 
 @router.post("/api/credentials/test/virustotal")
@@ -129,5 +130,5 @@ async def test_virustotal_key(payload: ApiKeyTest, user: AuthContext = Depends(_
     from .. import upload_safety
     key = (payload.api_key or "").strip() or get_settings().virustotal_api_key
     if not key:
-        return {"ok": False, "message": "No API key saved yet"}
+        return {"ok": False, "message": L('No API key saved yet')}
     return await asyncio.to_thread(upload_safety.virustotal_key_test, key)

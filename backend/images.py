@@ -9,6 +9,7 @@ Pillow does the work (requirements.txt). Rotation from EXIF is applied,
 transparency is kept, animated images keep their first frame.
 """
 from __future__ import annotations
+from .i18n import L
 
 import io
 import os
@@ -37,7 +38,7 @@ def to_webp(data: bytes, max_side: int = MAX_SIDE, quality: int = QUALITY) -> by
             im.save(out, "WEBP", quality=quality, method=METHOD)
             return out.getvalue()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise ValueError(f"Not a usable image ({exc.__class__.__name__})") from exc
+        raise ValueError(L('Not a usable image ({name})', name=exc.__class__.__name__)) from exc
 
 
 def convert_file(path: str) -> tuple[str, int, int]:

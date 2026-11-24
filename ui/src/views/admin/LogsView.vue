@@ -3,6 +3,7 @@
 // background jobs logged, newest first, 200 at a time. Each entry is one
 // JSON record (click a row to see all of it); filters live in the URL and
 // "Export" downloads the matching entries as JSON Lines.
+import { t, locale, tn, formatNumber } from "../../lib/i18n.js";
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icon from "../../components/Icon.vue";
@@ -14,10 +15,10 @@ const route = useRoute();
 const router = useRouter();
 const ACTIONS = "!system";
 const LEVELS = [
-  { key: "DEBUG", label: "Everything (debug)" }, { key: "INFO", label: "Info and up" },
-  { key: "WARNING", label: "Warnings and errors" }, { key: "ERROR", label: "Errors only" },
+  { key: "DEBUG", label: t("Everything (debug)") }, { key: "INFO", label: t("Info and up") },
+  { key: "WARNING", label: t("Warnings and errors") }, { key: "ERROR", label: t("Errors only") },
 ];
-const IP_MODES = { hashed: "hashed", masked: "masked", full: "full addresses", off: "not recorded" };
+const IP_MODES = { hashed: t("hashed"), masked: t("masked"), full: t("full addresses"), off: t("not recorded") };
 
 const filters = computed(() => ({
   q: route.query.q || "", min_level: route.query.level || "INFO",
@@ -28,10 +29,11 @@ const filters = computed(() => ({
   since: route.query.from || "", until: route.query.to || "",
 }));
 const windowText = computed(() => {
-  const f = Number(route.query.from), t = Number(route.query.to);
-  if (!f && !t) return "";
-  const at = (s) => new Date(s * 1000).toLocaleString();
-  return f && t ? `${at(f)} – ${new Date(t * 1000).toLocaleTimeString()}` : f ? `from ${at(f)}` : `until ${at(t)}`;
+  const f = Number(route.query.from), u = Number(route.query.to);
+  if (!f && !u) return "";
+  const at = (s) => new Date(s * 1000).toLocaleString(locale());
+  return f && u ? `${at(f)} – ${new Date(u * 1000).toLocaleTimeString(locale())}`
+    : f ? t("from {time}", { time: at(f) }) : t("until {time}", { time: at(u) });
 });
 function setFilter(patch) {
   const next = { ...route.query, ...patch };
@@ -76,7 +78,7 @@ async function load() {
     hasMore.value = res.has_more;
     error.value = "";
   } catch (err) {
-    if (gen === generation) error.value = err.message || "Could not load the logs";
+    if (gen === generation) error.value = err.message || t("Could not load the logs");
   } finally {
     if (gen === generation) loading.value = false;
   }
@@ -133,17 +135,16 @@ function toggle(id) {
 }
 async function copyEntry(r, detailOnly = false) {
   const ok = await copyText(detailOnly ? r.detail : JSON.stringify(r, null, 2));
-  toast(ok ? (detailOnly ? "Error details copied" : "Entry copied") : "The browser blocked copying — select the text and copy it by hand",
+  toast(ok ? (detailOnly ? t("Error details copied") : t("Entry copied")) : t("The browser blocked copying — select the text and copy it by hand"),
         { type: ok ? "success" : "error" });
 }
 function onRowKey(e, id) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(id); } }
 const fmtWhen = (ts) => new Date(ts * 1000).toLocaleString([], { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const levelClass = (l) => ({ ERROR: "err", CRITICAL: "err", WARNING: "warn", DEBUG: "dbg", SUCCESS: "ok" }[l] || "info");
 const summary = computed(() => {
-  if (total.value === null) return loading.value ? "Loading…" : "";
-  const n = total.value.toLocaleString();
-  return `${n} ${total.value === 1 ? "entry matches" : "entries match"}`
-    + (total.value > items.value.length ? ` — showing the newest ${items.value.length.toLocaleString()}` : "");
+  if (total.value === null) return loading.value ? t("Loading…") : "";
+  const matches = tn("{n} entry matches", "{n} entries match", total.value);
+  return total.value > items.value.length ? t("{matches} — showing the newest {shown}", { matches, shown: formatNumber(items.value.length) }) : matches;
 });
 </script>
 
@@ -151,63 +152,64 @@ const summary = computed(() => {
   <div class="logs">
     <header class="head">
       <div>
-        <h1>Logs</h1>
-        <p class="muted small">Every action and everything the app's background jobs record, newest first. Click a row for the full entry.
-          <span v-if="ipMode">Addresses: {{ IP_MODES[ipMode] || ipMode }}.</span>
-          {{ " " }}<RouterLink :to="{ name: 'server', query: { tab: 'logging' } }">Logging settings</RouterLink></p>
-        <p v-if="!recording" class="error-text small">New entries aren't being recorded: logging (or this log) is switched off in Server Settings → Logging.</p>
+        <h1>{{ $t("Logs") }}</h1>
+        <p class="muted small">{{ $t("Every action and everything the app's background jobs record, newest first. Click a row for the full entry.") }}
+          <span v-if="ipMode">{{ $t("Addresses: {mode}.", { mode: IP_MODES[ipMode] || ipMode }) }}</span>
+          {{ " " }}<RouterLink :to="{ name: 'server', query: { tab: 'logging' } }">{{ $t("Logging settings") }}</RouterLink></p>
+        <p v-if="!recording" class="error-text small">{{ $t("New entries aren't being recorded: logging (or this log) is switched off in Server Settings → Logging.") }}</p>
       </div>
       <div class="head-actions">
-        <label class="switch" title="Add new entries as they happen"><input v-model="live" type="checkbox">Live</label>
-        <button class="btn btn-sm" title="Refresh" @click="load(); loadFacets()"><Icon name="repeat" />Refresh</button>
-        <a class="btn btn-sm" :href="exportHref" title="Download the matching entries as JSON Lines (one JSON object per line)"><Icon name="download" />Export</a>
+        <label class="switch" :title="$t('Add new entries as they happen')"><input v-model="live" type="checkbox">{{ $t("Live") }}</label>
+        <button class="btn btn-sm" :title="$t('Refresh')" @click="load(); loadFacets()"><Icon name="repeat" />{{ $t("Refresh") }}</button>
+        <a class="btn btn-sm" :href="exportHref" :title="$t('Download the matching entries as JSON Lines (one JSON object per line)')"><Icon name="download" />{{ $t("Export") }}</a>
       </div>
     </header>
 
     <div class="filters">
-      <label>Category
+      <label>{{ $t("Category") }}
         <select class="select" :value="route.query.cat || ACTIONS" @change="setFilter({ cat: $event.target.value === ACTIONS ? '' : $event.target.value })">
-          <option :value="ACTIONS">User actions (no system entries)</option>
-          <option value="all">Everything</option>
+          <option :value="ACTIONS">{{ $t("User actions (no system entries)") }}</option>
+          <option value="all">{{ $t("Everything") }}</option>
           <option v-for="[c, n] in categoryOptions" :key="c" :value="c">{{ c }} ({{ n.toLocaleString() }})</option>
         </select>
       </label>
-      <label>Event
+      <label>{{ $t("Event") }}
         <select class="select" :value="filters.event" @change="setFilter({ event: $event.target.value })">
-          <option value="">All</option>
+          <option value="">{{ $t("All") }}</option>
           <option v-for="[e, n] in eventOptions" :key="e" :value="e">{{ e }} ({{ n.toLocaleString() }})</option>
         </select>
       </label>
-      <label>User
+      <label>{{ $t("User") }}
         <select class="select" :value="filters.user" @change="setFilter({ user: $event.target.value })">
-          <option value="">Anyone</option>
+          <option value="">{{ $t("Anyone") }}</option>
           <option v-for="[u, n] in userOptions" :key="u" :value="u">{{ u }} ({{ n.toLocaleString() }})</option>
         </select>
       </label>
-      <label>Level
+      <label>{{ $t("Level") }}
         <select class="select" :value="filters.min_level" @change="setFilter({ level: $event.target.value === 'INFO' ? '' : $event.target.value })">
           <option v-for="l in LEVELS" :key="l.key" :value="l.key">{{ l.label }}</option>
         </select>
       </label>
-      <label class="grow">Search
-        <input v-model="searchText" class="input" type="search" placeholder="Any text in the entry" autocomplete="off">
+      <label class="grow">{{ $t("Search") }}
+        <input v-model="searchText" class="input" type="search" :placeholder="$t('Any text in the entry')" autocomplete="off">
       </label>
     </div>
     <div v-if="windowText" class="ip-filter">
-      Only <strong>{{ windowText }}</strong><template v-if="route.query.task"> (while “{{ route.query.task }}” ran)</template>
-      <button class="btn btn-ghost btn-sm" @click="setFilter({ from: '', to: '', task: '' })">✕ clear</button>
+      <Tx v-if="route.query.task" msg="Only {time} (while “{task}” ran)" :params="{ task: route.query.task }"><template #time><strong>{{ windowText }}</strong></template></Tx>
+      <Tx v-else msg="Only {time}"><template #time><strong>{{ windowText }}</strong></template></Tx>
+      <button class="btn btn-ghost btn-sm" @click="setFilter({ from: '', to: '', task: '' })">{{ $t("✕ clear") }}</button>
     </div>
     <div v-if="filters.ip" class="ip-filter">
-      Address <code>{{ filters.ip }}</code> <button class="btn btn-ghost btn-sm" @click="setFilter({ ip: '' })">✕ clear</button>
+      {{ $t("Address") }} <code>{{ filters.ip }}</code> <button class="btn btn-ghost btn-sm" @click="setFilter({ ip: '' })">{{ $t("✕ clear") }}</button>
     </div>
 
     <p class="summary" aria-live="polite">{{ summary }}</p>
     <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}</div>
     <div v-else class="card table-wrap">
       <table class="log-table">
-        <thead><tr><th>Time</th><th>Level</th><th>Event</th><th>User</th><th>Address</th><th>What happened</th></tr></thead>
+        <thead><tr><th>{{ $t("Time") }}</th><th>{{ $t("Level") }}</th><th>{{ $t("Event") }}</th><th>{{ $t("User") }}</th><th>{{ $t("Address") }}</th><th>{{ $t("What happened") }}</th></tr></thead>
         <tbody>
-          <tr v-if="!items.length && !loading"><td colspan="6" class="none">No entries match these filters.</td></tr>
+          <tr v-if="!items.length && !loading"><td colspan="6" class="none">{{ $t("No entries match these filters.") }}</td></tr>
           <template v-for="r in items" :key="r.id">
             <tr class="row" :class="[levelClass(r.level), { open: open.has(r.id) }]" tabindex="0" :aria-expanded="open.has(r.id)"
                 @click="toggle(r.id)" @keydown="onRowKey($event, r.id)">
@@ -216,15 +218,15 @@ const summary = computed(() => {
               <td class="mono">{{ r.event }}</td>
               <td>{{ r.user || "—" }}</td>
               <td class="mono">
-                <button v-if="r.ip" class="linkish" title="Show only this address" @click.stop="setFilter({ ip: r.ip })">{{ r.ip }}</button>
+                <button v-if="r.ip" class="linkish" :title="$t('Show only this address')" @click.stop="setFilter({ ip: r.ip })">{{ r.ip }}</button>
               </td>
-              <td class="msg">{{ r.message }}<span v-if="r.detail" class="trace" title="Has error details"> ⋯</span></td>
+              <td class="msg">{{ r.message }}<span v-if="r.detail" class="trace" :title="$t('Has error details')"> ⋯</span></td>
             </tr>
             <tr v-if="open.has(r.id)" class="details"><td colspan="6" @click.stop>
               <div class="copy-bar">
-                <button class="btn btn-sm" type="button" title="Copy this entry as JSON" @click="copyEntry(r)"><Icon name="copy" :size="14" />Copy</button>
-                <button v-if="r.detail" class="btn btn-ghost btn-sm" type="button" title="Copy only the error details (traceback)"
-                        @click="copyEntry(r, true)">Copy error details</button>
+                <button class="btn btn-sm" type="button" :title="$t('Copy this entry as JSON')" @click="copyEntry(r)"><Icon name="copy" :size="14" />{{ $t("Copy") }}</button>
+                <button v-if="r.detail" class="btn btn-ghost btn-sm" type="button" :title="$t('Copy only the error details (traceback)')"
+                        @click="copyEntry(r, true)">{{ $t("Copy error details") }}</button>
               </div>
               <pre>{{ JSON.stringify(r, null, 2) }}</pre>
               <!-- The traceback readable, with its line breaks (in the JSON above they're \n). -->
@@ -235,7 +237,7 @@ const summary = computed(() => {
       </table>
     </div>
     <div class="foot">
-      <button v-if="hasMore" class="btn btn-sm" :disabled="loading" @click="loadOlder">Show older entries</button>
+      <button v-if="hasMore" class="btn btn-sm" :disabled="loading" @click="loadOlder">{{ $t("Show older entries") }}</button>
     </div>
   </div>
 </template>
@@ -255,7 +257,7 @@ const summary = computed(() => {
 .summary { margin: 0; font-size: 0.8rem; color: var(--text-2); }
 .table-wrap { overflow-x: auto; padding: 0; }
 .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.log-table th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+.log-table th { text-align: start; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
 .log-table td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: baseline; }
 .row { cursor: pointer; }
 .row:hover, .row.open { background: var(--panel-2); }

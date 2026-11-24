@@ -2,6 +2,7 @@
 // Edit a video's performers, tags, music and content flags by hand. Edited
 // fields are kept when the library is synced, updated or repaired; "Use the
 // site's" drops the edit again.
+import { t } from "../../lib/i18n.js";
 import { ref, onMounted } from "vue";
 import { normalizeMetadata } from "../../lib/metadata.js";
 import ModalDialog from "../ModalDialog.vue";
@@ -18,11 +19,11 @@ const emit = defineEmits(["close"]);
 
 const FIELDS = [
   // 3.6.0: who made it -- empty: the uploader counts as the creator (placeholder says who).
-  { key: "creators", label: "Creators", chip: "chip-creator", placeholder: "Add a creator…" },
-  { key: "performers", label: "Performers", chip: "chip-performer", placeholder: "Add a performer…" },
-  { key: "tags", label: "Tags", chip: "chip-tag", placeholder: "Add a tag…" },
-  { key: "music", label: "Music", chip: "chip-music", placeholder: "Add music (Song — Artist)…" },
-  { key: "flags", label: "Content flags", chip: "", placeholder: "Add a flag…" },
+  { key: "creators", label: t("Creators"), chip: "chip-creator", placeholder: t("Add a creator…") },
+  { key: "performers", label: t("Performers"), chip: "chip-performer", placeholder: t("Add a performer…") },
+  { key: "tags", label: t("Tags"), chip: "chip-tag", placeholder: t("Add a tag…") },
+  { key: "music", label: t("Music"), chip: "chip-music", placeholder: t("Add music (Song — Artist)…") },
+  { key: "flags", label: t("Content flags"), chip: "", placeholder: t("Add a flag…") },
 ];
 const edits = props.item.user_edits || {};
 const initial = {
@@ -68,10 +69,10 @@ async function save() {
   error.value = "";
   try {
     await api(`/api/library/${encodeURIComponent(props.item.id)}/details`, { method: "PATCH", body });
-    toast("Details saved", { type: "success" });
+    toast(t("Details saved"), { type: "success" });
     emit("close");
   } catch (err) {
-    error.value = err.message || "Could not save";
+    error.value = err.message || t("Could not save");
   } finally {
     busy.value = false;
   }
@@ -79,28 +80,27 @@ async function save() {
 </script>
 
 <template>
-  <ModalDialog title="Edit details" width="min(90rem, max(80vw, 44rem))" @close="emit('close')">
-    <p class="muted intro">Your changes are kept when the library is synced, updated or repaired.
-      Click a box to see every existing value; whether the list stays open after a pick is set in My Settings → Video page.</p>
+  <ModalDialog :title="$t('Edit details')" width="min(90rem, max(80vw, 44rem))" @close="emit('close')">
+    <p class="muted intro">{{ $t("Your changes are kept when the library is synced, updated or repaired. Click a box to see every existing value; whether the list stays open after a pick is set in My Settings → Video page.") }}</p>
     <div class="fields">
     <div v-for="f in FIELDS" :key="f.key" class="field-block">
       <div class="field-head">
         <span class="field-label">{{ f.label }}</span>
-        <span v-if="isEdited(f.key)" class="edited">edited</span>
-        <button v-if="isEdited(f.key)" type="button" class="btn btn-ghost btn-sm" title="Drop your edit and use what PMVHaven has"
-                @click="useSite(f.key)">Use the site's</button>
-        <span v-else-if="reset.has(f.key)" class="muted small">will use the site's on save</span>
+        <span v-if="isEdited(f.key)" class="edited">{{ $t("edited") }}</span>
+        <button v-if="isEdited(f.key)" type="button" class="btn btn-ghost btn-sm" :title="$t('Drop your edit and use what PMVHaven has')"
+                @click="useSite(f.key)">{{ $t("Use the site's") }}</button>
+        <span v-else-if="reset.has(f.key)" class="muted small">{{ $t("will use the site's on save") }}</span>
       </div>
       <TagInput :model-value="values[f.key]" :field="f.key" :chip-class="f.chip"
-                :placeholder="f.key === 'creators' && !values.creators?.length && item.creator ? `Same as uploader: ${item.creator}` : f.placeholder"
+                :placeholder="f.key === 'creators' && !values.creators?.length && item.creator ? $t('Same as uploader: {creator}', { creator: item.creator }) : f.placeholder"
                 :keep-open="session.prefs.suggestKeepOpen" show-all inline
                 @update:model-value="onChange(f.key, $event)" />
     </div>
     </div>
     <p v-if="error" class="error">{{ error }}</p>
     <template #footer>
-      <button class="btn" @click="emit('close')">Cancel</button>
-      <button class="btn btn-primary" :disabled="busy" @click="save">{{ busy ? "Saving…" : "Save" }}</button>
+      <button class="btn" @click="emit('close')">{{ $t("Cancel") }}</button>
+      <button class="btn btn-primary" :disabled="busy" @click="save">{{ busy ? $t("Saving…") : $t("Save") }}</button>
     </template>
   </ModalDialog>
 </template>

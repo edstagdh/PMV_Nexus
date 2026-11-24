@@ -11,6 +11,8 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from loguru import logger
 from pydantic import BaseModel
 
+from . import i18n
+from .i18n import L
 from .config import get_settings
 from .models import User
 
@@ -80,14 +82,14 @@ def password_problems(password: str, username: Optional[str] = None) -> list[str
     password = password or ""
     found = []
     if not PASSWORD_MIN_LENGTH <= len(password) <= PASSWORD_MAX_LENGTH:
-        found.append(f"Use {PASSWORD_MIN_LENGTH} to {PASSWORD_MAX_LENGTH} characters.")
+        found.append(L("Use {min} to {max} characters.", min=PASSWORD_MIN_LENGTH, max=PASSWORD_MAX_LENGTH))
     if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
-        found.append("Use at least one letter and one number.")
+        found.append(L("Use at least one letter and one number."))
     name = (username or "").strip().lower()
     if len(name) >= 3 and name in password.lower():
-        found.append("Don't include your username.")
+        found.append(L("Don't include your username."))
     if password.lower() in _COMMON_PASSWORDS or _is_simple_run(password):
-        found.append("That password is too easy to guess.")
+        found.append(L("That password is too easy to guess."))
     return found
 
 
@@ -95,12 +97,12 @@ def password_policy_rules() -> dict:
     return {
         "min_length": PASSWORD_MIN_LENGTH, "max_length": PASSWORD_MAX_LENGTH,
         "rules": [
-            {"id": "length", "text": f"{PASSWORD_MIN_LENGTH} to {PASSWORD_MAX_LENGTH} characters"},
-            {"id": "mix", "text": "At least one letter and one number"},
-            {"id": "username", "text": "Doesn't include your username"},
-            {"id": "common", "text": "Not an easy-to-guess password (like 12345678 or password1)"},
+            {"id": "length", "text": L('{min} to {max} characters', min=PASSWORD_MIN_LENGTH, max=PASSWORD_MAX_LENGTH)},
+            {"id": "mix", "text": L('At least one letter and one number')},
+            {"id": "username", "text": L("Doesn't include your username")},
+            {"id": "common", "text": L('Not an easy-to-guess password (like 12345678 or password1)')},
         ],
-        "note": "Capitals and symbols are allowed but not required.",
+        "note": L("Capitals and symbols are allowed but not required."),
     }
 
 
@@ -108,7 +110,8 @@ def validate_password_policy(password: str, username: Optional[str] = None) -> O
     """None if `password` is acceptable, else one message naming every broken
     rule -- callers reject the request with it as the detail."""
     problems = password_problems(password, username)
-    return " ".join(problems) if problems else None
+    # Each rule in the request's language (3.7.0); joined, they'd no longer be translatable.
+    return " ".join(str(i18n.tr(p)) for p in problems) if problems else None
 
 
 # ============================================================
@@ -243,12 +246,12 @@ async def get_current_user(request: Request) -> AuthContext:
     token = request.cookies.get(COOKIE_NAME)
     payload = _read_session_payload(token) if token else None
     if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=L('Not authenticated'))
 
     user_id = payload.get("user_id")
     current_version = _get_cached_token_version(user_id) if user_id else None
     if current_version is None or current_version != payload.get("token_version"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired -- please log in again")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=L('Session expired -- please log in again'))
 
     live = effective_permissions(user_id)
     return AuthContext(
@@ -294,7 +297,7 @@ def require_any(*permissions: str):
     async def _dependency(user: AuthContext = Depends(get_current_user)) -> AuthContext:
         if not any(user.has_permission(p) for p in permissions):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail=f"Missing required permission: {' or '.join(permissions)}")
+                                detail=L('Missing required permission: {permission}', permission=' or '.join(permissions)))
         return user
 
     return _dependency
@@ -315,7 +318,7 @@ def require_permission(permission: str):
 
     async def _dependency(user: AuthContext = Depends(get_current_user)) -> AuthContext:
         if not user.has_permission(permission):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Missing required permission: {permission}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=L('Missing required permission: {permission}', permission=permission))
         return user
 
     return _dependency
@@ -328,7 +331,7 @@ async def require_admin(user: AuthContext = Depends(get_current_user)) -> AuthCo
     quite all, permissions -- role NAME is not what's being checked,
     actual grant is."""
     if not user.has_permission("*"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=L('Admin access required'))
     return user
 
 
@@ -341,10 +344,10 @@ def verify_api_key(request: Request) -> None:
     instead."""
     settings = get_settings()
     if not settings.app_api_key:
-        raise HTTPException(status_code=503, detail="API key auth is not configured on the server")
+        raise HTTPException(status_code=503, detail=L('API key auth is not configured on the server'))
     provided = request.headers.get("X-API-Key", "")
     if not hmac.compare_digest(provided, settings.app_api_key):
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise HTTPException(status_code=401, detail=L('Invalid API key'))
 
 
 # ============================================================
@@ -392,7 +395,7 @@ def ensure_bootstrap_admin() -> None:
         # ever runs once at startup before the server accepts any
         # requests) -- but don't let a transient DB hiccup here silently
         # leave the app with zero admin accounts and no visible error.
-        raise RuntimeError(f"Could not create the initial admin account: {exc}") from exc
+        raise RuntimeError(L('Could not create the initial admin account: {error}', error=exc)) from exc
 
     logger.info(
         "Bootstrapped the initial admin account '{}' from INITIAL_ADMIN_USERNAME/"
@@ -433,12 +436,12 @@ def complete_first_run_setup(code: str, username: str, password: str) -> User:
     global _setup_code
     from .library_manager import library_manager
     if not setup_required():
-        raise ValueError("Setup has already been completed")
+        raise ValueError(L('Setup has already been completed'))
     if not hmac.compare_digest((code or "").strip().upper(), _setup_code):
-        raise ValueError("Wrong setup code -- copy it from the app's console window or log")
+        raise ValueError(L("Wrong setup code -- copy it from the app's console window or log"))
     username = (username or "").strip()
     if not username:
-        raise ValueError("Username is required")
+        raise ValueError(L('Username is required'))
     problem = validate_password_policy(password, username)
     if problem:
         raise ValueError(problem)

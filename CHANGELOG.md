@@ -4,6 +4,61 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.7.0] - 2026-11-25
+
+### Added
+- **Languages.** The whole interface — and the messages the server sends: errors, notifications, Tasks entries,
+  job results — can be shown in other languages. Each person picks theirs in **My Settings → Language**; the
+  admin chooses the default (also used on the sign-in page, which has its own small language list). Texts a
+  language doesn't have yet show in English; video titles, names and tags stay as they are.
+- **Getting languages:** admins install them from the app's GitHub repository (**Get languages from GitHub**,
+  with **Update** when a newer file is published) or from a file. Every download is checked against GitHub's list
+  of sizes and SHA-256 hashes, and every text is checked before it's used: a language file can only change words
+  (no markup), and an entry that doesn't fit the English is ignored. Installed languages are kept in
+  `data/languages` and go into backups.
+- **Right-to-left languages** mirror the layout (sidebar on the right, text and buttons right to left); the player,
+  its seekbar and frames, charts and the duration slider keep running left to right. Titles and names in another
+  script keep their own direction, and sizes, times and names inside a sentence keep their own order ("13 MB").
+- **For translators:** `languages/en.json` lists every text (generated from the code), with `TRANSLATING.md`
+  (including a ready-made prompt for AI translation) and `python -m Tools.i18n missing / merge` to translate only
+  what's new after an update. A **Translations** GitHub workflow checks every push: no English typed straight into
+  a page, every language file valid, the list of hashes up to date. The release build runs the same check.
+- **Player on touch screens:** **Loop** (left) and **Next video** (right, while a playlist plays) sit beside the big
+  play/pause button in the middle, in the same round style, instead of in the control bar.
+- **Backups, part by part:** besides the database and settings, a backup can hold the secrets, the ThePornDB
+  performer photos, the thumbnails and previews, the video frames, the seekbar previews — and now **the videos
+  themselves** (the whole library; asked a second time). The Backups page shows each one's files and size, the
+  estimated size of the backup and the free space where backups go (updated every few seconds), and lists exactly
+  what will go in before it starts. A backup that wouldn't fit isn't started (scheduled ones too), and one that runs
+  out of space while being written stops and removes its unfinished file.
+- **Split backups:** a backup bigger than a size you choose (3.9 GB, one Telegram file, to 115 GB, one 128 GB flash
+  drive) is written as numbered parts — `name.zip.001`, `.002`, … — one normal zip cut into pieces, which 7-Zip
+  opens from the first part. The app lists, downloads (part by part), tests, restores and deletes the parts together;
+  Setup restores one when you pick its `.001` file. Scheduled backups use it too.
+- **Uninstall asks what else to delete**, one tick each with its size and folder: the library database and settings,
+  the thumbnails/previews/frames, the backups, and the videos (asked again). Only files the app made are deleted.
+
+### Changed
+- **Performers aren't assumed to be women any more.** Every text about a performer is gender-neutral ("Find on
+  ThePornDB", "Which profile is it?", "Someone else — split off", "Videos in the library"…), and someone whose
+  gender isn't known (or is neither female nor male) gets a neutral placeholder picture instead of the female one.
+- **Python 3.12 to 3.14.** `requirements.txt` now pins the exact package versions the app is tested with (it used
+  to give minimum versions), and those need Python 3.12 or newer, so 3.11 is no longer supported. Setup, install.bat
+  and install.sh look for 3.14, 3.13 or 3.12; an app folder whose `.venv` was made with 3.11 gets a new one on the
+  next update (Setup installs Python 3.12 when the PC has none of them). **Management → Tools** flags a package
+  whose version differs from the pinned one.
+- **Task Manager shows PMV Nexus**, not pythonw.exe: Setup puts a copy of `PMVNexus.exe` in the app's Python
+  environment, and that copy runs Python inside itself (the app, the tray icon and what they start). A Windows
+  service still runs as python.exe.
+- **Backups run in the background** (followed on Tasks, with a notification at the end), and Tasks shows both the
+  whole job and the step it's on, each with its own bar. Pictures and videos are stored in the zip as they are
+  instead of being compressed again (faster, same size). The restore test checks a backup's videos by their size
+  instead of reading them all back; a restore skips videos that are already in place. Restoring a password-protected
+  backup that the saved password opens no longer writes a decrypted copy of it first.
+- Dates and numbers follow the chosen language. Scheduler results read as words in that language, without
+  timestamps and addresses. The built-in jobs' names are translated while they keep their original name.
+- The interface's styles use start / end instead of left / right throughout (no change in English).
+
 ## [3.6.0] - 2026-11-20
 
 ### Added

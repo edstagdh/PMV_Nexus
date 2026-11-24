@@ -1,5 +1,6 @@
 <script setup>
 // New playlist / edit name, description and who can see it.
+import { t } from "../../lib/i18n.js";
 import { ref } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import { api } from "../../lib/api.js";
@@ -23,10 +24,10 @@ async function save() {
     const p = props.playlist
       ? await api(`/api/playlists/${props.playlist.id}`, { method: "PATCH", body })
       : await api("/api/playlists", { method: "POST", body: { ...body, kind: "manual" } });
-    toast(props.playlist ? "Saved" : `Created ${p.name}`, { type: "success" });
+    toast(props.playlist ? t("Saved") : t("Created {name}", { name: p.name }), { type: "success" });
     emit("saved", p);
   } catch (err) {
-    error.value = err.message || "Could not save";
+    error.value = err.message || t("Could not save");
   } finally {
     busy.value = false;
   }
@@ -34,21 +35,21 @@ async function save() {
 </script>
 
 <template>
-  <ModalDialog :title="playlist ? 'Edit playlist' : 'New playlist'" @close="emit('close')">
+  <ModalDialog :title="playlist ? $t('Edit playlist') : $t('New playlist')" @close="emit('close')">
     <form id="pl-form" class="form" @submit.prevent="save">
-      <label class="field">Name<input v-model="form.name" class="input" maxlength="120" required autofocus :disabled="!!playlist?.system"
-        :title="playlist?.system ? 'Built in: its name stays' : undefined"></label>
-      <label class="field">Description<textarea v-model="form.description" class="input area" maxlength="2000" rows="3" placeholder="Optional" /></label>
-      <p v-if="playlist?.system === 'favorites'" class="muted small">Favorites are always private: only you can see them.</p>
-      <div v-else class="field">Who can see it
-        <label class="radio"><input v-model="form.visibility" type="radio" value="private"><span><strong>Private</strong> — only you</span></label>
-        <label class="radio"><input v-model="form.visibility" type="radio" value="public"><span><strong>Public</strong> — every user of this app can see and play it; only you can change it</span></label>
+      <label class="field">{{ $t("Name") }}<input v-model="form.name" class="input" maxlength="120" required autofocus :disabled="!!playlist?.system"
+        :title="playlist?.system ? $t('Built in: its name stays') : undefined"></label>
+      <label class="field">{{ $t("Description") }}<textarea v-model="form.description" class="input area" maxlength="2000" rows="3" :placeholder="$t('Optional')" /></label>
+      <p v-if="playlist?.system === 'favorites'" class="muted small">{{ $t("Favorites are always private: only you can see them.") }}</p>
+      <div v-else class="field">{{ $t("Who can see it") }}
+        <label class="radio"><input v-model="form.visibility" type="radio" value="private"><span><strong>{{ $t("Private") }}</strong> {{ $t("— only you") }}</span></label>
+        <label class="radio"><input v-model="form.visibility" type="radio" value="public"><span><strong>{{ $t("Public") }}</strong> {{ $t("— every user of this app can see and play it; only you can change it") }}</span></label>
       </div>
       <p v-if="error" class="error-text">{{ error }}</p>
     </form>
     <template #footer>
-      <button class="btn" type="button" @click="emit('close')">Cancel</button>
-      <button class="btn btn-primary" type="submit" form="pl-form" :disabled="busy || !form.name.trim()">{{ busy ? "Saving…" : playlist ? "Save" : "Create" }}</button>
+      <button class="btn" type="button" @click="emit('close')">{{ $t("Cancel") }}</button>
+      <button class="btn btn-primary" type="submit" form="pl-form" :disabled="busy || !form.name.trim()">{{ busy ? $t("Saving…") : playlist ? $t("Save") : $t("Create") }}</button>
     </template>
   </ModalDialog>
 </template>

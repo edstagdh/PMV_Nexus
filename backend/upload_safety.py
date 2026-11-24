@@ -27,6 +27,7 @@ The file itself is never run: it's stored under a generated name and served
 as video only (see the security headers in main.py).
 """
 from __future__ import annotations
+from .i18n import L
 
 import glob
 import os
@@ -135,7 +136,7 @@ def scanner_test() -> dict:
     scanner.cache_clear()
     found = scanner()
     if not found:
-        return {"ok": False, "scanner": None, "detail": "No antivirus found (looked for Microsoft Defender's MpCmdRun.exe, clamdscan, clamscan)."}
+        return {"ok": False, "scanner": None, "detail": L("No antivirus found (looked for Microsoft Defender's MpCmdRun.exe, clamdscan, clamscan).")}
     with tempfile.NamedTemporaryFile("wb", suffix=".mp4", delete=False) as fh:
         fh.write(b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 64)
         path = fh.name
@@ -192,7 +193,7 @@ def virustotal_key_test(api_key: str) -> dict:
     verdict, detail = _hash_verdict(EICAR_SHA256, api_key, 15, httpx)
     logger.info("VirusTotal key test: {} -- {}", verdict, detail)
     if verdict == "malicious":
-        return {"ok": True, "message": "Key accepted: VirusTotal answered (its test file is flagged, as it should be)"}
+        return {"ok": True, "message": L('Key accepted: VirusTotal answered (its test file is flagged, as it should be)')}
     return {"ok": False, "message": detail}
 
 

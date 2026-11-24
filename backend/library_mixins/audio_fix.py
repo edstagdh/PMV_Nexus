@@ -21,6 +21,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import activity, media_tools, open_files
 from .core import JobBlockedError
 
@@ -46,10 +47,10 @@ class AudioFixMixin:
         size = os.path.getsize(path)
         free = shutil.disk_usage(Path(path).parent).free
         if free < size + 512 * 1024 * 1024:
-            raise RuntimeError(f"Not enough free space to convert its audio ({_mb(free)} free, {_mb(size)} needed)")
+            raise RuntimeError(L('Not enough free space to convert its audio ({mb} free, {needed} needed)', mb=_mb(free), needed=_mb(size)))
         tmp = await asyncio.to_thread(media_tools.convert_audio_to_aac, path, info)
         if tmp is None:
-            raise RuntimeError(f"FFmpeg couldn't convert its {', '.join(bad)} audio (see the log)")
+            raise RuntimeError(L("FFmpeg couldn't convert its {codecs} audio (see the log)", codecs=', '.join(bad)))
         try:
             for attempt in range(3):
                 open_files.release(path)  # an open stream would block the swap on Windows
@@ -62,7 +63,7 @@ class AudioFixMixin:
                     await asyncio.sleep(2)
         except OSError as exc:
             Path(tmp).unlink(missing_ok=True)
-            raise RuntimeError(f"Couldn't replace the file: {exc}") from exc
+            raise RuntimeError(L("Couldn't replace the file: {error}", error=exc)) from exc
         after = os.path.getsize(path)
         logger.info("Audio converted to AAC ({} -> {}, {} -> {}): {}", ", ".join(bad), "aac", _mb(size), _mb(after), path)
         return size, after
@@ -104,7 +105,7 @@ class AudioFixMixin:
         audio and converts what browsers can't play. Changes files, so it
         doesn't run alongside other jobs that do (duplicate scan, repair...)."""
         if not self._try_acquire_invasive_lock("audio_fix"):
-            raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+            raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
         state = {"checked": 0, "converted": 0, "failed": 0, "total": 0, "saved": 0, "current": None}
         stop = {"now": False}
         try:
@@ -113,14 +114,14 @@ class AudioFixMixin:
             state["total"] = len(items)
 
             def progress() -> dict:
-                return {"stage": "Checking", "done": state["checked"], "total": state["total"],
+                return {"stage": L('Checking'), "done": state["checked"], "total": state["total"],
                         "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else ""),
                     "item": state.get("item") if state["current"] else None}
 
             def stop_now() -> None:
                 stop["now"] = True
 
-            async with activity.track("audio_fix", "Making audio playable", progress=progress, stop=stop_now):
+            async with activity.track("audio_fix", L('Making audio playable'), progress=progress, stop=stop_now):
                 for item in items:
                     if stop["now"] or self._shutting_down:
                         break
@@ -157,7 +158,7 @@ class AudioFixMixin:
                 at = datetime.now().replace(hour=2, minute=0, second=0, microsecond=0)
                 if at <= datetime.now():
                     at += timedelta(days=1)
-                self.create_scheduled_job("audio_fix", "Make audio playable (one time)", True, "simple",
+                self.create_scheduled_job("audio_fix", L("Make audio playable (one time)"), True, "simple",
                                           {"kind": "once", "at": at.strftime("%Y-%m-%dT%H:%M")}, {})
                 logger.info("Scheduler: added a one-time 'Make audio playable' job for {}", at.strftime("%Y-%m-%d %H:%M"))
             self.db.set_app_state(SEED_FLAG, time.time())

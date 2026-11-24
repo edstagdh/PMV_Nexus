@@ -14,6 +14,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from ..i18n import L
 from .. import activity, open_files, storyboard, video_frames
 
 _PATH_FIELDS = ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path")
@@ -111,8 +112,8 @@ class UntrackedFilesMixin:
                 "errors": errors[:20], "roots": {loc: str(root) for loc, root in roots}}
 
     async def find_untracked_files(self) -> dict:
-        async with activity.track("untracked_files", "Looking for untracked files",
-                                  stage="Checking the download and cache folders"):
+        async with activity.track("untracked_files", L('Looking for untracked files'),
+                                  stage=L('Checking the download and cache folders')):
             result = await asyncio.to_thread(self._scan_untracked)
         logger.info("Untracked files scan: {} file(s), {} bytes", len(result["files"]), result["total_size"])
         return result
@@ -148,7 +149,7 @@ class UntrackedFilesMixin:
                     pass
             return {"deleted": deleted, "refused": refused, "failed": failed}
 
-        async with activity.track("untracked_files", f"Deleting {len(paths)} untracked file(s)"):
+        async with activity.track("untracked_files", L('Deleting {count} untracked file(s)', count=len(paths))):
             result = await asyncio.to_thread(run)
         logger.info("Untracked files: deleted {}, refused {}, failed {}",
                     len(result["deleted"]), len(result["refused"]), len(result["failed"]))

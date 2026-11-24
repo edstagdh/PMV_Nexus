@@ -28,7 +28,7 @@ function state(id) {
 </script>
 
 <template>
-  <ul v-if="policy" class="checklist" aria-label="Password rules">
+  <ul v-if="policy" class="checklist" :aria-label="$t('Password rules')">
     <li v-for="r in policy.rules" :key="r.id" :class="{ ok: state(r.id) === true, bad: state(r.id) === false }">
       <span class="mark" aria-hidden="true">{{ state(r.id) === true ? "✓" : state(r.id) === false ? "✗" : "•" }}</span>{{ r.text }}
     </li>

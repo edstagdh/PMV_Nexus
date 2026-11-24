@@ -3,6 +3,7 @@
 // taken out of the page can keep its download open, and the browser only
 // allows ~6 connections to the app at once, so a few hovers could leave
 // later previews (and thumbnails) waiting.
+import { t } from "../lib/i18n.js";
 import { ref, onBeforeUnmount } from "vue";
 
 const props = defineProps({ src: String, itemId: String });
@@ -12,7 +13,7 @@ const el = ref(null);
 function onError() {
   const code = el.value?.error?.code;
   // 4 = MEDIA_ERR_SRC_NOT_SUPPORTED: missing file (404) or a format the browser can't play.
-  const reason = code === 4 ? "missing or unplayable" : "failed to load";
+  const reason = code === 4 ? t("missing or unplayable") : t("failed to load");
   console.warn(`[preview] ${props.itemId}: preview ${reason} (${props.src})`);
   emit("failed", reason);
 }

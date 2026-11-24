@@ -11,6 +11,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from ..i18n import L
 from ..library_manager import library_manager
 from ..models import User, CreateUserRequest, UpdateUserRequest, AdminResetPasswordRequest
 from ..security import (
@@ -33,15 +34,15 @@ def list_users(user: AuthContext = Depends(require_admin)):
 @router.post("/api/users")
 def create_user(payload: CreateUserRequest, user: AuthContext = Depends(require_admin)):
     if not library_manager.db.get_role(payload.role):  # any existing role (2.12.0: roles can be added)
-        raise HTTPException(status_code=400, detail=f"Unknown role '{payload.role}'")
+        raise HTTPException(status_code=400, detail=L("Unknown role '{role}'", role=payload.role))
 
     # Single master-admin invariant -- only one account may hold the
     # "admin" role at a time; there is deliberately no way to have two.
     if payload.role == "admin" and library_manager.db.count_users_by_role("admin") > 0:
-        raise HTTPException(status_code=400, detail="Only one admin account is allowed at a time")
+        raise HTTPException(status_code=400, detail=L('Only one admin account is allowed at a time'))
 
     if library_manager.db.get_user_by_username(payload.username):
-        raise HTTPException(status_code=400, detail=f"Username '{payload.username}' is already taken")
+        raise HTTPException(status_code=400, detail=L("Username '{username}' is already taken", username=payload.username))
 
     password_error = validate_password_policy(payload.password, payload.username)
     if password_error:
@@ -61,11 +62,11 @@ def create_user(payload: CreateUserRequest, user: AuthContext = Depends(require_
 def update_user(user_id: str, payload: UpdateUserRequest, user: AuthContext = Depends(require_admin)):
     target = library_manager.db.get_user_by_id(user_id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
 
     if payload.username is not None and payload.username != target.username:
         if library_manager.db.get_user_by_username(payload.username):
-            raise HTTPException(status_code=400, detail=f"Username '{payload.username}' is already taken")
+            raise HTTPException(status_code=400, detail=L("Username '{username}' is already taken", username=payload.username))
         target.username = payload.username
 
     if payload.is_active is not None and payload.is_active != target.is_active:
@@ -74,7 +75,7 @@ def update_user(user_id: str, payload: UpdateUserRequest, user: AuthContext = De
         # this way (the CLI/.env bootstrap paths only help when NO admin
         # exists at all, not when one exists but is disabled).
         if target.role == "admin" and not payload.is_active:
-            raise HTTPException(status_code=400, detail="The admin account cannot be disabled")
+            raise HTTPException(status_code=400, detail=L('The admin account cannot be disabled'))
         target.is_active = payload.is_active
         if not payload.is_active:
             # Disabling should end their current session(s) right away
@@ -108,7 +109,7 @@ def update_user(user_id: str, payload: UpdateUserRequest, user: AuthContext = De
 def admin_reset_password(user_id: str, payload: AdminResetPasswordRequest, user: AuthContext = Depends(require_admin)):
     target = library_manager.db.get_user_by_id(user_id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
 
     password_error = validate_password_policy(payload.new_password, target.username)
     if password_error:
@@ -131,9 +132,9 @@ def admin_reset_password(user_id: str, payload: AdminResetPasswordRequest, user:
 def delete_user(user_id: str, user: AuthContext = Depends(require_admin)):
     target = library_manager.db.get_user_by_id(user_id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
     if target.role == "admin":
-        raise HTTPException(status_code=400, detail="The admin account cannot be deleted")
+        raise HTTPException(status_code=400, detail=L('The admin account cannot be deleted'))
 
     # Matches the agreed sequence exactly: end their session(s), disable
     # login, then remove the row -- rather than deleting outright and
@@ -203,9 +204,9 @@ def get_access(user: AuthContext = Depends(require_admin)):
 def create_role(body: RoleBody, user: AuthContext = Depends(require_admin)):
     name = body.name.strip().lower()
     if not _NAME.match(name):
-        raise HTTPException(status_code=400, detail="Use letters, numbers, spaces, - _ . (up to 40)")
+        raise HTTPException(status_code=400, detail=L('Use letters, numbers, spaces, - _ . (up to 40)'))
     if library_manager.db.get_role(name):
-        raise HTTPException(status_code=400, detail=f"There's already a role called '{name}'")
+        raise HTTPException(status_code=400, detail=L("There's already a role called '{name}'", name=name))
     library_manager.db.upsert_role(Role(name=name, permissions=perms.valid(body.permissions)))
     _changed()
     return {"ok": True}
@@ -215,9 +216,9 @@ def create_role(body: RoleBody, user: AuthContext = Depends(require_admin)):
 def update_role(name: str, body: RoleBody, user: AuthContext = Depends(require_admin)):
     role = library_manager.db.get_role(name)
     if not role:
-        raise HTTPException(status_code=404, detail="No such role")
+        raise HTTPException(status_code=404, detail=L('No such role'))
     if name == "admin":
-        raise HTTPException(status_code=400, detail="The admin role always has every permission")
+        raise HTTPException(status_code=400, detail=L('The admin role always has every permission'))
     role.permissions = perms.valid(body.permissions)
     library_manager.db.upsert_role(role)
     _changed()
@@ -227,10 +228,10 @@ def update_role(name: str, body: RoleBody, user: AuthContext = Depends(require_a
 @router.delete("/api/roles/{name}")
 def delete_role(name: str, user: AuthContext = Depends(require_admin)):
     if name in BUILTIN_ROLES:
-        raise HTTPException(status_code=400, detail="The admin and user roles can't be deleted")
+        raise HTTPException(status_code=400, detail=L("The admin and user roles can't be deleted"))
     n = library_manager.db.role_user_count(name)
     if n:
-        raise HTTPException(status_code=400, detail=f"{n} {'person has' if n == 1 else 'people have'} this role — give them another one first")
+        raise HTTPException(status_code=400, detail=L('People who have this role: {n} — give them another one first', n=n))
     library_manager.db.delete_role(name)
     _changed()
     return {"ok": True}
@@ -240,7 +241,7 @@ def _save_group(group_id: str, body: GroupBody) -> None:
     db = library_manager.db
     name = body.name.strip()
     if any(g["name"].casefold() == name.casefold() and g["id"] != group_id for g in db.list_groups()):
-        raise HTTPException(status_code=400, detail=f"There's already a group called '{name}'")
+        raise HTTPException(status_code=400, detail=L("There's already a group called '{name}'", name=name))
     known = {u.id for u in db.list_users()}
     db.save_group(group_id, name, body.description.strip(), perms.valid(body.permissions))
     db.set_group_members(group_id, [m for m in dict.fromkeys(body.members) if m in known])
@@ -257,7 +258,7 @@ def create_group(body: GroupBody, user: AuthContext = Depends(require_admin)):
 @router.put("/api/groups/{group_id}")
 def update_group(group_id: str, body: GroupBody, user: AuthContext = Depends(require_admin)):
     if not any(g["id"] == group_id for g in library_manager.db.list_groups()):
-        raise HTTPException(status_code=404, detail="No such group")
+        raise HTTPException(status_code=404, detail=L('No such group'))
     _save_group(group_id, body)
     return {"ok": True}
 
@@ -275,12 +276,12 @@ def set_user_access(user_id: str, body: AccessBody, user: AuthContext = Depends(
     db = library_manager.db
     target = db.get_user_by_id(user_id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
     if body.role != target.role:
         if target.role == "admin" or body.role == "admin":
-            raise HTTPException(status_code=400, detail="There's exactly one admin; that can't be changed here")
+            raise HTTPException(status_code=400, detail=L("There's exactly one admin; that can't be changed here"))
         if not db.get_role(body.role):
-            raise HTTPException(status_code=400, detail=f"Unknown role '{body.role}'")
+            raise HTTPException(status_code=400, detail=L("Unknown role '{role}'", role=body.role))
         target.role = body.role
         target.touch()
         db.update_user(target)

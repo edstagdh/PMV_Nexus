@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..i18n import L
 from ..pmv_details import extract_creators
 
 import asyncio
@@ -46,16 +47,16 @@ class ItemExtrasMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if item.status != "done" or not item.video_path:
-                raise ValueError("Only completed downloads can be renamed")
+                raise ValueError(L('Only completed downloads can be renamed'))
 
             old_path = Path(item.video_path)
             safe_new_name = safe_name(new_name)
             new_path = old_path.with_name(f"{safe_new_name}{old_path.suffix}")
 
             if new_path.exists():
-                raise ValueError("A file with that name already exists")
+                raise ValueError(L('A file with that name already exists'))
 
             # Our own open streams would block the rename on Windows.
             for p in (item.video_path, item.preview_path):
@@ -100,8 +101,7 @@ class ItemExtrasMixin:
     async def change_download_dir(self, new_dir: str, move_existing: bool = True) -> dict:
         if self._current_reencode_id is not None:
             raise ValueError(
-                "Can't change the download folder while a re-encode is in progress. "
-                "Wait for it to finish or cancel it first."
+                L("Can't change the download folder while a re-encode is in progress. Wait for it to finish or cancel it first.")
             )
         new_path = Path(new_dir).expanduser().resolve()
         new_path.mkdir(parents=True, exist_ok=True)
@@ -110,8 +110,8 @@ class ItemExtrasMixin:
         moved = 0
 
         if move_existing and old_output_dir != new_path:
-            async with activity.track("move_folder", "Moving videos to the new download folder",
-                                      progress=lambda: {"stage": "Moving files", "detail": f"{moved} moved so far"}), self._lock:
+            async with activity.track("move_folder", L('Moving videos to the new download folder'),
+                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), self._lock:
                 changed_items: dict[str, LibraryItem] = {}
                 for item in self._items.values():
                     for attr in ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path"):
@@ -172,8 +172,8 @@ class ItemExtrasMixin:
         None (unknown); then the file is looked for by its last folders
         (<creator>/<file>) under the new folder."""
         relinked = 0
-        async with activity.track("move_folder", "Finding the videos in the new folder",
-                                  progress=lambda: {"stage": "Checking files", "detail": f"{relinked} found so far"}), self._lock:
+        async with activity.track("move_folder", L('Finding the videos in the new folder'),
+                                  progress=lambda: {"stage": L('Checking files'), "detail": L('{relinked} found so far', relinked=relinked)}), self._lock:
             changed: dict[str, LibraryItem] = {}
             for item in self._items.values():
                 for attr in attrs:
@@ -205,8 +205,7 @@ class ItemExtrasMixin:
         that mid-write could corrupt or orphan it."""
         if self._current_reencode_id is not None:
             raise ValueError(
-                "Can't change the cache folder while a re-encode is in progress. "
-                "Wait for it to finish or cancel it first."
+                L("Can't change the cache folder while a re-encode is in progress. Wait for it to finish or cancel it first.")
             )
         new_path = Path(new_dir).expanduser().resolve()
         new_path.mkdir(parents=True, exist_ok=True)
@@ -215,8 +214,8 @@ class ItemExtrasMixin:
         moved = 0
 
         if move_existing and old_cache_dir != new_path:
-            async with activity.track("move_folder", "Moving thumbnails and previews to the new cache folder",
-                                      progress=lambda: {"stage": "Moving files", "detail": f"{moved} moved so far"}), self._lock:
+            async with activity.track("move_folder", L('Moving thumbnails and previews to the new cache folder'),
+                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), self._lock:
                 changed_items: dict[str, LibraryItem] = {}
                 for item in self._items.values():
                     for attr in ("thumbnail_path", "preview_path", "metadata_path"):
@@ -278,9 +277,9 @@ class ItemExtrasMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if item.status != "done" or not item.video_path:
-                raise ValueError("Only completed downloads have thumbnail options")
+                raise ValueError(L('Only completed downloads have thumbnail options'))
             timeline = list(item.timeline_thumbnails)
             page_url = item.url
             site = item.site
@@ -336,18 +335,18 @@ class ItemExtrasMixin:
         if source not in ("original", "timeline", "frame", "upload"):
             raise ValueError("source must be 'original', 'timeline', 'frame' or 'upload'")
         if source == "upload" and (not image or image_ext not in ("jpg", "png", "webp")):
-            raise ValueError("Send a JPEG, PNG or WebP image")
+            raise ValueError(L('Send a JPEG, PNG or WebP image'))
         if source == "timeline" and not url:
-            raise ValueError("A timeline thumbnail URL is required")
+            raise ValueError(L('A timeline thumbnail URL is required'))
         if source == "frame" and (seconds is None or seconds < 0):
-            raise ValueError("A position in the video is required")
+            raise ValueError(L('A position in the video is required'))
 
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if item.status != "done" or not item.video_path:
-                raise ValueError("Only completed downloads can have their thumbnail changed")
+                raise ValueError(L('Only completed downloads can have their thumbnail changed'))
             current_path = Path(item.thumbnail_path) if item.thumbnail_path else None
             current_source = item.thumbnail_source
             site = item.site
@@ -389,13 +388,13 @@ class ItemExtrasMixin:
             if current_source == "original":
                 return self.get_item_dict(video_id)  # already showing it -- no-op
             if not backup_path or not backup_path.exists():
-                raise ValueError("No original thumbnail backup found to revert to")
+                raise ValueError(L('No original thumbnail backup found to revert to'))
 
             restored_path = cache_dir / f"{base_name}{backup_path.suffix}"
             async with self._lock:
                 item = self._items.get(video_id)
                 if not item:
-                    raise ValueError("Not found")
+                    raise ValueError(L('Not found'))
                 if item.thumbnail_path:
                     stale = Path(item.thumbnail_path)
                     if stale.exists() and stale != backup_path:
@@ -441,9 +440,9 @@ class ItemExtrasMixin:
             # extension as the current custom thumbnail).
             if source == "frame":
                 if not Path(video_path_str).exists():
-                    raise ValueError("The video file is missing on disk")
+                    raise ValueError(L('The video file is missing on disk'))
                 if not await asyncio.to_thread(generate_thumbnail, video_path_str, str(new_thumb_path), seconds):
-                    raise ValueError("Could not grab a frame at that position")
+                    raise ValueError(L('Could not grab a frame at that position'))
             elif source == "upload":
                 tmp = new_thumb_path.with_name(new_thumb_path.name + ".part")
                 await asyncio.to_thread(tmp.write_bytes, image)
@@ -458,7 +457,7 @@ class ItemExtrasMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             old_path = Path(item.thumbnail_path) if item.thumbnail_path else None
             # An old custom pick at a DIFFERENT extension than the new one
             # is now orphaned (stream_download only touched new_thumb_path)
@@ -481,16 +480,16 @@ class ItemExtrasMixin:
     def _video_file(self, video_id: str) -> str:
         item = self._items.get(video_id)
         if not item:
-            raise ValueError("Not found")
+            raise ValueError(L('Not found'))
         if item.status != "done" or not item.video_path or not Path(item.video_path).exists():
-            raise ValueError("The video file isn't there")
+            raise ValueError(L("The video file isn't there"))
         return item.video_path
 
     async def grab_frame(self, video_id: str, seconds: float, width: int = 480) -> bytes:
         """A JPEG of the frame at `seconds` (thumbnail choices on the Upload page)."""
         data = await asyncio.to_thread(media_tools.grab_frame_jpeg, self._video_file(video_id), seconds, width)
         if not data:
-            raise ValueError("Could not read a frame there")
+            raise ValueError(L('Could not read a frame there'))
         return data
 
     async def preview_plan(self, video_id: str) -> dict:
@@ -512,7 +511,7 @@ class ItemExtrasMixin:
         ok = await asyncio.to_thread(media_tools.generate_preview_clip, video, str(target), len(timestamps),
                                      clip_seconds, 480, 24, timestamps)
         if not ok:
-            raise ValueError("Could not make the preview (see the log)")
+            raise ValueError(L('Could not make the preview (see the log)'))
         async with self._lock:
             item = self._items.get(video_id)
             if item:
@@ -613,7 +612,7 @@ class ItemExtrasMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             for field, value in changes.items():
                 if field not in EDITABLE_DETAIL_FIELDS:
                     continue
@@ -651,9 +650,9 @@ class ItemExtrasMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if not item.repair_pending_action:
-                raise ValueError("No repair is currently waiting on a decision for this item")
+                raise ValueError(L('No repair is currently waiting on a decision for this item'))
             item.repair_pending_action = None
             item.touch()
             self.db.save_item(item)
@@ -685,8 +684,8 @@ class ItemExtrasMixin:
         updated = 0
         missing = 0
 
-        async with activity.track("metadata_sync", "Syncing details from metadata files",
-                                  stage="Reading each video's metadata file"), self._lock:
+        async with activity.track("metadata_sync", L('Syncing details from metadata files'),
+                                  stage=L("Reading each video's metadata file")), self._lock:
             changed_items: dict[str, LibraryItem] = {}
             for item in self._items.values():
                 if item.status != "done":

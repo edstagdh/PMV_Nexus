@@ -1,5 +1,6 @@
 <script setup>
 // ⋮ / video page -> Re-encode… (2.22.0): one entry instead of one per codec.
+import { t } from "../../lib/i18n.js";
 import { ref, reactive, computed, onMounted } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import ReencodeOptions from "../ReencodeOptions.vue";
@@ -27,7 +28,7 @@ onMounted(async () => {
   try {
     defaults.value = await loadReencodeDefaults();
     Object.assign(state, reencodeState(defaults.value, current.value));
-  } catch (err) { error.value = err.message || "Couldn't load the re-encode settings"; }
+  } catch (err) { error.value = err.message || t("Couldn't load the re-encode settings"); }
 });
 
 async function go() {
@@ -37,23 +38,24 @@ async function go() {
     const body = reencodeBody(state, defaults.value);
     if (body.codec === current.value) body.same_codec = true;
     await api(`/api/library/${encodeURIComponent(props.item.id)}/reencode`, { method: "POST", body });
-    toast(body.same_codec ? `Queued: made 1080p, staying ${CODEC_INFO[body.codec].label}`
-      : `Queued for re-encode to ${CODEC_INFO[body.codec].label}${body.options ? " (your settings)" : ""}`, { type: "success" });
+    toast(body.same_codec ? t("Queued: made 1080p, staying {codec}", { codec: CODEC_INFO[body.codec].label })
+      : body.options ? t("Queued for re-encode to {codec} (your settings)", { codec: CODEC_INFO[body.codec].label })
+        : t("Queued for re-encode to {codec}", { codec: CODEC_INFO[body.codec].label }), { type: "success" });
     emit("close");
-  } catch (err) { error.value = err.message || "That didn't work"; }
+  } catch (err) { error.value = err.message || t("That didn't work"); }
   finally { busy.value = false; }
 }
 </script>
 
 <template>
-  <ModalDialog title="Re-encode" width="40rem" @close="emit('close')">
-    <p class="lead">Re-encodes “{{ item.title || item.url }}”: smaller in a more efficient codec, or AVC for older devices. It's queued and runs on the server; follow it on Tasks.</p>
+  <ModalDialog :title="$t('Re-encode')" width="40rem" @close="emit('close')">
+    <p class="lead">{{ $t("Re-encodes “{title}”: smaller in a more efficient codec, or AVC for older devices. It's queued and runs on the server; follow it on Tasks.", { title: item.title || item.url }) }}</p>
     <ReencodeOptions v-if="defaults && state.codec" :defaults="defaults" :state="state" :exclude="current" :big="big" />
-    <p v-else-if="!error" class="muted">Loading…</p>
+    <p v-else-if="!error" class="muted">{{ $t("Loading…") }}</p>
     <p v-if="error" class="error-text">{{ error }}</p>
     <template #footer>
-      <button class="btn" @click="emit('close')">Cancel</button>
-      <button class="btn btn-primary" :disabled="busy || !defaults || (state.codec === current && !(big && state.downscale))" @click="go">{{ busy ? "Queuing…" : "Re-encode" }}</button>
+      <button class="btn" @click="emit('close')">{{ $t("Cancel") }}</button>
+      <button class="btn btn-primary" :disabled="busy || !defaults || (state.codec === current && !(big && state.downscale))" @click="go">{{ busy ? $t("Queuing…") : $t("Re-encode") }}</button>
     </template>
   </ModalDialog>
 </template>

@@ -14,6 +14,7 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from ..i18n import L
 from ..config import get_settings
 from ..library_manager import library_manager
 from ..models import ChangeOwnPasswordRequest, SelfDeleteAccountRequest, UserSettingsUpdateRequest
@@ -72,17 +73,17 @@ def update_my_settings(payload: UserSettingsUpdateRequest, user: AuthContext = D
 async def change_own_password(payload: ChangeOwnPasswordRequest, response: Response, user: AuthContext = Depends(require_permission("self.password_reset"))):
     target = library_manager.db.get_user_by_id(user.id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
 
     password_ok = await asyncio.to_thread(verify_password, payload.current_password, target.password_hash)
     if not password_ok:
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+        raise HTTPException(status_code=400, detail=L('Current password is incorrect'))
 
     password_error = validate_password_policy(payload.new_password, target.username)
     if password_error:
         raise HTTPException(status_code=400, detail=password_error)
     if await asyncio.to_thread(verify_password, payload.new_password, target.password_hash):
-        raise HTTPException(status_code=400, detail="Choose a password different from your current one.")
+        raise HTTPException(status_code=400, detail=L('Choose a password different from your current one.'))
 
     target.password_hash = hash_password(payload.new_password)
     target.touch()
@@ -114,21 +115,21 @@ async def change_own_password(payload: ChangeOwnPasswordRequest, response: Respo
 async def delete_own_account(payload: SelfDeleteAccountRequest, response: Response, user: AuthContext = Depends(get_current_user)):
     target = library_manager.db.get_user_by_id(user.id)
     if not target:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=L('User not found'))
     if target.role == "admin":
         # The single admin account can't be removed via any path,
         # including by itself -- matches routers/users.py's delete_user()
         # rule for the same reason.
-        raise HTTPException(status_code=400, detail="The admin account cannot be deleted")
+        raise HTTPException(status_code=400, detail=L('The admin account cannot be deleted'))
 
     # Step 1: must type their own username exactly.
     if payload.confirm_username != target.username:
-        raise HTTPException(status_code=400, detail="Username confirmation does not match")
+        raise HTTPException(status_code=400, detail=L('Username confirmation does not match'))
 
     # Step 2: must provide their current password.
     password_ok = await asyncio.to_thread(verify_password, payload.current_password, target.password_hash)
     if not password_ok:
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+        raise HTTPException(status_code=400, detail=L('Current password is incorrect'))
 
     invalidate_user_sessions(user.id)
     target.is_active = False

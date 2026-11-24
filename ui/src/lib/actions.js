@@ -1,6 +1,7 @@
 // Everything you can do with a library item, in one place, used by the
 // kebab menu, the list-view buttons and the video page. Mirrors the classic
 // interface's rules (who can do what, and when).
+import { t } from "./i18n.js";
 import { askConfirm } from "../stores/confirm.js";
 import { api } from "./api.js";
 import { toast } from "../stores/toast.js";
@@ -24,7 +25,7 @@ async function call(path, ok, body) {
     await api(path, { method: "POST", body });
     toast(ok, { type: "success" });
   } catch (err) {
-    toast(err.message || "That didn't work", { type: "error" });
+    toast(err.message || t("That didn't work"), { type: "error" });
   }
 }
 
@@ -35,46 +36,46 @@ export function itemActions(item, { context = "library" } = {}) {
   const out = [];
   if (item.status === "done") {
     if (can("videos.edit")) {
-      out.push({ key: "rename", label: "Rename", icon: "edit", run: () => openDialog("rename", item) });
-      out.push({ key: "details", label: "Edit details", icon: "tag", run: () => openDialog("details", item) });
-      out.push({ key: "thumbnail", label: "Change thumbnail", icon: "image", run: () => openDialog("thumbnail", item) });
+      out.push({ key: "rename", label: t("Rename"), icon: "edit", run: () => openDialog("rename", item) });
+      out.push({ key: "details", label: t("Edit details"), icon: "tag", run: () => openDialog("details", item) });
+      out.push({ key: "thumbnail", label: t("Change thumbnail"), icon: "image", run: () => openDialog("thumbnail", item) });
       // The frames under the player (3.2.0), when they're shown: made again by the app.
       if (context === "page" && session.prefs.videoFrames === true) {
-        out.push({ key: "redo-frames", label: "Redo Frames", icon: "image",
-          title: "Make the frames under the player again from the video file (e.g. when PMVHaven's are blank or placeholders)",
+        out.push({ key: "redo-frames", label: t("Redo Frames"), icon: "image",
+          title: t("Make the frames under the player again from the video file (e.g. when PMVHaven's are blank or placeholders)"),
           run: async () => {
-            await call(`/api/library/${id}/frames/redo`, "Making the frames again");
+            await call(`/api/library/${id}/frames/redo`, t("Making the frames again"));
             window.dispatchEvent(new CustomEvent("pmv-frames-redo", { detail: item.id }));
           } });
       }
     }
     if (can("videos.maintain")) {
       if (item.repair_status === "queued" || item.repair_status === "running") {
-        out.push({ key: "cancel-repair", label: "Cancel repair", icon: "x", danger: true, run: async () => {
-          if ((await askConfirm(`Cancel the repair/update in progress for "${item.title || item.url}"?`, { ok: "Yes, cancel", danger: true }))) call(`/api/library/${id}/repair/cancel`, "Repair cancelled");
+        out.push({ key: "cancel-repair", label: t("Cancel repair"), icon: "x", danger: true, run: async () => {
+          if ((await askConfirm(t("Cancel the repair/update in progress for “{title}”?", { title: item.title || item.url }), { ok: t("Yes, cancel"), danger: true }))) call(`/api/library/${id}/repair/cancel`, t("Repair cancelled"));
         } });
       } else {
-        out.push({ key: "repair", label: item.repair_status === "failed" ? "Retry Repair/Update" : "Repair/Update", icon: "wrench",
-          run: () => call(`/api/library/${id}/repair`, "Repair/Update queued") });
+        out.push({ key: "repair", label: item.repair_status === "failed" ? t("Retry Repair/Update") : t("Repair/Update"), icon: "wrench",
+          run: () => call(`/api/library/${id}/repair`, t("Repair/Update queued")) });
       }
       if (item.reencode_status === "queued" || item.reencode_status === "encoding") {
-        out.push({ key: "cancel-reencode", label: "Cancel re-encode", icon: "x", danger: true, run: () => call(`/api/library/${id}/reencode/cancel`, "Re-encode cancelled") });
+        out.push({ key: "cancel-reencode", label: t("Cancel re-encode"), icon: "x", danger: true, run: () => call(`/api/library/${id}/reencode/cancel`, t("Re-encode cancelled")) });
       } else if (featureOn("reencode")) {
         // One entry; the dialog picks the codec and this re-encode's settings (2.22.0) --
         // or, with "Ask each time" off in Server Settings, straight away with the server's (2.22.1).
         const def = ["av1", "h264"].includes(live.summary?.reencode_codec) ? live.summary.reencode_codec : "hevc";
         const direct = live.summary?.reencode_ask === false && currentCodec(item) !== def;
         out.push(direct
-          ? { key: "reencode", label: "Re-encode", icon: "cpu",
-              run: () => call(`/api/library/${id}/reencode`, `Queued for re-encode to ${{ av1: "AV1", h264: "AVC" }[def] || "HEVC"}`, { codec: def }) }
-          : { key: "reencode", label: "Re-encode…", icon: "cpu", run: () => openDialog("reencode", item) });
+          ? { key: "reencode", label: t("Re-encode"), icon: "cpu",
+              run: () => call(`/api/library/${id}/reencode`, t("Queued for re-encode to {codec}", { codec: { av1: "AV1", h264: "AVC" }[def] || "HEVC" }), { codec: def }) }
+          : { key: "reencode", label: t("Re-encode…"), icon: "cpu", run: () => openDialog("reencode", item) });
       }
     }
     if (can("songs.manage")) {
-      out.push({ key: "songs", label: "Find songs", icon: "music", run: () => openDialog("songs", item) });
+      out.push({ key: "songs", label: t("Find songs"), icon: "music", run: () => openDialog("songs", item) });
     }
     if (hasPermission("library.view")) {
-      out.push({ key: "playlist", label: "Add to playlist…", icon: "playlist", run: () => openDialog("playlist", item) });
+      out.push({ key: "playlist", label: t("Add to playlist…"), icon: "playlist", run: () => openDialog("playlist", item) });
     }
   }
   // Extensions' actions (2.30.0): only those offered for one video, and only for downloaded ones unless they say otherwise.
@@ -84,9 +85,9 @@ export function itemActions(item, { context = "library" } = {}) {
     }
   }
   if (item.status === "failed" && can("videos.add")) {
-    out.push({ key: "retry", label: "Retry download", icon: "repeat", run: () => call(`/api/library/${id}/retry`, "Retrying") });
+    out.push({ key: "retry", label: t("Retry download"), icon: "repeat", run: () => call(`/api/library/${id}/retry`, t("Retrying")) });
   }
-  if (item.site !== "local") out.push({ key: "open", label: `Open on ${siteLabel(item)}`, icon: "external", href: item.url });
-  if (can("videos.delete")) out.push({ key: "remove", label: context === "playlist" ? "Remove from the library" : "Remove", icon: "trash", danger: true, divider: true, run: () => openDialog("remove", item, { context }) });
+  if (item.site !== "local") out.push({ key: "open", label: t("Open on {site}", { site: siteLabel(item) }), icon: "external", href: item.url });
+  if (can("videos.delete")) out.push({ key: "remove", label: context === "playlist" ? t("Remove from the library") : t("Remove"), icon: "trash", danger: true, divider: true, run: () => openDialog("remove", item, { context }) });
   return out;
 }

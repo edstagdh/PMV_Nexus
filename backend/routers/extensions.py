@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..i18n import L
 from .. import extensions
 from ..security import AuthContext, get_current_user
 
@@ -36,9 +37,9 @@ async def _run(handler, payload: FormStep, user: AuthContext) -> dict:
 async def run_extension_action(action_id: str, payload: FormStep, user: AuthContext = Depends(get_current_user)):
     action = extensions.actions.get(action_id)
     if action is None:
-        raise HTTPException(status_code=404, detail="No such action")
+        raise HTTPException(status_code=404, detail=L('No such action'))
     if action.permission and not user.has_permission(action.permission):
-        raise HTTPException(status_code=403, detail="You don't have permission for this")
+        raise HTTPException(status_code=403, detail=L("You don't have permission for this"))
     return await _run(action.handler, payload, user)
 
 
@@ -46,7 +47,7 @@ async def run_extension_action(action_id: str, payload: FormStep, user: AuthCont
 async def run_extension_panel(panel_id: str, payload: FormStep, user: AuthContext = Depends(get_current_user)):
     panel = extensions.panels.get(panel_id)
     if panel is None:
-        raise HTTPException(status_code=404, detail="No such panel")
+        raise HTTPException(status_code=404, detail=L('No such panel'))
     if not user.has_permission(panel.permission):
-        raise HTTPException(status_code=403, detail="You don't have permission for this")
+        raise HTTPException(status_code=403, detail=L("You don't have permission for this"))
     return await _run(panel.handler, payload, user)

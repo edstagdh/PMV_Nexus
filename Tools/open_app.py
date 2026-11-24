@@ -4,8 +4,9 @@ Opens the app in the browser. If it isn't running yet: as a Windows service it's
 only waited for (the service starts it); otherwise (2.29.0) it's started with its
 tray icon and no console window (run.py --tray), and the browser opens once it
 answers -- unless tray.open_browser is off (2.31.0: Setup / Server settings ->
-Opening the app), then it only starts. Run with pythonw.exe, so nothing here has a
-window of its own.
+Opening the app), then it only starts. Run with pythonw.exe -- or, since 3.7.0, by
+PMVNexus.exe in .venv/Scripts, which runs Python itself -- so nothing here has a window of
+its own.
 """
 from __future__ import annotations
 
@@ -18,6 +19,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SERVICE_EXE = ROOT / "runtime" / "service" / "PMVNexusService.exe"
+
+
+def windowless_python() -> str:
+    """The program the tray app runs as: this one when it's PMVNexus.exe (3.7.0: Task Manager
+    then shows "PMV Nexus"), else the environment's pythonw.exe."""
+    exe = Path(sys.executable)
+    if exe.name.lower() == "pmvnexus.exe":
+        return str(exe)
+    pythonw = exe.with_name("pythonw.exe")
+    return str(pythonw if pythonw.is_file() else exe)
 
 
 def answering(port: int) -> bool:
@@ -61,8 +72,7 @@ def open_page(page: str) -> int:
     url = f"http://localhost:{port}/{page.lstrip('/')}"
     if not answering(port) and not starting() and not SERVICE_EXE.is_file():
         if os.name == "nt":
-            pythonw = Path(sys.executable).with_name("pythonw.exe")
-            subprocess.Popen([str(pythonw if pythonw.is_file() else sys.executable), str(ROOT / "run.py"), "--tray"],
+            subprocess.Popen([windowless_python(), str(ROOT / "run.py"), "--tray"],
                              cwd=str(ROOT), creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
         else:
             subprocess.Popen([sys.executable, str(ROOT / "run.py")], cwd=str(ROOT), start_new_session=True)
@@ -98,8 +108,7 @@ def main() -> int:
         return 1
     extra = ["--open-browser"] if tray.open_browser else []
     if os.name == "nt":
-        pythonw = Path(sys.executable).with_name("pythonw.exe")
-        subprocess.Popen([str(pythonw if pythonw.is_file() else sys.executable), str(ROOT / "run.py"), "--tray", *extra],
+        subprocess.Popen([windowless_python(), str(ROOT / "run.py"), "--tray", *extra],
                          cwd=str(ROOT), creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
         subprocess.Popen([sys.executable, str(ROOT / "run.py"), *extra], cwd=str(ROOT), start_new_session=True)

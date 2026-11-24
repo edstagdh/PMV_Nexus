@@ -10,6 +10,7 @@
 // (Ctrl + W / T / N...) can't be claimed by any site.
 // While typing in a text field it only reacts when the keys include Ctrl / Alt / Meta,
 // so typing "ad" quickly can't set it off.
+import { t, N_ } from "./i18n.js";
 const MODIFIERS = /^(Control|Alt|Meta|OS)(Left|Right)?$/;
 const MOD_FLAGS = { ctrlKey: /^Control/, altKey: /^Alt/, shiftKey: /^Shift/, metaKey: /^(Meta|OS)/ };
 /** No modifier is held that isn't one of the panic keys (or this key itself). */
@@ -51,21 +52,22 @@ export function installPanic(getKeys, onPanic) {
 }
 
 // The player's own shortcuts: a panic key on one of these replaces it.
+// What each does, marked N_ and translated when shown (made before a language loads; 3.7.0).
 const PLAYER_KEYS = {
-  Space: "play / pause", KeyK: "play / pause", KeyJ: "skip back", KeyL: "skip forward", KeyF: "fullscreen",
-  KeyM: "mute", KeyC: "captions", KeyI: "picture-in-picture", ArrowLeft: "skip back", ArrowRight: "skip forward",
-  ArrowUp: "volume up", ArrowDown: "volume down", Home: "go to the start", End: "go to the end", Comma: "slower", Period: "faster",
+  Space: N_("play / pause"), KeyK: N_("play / pause"), KeyJ: N_("skip back"), KeyL: N_("skip forward"), KeyF: N_("fullscreen"),
+  KeyM: N_("mute"), KeyC: N_("captions"), KeyI: N_("picture-in-picture"), ArrowLeft: N_("skip back"), ArrowRight: N_("skip forward"),
+  ArrowUp: N_("volume up"), ArrowDown: N_("volume down"), Home: N_("go to the start"), End: N_("go to the end"), Comma: N_("slower"), Period: N_("faster"),
 };
 /** [{label, does}] for chosen keys that are also player shortcuts. */
 export function playerKeyClashes(keys) {
   return keys.filter((k) => PLAYER_KEYS[k.code] || /^Digit\d$/.test(k.code))
-    .map((k) => ({ label: k.label, does: PLAYER_KEYS[k.code] || "jump to that tenth of the video" }));
+    .map((k) => ({ label: k.label, does: t(PLAYER_KEYS[k.code] || N_("jump to that tenth of the video")) }));
 }
 
 /** "Ctrl + A", "Space"... for showing a key while recording. */
 export function keyLabel(e) {
   if (MODIFIERS.test(e.code) || e.key === "Shift") return e.key === "Meta" ? "⌘ / Win" : e.key === "Control" ? "Ctrl" : e.key;
-  if (e.code === "Space") return "Space";
+  if (e.code === "Space") return t("Space");
   if (/^Key[A-Z]$/.test(e.code)) return e.code.slice(3);
   if (/^Digit\d$/.test(e.code)) return e.code.slice(5);
   return e.key.length === 1 ? e.key.toUpperCase() : e.key;

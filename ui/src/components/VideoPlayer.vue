@@ -11,6 +11,7 @@
 // The source is set on the <video> element directly -- or, with the 720p
 // button (remembered in this browser) or when the browser can't play the
 // file, the server converts it while watching (lib/livePlayback.js).
+import { t } from "../lib/i18n.js";
 import { trackWatching } from "../lib/watchTracker.js";
 import { reportPlaying } from "../lib/nowPlaying.js";
 import { trackPosition } from "../lib/watchPosition.js";
@@ -43,12 +44,12 @@ const aspect = ref("16 / 9");
 const VOLUME_KEY = "pmv-volume";
 const DEFAULT_VOLUME = 0.1;
 const LOOP_KEY = "pmv-loop";
-let loopBtn = null;
+let loopBtns = [];
 let downloadSrc = "";      // ⚙ -> Download (2.22.0)
 // "720p" (converted while watching) in the ⚙ menu. Looked up each time: the menu is copied afresh
 // when the player moves (pmvSkin refreshPopups), so a kept reference goes stale.
 const qualityItem = () => skinEl.value?.part?.(".pmv-quality");
-let nextBtn = null;
+let nextBtns = [];
 let live = null;          // the running conversion ({ stop, height }) or null
 let liveToken = 0;        // ignores a conversion that finished starting after the source changed
 let fellBack = false;     // already switched to converting because the original didn't play
@@ -62,12 +63,14 @@ const loopWanted = () => localStorage.getItem(LOOP_KEY) !== "off";
 
 function renderLoop() {
   const v = videoEl.value;
-  if (!loopBtn || !v) return;
-  loopBtn.setAttribute("aria-pressed", v.loop ? "true" : "false");
-  loopBtn.disabled = props.queueActive;
-  const label = props.queueActive ? "Loop is off while a playlist plays (use its Repeat)" : v.loop ? "Loop: on" : "Loop: off";
-  loopBtn.title = label;
-  loopBtn.setAttribute("aria-label", label);
+  if (!loopBtns.length || !v) return;
+  const label = props.queueActive ? t("Loop is off while a playlist plays (use its Repeat)") : v.loop ? t("Loop: on") : t("Loop: off");
+  for (const b of loopBtns) {  // the control bar's, and the one in the middle on touch screens
+    b.setAttribute("aria-pressed", v.loop ? "true" : "false");
+    b.disabled = props.queueActive;
+    b.title = label;
+    b.setAttribute("aria-label", label);
+  }
 }
 // While a playlist plays, Loop is off (the playlist has its own Repeat).
 function applyLoop() {
@@ -76,7 +79,7 @@ function applyLoop() {
   renderLoop();
 }
 
-const clock = (s) => { const t = Math.floor(s); const h = Math.floor(t / 3600); const m = Math.floor(t / 60) % 60; const ss = String(t % 60).padStart(2, "0");
+const clock = (s) => { const sec = Math.floor(s); const h = Math.floor(sec / 3600); const m = Math.floor(sec / 60) % 60; const ss = String(sec % 60).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`; };
 
 function renderAb() {
@@ -85,18 +88,18 @@ function renderAb() {
   abBtn.dataset.state = abB !== null ? "ab" : abA !== null ? "a" : "";
   abBtn.setAttribute("aria-pressed", abB !== null ? "true" : "false");
   abBtn.firstElementChild.textContent = abB !== null ? "A-B" : abA !== null ? "A-" : "A-B";
-  const label = abB !== null ? `Repeating ${clock(abA)} – ${clock(abB)} — click to stop`
-    : abA !== null ? `A is ${clock(abA)} — click at the end of the part (B)` : "A-B repeat: click at the start of the part (A)";
+  const label = abB !== null ? t("Repeating {from} – {to} — click to stop", { from: clock(abA), to: clock(abB) })
+    : abA !== null ? t("A is {time} — click at the end of the part (B)", { time: clock(abA) }) : t("A-B repeat: click at the start of the part (A)");
   abBtn.title = label;
   abBtn.setAttribute("aria-label", label);
 }
 function clearAb() { abA = null; abB = null; renderAb(); }
 function clickAb() {
-  const t = videoEl.value?.currentTime || 0;
+  const pos = videoEl.value?.currentTime || 0;
   if (abB !== null) clearAb();
-  else if (abA === null) { abA = t; renderAb(); }
-  else if (Math.abs(t - abA) < 0.5) toast("B needs to be at least half a second away from A", { type: "info" });
-  else { [abA, abB] = t > abA ? [abA, t] : [t, abA]; renderAb(); }
+  else if (abA === null) { abA = pos; renderAb(); }
+  else if (Math.abs(pos - abA) < 0.5) toast(t("B needs to be at least half a second away from A"), { type: "info" });
+  else { [abA, abB] = pos > abA ? [abA, pos] : [pos, abA]; renderAb(); }
 }
 // Back to A when playback reaches B (a seek well past B is left alone).
 function checkAb() {
@@ -110,9 +113,9 @@ function renderQuality() {
   if (!qualityBtn) return;
   qualityBtn.hidden = !props.itemId;
   qualityBtn.setAttribute("aria-checked", live ? "true" : "false");
-  qualityBtn.querySelector(".media-menu-hint-label").textContent = live ? (live.height === 720 ? "On" : `On · ${live.height}p`) : "Off";
-  qualityBtn.title = live ? `Playing converted to ${live.height}p — click for the original`
-    : "Play converted to 720p (less data, for slow connections; the server converts it while you watch)";
+  qualityBtn.querySelector(".media-menu-hint-label").textContent = live ? (live.height === 720 ? t("On") : t("On · {height}p", { height: live.height })) : t("Off");
+  qualityBtn.title = live ? t("Playing converted to {height}p — click for the original", { height: live.height })
+    : t("Play converted to 720p (less data, for slow connections; the server converts it while you watch)");
 }
 // ---- Search this frame (3.2.0, lib/frameSearch.js) ----
 const searchItem = () => skinEl.value?.part?.(".pmv-search");
@@ -122,10 +125,10 @@ function renderSearch() {
   if (!item) return;
   const engines = cleanEngines(session.prefs.frameSearch);
   item.hidden = !engines.length;
-  item.querySelector(".media-menu-hint-label").textContent = engines.length === 1 ? engines[0].name : engines.length ? "Choose" : "";
+  item.querySelector(".media-menu-hint-label").textContent = engines.length === 1 ? engines[0].name : engines.length ? t("Choose") : "";
   item.title = engines.length === 1
-    ? `Pause and search this frame on ${engines[0].name} (the picture is uploaded to it, in a new tab)`
-    : "Pause and search this frame on a reverse image search site (the picture is uploaded to it, in a new tab)";
+    ? t("Pause and search this frame on {site} (the picture is uploaded to it, in a new tab)", { site: engines[0].name })
+    : t("Pause and search this frame on a reverse image search site (the picture is uploaded to it, in a new tab)");
 }
 function searchFrame() {
   const v = videoEl.value;
@@ -134,13 +137,13 @@ function searchFrame() {
   v.pause();
   let file = null;
   try { file = grabFrame(v); } catch { /* a picture the browser won't hand over */ }
-  if (!file) { toast("There's no picture to search yet", { type: "error" }); return; }
+  if (!file) { toast(t("There's no picture to search yet"), { type: "error" }); return; }
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   if (engines.length === 1) openSearch(file, engines[0]);
   else chooser.value = { file, engines };
 }
 function openSearch(file, engine) {
-  if (!searchFile(file, engine)) toast("The browser blocked the new tab — allow pop-ups for this site and try again", { type: "error" });
+  if (!searchFile(file, engine)) toast(t("The browser blocked the new tab — allow pop-ups for this site and try again"), { type: "error" });
 }
 function pickEngine(engine) {
   const c = chooser.value;
@@ -157,10 +160,11 @@ function downloadVideo() {
   a.remove();
 }
 function renderNext() {
-  if (!nextBtn) return;
-  nextBtn.hidden = !props.queueActive;
-  nextBtn.disabled = !props.hasNext;
-  nextBtn.title = props.hasNext ? "Next video" : "This is the last video of the playlist";
+  for (const b of nextBtns) {
+    b.hidden = !props.queueActive;
+    b.disabled = !props.hasNext;
+    b.title = props.hasNext ? t("Next video") : t("This is the last video of the playlist");
+  }
 }
 
 function stopLive() {
@@ -182,14 +186,14 @@ async function goLive(at, reason) {
       renderQuality(); renderSearch();
       // A long pause ends the server's conversion: carry on from where it was.
       if (message.includes("paused")) goLive(v.currentTime);
-      else { toast(`${message} — playing the original`, { type: "error" }); playOriginal(v.currentTime, !v.paused); }
+      else { toast(t("{problem} — playing the original", { problem: message }), { type: "error" }); playOriginal(v.currentTime, !v.paused); }
     });
     if (token !== liveToken) { started.stop(); return; }
     live = started;
     if (reason) toast(reason, { timeout: 6000 });
   } catch (err) {
     if (token !== liveToken) return;
-    toast(err.message || "Couldn't convert this video", { type: "error", timeout: 8000 });
+    toast(err.message || t("Couldn't convert this video"), { type: "error", timeout: 8000 });
     if (!reason) playOriginal(at, false);
   }
   renderQuality(); renderSearch();
@@ -221,7 +225,7 @@ function onMediaError() {
   const v = videoEl.value;
   if (live || fellBack || !props.itemId || !v.error || ![3, 4].includes(v.error.code) || !v.getAttribute("src")) return;
   fellBack = true;
-  goLive(v.currentTime || props.resumeAt || 0, "This browser can't play this video's format — converting it to 720p while you watch");
+  goLive(v.currentTime || props.resumeAt || 0, t("This browser can't play this video's format — converting it to 720p while you watch"));
   if (props.autoplay) v.addEventListener("canplay", () => v.play().catch(() => {}), { once: true });
 }
 
@@ -229,7 +233,7 @@ function onMediaError() {
 // thumbnails track (WebVTT, backend/storyboard.py). A video without them yet gets
 // a 404 here -- and is made next, so they're there the next time it's played.
 function setStoryboard(v) {
-  v.querySelectorAll("track[data-storyboard]").forEach((t) => t.remove());
+  v.querySelectorAll("track[data-storyboard]").forEach((tr) => tr.remove());
   if (!props.itemId) return;
   const track = document.createElement("track");
   Object.assign(track, { kind: "metadata", label: "thumbnails", default: true });
@@ -268,7 +272,7 @@ function load(src) {
     showVolume();
     if (v.videoWidth && v.videoHeight) aspect.value = `${v.videoWidth} / ${v.videoHeight}`;
     // Sound but no picture: the browser can't decode the video track.
-    else if (!live && props.itemId && !fellBack) { fellBack = true; goLive(0, "This browser can't show this video's picture — converting it to 720p while you watch"); }
+    else if (!live && props.itemId && !fellBack) { fellBack = true; goLive(0, t("This browser can't show this video's picture — converting it to 720p while you watch")); }
     matchOrientation();
     reassertOrientation();
   }, { once: true });
@@ -385,12 +389,12 @@ function onSwipeMove(e) {
     v.muted = vol === 0;
     v.volume = vol;
     // iPhones and iPads don't let pages change the volume.
-    if (Math.abs(v.volume - vol) > 0.01) showSwipe("Use the volume buttons", v.volume);
-    else showSwipe(`Volume ${Math.round(vol * 100)}%`, vol);
+    if (Math.abs(v.volume - vol) > 0.01) showSwipe(t("Use the volume buttons"), v.volume);
+    else showSwipe(t("Volume {percent}%", { percent: Math.round(vol * 100) }), vol);
   } else {
     brightness = Math.max(0.2, Math.min(1.5, value));
     v.style.filter = brightness === 1 ? "" : `brightness(${brightness})`;
-    showSwipe(`Brightness ${Math.round(brightness * 100)}%`, (brightness - 0.2) / 1.3);
+    showSwipe(t("Brightness {percent}%", { percent: Math.round(brightness * 100) }), (brightness - 0.2) / 1.3);
   }
 }
 function onSwipeEnd(e) {
@@ -412,14 +416,14 @@ const onVolume = () => {
 function showVolume() {
   const v = videoEl.value;
   const el = skinEl.value?.part?.(".pmv-vol-value");
-  if (v && el) el.textContent = v.muted || v.volume === 0 ? "Muted" : `${Math.round(v.volume * 100)}%`;
+  if (v && el) el.textContent = v.muted || v.volume === 0 ? t("Muted") : `${Math.round(v.volume * 100)}%`;
 }
 
 onMounted(async () => {
   await customElements.whenDefined("pmv-video-skin");
   const skin = skinEl.value;
   if (!skin) return;
-  loopBtn = skin.part(".pmv-loop");
+  loopBtns = [...skin.shadowRoot.querySelectorAll(".pmv-loop")];
 
   skin.shadowRoot.addEventListener("click", (e) => {
     if (e.target.closest?.(".pmv-quality")) toggleQuality();
@@ -428,8 +432,8 @@ onMounted(async () => {
   }, true);
   renderQuality();
   renderSearch();
-  nextBtn = skin.part(".pmv-next");
-  nextBtn?.addEventListener("click", () => { if (props.hasNext) emit("next"); });
+  nextBtns = [...skin.shadowRoot.querySelectorAll(".pmv-next")];
+  for (const b of nextBtns) b.addEventListener("click", () => { if (props.hasNext) emit("next"); });
   renderNext();
   // Captured before the skin's own tap / double-tap handling inside it.
   skin.addEventListener("pointerdown", onSwipeDown, true);
@@ -441,13 +445,14 @@ onMounted(async () => {
   abBtn = skin.part(".pmv-ab");
   abBtn?.addEventListener("click", clickAb);
   renderAb();
-  loopBtn?.addEventListener("click", () => {
+  const toggleLoop = () => {
     if (props.queueActive) return;
     const v = videoEl.value;
     v.loop = !v.loop;
     try { localStorage.setItem(LOOP_KEY, v.loop ? "on" : "off"); } catch { /* ignore */ }
     renderLoop();
-  });
+  };
+  for (const b of loopBtns) b.addEventListener("click", toggleLoop);
   skin.setGlobalHotkeys(props.globalKeys);
   const v = videoEl.value;
   v.addEventListener("playing", () => { emit("playing", true); reassertOrientation(); });
@@ -490,17 +495,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="player" :style="{ '--ar': aspect }">
-    <video-player>
+    <video-player dir="ltr">
       <pmv-video-skin ref="skinEl" class="skin" :compact.attr="compact || null">
         <video ref="videoEl" :data-item-id="itemId" playsinline preload="metadata" />
       </pmv-video-skin>
     </video-player>
     <div v-if="chooser" class="chooser" @click.self="chooser = null" @keydown.esc="chooser = null">
-      <div class="chooser-box card" role="dialog" aria-label="Search this frame on">
-        <strong>Search this frame on</strong>
+      <div class="chooser-box card" role="dialog" :aria-label="$t('Search this frame on')">
+        <strong>{{ $t("Search this frame on") }}</strong>
         <button v-for="e in chooser.engines" :key="e.name + e.url" class="btn" type="button" @click="pickEngine(e)">{{ e.name }}</button>
-        <span class="muted small">The picture is uploaded to that site, in a new tab.</span>
-        <button class="btn btn-ghost btn-sm" type="button" @click="chooser = null">Cancel</button>
+        <span class="muted small">{{ $t("The picture is uploaded to that site, in a new tab.") }}</span>
+        <button class="btn btn-ghost btn-sm" type="button" @click="chooser = null">{{ $t("Cancel") }}</button>
       </div>
     </div>
   </div>

@@ -2,6 +2,7 @@
 // Admin -> Scheduler: background jobs (duplicate scan, repair, site sync,
 // backups, ...) on a schedule or on demand. The job types come from the
 // server's JOB_REGISTRY (GET /api/scheduler/job-types).
+import { t, tn, formatNumber } from "../../lib/i18n.js";
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../../components/Icon.vue";
@@ -12,6 +13,8 @@ import { toast } from "../../stores/toast.js";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+const DAY_NAMES = { monday: t("Monday"), tuesday: t("Tuesday"), wednesday: t("Wednesday"), thursday: t("Thursday"),
+  friday: t("Friday"), saturday: t("Saturday"), sunday: t("Sunday") };
 
 const types = ref([]);
 const jobs = ref(null);
@@ -24,7 +27,7 @@ const formError = ref("");
 const busy = ref(false);
 let pollTimer = null;
 
-const typeOf = (key) => types.value.find((t) => t.job_type === key);
+const typeOf = (key) => types.value.find((ty) => ty.job_type === key);
 
 async function load() {
   clearTimeout(pollTimer);
@@ -33,7 +36,7 @@ async function load() {
     error.value = "";
     for (const id of Object.keys(history.value)) loadHistory(id);
   } catch (err) {
-    error.value = err.message || "Could not load the jobs";
+    error.value = err.message || t("Could not load the jobs");
   }
   // Keep the list fresh while something runs, so finishing shows up.
   if (jobs.value?.some((j) => j.running)) pollTimer = setTimeout(load, 2000);
@@ -55,13 +58,15 @@ function tomorrowAt(hhmm) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hhmm}`;
 }
 function describe(job) {
-  if (job.schedule_mode === "advanced") return `Cron: ${job.schedule_config?.expression || "?"}`;
+  if (job.schedule_mode === "advanced") return t("Cron: {expression}", { expression: job.schedule_config?.expression || "?" });
   const c = job.schedule_config || {};
-  if (c.kind === "interval_hours") return `Every ${c.hours || "?"} hour${c.hours === 1 ? "" : "s"}`;
-  if (c.kind === "weekly") return `Every ${cap(c.day)} at ${c.time || "?"}`;
-  if (c.kind === "once") return `Once, ${onceText(c.at)}`;
-  return `Daily at ${c.time || "?"}`;
+  if (c.kind === "interval_hours") return tn("Every hour", "Every {n} hours", c.hours || 0);
+  if (c.kind === "weekly") return t("Every {day} at {time}", { day: DAY_NAMES[c.day] || cap(c.day), time: c.time || "?" });
+  if (c.kind === "once") return t("Once, {when}", { when: onceText(c.at) });
+  return t("Daily at {time}", { time: c.time || "?" });
 }
+const RUN_STATUS = { success: t("success"), failed: t("failed"), interrupted: t("interrupted"), blocked: t("blocked"),
+  cancelled: t("cancelled"), running: t("running") };
 const STATUS_PILL = { success: "pill-ok", failed: "pill-bad", interrupted: "pill-warn", blocked: "pill-warn", cancelled: "pill-warn", running: "pill-accent" };
 function duration(r) {
   if (!r.finished_at) return "";
@@ -73,20 +78,21 @@ function summary(r) {
   if (!r.result_summary) return { text: "", lines: [] };
   try {
     const obj = JSON.parse(r.result_summary);
-    if (!obj || typeof obj !== "object") return { text: String(obj), lines: [] };
+    if (!obj || typeof obj !== "object") return { text: r.result_text || String(obj), lines: [] };
     const lines = Array.isArray(obj.verbose_log) ? obj.verbose_log : [];
-    const text = Object.entries(obj).filter(([k]) => k !== "verbose_log")
+    // 3.7.0: the server's wording in the reader's language (result_text), else the raw keys.
+    const text = r.result_text || Object.entries(obj).filter(([k]) => k !== "verbose_log")
       .map(([k, v]) => `${k.replace(/_/g, " ")}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · ");
     return { text, lines };
   } catch {
-    return { text: r.result_summary, lines: [] };
+    return { text: r.result_text || r.result_summary, lines: [] };
   }
 }
 
 async function stopJob(job) {
-  if (!(await askConfirm(`Stop “${job.name}”? What it has done so far is kept.`, { ok: "Stop", danger: true }))) return;
-  try { await api(`/api/library/activity/${job.progress.id}/stop`, { method: "POST" }); toast(`Stopping “${job.name}”…`); load(); }
-  catch (err) { toast(err.message || "Could not stop it", { type: "error" }); }
+  if (!(await askConfirm(t("Stop “{title}”?", { title: job.name }) + " " + t("What it has done so far is kept."), { ok: t("Stop"), danger: true }))) return;
+  try { await api(`/api/library/activity/${job.progress.id}/stop`, { method: "POST" }); toast(t("Stopping “{name}”…", { name: job.name })); load(); }
+  catch (err) { toast(err.message || t("Could not stop it"), { type: "error" }); }
 }
 
 async function loadHistory(id) {
@@ -95,7 +101,7 @@ async function loadHistory(id) {
     const runs = await api(`/api/scheduler/jobs/${id}/runs`);
     history.value = { ...history.value, [id]: runs };
   } catch (err) {
-    history.value = { ...history.value, [id]: err.message || "Could not load the history" };
+    history.value = { ...history.value, [id]: err.message || t("Could not load the history") };
   }
 }
 function toggleHistory(id) {
@@ -109,19 +115,19 @@ function toggleDetails(runId) {
 }
 
 async function runNow(job) {
-  try { await api(`/api/scheduler/jobs/${job.id}/run-now`, { method: "POST" }); toast(`Started ${job.name}`); }
-  catch (err) { toast(err.message || "Could not start the job", { type: "error" }); }
+  try { await api(`/api/scheduler/jobs/${job.id}/run-now`, { method: "POST" }); toast(t("Started {name}", { name: job.name })); }
+  catch (err) { toast(err.message || t("Could not start the job"), { type: "error" }); }
   load();
 }
 async function setEnabled(job, on) {
   try { await api(`/api/scheduler/jobs/${job.id}`, { method: "PATCH", body: { enabled: on } }); }
-  catch (err) { toast(err.message || "Could not change the job", { type: "error" }); }
+  catch (err) { toast(err.message || t("Could not change the job"), { type: "error" }); }
   load();
 }
 async function remove(job) {
-  if (!(await askConfirm(`Delete the job "${job.name}" and its history?`, { ok: "Delete", danger: true }))) return;
-  try { await api(`/api/scheduler/jobs/${job.id}`, { method: "DELETE" }); toast("Job deleted"); }
-  catch (err) { toast(err.message || "Could not delete the job", { type: "error" }); }
+  if (!(await askConfirm(t("Delete the job “{name}” and its history?", { name: job.name }), { ok: t("Delete"), danger: true }))) return;
+  try { await api(`/api/scheduler/jobs/${job.id}`, { method: "DELETE" }); toast(t("Job deleted")); }
+  catch (err) { toast(err.message || t("Could not delete the job"), { type: "error" }); }
   load();
 }
 
@@ -166,11 +172,11 @@ async function save() {
     const job = dialog.value.job;
     if (job) await api(`/api/scheduler/jobs/${job.id}`, { method: "PATCH", body });
     else await api("/api/scheduler/jobs", { method: "POST", body: { job_type: f.job_type, ...body } });
-    toast(job ? "Job saved" : "Job created", { type: "success" });
+    toast(job ? t("Job saved") : t("Job created"), { type: "success" });
     dialog.value = null;
     load();
   } catch (err) {
-    formError.value = err.message || "Could not save the job";
+    formError.value = err.message || t("Could not save the job");
   } finally {
     busy.value = false;
   }
@@ -181,57 +187,56 @@ async function save() {
   <div class="page">
     <header class="page-head">
       <div>
-        <h1>Scheduler</h1>
-        <p>Runs background jobs on a schedule — or right away with “Run now”. Jobs that change files never run at the same time as each other.
-          <strong>System</strong> jobs are built in: change or disable them, they can't be deleted.</p>
+        <h1>{{ $t("Scheduler") }}</h1>
+        <p><Tx msg="Runs background jobs on a schedule — or right away with “Run now”. Jobs that change files never run at the same time as each other. {b1} jobs are built in: change or disable them, they can't be deleted."><template #b1><strong>{{ $t("System") }}</strong></template></Tx></p>
       </div>
-      <button class="btn btn-primary btn-sm" :disabled="!types.length" @click="openDialog()"><Icon name="plus" />Add job</button>
+      <button class="btn btn-primary btn-sm" :disabled="!types.length" @click="openDialog()"><Icon name="plus" />{{ $t("Add job") }}</button>
     </header>
 
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!jobs" class="skeleton" style="height: 10rem; border-radius: var(--radius-lg)" />
-    <div v-else-if="!jobs.length" class="card empty"><div class="empty-icon">🗓️</div><p>No jobs yet. Add one to run a task regularly.</p></div>
+    <div v-else-if="!jobs.length" class="card empty"><div class="empty-icon">🗓️</div><p>{{ $t("No jobs yet. Add one to run a task regularly.") }}</p></div>
 
     <section v-for="job in jobs || []" :key="job.id" class="card panel job">
       <div class="panel-head">
         <div class="job-title">
           <h2>{{ job.name }}</h2>
-          <span class="pill" :title="typeOf(job.job_type)?.category === 'invasive' ? 'Changes files: never runs alongside other such jobs' : 'Read-only'">{{ typeOf(job.job_type)?.label || job.job_type }}</span>
-          <span v-if="job.system" class="pill" title="Built in: it can be changed or disabled, not deleted">System</span>
-          <span v-if="job.running" class="pill pill-accent">Running…</span>
+          <span class="pill" :title="typeOf(job.job_type)?.category === 'invasive' ? $t('Changes files: never runs alongside other such jobs') : $t('Read-only')">{{ typeOf(job.job_type)?.label || job.job_type }}</span>
+          <span v-if="job.system" class="pill" :title="$t('Built in: it can be changed or disabled, not deleted')">{{ $t("System") }}</span>
+          <span v-if="job.running" class="pill pill-accent">{{ $t("Running…") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="job.enabled" @change="setEnabled(job, $event.target.checked)">Enabled</label>
+        <label class="switch"><input type="checkbox" :checked="job.enabled" @change="setEnabled(job, $event.target.checked)">{{ $t("Enabled") }}</label>
       </div>
       <div v-if="job.running && job.progress" class="live">
-        <span><strong>{{ job.progress.stage || "Working…" }}</strong>
-          <template v-if="job.progress.total"> · {{ (job.progress.done || 0).toLocaleString() }} of {{ job.progress.total.toLocaleString() }} done</template>
+        <span><strong>{{ job.progress.stage || $t("Working…") }}</strong>
+          <template v-if="job.progress.total"> · {{ $t("{done} of {total} done", { done: formatNumber(job.progress.done || 0), total: formatNumber(job.progress.total) }) }}</template>
           <template v-if="job.progress.percent != null"> · {{ Math.round(job.progress.percent) }}%</template>
           <span v-if="job.progress.detail" class="muted"> · {{ job.progress.detail }}</span></span>
         <div v-if="job.progress.percent != null" class="bar" role="progressbar" :aria-valuenow="Math.round(job.progress.percent)" aria-valuemin="0" aria-valuemax="100">
           <div :style="{ width: `${job.progress.percent}%` }" /></div>
         <span class="live-actions">
-          <button v-if="job.progress.can_stop" class="btn btn-sm" @click="stopJob(job)"><Icon name="stop" :size="14" />Stop</button>
-          <span v-else-if="job.progress.stopped_by" class="muted small">Stopping…</span>
-          <router-link to="/tasks" class="small">All running work in Tasks</router-link>
+          <button v-if="job.progress.can_stop" class="btn btn-sm" @click="stopJob(job)"><Icon name="stop" :size="14" />{{ $t("Stop") }}</button>
+          <span v-else-if="job.progress.stopped_by" class="muted small">{{ $t("Stopping…") }}</span>
+          <router-link to="/tasks" class="small">{{ $t("All running work in Tasks") }}</router-link>
         </span>
       </div>
       <p class="meta">
-        <span>{{ job.enabled ? describe(job) : job.schedule_config?.kind === "once" && job.last_run_at ? "Ran once (switch it on to run it again)" : "Disabled" }}</span>
-        <span v-if="job.enabled && job.next_run_at">Next: {{ formatDateTime(job.next_run_at) }}</span>
-        <span v-if="job.last_run_at">Last: {{ formatDateTime(job.last_run_at) }}
-          <span class="pill" :class="STATUS_PILL[job.last_run_status]">{{ job.last_run_status }}</span></span>
+        <span>{{ job.enabled ? describe(job) : job.schedule_config?.kind === "once" && job.last_run_at ? $t("Ran once (switch it on to run it again)") : $t("Disabled") }}</span>
+        <span v-if="job.enabled && job.next_run_at">{{ $t("Next: {time}", { time: formatDateTime(job.next_run_at) }) }}</span>
+        <span v-if="job.last_run_at">{{ $t("Last: {time}", { time: formatDateTime(job.last_run_at) }) }}
+          <span class="pill" :class="STATUS_PILL[job.last_run_status]">{{ RUN_STATUS[job.last_run_status] || job.last_run_status }}</span></span>
       </p>
       <div class="form-actions">
-        <button class="btn btn-sm" :disabled="job.running" @click="runNow(job)"><Icon name="play" />Run now</button>
-        <button class="btn btn-ghost btn-sm" @click="openDialog(job)"><Icon name="edit" />Edit</button>
-        <button v-if="!job.system" class="btn btn-ghost btn-sm btn-danger" :disabled="job.running" @click="remove(job)"><Icon name="trash" />Delete</button>
+        <button class="btn btn-sm" :disabled="job.running" @click="runNow(job)"><Icon name="play" />{{ $t("Run now") }}</button>
+        <button class="btn btn-ghost btn-sm" @click="openDialog(job)"><Icon name="edit" />{{ $t("Edit") }}</button>
+        <button v-if="!job.system" class="btn btn-ghost btn-sm btn-danger" :disabled="job.running" @click="remove(job)"><Icon name="trash" />{{ $t("Delete") }}</button>
         <span style="flex: 1" />
-        <button class="btn btn-ghost btn-sm" @click="toggleHistory(job.id)">{{ job.id in history ? "Hide history" : "History" }}</button>
+        <button class="btn btn-ghost btn-sm" @click="toggleHistory(job.id)">{{ job.id in history ? $t("Hide history") : $t("History") }}</button>
       </div>
       <div v-if="job.id in history" class="history">
-        <p v-if="history[job.id] === 'loading'" class="muted small">Loading…</p>
+        <p v-if="history[job.id] === 'loading'" class="muted small">{{ $t("Loading…") }}</p>
         <p v-else-if="typeof history[job.id] === 'string'" class="error-text">{{ history[job.id] }}</p>
-        <p v-else-if="!history[job.id].length" class="muted small">No runs yet.</p>
+        <p v-else-if="!history[job.id].length" class="muted small">{{ $t("No runs yet.") }}</p>
         <template v-else>
           <div v-for="r in history[job.id]" :key="r.id" class="run">
             <div class="run-head">
@@ -242,7 +247,7 @@ async function save() {
             <template v-if="summary(r).text || summary(r).lines.length">
               <p v-if="summary(r).text" class="run-sum">{{ summary(r).text }}</p>
               <button v-if="summary(r).lines.length" class="btn btn-ghost btn-sm" @click="toggleDetails(r.id)">
-                {{ openDetails.has(r.id) ? "Hide details" : `Show ${summary(r).lines.length} detail lines` }}</button>
+                {{ openDetails.has(r.id) ? $t("Hide details") : $t("Show {n} detail lines", { n: summary(r).lines.length }) }}</button>
               <pre v-if="openDetails.has(r.id)" class="log mono scroll-thin">{{ summary(r).lines.join("\n") }}</pre>
             </template>
           </div>
@@ -250,50 +255,49 @@ async function save() {
       </div>
     </section>
 
-    <ModalDialog v-if="dialog" :title="dialog.job ? 'Edit job' : 'Add job'" @close="dialog = null">
+    <ModalDialog v-if="dialog" :title="dialog.job ? $t('Edit job') : $t('Add job')" @close="dialog = null">
       <form id="job-form" class="form" @submit.prevent="save">
-        <label class="field">Task
+        <label class="field">{{ $t("Task") }}
           <select v-model="form.job_type" class="select" :disabled="!!dialog.job">
             <option v-for="t in types" :key="t.job_type" :value="t.job_type">{{ t.label }}</option>
           </select>
-          <small v-if="dialog.job" class="muted">The task can't be changed; add a new job instead.</small>
+          <small v-if="dialog.job" class="muted">{{ $t("The task can't be changed; add a new job instead.") }}</small>
         </label>
-        <label class="field">Name
+        <label class="field">{{ $t("Name") }}
           <input v-model="form.name" class="input" :placeholder="defaultName" @input="nameTouched = true">
         </label>
-        <div class="field">Schedule
+        <div class="field">{{ $t("Schedule") }}
           <div class="seg">
-            <button type="button" class="btn btn-sm" :class="{ 'btn-primary': form.mode === 'simple' }" @click="form.mode = 'simple'">Simple</button>
-            <button type="button" class="btn btn-sm" :class="{ 'btn-primary': form.mode === 'advanced' }" @click="form.mode = 'advanced'">Cron</button>
+            <button type="button" class="btn btn-sm" :class="{ 'btn-primary': form.mode === 'simple' }" @click="form.mode = 'simple'">{{ $t("Simple") }}</button>
+            <button type="button" class="btn btn-sm" :class="{ 'btn-primary': form.mode === 'advanced' }" @click="form.mode = 'advanced'">{{ $t("Cron") }}</button>
           </div>
         </div>
         <div v-if="form.mode === 'simple'" class="sched">
-          <select v-model="form.kind" class="select" aria-label="How often">
-            <option value="daily">Every day</option>
-            <option value="weekly">Every week</option>
-            <option value="interval_hours">Every few hours</option>
-            <option value="once">One time</option>
+          <select v-model="form.kind" class="select" :aria-label="$t('How often')">
+            <option value="daily">{{ $t("Every day") }}</option>
+            <option value="weekly">{{ $t("Every week") }}</option>
+            <option value="interval_hours">{{ $t("Every few hours") }}</option>
+            <option value="once">{{ $t("One time") }}</option>
           </select>
-          <select v-if="form.kind === 'weekly'" v-model="form.day" class="select" aria-label="Day">
+          <select v-if="form.kind === 'weekly'" v-model="form.day" class="select" :aria-label="$t('Day')">
             <option v-for="d in DAYS" :key="d" :value="d">{{ cap(d) }}</option>
           </select>
-          <input v-if="form.kind === 'once'" v-model="form.at" class="input" type="datetime-local" aria-label="Date and time" required>
-          <input v-else-if="form.kind !== 'interval_hours'" v-model="form.time" class="input" type="time" aria-label="Time" required>
-          <label v-else class="inline">every <input v-model.number="form.hours" class="input input-num" type="number" min="1" max="168" aria-label="Hours"> hours</label>
+          <input v-if="form.kind === 'once'" v-model="form.at" class="input" type="datetime-local" :aria-label="$t('Date and time')" required>
+          <input v-else-if="form.kind !== 'interval_hours'" v-model="form.time" class="input" type="time" :aria-label="$t('Time')" required>
+          <label v-else class="inline">{{ $t("every") }} <input v-model.number="form.hours" class="input input-num" type="number" min="1" max="168" :aria-label="$t('Hours')"> {{ $t("hours") }}</label>
         </div>
-        <small v-if="form.mode === 'simple' && form.kind === 'once'" class="muted">Runs once at this time (the server's clock) and then switches
-          itself off. A time that has passed runs within a minute.</small>
+        <small v-if="form.mode === 'simple' && form.kind === 'once'" class="muted">{{ $t("Runs once at this time (the server's clock) and then switches itself off. A time that has passed runs within a minute.") }}</small>
         <div v-else class="field">
-          <input v-model="form.expression" class="input mono" placeholder="0 3 * * *" aria-label="Cron expression" required>
-          <small class="muted">minute hour day-of-month month day-of-week, server time — “0 3 * * *” is every day at 03:00, “0 */6 * * *” every 6 hours.</small>
+          <input v-model="form.expression" class="input mono" placeholder="0 3 * * *" :aria-label="$t('Cron expression')" required>
+          <small class="muted">{{ $t("minute hour day-of-month month day-of-week, server time — “0 3 * * *” is every day at 03:00, “0 */6 * * *” every 6 hours.") }}</small>
         </div>
-        <label v-if="form.job_type === 'duplicate_scan'" class="switch"><input v-model="form.verbose" type="checkbox">Keep a detailed log of each run</label>
-        <label class="switch"><input v-model="form.enabled" type="checkbox">Enabled</label>
+        <label v-if="form.job_type === 'duplicate_scan'" class="switch"><input v-model="form.verbose" type="checkbox">{{ $t("Keep a detailed log of each run") }}</label>
+        <label class="switch"><input v-model="form.enabled" type="checkbox">{{ $t("Enabled") }}</label>
         <p v-if="formError" class="error-text">{{ formError }}</p>
       </form>
       <template #footer>
-        <button class="btn" type="button" @click="dialog = null">Cancel</button>
-        <button class="btn btn-primary" type="submit" form="job-form" :disabled="busy">{{ busy ? "Saving…" : "Save" }}</button>
+        <button class="btn" type="button" @click="dialog = null">{{ $t("Cancel") }}</button>
+        <button class="btn btn-primary" type="submit" form="job-form" :disabled="busy">{{ busy ? $t("Saving…") : $t("Save") }}</button>
       </template>
     </ModalDialog>
   </div>

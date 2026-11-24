@@ -16,6 +16,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from ..i18n import L
 from ..pmv_details import _format_upload_date
 
 from ..config import get_settings
@@ -115,7 +116,7 @@ class SiteSyncWorkerMixin:
 
     def request_site_sync(self, dry_run: bool) -> None:
         if self._site_sync_running:
-            raise JobBlockedError("A sync with PMVHaven is already running")
+            raise JobBlockedError(L('A sync with PMVHaven is already running'))
         asyncio.create_task(self._run_site_sync_safely(dry_run))
 
     async def _run_site_sync_safely(self, dry_run: bool) -> None:
@@ -130,9 +131,9 @@ class SiteSyncWorkerMixin:
     async def run_site_sync(self, dry_run: bool = False) -> dict:
         """The sync (or its preview), shown on the Tasks page while it runs."""
         if self._site_sync_running:
-            raise JobBlockedError("A sync with PMVHaven is already running")
+            raise JobBlockedError(L('A sync with PMVHaven is already running'))
         if not dry_run and self._invasive_lock_holder is not None:
-            raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+            raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
         title = "Sync with PMVHaven (preview)" if dry_run else "Sync with PMVHaven"
         async with activity.track("site_sync", title, progress=self._site_sync_activity, stop=True,
                                   # a real sync can only stop while it's still reading (nothing changed yet)
@@ -144,18 +145,18 @@ class SiteSyncWorkerMixin:
     def _site_sync_activity(self) -> dict:
         p = self._site_sync_progress or {}
         if p.get("phase") == "fetching":
-            return {"stage": "Fetching video details from the sites", "done": p.get("done"), "total": p.get("total")}
+            return {"stage": L('Fetching video details from the sites'), "done": p.get("done"), "total": p.get("total")}
         if p.get("phase") == "applying":
-            return {"stage": "Comparing and applying changes"}
-        return {"stage": "Starting"}
+            return {"stage": L('Comparing and applying changes')}
+        return {"stage": L('Starting')}
 
     async def _site_sync(self, dry_run: bool = False) -> dict:
         if self._site_sync_running:
-            raise JobBlockedError("A sync with PMVHaven is already running")
+            raise JobBlockedError(L('A sync with PMVHaven is already running'))
         locked = False
         if not dry_run:
             if not self._try_acquire_invasive_lock("site_sync"):
-                raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+                raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
             locked = True
         self._site_sync_running = True
         started = time.time()
@@ -183,7 +184,7 @@ class SiteSyncWorkerMixin:
                     async with PMVApiClient(settings, site_key) as api:
                         for start in range(0, len(ids), BULK_LIMIT):
                             if self._shutting_down:
-                                raise PMVApiError("Interrupted by shutdown")
+                                raise PMVApiError(L('Interrupted by shutdown'))
                             batch = ids[start:start + BULK_LIMIT]
                             for v in await api.bulk_videos(ids=batch):
                                 if v.get("_id") in batch:

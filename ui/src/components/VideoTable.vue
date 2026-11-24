@@ -1,4 +1,5 @@
 <script setup>
+import { t, formatNumber } from "../lib/i18n.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import VideoThumb from "./VideoThumb.vue";
 import ActionMenu from "./ActionMenu.vue";
@@ -11,16 +12,16 @@ import { makers, uploadedBy } from "../lib/creators.js";
 defineProps({ items: Array, sort: String, dir: String, picked: { type: Object, default: null } });
 const emit = defineEmits(["sort", "filter"]);
 const COLUMNS = [
-  { key: "title", label: "Title" },
-  { key: "creator", label: "Creator" },
-  { key: "upload_date", label: "Uploaded" },
-  { key: "download_datetime", label: "Acquired" },
-  { key: "tech_duration", label: "Duration" },
-  { key: "tech_resolution", label: "Quality" },
-  { key: "tech_codec", label: "Codec" },
-  { key: "tech_filesize", label: "Size" },
-  { key: "ratings", label: "Rating" },
-  { key: "views", label: "Views" },
+  { key: "title", label: t("Title") },
+  { key: "creator", label: t("Creator") },
+  { key: "upload_date", label: t("Uploaded") },
+  { key: "download_datetime", label: t("Acquired") },
+  { key: "tech_duration", label: t("Duration") },
+  { key: "tech_resolution", label: t("Quality") },
+  { key: "tech_codec", label: t("Codec") },
+  { key: "tech_filesize", label: t("Size") },
+  { key: "ratings", label: t("Rating") },
+  { key: "views", label: t("Views") },
 ];
 
 // Hovering a thumbnail shows it enlarged (and playing its preview) next to the
@@ -56,7 +57,7 @@ onBeforeUnmount(() => clearTimeout(timer));
               {{ c.label }}<Icon v-if="sort === c.key" :name="dir === 'asc' ? 'sortAsc' : 'sortDesc'" :size="14" />
             </button>
           </th>
-          <th class="col-menu"><span class="sr-only">Actions</span></th>
+          <th class="col-menu"><span class="sr-only">{{ $t("Actions") }}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -66,10 +67,10 @@ onBeforeUnmount(() => clearTimeout(timer));
           </td>
           <td class="col-title">
             <router-link :to="{ name: 'video', params: { id: item.id } }">{{ itemUrlTitle(item) }}</router-link>
-            <span v-if="session.prefs.badges.gone && item.site_status === 'removed'" class="gone" title="Gone from the site (not found during the last sync)">💀</span>
-            <span v-if="session.prefs.badges.favorite !== false && isFavorite(item.id)" class="fav" title="In your Favorites">♥</span>
+            <span v-if="session.prefs.badges.gone && item.site_status === 'removed'" class="gone" :title="$t('Gone from the site (not found during the last sync)')">💀</span>
+            <span v-if="session.prefs.badges.favorite !== false && isFavorite(item.id)" class="fav" :title="$t('In your Favorites')">♥</span>
           </td>
-          <td><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i">, </span><button class="linkish" :title="uploadedBy(item) ? `Uploaded by ${uploadedBy(item)}` : undefined"
+          <td><template v-for="(c, i) in makers(item)" :key="c"><span v-if="i">, </span><button class="linkish" :title="uploadedBy(item) ? $t('Uploaded by {item}', { item: uploadedBy(item) }) : undefined"
             @click="emit('filter', 'creator', c)">{{ c }}</button></template></td>
           <td class="nowrap">{{ formatDate(item.upload_date) }}</td>
           <td class="nowrap">{{ item.download_datetime ? formatDate(item.download_datetime) : formatDate(new Date(item.created_at * 1000).toISOString()) }}</td>
@@ -78,7 +79,7 @@ onBeforeUnmount(() => clearTimeout(timer));
           <td class="nowrap">{{ codecLabel(item.tech_codec) }}</td>
           <td class="nowrap">{{ item.tech_filesize }}</td>
           <td class="nowrap"><span v-if="item.ratings" class="badge" :class="`badge-rating-${ratingTier(item.ratings)}`">{{ item.ratings }}</span></td>
-          <td class="nowrap">{{ item.site_stats?.views?.toLocaleString() ?? "" }}</td>
+          <td class="nowrap">{{ item.site_stats?.views != null ? formatNumber(item.site_stats.views) : "" }}</td>
           <td class="col-menu"><ActionMenu :item="item" /></td>
         </tr>
       </tbody>
@@ -94,20 +95,20 @@ onBeforeUnmount(() => clearTimeout(timer));
 <style scoped>
 .table-wrap { overflow-x: auto; }
 .vtable { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-th { position: sticky; top: 0; background: var(--panel); text-align: left; font-weight: 600; border-bottom: 1px solid var(--border); padding: 0; }
+th { position: sticky; top: 0; background: var(--panel); text-align: start; font-weight: 600; border-bottom: 1px solid var(--border); padding: 0; }
 .th-btn { display: inline-flex; align-items: center; gap: 0.25rem; width: 100%; padding: 0.625rem; border: 0; background: none; color: var(--text-2); font: 600 0.78rem var(--font); cursor: pointer; white-space: nowrap; }
 .th-btn:hover, .th-btn.on { color: var(--accent); }
 td { padding: 0.375rem 0.625rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tbody tr:hover { background: var(--panel-2); }
-.col-thumb { width: 6.75rem; padding: 0.375rem 0.25rem 0.375rem 0.5rem; }
+.col-thumb { width: 6.75rem; padding-block: 0.375rem 0.375rem; padding-inline: 0.5rem 0.25rem; }
 .col-thumb :deep(.thumb) { width: 6rem; border-radius: 0.375rem; }
 .col-title a { color: var(--text); font-weight: 550; }
 .col-title { min-width: 14rem; }
-.col-menu { width: 2.75rem; text-align: right; padding-right: 0.5rem; }
-.fav { margin-left: 0.375rem; color: #f43f5e; }
-.gone { margin-left: 0.375rem; padding: 0 0.25rem; border-radius: 0.25rem; background: var(--gone-bg, #dc2626); cursor: help; }
+.col-menu { width: 2.75rem; text-align: end; padding-inline-end: 0.5rem; }
+.fav { margin-inline-start: 0.375rem; color: #f43f5e; }
+.gone { margin-inline-start: 0.375rem; padding: 0 0.25rem; border-radius: 0.25rem; background: var(--gone-bg, #dc2626); cursor: help; }
 .nowrap { white-space: nowrap; }
-.linkish { border: 0; background: none; padding: 0; color: var(--text-2); font: inherit; cursor: pointer; text-align: left; }
+.linkish { border: 0; background: none; padding: 0; color: var(--text-2); font: inherit; cursor: pointer; text-align: start; }
 .linkish:hover { color: var(--accent); }
 .table-pop { position: fixed; z-index: 110; padding: 0.25rem; box-shadow: var(--shadow); pointer-events: none; animation: grow 0.15s var(--ease); }
 @keyframes grow { from { opacity: 0; transform: scale(0.92); } }

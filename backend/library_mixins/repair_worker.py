@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..i18n import L
 from ..pmv_details import extract_creators
 
 import asyncio
@@ -23,9 +24,9 @@ class RepairWorkerMixin:
     def request_repair(self, video_id: str) -> LibraryItem:
         item = self._items.get(video_id)
         if not item:
-            raise ValueError("Not found")
+            raise ValueError(L('Not found'))
         if item.status != "done" or not item.video_path:
-            raise ValueError("Only completed downloads can be repaired")
+            raise ValueError(L('Only completed downloads can be repaired'))
         if item.repair_status in ("queued", "running"):
             # No-op, not an error -- the frontend now guards against this
             # itself (see the "repair" case in library.js's
@@ -98,7 +99,7 @@ class RepairWorkerMixin:
         forget UX."""
         if not self._try_acquire_invasive_lock("library_repair"):
             raise ValueError(
-                f"Cannot start a bulk repair while '{self._invasive_lock_holder}' is already running"
+                L("Cannot start a bulk repair while '{job}' is already running", job=self._invasive_lock_holder)
             )
         queued = self.request_repair_all(max_concurrent)
         asyncio.create_task(self._watch_and_release_repair_lock(queued))
@@ -119,7 +120,7 @@ class RepairWorkerMixin:
 
     def _repair_all_activity(self, total: int) -> dict:
         left = len(self._repair_queue) + len(self._active_repair_tasks)
-        return {"stage": "Repairing videos", "done": max(0, total - left), "total": total}
+        return {"stage": L('Repairing videos'), "done": max(0, total - left), "total": total}
 
     async def _watch_and_release_repair_lock(self, queued: int = 0) -> None:
         """Background companion to start_guarded_repair_all() -- polls
@@ -129,7 +130,7 @@ class RepairWorkerMixin:
         repair doesn't leave this polling forever; the lock is released
         regardless of how the loop exits, via the `finally` block."""
         try:
-            async with activity.track("library_repair", "Repairing all videos",
+            async with activity.track("library_repair", L('Repairing all videos'),
                                       progress=lambda: self._repair_all_activity(queued), stop=self._stop_repair_all):
                 await self._wait_for_repairs()
         finally:
@@ -145,7 +146,7 @@ class RepairWorkerMixin:
     def cancel_repair(self, video_id: str) -> None:
         item = self._items.get(video_id)
         if not item:
-            raise ValueError("Not found")
+            raise ValueError(L('Not found'))
         if item.repair_status == "queued":
             if video_id in self._repair_queue:
                 self._repair_queue.remove(video_id)
@@ -162,7 +163,7 @@ class RepairWorkerMixin:
                 task.cancel()
                 logger.info("Cancelling running repair for {} ({})", video_id, item.title or item.video_path)
                 return
-        raise ValueError("This item's repair isn't currently queued or running")
+        raise ValueError(L("This item's repair isn't currently queued or running"))
 
     def _ensure_repair_worker(self) -> None:
         self._repair_tasks = [t for t in self._repair_tasks if not t.done()]
@@ -244,10 +245,10 @@ class RepairWorkerMixin:
         stats_store.bump("repairs" if status == "done" else "repair_failures" if status == "failed" else "")
         self._bulk_repair_ids.discard(item.id)
         if status == "failed":
-            notify("repair", "error", f"Repair/Update failed: {title_of(item)}", body=(error or "")[:300],
+            notify("repair", "error", L('Repair/Update failed: {title}', title=title_of(item)), body=(error or "")[:300],
                    link=video_link(item), user_id=item.added_by)
         elif not bulk and status == "done":
-            notify("repair", "success", f"Repaired/updated {title_of(item)}", body=item.repair_progress_label,
+            notify("repair", "success", L('Repaired/updated {title}', title=title_of(item)), body=item.repair_progress_label,
                    link=video_link(item), user_id=item.added_by)
         if status == "failed":
             logger.warning("Repair/Update failed for {} ({}): {}", item.id, item.title or item.video_path, error)

@@ -21,6 +21,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import activity, sources, video_frames
 
 
@@ -235,14 +236,14 @@ class FramesMixin:
             left = len(self._fr_queue or ())
             total = state["done"] + state["failed"] + left + (1 if state["current"] else 0)
             item = self._items.get(state["current"] or "")
-            return {"stage": "Making", "done": state["done"] + state["failed"], "total": total,
+            return {"stage": L('Making'), "done": state["done"] + state["failed"], "total": total,
                     "detail": item.title if item else None, "item": activity.item_ref(item)}
 
         def stop() -> None:
             self._fr_stop = True
             self._fr_queue.clear()
 
-        act = activity.start("video_frames", "Making video frames", source="auto", progress=progress)
+        act = activity.start("video_frames", L('Making video frames'), source="auto", progress=progress)
         act.stopper = stop
         try:
             while self._fr_queue and not self._fr_stop:
@@ -277,5 +278,5 @@ class FramesMixin:
             act.finish("cancelled" if self._fr_stop else ("failed" if state["failed"] and not state["done"] else "success"),
                        (f"Stopped by {act.stopped_by} · " if act.stopped_by else "") + ", ".join(parts))
         except BaseException:
-            act.finish("failed", "Stopped by an error (see the log)")
+            act.finish("failed", L('Stopped by an error (see the log)'))
             raise

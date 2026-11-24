@@ -27,6 +27,7 @@ server file paths become just the file name, and who added it / the site's
 original values are left out.
 """
 from __future__ import annotations
+from .i18n import L
 
 import json
 import time
@@ -112,7 +113,7 @@ class SecurityMiddleware:
                 if message["type"] == "http.request":
                     seen += len(message.get("body") or b"")
                     if seen > MAX_BODY:
-                        raise ValueError("Request body too large")
+                        raise ValueError(L('Request body too large'))
                 return message
             inner_receive = receive_limited
         else:

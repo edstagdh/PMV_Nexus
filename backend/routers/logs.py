@@ -11,6 +11,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
+from ..i18n import L
 from .. import ip_privacy
 from ..config import get_settings
 from ..log_store import get_log_store
@@ -22,7 +23,7 @@ router = APIRouter()
 def _store():
     store = get_log_store()
     if store is None:
-        raise HTTPException(status_code=503, detail="The log store is not running")
+        raise HTTPException(status_code=503, detail=L('The log store is not running'))
     return store
 
 

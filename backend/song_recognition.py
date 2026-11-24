@@ -16,6 +16,7 @@ The lookups return {"title", "artist", "url", "source"} or None; the caller
 (library_mixins/songs.py) adds up the samples per song.
 """
 from __future__ import annotations
+from .i18n import L
 
 import asyncio
 import base64
@@ -116,8 +117,8 @@ class ShazamClient:
         except Exception as exc:  # noqa: BLE001 -- network, 429, changed API...
             status = getattr(exc, "status", None)
             if status == 429:
-                raise RecognitionError("Shazam is limiting requests right now -- try again later") from exc
-            raise RecognitionError(f"Shazam didn't answer ({exc.__class__.__name__}{f' {status}' if status else ''})") from exc
+                raise RecognitionError(L('Shazam is limiting requests right now -- try again later')) from exc
+            raise RecognitionError(L("Shazam didn't answer ({error})", error=exc.__class__.__name__ + (f' {status}' if status else ''))) from exc
         return parse_shazam(answer)
 
 

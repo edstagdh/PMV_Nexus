@@ -140,6 +140,7 @@ _LABELS = {
     "cancel_restore": "Cancel restore",
     "test_backup": "Restore test of backup",
     "set_backup_password": "Change the backup password",
+    "save_backup_settings": "Backups: split size",
     "check_for_update": "Check for updates",
     "capture_snapshot_now": "Stats snapshot",
     "clear": "Clear notifications",
@@ -151,6 +152,10 @@ _LABELS = {
     "browse_dirs_mkdir": "Create folder",
     "set_reencode_settings": "Server Settings: Re-encode",
     "set_features": "Server Settings: switch re-encoding / sharing on or off",
+    "install_language": "Install a language from GitHub",
+    "upload_language": "Install a language from a file",
+    "remove_language": "Remove a language",
+    "set_default_language": "Server Settings: default language",
     "set_playback_settings": "Server Settings: Converting while watching",
     "set_upload_settings": "Server Settings: Uploads",
     "test_upload_scanner": "Test the virus scanner",
@@ -231,7 +236,7 @@ def _playlist_name(playlist_id: str) -> str | None:
 _PATH_TARGETS = [
     (re.compile(r"^/api/users/([^/]+)"), lambda m: _username_of(m.group(1)), "user"),
     (re.compile(r"^/api/scheduler/jobs/([^/]+)"), lambda m: _job_name(m.group(1)), "job"),
-    (re.compile(r"^/api/backups/([^/]+)"), lambda m: m.group(1), "backup"),
+    (re.compile(r"^/api/backups/(?!settings$|plan$|space$)([^/]+)"), lambda m: m.group(1), "backup"),
     (re.compile(r"^/api/library/local/([0-9a-f]{32})"), lambda m: _upload_title(m.group(1)), "upload"),
     (re.compile(r"^/api/performers/([0-9a-f]{32}|n[0-9a-f]{31})/"), lambda m: _performer_name(m.group(1)), "performer"),
     (re.compile(r"^/api/credentials/([a-z0-9_]+)/"), lambda m: m.group(1), "credential"),
@@ -495,6 +500,8 @@ class ActionLogMiddleware:
                 if not title and response["chunks"] and status_code < 400 and path == "/api/backups":
                     made = _json(b"".join(response["chunks"]))  # "Create backup · pmvnexus_backup_….zip" (2.25.0)
                     title = made.get("name") if isinstance(made, dict) and isinstance(made.get("name"), str) else None
+                    if isinstance(made, dict) and isinstance(made.get("plan"), dict):  # 3.7.0: started in the background
+                        title = ", ".join(made["plan"].get("include") or []) or "database + settings"
                 self._log(scope, user, item_id, title, details, status_code, started)
             except Exception:  # logging must never break a request
                 pass

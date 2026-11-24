@@ -3,6 +3,7 @@
 // through Media Source Extensions (Chrome, Edge, Firefox, iPhone on iOS 17.1+);
 // browsers with built-in HLS (Safari) get the playlist directly. hls.js is
 // only downloaded the first time it's needed.
+import { t } from "./i18n.js";
 import { api } from "./api.js";
 
 const PREF_KEY = "pmv-quality";
@@ -37,8 +38,8 @@ export async function startLive(video, itemId, at, onFatal) {
       if (data.type === Hls.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); return; }
       const status = data.response?.code;
       stop();
-      onFatal(status === 404 ? "The conversion ended (the video was paused for a long time)"
-        : status === 410 ? "Converting was stopped on Tasks" : "The converted stream stopped");
+      onFatal(status === 404 ? t("The conversion ended (the video was paused for a long time)")
+        : status === 410 ? t("Converting was stopped on Tasks") : t("The converted stream stopped"));
     });
     hls.loadSource(s.playlist);
     hls.attachMedia(video);
@@ -48,7 +49,7 @@ export async function startLive(video, itemId, at, onFatal) {
     video.load();
   } else {
     stop();
-    throw new Error("This browser can't play converted streams");
+    throw new Error(t("This browser can't play converted streams"));
   }
   window.addEventListener("pagehide", stop, { once: true });
   return { stop, height: s.height };

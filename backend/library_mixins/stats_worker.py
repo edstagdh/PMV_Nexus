@@ -26,6 +26,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from ._helpers import parse_filesize_mb
 from ..spellings import spellings
 from .. import activity
@@ -151,7 +152,7 @@ class StatsWorkerMixin:
         registered job runner's signature; nothing here actually awaits
         anything, since every input is already in memory or a cheap
         stat() call."""
-        async with activity.track("stats_snapshot", "Saving a stats snapshot"):
+        async with activity.track("stats_snapshot", L('Saving a stats snapshot')):
             system = self.compute_system_stats()
             library = self.compute_library_stats()
             snapshot = self.db.create_stats_snapshot({"system": system, "library": library})

@@ -4,6 +4,7 @@
 // they follow the user to any browser or device.
 import { reactive } from "vue";
 import { api } from "../lib/api.js";
+import { i18n, pickLanguage, setLanguage } from "../lib/i18n.js";
 
 const THEMES = ["midnight", "slate", "daylight"];
 const VIEWS = ["grid", "list", "table"];
@@ -18,6 +19,7 @@ export const RELATED_BADGES_TOP = ["rating", "gone", "favorite"];
 export const RELATED_BADGES = [...RELATED_BADGES_BOTTOM, ...RELATED_BADGES_TOP];
 export const RELATED_BADGE_MAX = 3;
 const HEX = /^#[0-9a-f]{6}$/i;
+const LANG_CODE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 const CUSTOM_BASES = ["midnight", "daylight"];
 
 export const DEFAULT_UI = Object.freeze({
@@ -40,7 +42,8 @@ export const DEFAULT_UI = Object.freeze({
   startVolume: 10,              // % -- a new browser, or every video when rememberVolume is off
   watchedBar: true,             // thin "how far I got" line on thumbnails (2.24.0)
   panicKeys: [],                // [{code, label}] (max 3) pressed together: stop and show an empty page (2.24.0)
-  touchSides: "swipe",          // phones in fullscreen: "swipe" brightness/volume on the sides, or "seek" double-tap (2.19.0)
+  touchSides: "swipe",
+  language: "",                 // 3.7.0: language code ("" = the server's default; lib/i18n.js)          // phones in fullscreen: "swipe" brightness/volume on the sides, or "seek" double-tap (2.19.0)
   // Pop-up toasts for background updates, by group (stores/notifications.js).
   toasts: { download: true, reencode: true, upload: true, job: true, duplicate: true },
   defaultSort: "download_datetime",
@@ -91,6 +94,7 @@ export function normalizeUi(raw) {
       .map(([page, keys]) => [page, [...new Set(keys.filter((k) => typeof k === "string" && /^[a-z_-]{1,30}$/.test(k)))].slice(0, 30)])),
     rememberVolume: r.rememberVolume !== false,
     startVolume: clampNum(r.startVolume, 0, 100, DEFAULT_UI.startVolume),
+    language: typeof r.language === "string" && LANG_CODE.test(r.language) ? r.language : "",
     watchedBar: r.watchedBar !== false,
     panicKeys: Array.isArray(r.panicKeys)
       ? r.panicKeys.filter((k) => k && typeof k.code === "string" && k.code.length <= 32).slice(0, 3)
@@ -200,7 +204,7 @@ function uiSnapshot() {
   const p = session.prefs;
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
-    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
+    backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
     relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
@@ -214,6 +218,13 @@ async function loadPrefs() {
   } catch { /* keep cached/defaults */ }
   applyPrefs();
   cacheLocally();
+  await syncLanguage();
+}
+
+/** Shows the account's language (or the server default) if another one is showing. */
+export async function syncLanguage() {
+  const code = await pickLanguage(session.prefs.language);
+  if (code !== i18n.code) await setLanguage(code);
 }
 
 function cacheLocally() {

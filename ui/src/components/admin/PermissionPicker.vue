@@ -38,7 +38,7 @@ function toggle(key, on) {
     <fieldset v-for="a in areas" :key="a.name">
       <legend>{{ a.name }}</legend>
       <label v-for="p in a.items" :key="p.key" class="perm" :class="{ inherited: inh.has(p.key) && !value.has(p.key) }"
-             :title="inh.has(p.key) && !value.has(p.key) ? 'Already given by the role or a group' : p.description">
+             :title="inh.has(p.key) && !value.has(p.key) ? $t('Already given by the role or a group') : p.description">
         <input type="checkbox" :checked="value.has(p.key) || inh.has(p.key)" :disabled="inh.has(p.key) && !value.has(p.key)"
                @change="toggle(p.key, $event.target.checked)">
         <span><strong>{{ p.label }}</strong><small>{{ p.description }}</small></span>

@@ -2,6 +2,7 @@
 // Admin -> Maintenance: library-wide jobs (sync from the metadata files,
 // sync with PMVHaven, repair all) and files in the download and cache folders
 // that no library item points to.
+import { t, formatNumber, tn, locale } from "../../lib/i18n.js";
 import { hasPermission } from "../../stores/session.js";
 import { ref, computed } from "vue";
 import Icon from "../../components/Icon.vue";
@@ -26,11 +27,11 @@ async function syncFromFiles() {
   fileSync.value = { busy: true, result: "" };
   try {
     const r = await api("/api/settings/sync-metadata", { method: "POST" });
-    const parts = [`${r.updated} of ${r.checked} updated`];
-    if (r.missing_metadata) parts.push(`${r.missing_metadata} had no metadata file`);
+    const parts = [t("{updated} of {checked} updated", { updated: r.updated, checked: r.checked })];
+    if (r.missing_metadata) parts.push(t("{n} had no metadata file", { n: r.missing_metadata }));
     fileSync.value = { busy: false, result: parts.join(" · ") };
   } catch (err) {
-    fileSync.value = { busy: false, result: err.message || "Could not sync" };
+    fileSync.value = { busy: false, result: err.message || t("Could not sync") };
   }
 }
 const repair = ref({ busy: false, concurrent: 1 });
@@ -38,9 +39,9 @@ async function repairAll() {
   repair.value.busy = true;
   try {
     const r = await api("/api/settings/repair", { method: "POST", body: { max_concurrent: repair.value.concurrent } });
-    toast(r.queued ? `Queued ${r.queued} videos — follow them on the Tasks page` : "Nothing needed repairing", { type: "success" });
+    toast(r.queued ? tn("Queued {n} video — follow it on the Tasks page", "Queued {n} videos — follow them on the Tasks page", r.queued) : t("Nothing needed repairing"), { type: "success" });
   } catch (err) {
-    toast(err.message || "Could not start the repair", { type: "error", timeout: 8000 });
+    toast(err.message || t("Could not start the repair"), { type: "error", timeout: 8000 });
   } finally {
     repair.value.busy = false;
   }
@@ -53,7 +54,7 @@ async function runScan() {
     scan.value = await api("/api/maintenance/untracked-files");
     selected.value = new Set();
   } catch (err) {
-    error.value = err.message || "Could not scan the folders";
+    error.value = err.message || t("Could not scan the folders");
   } finally {
     scanning.value = false;
   }
@@ -84,14 +85,14 @@ async function doDelete() {
   deleting.value = true;
   try {
     const r = await api("/api/maintenance/untracked-files/delete", { method: "POST", body: { paths: [...selected.value] } });
-    const parts = [`Deleted ${r.deleted.length}`];
-    if (r.failed.length) parts.push(`${r.failed.length} still in use`);
-    if (r.refused.length) parts.push(`${r.refused.length} skipped (now part of the library)`);
+    const parts = [t("Deleted {n}", { n: r.deleted.length })];
+    if (r.failed.length) parts.push(t("{n} still in use", { n: r.failed.length }));
+    if (r.refused.length) parts.push(t("{n} skipped (now part of the library)", { n: r.refused.length }));
     toast(parts.join(" · "), { type: r.failed.length ? "error" : "success", timeout: r.failed.length ? 8000 : 3500 });
     confirming.value = false;
     await runScan();
   } catch (err) {
-    toast(err.message || "Could not delete", { type: "error" });
+    toast(err.message || t("Could not delete"), { type: "error" });
   } finally {
     deleting.value = false;
   }
@@ -104,24 +105,23 @@ function size(bytes) {
   while (v >= 1024 && i < units.length - 1) { v /= 1024; i += 1; }
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
 }
-const when = (ts) => new Date(ts * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
 </script>
 
 <template>
   <div class="maint">
     <header>
-      <h1>Maintenance</h1>
-      <p class="muted small">Library-wide jobs. Duplicate detection has its own <RouterLink to="/admin/duplicates">Duplicates</RouterLink> page.</p>
+      <h1>{{ $t("Maintenance") }}</h1>
+      <p class="muted small"><Tx msg="Library-wide jobs. Duplicate detection has its own {link1} page."><template #link1><RouterLink to="/admin/duplicates">{{ $t("Duplicates") }}</RouterLink></template></Tx></p>
     </header>
 
     <section v-if="hasPermission('settings.manage')" class="card block">
       <div class="block-head">
         <div>
-          <h2>Sync from metadata files</h2>
-          <p class="muted small">Re-reads each video's metadata JSON on disk and fills in tags, performers and technical details — for videos
-            downloaded before those fields existed, or while “Save a metadata JSON” was off. Safe to run any time.</p>
+          <h2>{{ $t("Sync from metadata files") }}</h2>
+          <p class="muted small">{{ $t("Re-reads each video's metadata JSON on disk and fills in tags, performers and technical details — for videos downloaded before those fields existed, or while “Save a metadata JSON” was off. Safe to run any time.") }}</p>
         </div>
-        <button class="btn btn-sm" :disabled="fileSync.busy" @click="syncFromFiles">{{ fileSync.busy ? "Syncing…" : "Sync from files" }}</button>
+        <button class="btn btn-sm" :disabled="fileSync.busy" @click="syncFromFiles">{{ fileSync.busy ? $t("Syncing…") : $t("Sync from files") }}</button>
       </div>
       <p v-if="fileSync.result" class="small">{{ fileSync.result }}</p>
     </section>
@@ -134,18 +134,16 @@ const when = (ts) => new Date(ts * 1000).toLocaleString([], { dateStyle: "short"
     <section v-if="hasPermission('videos.maintain')" class="card block">
       <div class="block-head">
         <div>
-          <h2>Repair / update everything</h2>
-          <p class="muted small">Checks every video's thumbnail, preview clip and metadata, re-fetches anything missing or empty from PMVHaven
-            (or makes it locally with ffmpeg when the site's copy is broken), refreshes tags, rating and description, and re-reads the
-            technical details. The video file itself is never touched. One video can be repaired from its ⋮ menu instead.</p>
+          <h2>{{ $t("Repair / update everything") }}</h2>
+          <p class="muted small">{{ $t("Checks every video's thumbnail, preview clip and metadata, re-fetches anything missing or empty from PMVHaven (or makes it locally with ffmpeg when the site's copy is broken), refreshes tags, rating and description, and re-reads the technical details. The video file itself is never touched. One video can be repaired from its ⋮ menu instead.") }}</p>
         </div>
         <div class="bar">
-          <label class="small">At once
-            <select v-model.number="repair.concurrent" class="select select-sm" aria-label="Videos at once">
+          <label class="small">{{ $t("At once") }}
+            <select v-model.number="repair.concurrent" class="select select-sm" :aria-label="$t('Videos at once')">
               <option v-for="n in [1, 2, 3, 4]" :key="n" :value="n">{{ n }}</option>
             </select>
           </label>
-          <button class="btn btn-sm" :disabled="repair.busy" @click="repairAll"><Icon name="wrench" />Repair all</button>
+          <button class="btn btn-sm" :disabled="repair.busy" @click="repairAll"><Icon name="wrench" />{{ $t("Repair all") }}</button>
         </div>
       </div>
     </section>
@@ -156,40 +154,41 @@ const when = (ts) => new Date(ts * 1000).toLocaleString([], { dateStyle: "short"
     <section v-if="hasPermission('maintenance.run')" class="card block">
       <div class="block-head">
         <div>
-          <h2>Untracked files</h2>
-          <p class="muted small">Files in the download and cache folders that no video in the library points to — for example a
-            removed duplicate whose file was in use at the time, or something copied there by hand. Nothing is deleted until you choose.</p>
+          <h2>{{ $t("Untracked files") }}</h2>
+          <p class="muted small">{{ $t("Files in the download and cache folders that no video in the library points to — for example a removed duplicate whose file was in use at the time, or something copied there by hand. Nothing is deleted until you choose.") }}</p>
         </div>
-        <button class="btn btn-primary btn-sm" :disabled="scanning" @click="runScan"><Icon name="search" />{{ scanning ? "Scanning…" : scan ? "Scan again" : "Scan folders" }}</button>
+        <button class="btn btn-primary btn-sm" :disabled="scanning" @click="runScan"><Icon name="search" />{{ scanning ? $t("Scanning…") : scan ? $t("Scan again") : $t("Scan folders") }}</button>
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
       <template v-if="scan">
         <p class="small">
-          <strong>{{ scan.files.length.toLocaleString() }}</strong> untracked {{ scan.files.length === 1 ? "file" : "files" }},
-          {{ size(scan.total_size) }} — in <code>{{ scan.roots.downloads }}</code> and <code>{{ scan.roots.cache }}</code>.
+          <Tx msg="{n} untracked file, {size} — in {downloads} and {cache}." plural="{n} untracked files, {size} — in {downloads} and {cache}."
+              :n="scan.files.length" :params="{ size: size(scan.total_size) }">
+            <template #n><strong>{{ formatNumber(scan.files.length) }}</strong></template>
+            <template #downloads><code>{{ scan.roots.downloads }}</code></template><template #cache><code>{{ scan.roots.cache }}</code></template></Tx>
         </p>
-        <p v-if="scan.errors.length" class="error small">Some folders couldn't be read: {{ scan.errors.join("; ") }}</p>
+        <p v-if="scan.errors.length" class="error small">{{ $t("Some folders couldn't be read: {folders}", { folders: scan.errors.join("; ") }) }}</p>
         <div v-if="scan.files.length" class="bar">
-          <select v-model="kindFilter" class="select select-sm" aria-label="Kind">
-            <option value="">All kinds</option>
+          <select v-model="kindFilter" class="select select-sm" :aria-label="$t('Kind')">
+            <option value="">{{ $t("All kinds") }}</option>
             <option v-for="[k, n] in kinds" :key="k" :value="k">{{ k }} ({{ n }})</option>
           </select>
           <span class="spacer" />
-          <span class="muted small">{{ selected.size }} selected · {{ size(selectedSize) }}</span>
-          <button class="btn btn-danger btn-sm" :disabled="!selected.size" @click="confirming = true"><Icon name="trash" />Delete selected</button>
+          <span class="muted small">{{ $t("{n} selected", { n: selected.size }) }} · {{ size(selectedSize) }}</span>
+          <button class="btn btn-danger btn-sm" :disabled="!selected.size" @click="confirming = true"><Icon name="trash" />{{ $t("Delete selected") }}</button>
         </div>
         <div v-if="scan.files.length" class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th class="cb"><input type="checkbox" :checked="allShownSelected" aria-label="Select all shown" @change="toggleAll"></th>
-                <th>Kind</th><th>Folder</th><th>File</th><th class="num">Size</th><th>Modified</th>
+                <th class="cb"><input type="checkbox" :checked="allShownSelected" :aria-label="$t('Select all shown')" @change="toggleAll"></th>
+                <th>{{ $t("Kind") }}</th><th>{{ $t("Folder") }}</th><th>{{ $t("File") }}</th><th class="num">{{ $t("Size") }}</th><th>{{ $t("Modified") }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="f in shown" :key="f.path" :class="{ on: selected.has(f.path) }" @click="toggle(f.path)">
-                <td class="cb"><input type="checkbox" :checked="selected.has(f.path)" :aria-label="`Select ${f.relative}`" @click.stop @change="toggle(f.path)"></td>
+                <td class="cb"><input type="checkbox" :checked="selected.has(f.path)" :aria-label="$t('Select {relative}', { relative: f.relative })" @click.stop @change="toggle(f.path)"></td>
                 <td><span class="kind" :class="f.kind.replace(/\s/g, '-')">{{ f.kind }}</span></td>
                 <td class="muted">{{ f.location }}</td>
                 <td class="path" :title="f.path">{{ f.relative }}</td>
@@ -199,16 +198,15 @@ const when = (ts) => new Date(ts * 1000).toLocaleString([], { dateStyle: "short"
             </tbody>
           </table>
         </div>
-        <p v-else class="muted">✅ Everything in those folders belongs to a video in the library.</p>
+        <p v-else class="muted">{{ $t("✅ Everything in those folders belongs to a video in the library.") }}</p>
       </template>
     </section>
 
-    <ModalDialog v-if="confirming" title="Delete these files?" @close="confirming = false">
-      <p>Delete <strong>{{ selected.size }}</strong> {{ selected.size === 1 ? "file" : "files" }} ({{ size(selectedSize) }}) from disk?
-        This can't be undone.</p>
+    <ModalDialog v-if="confirming" :title="$t('Delete these files?')" @close="confirming = false">
+      <p>{{ $tn("Delete {n} file ({size}) from disk? This can't be undone.", "Delete {n} files ({size}) from disk? This can't be undone.", selected.size, { size: size(selectedSize) }) }}</p>
       <template #footer>
-        <button class="btn" @click="confirming = false">Cancel</button>
-        <button class="btn btn-danger" :disabled="deleting" @click="doDelete">{{ deleting ? "Deleting…" : "Delete" }}</button>
+        <button class="btn" @click="confirming = false">{{ $t("Cancel") }}</button>
+        <button class="btn btn-danger" :disabled="deleting" @click="doDelete">{{ deleting ? $t("Deleting…") : $t("Delete") }}</button>
       </template>
     </ModalDialog>
   </div>
@@ -228,12 +226,12 @@ header p { margin: 0.25rem 0 0; }
 .select-sm { height: 2rem; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); padding: 0.5rem 0.625rem; border-bottom: 1px solid var(--border); background: var(--panel-2); }
+th { text-align: start; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); padding: 0.5rem 0.625rem; border-bottom: 1px solid var(--border); background: var(--panel-2); }
 td { padding: 0.4rem 0.625rem; border-bottom: 1px solid var(--border); }
 tbody tr { cursor: pointer; }
 tbody tr:hover, tbody tr.on { background: var(--panel-2); }
 .cb { width: 2rem; }
-.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
 .path { font-family: var(--mono); font-size: 0.75rem; overflow-wrap: anywhere; }
 .kind { font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 0.25rem; background: var(--panel-hover); color: var(--text-2); white-space: nowrap; }

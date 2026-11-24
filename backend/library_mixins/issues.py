@@ -6,6 +6,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from ..models import LibraryItem
 from ._helpers import delete_with_retry
 
@@ -166,12 +167,12 @@ class IssuesMixin:
         other action) are silently skipped rather than raising, since
         there's nothing left to merge."""
         if keep_id in merge_ids:
-            raise ValueError("Can't merge an item into itself")
+            raise ValueError(L("Can't merge an item into itself"))
 
         async with self._lock:
             keep_item = self._items.get(keep_id)
             if not keep_item:
-                raise ValueError(f"Item {keep_id} not found")
+                raise ValueError(L('Item {id} not found', id=keep_id))
 
         merged_count = 0
         undeleted: list[str] = []

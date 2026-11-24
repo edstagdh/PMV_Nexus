@@ -2,6 +2,7 @@
 // Pick the ThePornDB profile for a performer name: the candidates found so
 // far, or a search. Used on the profile page and in Management ->
 // Maintenance -> Performers (POST /api/performers/link | skip).
+import { t } from "../lib/i18n.js";
 import { ref } from "vue";
 import Icon from "./Icon.vue";
 import { api, qs } from "../lib/api.js";
@@ -16,22 +17,23 @@ const busy = ref("");
 async function search() {
   busy.value = "search";
   try { results.value = (await api(`/api/performers/search?${qs({ q: q.value })}`)).results; }
-  catch (err) { toast(err.message || "Search failed", { type: "error" }); }
+  catch (err) { toast(err.message || t("Search failed"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 async function pick(c) {
   busy.value = c.tpdb_id;
   try {
     await api("/api/performers/link", { method: "POST", body: { name: props.name, tpdb_id: c.tpdb_id } });
-    toast(`“${props.name}” is ${c.name}${c.disambiguation ? ` (${c.disambiguation})` : ""}`, { type: "success" });
+    toast(c.disambiguation ? t("“{name}” is {performer} ({note})", { name: props.name, performer: c.name, note: c.disambiguation })
+      : t("“{name}” is {performer}", { name: props.name, performer: c.name }), { type: "success" });
     emit("done");
-  } catch (err) { toast(err.message || "Could not link", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not link"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 async function skip() {
   busy.value = "skip";
-  try { await api("/api/performers/skip", { method: "POST", body: { name: props.name } }); toast(`Left “${props.name}” alone`); emit("done"); }
-  catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  try { await api("/api/performers/skip", { method: "POST", body: { name: props.name } }); toast(t("Left “{name}” alone", { name: props.name })); emit("done"); }
+  catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 const list = () => results.value || props.candidates;
@@ -46,17 +48,17 @@ const list = () => results.value || props.candidates;
         <span class="info">
           <strong>{{ c.name }}</strong><span v-if="c.disambiguation" class="muted"> ({{ c.disambiguation }})</span>
           <span class="muted small">{{ [c.gender, c.birthday, c.birthplace].filter(Boolean).join(" · ") }}</span>
-          <span v-if="c.aliases?.length" class="muted small">Also: {{ c.aliases.slice(0, 6).join(", ") }}</span>
+          <span v-if="c.aliases?.length" class="muted small">{{ $t("Also: {names}", { names: c.aliases.slice(0, 6).join(", ") }) }}</span>
         </span>
-        <a :href="c.url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-icon btn-sm" title="Open on ThePornDB"><Icon name="external" :size="14" /></a>
-        <button class="btn btn-sm btn-primary" :disabled="!!busy" @click="pick(c)">{{ busy === c.tpdb_id ? "Linking…" : "This is her" }}</button>
+        <a :href="c.url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-icon btn-sm" :title="$t('Open on ThePornDB')"><Icon name="external" :size="14" /></a>
+        <button class="btn btn-sm btn-primary" :disabled="!!busy" @click="pick(c)">{{ busy === c.tpdb_id ? $t("Linking…") : $t("This is the one") }}</button>
       </li>
     </ul>
-    <p v-else-if="results" class="muted small">Nothing found on ThePornDB.</p>
+    <p v-else-if="results" class="muted small">{{ $t("Nothing found on ThePornDB.") }}</p>
     <form class="search" @submit.prevent="search">
-      <input v-model="q" class="input" placeholder="Search ThePornDB" aria-label="Search ThePornDB">
-      <button class="btn btn-sm" :disabled="!!busy || !q.trim()">{{ busy === "search" ? "Searching…" : "Search" }}</button>
-      <button type="button" class="btn btn-ghost btn-sm" :disabled="!!busy" title="No ThePornDB profile for this name" @click="skip">Skip</button>
+      <input v-model="q" class="input" :placeholder="$t('Search ThePornDB')" :aria-label="$t('Search ThePornDB')">
+      <button class="btn btn-sm" :disabled="!!busy || !q.trim()">{{ busy === "search" ? $t("Searching…") : $t("Search") }}</button>
+      <button type="button" class="btn btn-ghost btn-sm" :disabled="!!busy" :title="$t('No ThePornDB profile for this name')" @click="skip">{{ $t("Skip") }}</button>
     </form>
   </div>
 </template>

@@ -12,6 +12,7 @@ import shutil
 from loguru import logger
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 
+from ..i18n import L
 from ..config import get_settings
 from ..library_manager import library_manager
 
@@ -26,7 +27,7 @@ def local_stop(request: Request, x_control_token: str = Header("")):
     host = request.client.host if request.client else ""
     forwarded = any(h in request.headers for h in ("x-forwarded-for", "x-real-ip", "forwarded"))
     if host not in ("127.0.0.1", "::1") or forwarded or not app_control.check(x_control_token):
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(status_code=403, detail=L('Not allowed'))
     app_control.request_stop("asked by Setup (an update)")
     return {"ok": True}
 

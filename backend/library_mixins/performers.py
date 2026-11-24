@@ -8,11 +8,11 @@ person's data is always fetched, whatever the name looks like later:
     aliases links automatically; several possible people, or only near
     misses, wait in the review list (Maintenance -> Performers) for a pick;
   - when a profile is linked, other names in the library that ThePornDB
-    lists as her aliases point to the same profile ("Luna P" -> Luna
+    lists as their aliases point to the same profile ("Luna P" -> Luna
     Prism). With Server Settings -> Performers -> merge aliases on, the app
     then shows them as one name everywhere (see spellings.py); a wrong
-    merge is split on her profile page, and that name is never merged into
-    her again;
+    merge is split on the profile page, and that name is never merged into
+    it again;
   - the profile (bio, details, aliases, similar performers) and photos are
     fetched once and refreshed every `refresh_days`.
 
@@ -38,6 +38,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import tpdb
 from .. import activity
 from .core import JobBlockedError
@@ -152,7 +153,7 @@ class PerformersMixin:
         self.db._note_change(["performers"])
 
     def _performer_display_name(self, value: str) -> Optional[str]:
-        """spellings.py hook: with merge_aliases on, a linked name shows as her main name."""
+        """spellings.py hook: with merge_aliases on, a linked name shows as the main name."""
         if not self.settings.performers.merge_aliases:
             return None
         row = self._perf_names.get(fold(value))
@@ -172,7 +173,7 @@ class PerformersMixin:
         self._perf_names[key] = row
         spellings.invalidate()
         if row["status"] == "linked" and row.get("performer_id"):
-            # Photos added while she wasn't on ThePornDB go with her profile now (2.17.0).
+            # Photos added while the name wasn't on ThePornDB go with the profile now (2.17.0).
             local_id = self._local_id(key)
             if self._perf_custom.get(local_id) and self.db.move_custom_photos(local_id, row["performer_id"]):
                 moved = self._perf_custom.pop(local_id)
@@ -207,14 +208,14 @@ class PerformersMixin:
         """Scheduler job: look up new performer names on ThePornDB, refresh
         profiles older than refresh_days, fetch missing photos."""
         if not tpdb.configured():
-            raise PerformerError("No ThePornDB API key -- add it in Server Settings -> Credentials")
+            raise PerformerError(L('No ThePornDB API key -- add it in Server Settings -> Credentials'))
         if self._perf_running:
-            raise JobBlockedError("Performer matching is already running")
+            raise JobBlockedError(L('Performer matching is already running'))
         self._perf_running = True
         self._perf_last_error = None
-        self._perf_step = {"stage": "Starting"}
+        self._perf_step = {"stage": L('Starting')}
         try:
-            async with activity.track(JOB_KEY, "Matching performers", progress=lambda: dict(self._perf_step),
+            async with activity.track(JOB_KEY, L('Matching performers'), progress=lambda: dict(self._perf_step),
                                       stop=True) as act:
                 self._perf_load()
                 result = {"matched": await self.match_new_performers(), "refreshed": await self.refresh_stale_performers(),
@@ -238,7 +239,7 @@ class PerformersMixin:
             if self._shutting_down:
                 break
             self._perf_busy = f"Matching performers… {n}/{len(todo)} ({name})"
-            self._perf_step = {"stage": "Looking up new names on ThePornDB", "done": n - 1, "total": len(todo), "detail": name}
+            self._perf_step = {"stage": L('Looking up new names on ThePornDB'), "done": n - 1, "total": len(todo), "detail": name}
             await self._match_name(key, name)
         if todo:
             logger.info("Matched {} performer name(s) with ThePornDB", len(todo))
@@ -252,7 +253,7 @@ class PerformersMixin:
             if self._shutting_down:
                 break
             self._perf_busy = f"Refreshing performer profiles… {n}/{len(stale)} ({p['name']})"
-            self._perf_step = {"stage": "Refreshing profiles", "done": n - 1, "total": len(stale), "detail": p["name"]}
+            self._perf_step = {"stage": L('Refreshing profiles'), "done": n - 1, "total": len(stale), "detail": p["name"]}
             try:
                 await self._fetch_profile(p["tpdb_id"], p["id"])
             except tpdb.TPDBError as exc:
@@ -286,8 +287,8 @@ class PerformersMixin:
         return row
 
     def _link_aliases(self, p: dict) -> int:
-        """Other library names that are this performer's aliases point to her too
-        (unless one was split off from her before, or was linked by hand)."""
+        """Other library names that are this performer's aliases point to the profile too
+        (unless one was split off from it before, or was linked by hand)."""
         names = self._library_performer_names()
         linked = 0
         for alias in [p["name"], *tpdb.aliases(p["data"])]:
@@ -329,7 +330,7 @@ class PerformersMixin:
             if len(p.get("photos") or []) >= len(self._photo_urls(p.get("data") or {})):
                 continue
             self._perf_busy = f"Fetching photos of {p['name']}…"
-            self._perf_step = {"stage": "Fetching photos", "detail": p["name"]}
+            self._perf_step = {"stage": L('Fetching photos'), "detail": p["name"]}
             photos = await self._fetch_photos(p["id"], p.get("data") or {}, {**p, "data": {}})
             if photos:
                 p["photos"], p["photo_path"] = photos, photos[0]
@@ -339,7 +340,7 @@ class PerformersMixin:
 
     @staticmethod
     def _photo_urls(data: dict) -> list[str]:
-        """Her main image, then ThePornDB's posters (in their order), at most MAX_PHOTOS."""
+        """The main image, then ThePornDB's posters (in their order), at most MAX_PHOTOS."""
         urls = [data.get("image") or data.get("thumbnail") or data.get("face")]
         posters = [p for p in (data.get("posters") or []) if isinstance(p, dict) and p.get("url")]
         urls += [p["url"] for p in sorted(posters, key=lambda p: p.get("order") or 0)]
@@ -350,7 +351,7 @@ class PerformersMixin:
         return out[:MAX_PHOTOS]
 
     async def _fetch_photos(self, pid: str, data: dict, existing: Optional[dict]) -> list[str]:
-        """Downloads her photos to cache/performers/<id>[_n].<ext> -- again only when
+        """Downloads the photos to cache/performers/<id>[_n].<ext> -- again only when
         ThePornDB's list changed or a file is missing. Returns the local paths."""
         from pathlib import Path
         urls = self._photo_urls(data)
@@ -389,12 +390,12 @@ class PerformersMixin:
 
     async def split_performer_name(self, name: str) -> dict:
         """Undo a wrong merge: this name stops pointing to its current performer,
-        is never merged into her again, and is looked up on its own."""
+        is never merged into that profile again, and is looked up on its own."""
         self._perf_load()
         key = fold(name)
         row = self._perf_names.get(key)
         if not row or not row.get("performer_id"):
-            raise PerformerError("That name isn't linked to anyone")
+            raise PerformerError(L("That name isn't linked to anyone"))
         blocked = sorted({*(row.get("blocked") or []), row["performer_id"]})
         self._save_name(key, row["name"], status="review", performer_id=None, source=None, candidates=[], blocked=blocked)
         logger.info("Performer name '{}' split off", row["name"])
@@ -412,7 +413,7 @@ class PerformersMixin:
         self._perf_load()
         p = self._perf_by_id.get(performer_id)
         if not p or not p.get("tpdb_id"):
-            raise PerformerError("Unknown performer", 404)
+            raise PerformerError(L('Unknown performer'), 404)
         await self._fetch_profile(p["tpdb_id"], performer_id)
         self._link_aliases(self._perf_by_id[performer_id])
         return {"ok": True}
@@ -444,7 +445,7 @@ class PerformersMixin:
         if not p:
             out["names"] = [{"name": lib[key][0] if key in lib else name, "videos": lib.get(key, (name, 0))[1],
                              "source": None, "main": True}]
-            if key in lib:  # her own photos and placeholder (2.17.0)
+            if key in lib:  # their own photos and placeholder (2.17.0)
                 out["local"] = self._local_info(key, lib[key][0])
             return out
         d = p["data"]
@@ -485,12 +486,12 @@ class PerformersMixin:
 
     # ---------------------------------------------------------------- photos as WebP (2.15.0)
     def _photos_of(self, p: dict) -> list[str]:
-        """Her ThePornDB photos (saved in data/performers; before 3.2.0 cache/performers)."""
+        """The ThePornDB photos (saved in data/performers; before 3.2.0 cache/performers)."""
         return list(p.get("photos") or ([p["photo_path"]] if p.get("photo_path") else []))
 
     def _all_photos(self, p: dict) -> list[str]:
-        """What her profile shows, in order (2.16.0): a photo added by hand marked
-        "show first", her ThePornDB photos, then the other photos added by hand."""
+        """What the profile shows, in order (2.16.0): a photo added by hand marked
+        "show first", the ThePornDB photos, then the other photos added by hand."""
         custom = self._perf_custom.get(p["id"], [])
         return ([c["path"] for c in custom if c["main"]] + self._photos_of(p)
                 + [c["path"] for c in custom if not c["main"]])
@@ -533,8 +534,8 @@ class PerformersMixin:
             except (OSError, ValueError) as exc:
                 return exc
 
-        async with activity.track("performer_photos", "Converting performer photos to WebP", stop=True,
-                                  progress=lambda: {"stage": "Converting", "done": st["done"], "total": total,
+        async with activity.track("performer_photos", L('Converting performer photos to WebP'), stop=True,
+                                  progress=lambda: {"stage": L('Converting'), "done": st["done"], "total": total,
                                                     "detail": f"{mb(st['before'])} → {mb(st['after'])}"}) as act:
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
                 async def one(p: dict) -> None:
@@ -588,7 +589,7 @@ class PerformersMixin:
     # ---------------------------------------------------------------- performers not on ThePornDB (2.17.0)
     # A name with no profile is known by a local id made from the name ("n" + 31 hex),
     # used wherever a performer id is (photos added by hand, photo URLs). Its
-    # placeholder gender is kept in performer_local (default female); when the
+    # placeholder gender, once set on its page, is kept in performer_local; when the
     # name gets linked to ThePornDB its photos move to the profile (_save_name).
     @staticmethod
     def _local_id(key: str) -> str:
@@ -616,9 +617,10 @@ class PerformersMixin:
 
     @staticmethod
     def _gender_of(p: dict) -> str:
-        """Placeholder silhouette for a profile without photos: ThePornDB's gender."""
-        g = str(((p.get("data") or {}).get("extras") or {}).get("gender") or "").lower()
-        return "male" if g in ("male", "transgender male", "trans male") else "female"
+        """Placeholder silhouette for a profile without photos: ThePornDB's female / male,
+        anything else (not given, trans, non-binary...) the neutral one ("unknown", 3.7.0)."""
+        g = str(((p.get("data") or {}).get("extras") or {}).get("gender") or "").strip().lower()
+        return g if g in ("female", "male") else "unknown"
 
     def _photo_owner_name(self, owner: str) -> Optional[str]:
         """The performer's name if `owner` is a profile id or a local id, else None."""
@@ -632,7 +634,7 @@ class PerformersMixin:
         local_id = self._local_id(key)
         photos = self._local_photos(local_id)
         v = self._local_version(local_id)
-        return {"id": local_id, "gender": (self._perf_local.get(key) or {}).get("gender", "female"),
+        return {"id": local_id, "gender": (self._perf_local.get(key) or {}).get("gender") or "unknown",
                 "photo": f"/api/performers/{local_id}/photo?v={v}" if photos else None,
                 "photos": [f"/api/performers/{local_id}/photo?n={n}&v={v}" for n in range(len(photos))],
                 "custom_photos": [{"id": c["id"], "main": bool(c["main"]), "by": c.get("created_by"),
@@ -641,16 +643,16 @@ class PerformersMixin:
 
     def set_performer_gender(self, name: str, gender: str) -> dict:
         """The placeholder of a performer without a ThePornDB profile."""
-        if gender not in ("female", "male", "trans"):  # trans (3.5.0): badge colour; female silhouette
-            raise PerformerError("Gender must be female, male or trans")
+        if gender not in ("female", "male", "trans"):  # trans (3.5.0): badge colour; neutral silhouette
+            raise PerformerError(L('Gender must be female, male or trans'))
         self._perf_load()
         key = fold(name)
         lib = self._library_performer_names()
         if key not in lib:
-            raise PerformerError("No videos with this performer")
+            raise PerformerError(L('No videos with this performer'))
         row = self._perf_names.get(key)
         if row and row.get("status") == "linked" and row.get("performer_id") in self._perf_by_id:
-            raise PerformerError("Her gender comes from her ThePornDB profile")
+            raise PerformerError(L('The gender comes from the ThePornDB profile'))
         self.db.upsert_performer_local(self._local_id(key), key, lib[key][0], gender)
         self._perf_local[key] = {"local_id": self._local_id(key), "name_key": key, "name": lib[key][0], "gender": gender}
         return {"ok": True, "gender": gender}
@@ -752,15 +754,15 @@ class PerformersMixin:
                         **self._browse_details(p)}
                 e["videos"] += videos
                 e["names"] += 1
-                if videos > e["_best"]:  # link with the name most of her videos use
+                if videos > e["_best"]:  # link with the name most of the videos use
                     e["link"], e["_best"] = name, videos
             else:
                 info = self._local_info(key, name)
                 people[info["id"]] = {"name": name, "link": name, "linked": False, "videos": videos, "names": 1,
                                       "gender": info["gender"], "photo": info["photo"],
                                       "status": row["status"] if row else "unchecked",
-                                      # only the placeholder gender is known (set on their page; female by default)
-                                      "gender_label": info["gender"].title()}
+                                      # only the placeholder gender is known (set on their page; else not known)
+                                      "gender_label": None if info["gender"] == "unknown" else info["gender"].title()}
         out = list(people.values())
         for e in out:
             e.pop("_best", None)
@@ -841,22 +843,22 @@ class PerformersMixin:
         return c["path"] if c else None
 
     async def add_custom_photo(self, performer_id: str, data: bytes, user: str) -> dict:
-        """Her photo from your computer, converted to WebP (backend/images.py)."""
+        """A photo from your computer, converted to WebP (backend/images.py)."""
         from .. import images
         self._perf_load()
         owner_name = self._photo_owner_name(performer_id)
         if owner_name is None:
-            raise PerformerError("Performer not found")
+            raise PerformerError(L('Performer not found'))
         try:
             webp = await asyncio.to_thread(images.to_webp, data)
         except ValueError:
-            raise PerformerError("That file isn't a picture the app can read (JPEG, PNG, WebP, GIF, BMP, TIFF…)") from None
+            raise PerformerError(L("That file isn't a picture the app can read (JPEG, PNG, WebP, GIF, BMP, TIFF…)")) from None
         photo_id = uuid.uuid4().hex
         folder = self._custom_photo_dir()
         folder.mkdir(parents=True, exist_ok=True)
         dest = folder / f"{performer_id}_{photo_id}.webp"
         await asyncio.to_thread(dest.write_bytes, webp)
-        # Her own photos are limited (MAX_CUSTOM_PHOTOS): the oldest go once the new one is saved.
+        # Own photos are limited (MAX_CUSTOM_PHOTOS): the oldest go once the new one is saved.
         old = list(self._perf_custom.get(performer_id, []))
         keep_main = any(c["main"] for c in old)
         self.db.add_custom_photo(photo_id, performer_id, str(dest), user)
@@ -876,7 +878,7 @@ class PerformersMixin:
     def remove_custom_photo(self, performer_id: str, photo_id: str) -> None:
         path = self.custom_photo_file(performer_id, photo_id)
         if not path:
-            raise PerformerError("Photo not found")
+            raise PerformerError(L('Photo not found'))
         self.db.delete_custom_photo(photo_id)
         try:
             os.unlink(path)
@@ -886,7 +888,7 @@ class PerformersMixin:
 
     def set_main_custom_photo(self, performer_id: str, photo_id: Optional[str]) -> None:
         if photo_id and not self.custom_photo_file(performer_id, photo_id):
-            raise PerformerError("Photo not found")
+            raise PerformerError(L('Photo not found'))
         self.db.set_custom_photo_main(performer_id, photo_id)
         self._perf_load(force=True)
 

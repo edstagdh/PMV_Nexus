@@ -23,6 +23,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from ..notifications import notify
 
 CHECK_SECONDS = 30
@@ -81,9 +82,8 @@ class DiskGuardMixin:
         gb = d["free_bytes"] / 1024 ** 3
         logger.warning("Low disk space: {}% free ({:.1f} GB) on {} -- downloads stopped until it's above {}%",
                        d["free_percent"], gb, d["path"], limit + RESUME_MARGIN)
-        notify("system", "warning", f"Low disk space: downloads stopped ({d['free_percent']}% free)",
-               body=f"Only {gb:.1f} GB free where the app saves videos ({d['path']}). Free up space to avoid damaged "
-                    f"files; downloads start again by themselves above {limit + RESUME_MARGIN:g}%.", link="/tasks")
+        notify("system", "warning", L('Low disk space: downloads stopped ({percent}% free)', percent=d['free_percent']),
+               body=L('Only {gb} GB free where the app saves videos ({path}). Free up space to avoid damaged files; downloads start again by themselves above {limit}%.', gb=format(gb, '.1f'), path=d['path'], limit=format(limit + RESUME_MARGIN, 'g')), link="/tasks")
         for item_id, task in list(self._active_download_tasks.items()):
             if not task.done():
                 self._space_paused.add(item_id)
@@ -92,7 +92,7 @@ class DiskGuardMixin:
 
     def _on_disk_ok(self) -> None:
         logger.info("Disk space is back ({}% free): downloads resume", self._disk["free_percent"])
-        notify("system", "info", f"Disk space is back ({self._disk['free_percent']}% free): downloads resume", link="/tasks")
+        notify("system", "info", L('Disk space is back ({percent}% free): downloads resume', percent=self._disk['free_percent']), link="/tasks")
         self.db._note_change(["disk"])
         self._ensure_worker()
 

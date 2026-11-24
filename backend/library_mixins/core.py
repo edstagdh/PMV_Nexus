@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ..i18n import L, Msg
 from .. import activity, notifications, stats_store
 import asyncio
 import contextlib
@@ -31,8 +32,9 @@ from ._helpers import (
 
 
 
-_JOB_RESULT = {"success": ("success", "Finished"), "failed": ("error", "Failed"), "blocked": ("warning", "Didn't start"),
-               "interrupted": ("warning", "Interrupted"), "cancelled": ("info", "Stopped")}
+_JOB_RESULT = {"success": ("success", L("Finished: {job}")), "failed": ("error", L("Failed: {job}")),
+               "blocked": ("warning", L("Didn't start: {job}")), "interrupted": ("warning", L("Interrupted: {job}")),
+               "cancelled": ("info", L("Stopped: {job}"))}
 
 
 def _announce_job(act) -> None:
@@ -43,10 +45,11 @@ def _announce_job(act) -> None:
         return
     if act.status == "success" and (act.source == "auto" or act.kind in ("stats_snapshot", "upload_dates", "update_check")):
         return
-    level, verb = _JOB_RESULT.get(act.status, ("info", act.status))
+    level, template = _JOB_RESULT.get(act.status, ("info", None))
     # A job about one video links that video (3.6.0); the notification's menu also offers Tasks.
     link = f"/video/{act.item['id']}" if act.item and act.item.get("id") else "/tasks"
-    notifications.notify("job", level, f"{verb}: {act.title}", body=act.summary, link=link)
+    title = Msg(template.msgid, {"job": act.title}) if template else f"{act.status}: {act.title}"
+    notifications.notify("job", level, title, body=act.summary, link=link)
 
 
 def _wildcard(term: str) -> "re.Pattern[str]":
@@ -396,7 +399,7 @@ class CoreMixin:
         def has(wanted: set[str], values: list[str], field: str) -> bool:
             # match_all: every selected tag/performer must be present;
             # otherwise any one of them is enough. Upper/lower case doesn't
-            # matter, and a performer's merged aliases count as her (spellings.py).
+            # matter, and a performer's merged aliases count as that performer (spellings.py).
             have = {spellings.key(field, v) for v in values}
             return wanted.issubset(have) if match_all else bool(wanted & have)
         search_field, search_text = parse_search_query(search.strip())
@@ -1067,8 +1070,8 @@ class CoreMixin:
             m = re.search(r"(?:^|\s)-\s(\d{4}-\d{2}-\d{2})\s-\s", Path(item.video_path or "").name)
             return m.group(1) if m else None
 
-        async with activity.track("upload_dates", "Reading upload dates", source="auto",
-                                  stage=f"{len(missing)} videos without one"):
+        async with activity.track("upload_dates", L('Reading upload dates'), source="auto",
+                                  stage=L('{count} videos without one', count=len(missing))):
             found = await asyncio.to_thread(lambda: {i.id: read(i) for i in missing})
         filled = 0
         async with self._lock:
@@ -1094,11 +1097,11 @@ class CoreMixin:
             raise ValueError("direction must be 'up', 'down', 'top' or 'bottom'")
         async with self._lock:
             if video_id not in self._reencode_queue:
-                raise ValueError("This item isn't currently waiting in the re-encode queue")
+                raise ValueError(L("This item isn't currently waiting in the re-encode queue"))
             idx = self._reencode_queue.index(video_id)
             if direction in ("top", "bottom"):
                 if idx == (0 if direction == "top" else len(self._reencode_queue) - 1):
-                    raise ValueError("Already next in line" if direction == "top" else "Already last in the queue")
+                    raise ValueError(L('Already next in line') if direction == "top" else L('Already last in the queue'))
                 self._reencode_queue.pop(idx)
                 if direction == "top":
                     self._reencode_queue.insert(0, video_id)
@@ -1107,11 +1110,11 @@ class CoreMixin:
                 return
             if direction == "up":
                 if idx == 0:
-                    raise ValueError("Already next in line")
+                    raise ValueError(L('Already next in line'))
                 swap_with = idx - 1
             else:
                 if idx == len(self._reencode_queue) - 1:
-                    raise ValueError("Already last in the queue")
+                    raise ValueError(L('Already last in the queue'))
                 swap_with = idx + 1
             self._reencode_queue[idx], self._reencode_queue[swap_with] = (
                 self._reencode_queue[swap_with],
@@ -1133,21 +1136,21 @@ class CoreMixin:
             pending = sorted((i for i in self._items.values() if i.status == "pending"), key=lambda i: i.download_rank)
             idx = next((n for n, i in enumerate(pending) if i.id == video_id), None)
             if idx is None:
-                raise ValueError("This video isn't waiting in the download queue")
+                raise ValueError(L("This video isn't waiting in the download queue"))
             item = pending[idx]
             changed = [item]
             if direction == "top":
                 if idx == 0:
-                    raise ValueError("Already next in line")
+                    raise ValueError(L('Already next in line'))
                 item.queue_rank = pending[0].download_rank - 1
             elif direction == "bottom":
                 if idx == len(pending) - 1:
-                    raise ValueError("Already last in the queue")
+                    raise ValueError(L('Already last in the queue'))
                 item.queue_rank = pending[-1].download_rank + 1
             else:
                 other_idx = idx - 1 if direction == "up" else idx + 1
                 if not 0 <= other_idx < len(pending):
-                    raise ValueError("Already next in line" if direction == "up" else "Already last in the queue")
+                    raise ValueError(L('Already next in line') if direction == "up" else L('Already last in the queue'))
                 other = pending[other_idx]
                 a, b = item.download_rank, other.download_rank
                 if a == b:  # same timestamp: nudge apart so the swap is visible

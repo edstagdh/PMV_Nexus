@@ -13,6 +13,7 @@ from typing import Optional
 
 import httpx
 
+from .i18n import L
 from .app_info import APP_VERSION
 
 MIN_GAP_SECONDS = 1.0
@@ -54,12 +55,12 @@ class PMVApiClient:
                 resp = await self._client.get(self.base + path, params=params)
             except httpx.HTTPError as exc:
                 if attempt == MAX_ATTEMPTS:
-                    raise PMVApiError(f"Could not reach PMVHaven ({exc.__class__.__name__})") from exc
+                    raise PMVApiError(L('Could not reach PMVHaven ({name})', name=exc.__class__.__name__)) from exc
                 await asyncio.sleep(2 * attempt)
                 continue
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt == MAX_ATTEMPTS:
-                    raise PMVApiError(f"PMVHaven returned HTTP {resp.status_code} (giving up after {attempt} tries)")
+                    raise PMVApiError(L('PMVHaven returned HTTP {status} (giving up after {attempt} tries)', status=resp.status_code, attempt=attempt))
                 try:
                     delay = float(resp.headers.get("Retry-After", ""))
                 except ValueError:
@@ -67,17 +68,17 @@ class PMVApiClient:
                 await asyncio.sleep(min(max(delay, 1.0), 60.0))
                 continue
             if resp.status_code in (401, 403):
-                raise PMVApiError("PMVHaven rejected the API key -- check Server Settings → Credentials")
+                raise PMVApiError(L('PMVHaven rejected the API key -- check Server Settings → Credentials'))
             if resp.status_code != 200:
-                raise PMVApiError(f"PMVHaven returned HTTP {resp.status_code} for {path}")
+                raise PMVApiError(L('PMVHaven returned HTTP {status} for {path}', status=resp.status_code, path=path))
             try:
                 body = resp.json()
             except ValueError as exc:
-                raise PMVApiError(f"PMVHaven returned invalid JSON for {path}") from exc
+                raise PMVApiError(L('PMVHaven returned invalid JSON for {path}', path=path)) from exc
             if isinstance(body, dict) and body.get("success") is False:
                 raise PMVApiError(str(body.get("error") or body.get("message") or "request failed"))
             return body
-        raise PMVApiError("Unreachable")  # pragma: no cover
+        raise PMVApiError(L('Unreachable'))  # pragma: no cover
 
     async def bulk_videos(self, ids: Optional[list[str]] = None, old_ids: Optional[list[str]] = None) -> list[dict]:
         """Up to BULK_LIMIT videos by _id or by legacy oldId. Missing ids are

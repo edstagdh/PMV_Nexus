@@ -1,6 +1,8 @@
 <script setup>
 // Per-user preferences for this interface, in tabs. Every change applies at
 // once and is saved to the account, so it follows the user to other browsers.
+import LanguageSettings from "../components/LanguageSettings.vue";
+import { t } from "../lib/i18n.js";
 import PanicKeysSetting from "../components/PanicKeysSetting.vue";
 import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -16,42 +18,43 @@ import { cleanEngines, DEFAULT_ENGINES, PRESETS } from "../lib/frameSearch.js";
 const route = useRoute();
 const router = useRouter();
 const TABS = [
-  { key: "appearance", label: "Appearance" },
-  { key: "library", label: "Library" },
-  { key: "video", label: "Video page" },
-  { key: "notifications", label: "Notifications" },
-  { key: "account", label: "Account", show: () => hasPermission("self.password_reset") || !isAdmin() },
+  { key: "appearance", label: t("Appearance") },
+  { key: "library", label: t("Library") },
+  { key: "video", label: t("Video page") },
+  { key: "notifications", label: t("Notifications") },
+  { key: "language", label: t("Language") },
+  { key: "account", label: t("Account"), show: () => hasPermission("self.password_reset") || !isAdmin() },
 ];
-const tabs = computed(() => TABS.filter((t) => !t.show || t.show()));
-const tab = computed(() => (tabs.value.some((t) => t.key === route.query.tab) ? route.query.tab : "appearance"));
+const tabs = computed(() => TABS.filter((tb) => !tb.show || tb.show()));
+const tab = computed(() => (tabs.value.some((tb) => tb.key === route.query.tab) ? route.query.tab : "appearance"));
 function openTab(key) { router.replace({ query: { ...route.query, tab: key } }); }
 
-const THEME_LABELS = { midnight: "Midnight", slate: "Slate", daylight: "Daylight" };
+const THEME_LABELS = { midnight: t("Midnight"), slate: t("Slate"), daylight: t("Daylight") };
 const SORT_LABELS = {
-  download_datetime: "Date acquired", upload_date: "Uploaded to PMVHaven", title: "Title", creator: "Creator",
-  ratings: "Rating", views: "Views on PMVHaven", tech_duration: "Duration (length)", tech_filesize: "File size", tech_resolution: "Resolution",
-  fav_performers: "Favourite performers (theirs first or last)",
-  random: "Random (a new order each time you open the library)",
+  download_datetime: t("Date acquired"), upload_date: t("Uploaded to PMVHaven"), title: t("Title"), creator: t("Creator"),
+  ratings: t("Rating"), views: t("Views on PMVHaven"), tech_duration: t("Duration (length)"), tech_filesize: t("File size"), tech_resolution: t("Resolution"),
+  fav_performers: t("Favourite performers (theirs first or last)"),
+  random: t("Random (a new order each time you open the library)"),
 };
 const BADGE_LABELS = {
-  duration: "Duration", quality: "Quality", codec: "Codec (H.264 / HEVC / AV1)", filesize: "File size",
-  orientation: "Orientation (🖥️ / 📱)", rating: "Rating", gone: "💀 Removed from PMVHaven", favorite: "♥ In my Favorites",
-  status: "Work in progress (re-encode, repair)",
+  duration: t("Duration"), quality: t("Quality"), codec: t("Codec (H.264 / HEVC / AV1)"), filesize: t("File size"),
+  orientation: t("Orientation (🖥️ / 📱)"), rating: t("Rating"), gone: t("💀 Removed from PMVHaven"), favorite: t("♥ In my Favorites"),
+  status: t("Work in progress (re-encode, repair)"),
 };
 const GONE_COLORS = ["#dc2626", "#b91c1c", "#e11d48", "#7c3aed", "#ea580c", "#111827"];
 const CHIP_KINDS = [
   // 3.5.0: performers by gender (from ThePornDB, or the silhouette set on their page)
-  { key: "female", label: "Performers: female", sample: ["Aurora Vale"], g: "female" },
-  { key: "male", label: "Performers: male", sample: ["Rex Steel"], g: "male" },
-  { key: "trans", label: "Performers: trans / non-binary", sample: ["Sky Rivera"], g: "trans" },
-  { key: "unknown", label: "Performers: not known", sample: ["Luna Prism"], g: "unknown" },
-  { key: "tag", label: "Tags", sample: ["#pmv", "#compilation"] },
-  { key: "music", label: "Music", sample: ["Track — Artist"] },
-  { key: "creator", label: "Uploader", sample: ["CreatorName"], text: true },
+  { key: "female", label: t("Performers: female"), sample: [t("Aurora Vale")], g: "female" },
+  { key: "male", label: t("Performers: male"), sample: [t("Rex Steel")], g: "male" },
+  { key: "trans", label: t("Performers: trans / non-binary"), sample: [t("Sky Rivera")], g: "trans" },
+  { key: "unknown", label: t("Performers: not known"), sample: [t("Luna Prism")], g: "unknown" },
+  { key: "tag", label: t("Tags"), sample: ["#pmv", "#compilation"] },
+  { key: "music", label: t("Music"), sample: [t("Track — Artist")] },
+  { key: "creator", label: t("Uploader"), sample: ["CreatorName"], text: true },
 ];
 const THEME_COLORS = [
-  { key: "bg", label: "Background" }, { key: "panel", label: "Panels" },
-  { key: "text", label: "Text" }, { key: "accent", label: "Accent" },
+  { key: "bg", label: t("Background") }, { key: "panel", label: t("Panels") },
+  { key: "text", label: t("Text") }, { key: "accent", label: t("Accent") },
 ];
 const THEME_STARTERS = {
   midnight: { base: "midnight", bg: "#0b0b0d", panel: "#17171b", text: "#f2f2f3", accent: "#f97316" },
@@ -59,7 +62,7 @@ const THEME_STARTERS = {
 };
 
 const sample = {
-  id: "sample", url: "", title: "Sample", status: "done", creator: "Creator", tech_duration: "3:45",
+  id: "sample", url: "", title: t("Sample"), status: "done", creator: t("Creator"), tech_duration: "3:45",
   tech_resolution: "1920x1080", tech_codec: "hevc", tech_filesize: "182.4 MB", ratings: "92%",
   site_status: "removed", reencode_status: "encoding", reencode_progress_percent: 42,
 };
@@ -106,7 +109,7 @@ function resetTab() {
     savePref(k, Array.isArray(v) ? [...v] : typeof v === "object" ? { ...v } : v);
   }
   if (tab.value === "appearance") savePref("theme", "midnight");
-  toast("Reset to defaults");
+  toast(t("Reset to defaults"));
 }
 
 // ---- account ----
@@ -115,14 +118,14 @@ const pwBusy = ref(false);
 const pwError = ref("");
 async function changePassword() {
   pwError.value = "";
-  if (pw.value.next !== pw.value.confirm) { pwError.value = "The new passwords don't match."; return; }
+  if (pw.value.next !== pw.value.confirm) { pwError.value = t("The new passwords don't match."); return; }
   pwBusy.value = true;
   try {
     await api("/api/me/password", { method: "POST", body: { current_password: pw.value.current, new_password: pw.value.next } });
     pw.value = { current: "", next: "", confirm: "" };
-    toast("Password changed — other signed-in devices were signed out", { type: "success" });
+    toast(t("Password changed — other signed-in devices were signed out"), { type: "success" });
   } catch (err) {
-    pwError.value = err.message || "Could not change the password";
+    pwError.value = err.message || t("Could not change the password");
   } finally {
     pwBusy.value = false;
   }
@@ -136,7 +139,7 @@ async function deleteAccount() {
     await api("/api/me/delete-account", { method: "POST", body: { confirm_username: del.value.username, current_password: del.value.password } });
     session.user = null; // back to the sign-in screen
   } catch (err) {
-    del.value.error = err.message || "Could not delete the account";
+    del.value.error = err.message || t("Could not delete the account");
   } finally {
     del.value.busy = false;
   }
@@ -152,7 +155,7 @@ function saveEngines(list) {
 function addEngine() {
   const e = cleanEngines([engineDraft.value]);
   if (!e.length) {
-    toast("Give it a name, an https:// upload address and the form's file field name (letters, numbers, _ - . [ ])", { type: "error" });
+    toast(t("Give it a name, an https:// upload address and the form's file field name (letters, numbers, _ - . [ ])"), { type: "error" });
     return;
   }
   saveEngines([...engines.value, e[0]]);
@@ -172,8 +175,8 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
 <template>
   <div class="settings">
     <header class="head">
-      <h1>My Settings</h1>
-      <button v-if="tab !== 'account'" class="btn btn-ghost btn-sm" @click="resetTab">Reset this tab</button>
+      <h1>{{ $t("My Settings") }}</h1>
+      <button v-if="tab !== 'account'" class="btn btn-ghost btn-sm" @click="resetTab">{{ $t("Reset this tab") }}</button>
     </header>
 
     <nav class="tabs" role="tablist">
@@ -184,11 +187,11 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     <!-- ================= Appearance ================= -->
     <section v-if="tab === 'appearance'" class="card group">
       <div class="row top">
-        <div class="label"><strong>Theme</strong><span class="muted">Custom lets you pick the main colours yourself.</span></div>
+        <div class="label"><strong>{{ $t("Theme") }}</strong><span class="muted">{{ $t("Custom lets you pick the main colours yourself.") }}</span></div>
         <div class="stack">
-          <div class="seg" role="group" aria-label="Theme">
+          <div class="seg" role="group" :aria-label="$t('Theme')">
             <button v-for="t in PREF_OPTIONS.THEMES" :key="t" class="btn" :class="{ active: !customOn && session.prefs.theme === t }" @click="pickTheme(t)">{{ THEME_LABELS[t] }}</button>
-            <button class="btn" :class="{ active: customOn }" @click="pickCustom">Custom</button>
+            <button class="btn" :class="{ active: customOn }" @click="pickCustom">{{ $t("Custom") }}</button>
           </div>
           <div v-if="customOn" class="custom">
             <div class="colors">
@@ -198,29 +201,29 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
               </label>
             </div>
             <div class="inline small">
-              <span class="muted">Base</span>
+              <span class="muted">{{ $t("Base") }}</span>
               <select class="select select-sm" :value="session.prefs.customTheme.base" @change="setCustom('base', $event.target.value)">
-                <option value="midnight">Dark</option><option value="daylight">Light</option>
+                <option value="midnight">{{ $t("Dark") }}</option><option value="daylight">{{ $t("Light") }}</option>
               </select>
-              <span class="muted">Start from</span>
-              <button class="btn btn-sm" @click="startCustomFrom('midnight')">Dark preset</button>
-              <button class="btn btn-sm" @click="startCustomFrom('daylight')">Light preset</button>
+              <span class="muted">{{ $t("Start from") }}</span>
+              <button class="btn btn-sm" @click="startCustomFrom('midnight')">{{ $t("Dark preset") }}</button>
+              <button class="btn btn-sm" @click="startCustomFrom('daylight')">{{ $t("Light preset") }}</button>
             </div>
           </div>
         </div>
       </div>
       <div class="row">
-        <div class="label"><strong>Text size</strong><span class="muted">Scales all text, buttons and spacing. Applied when you let go.</span></div>
+        <div class="label"><strong>{{ $t("Text size") }}</strong><span class="muted">{{ $t("Scales all text, buttons and spacing. Applied when you let go.") }}</span></div>
         <div class="range">
-          <input type="range" min="80" max="150" step="5" :value="textScaleShown" aria-label="Text size"
+          <input type="range" min="80" max="150" step="5" :value="textScaleShown" :aria-label="$t('Text size')"
                  @input="textScaleDraft = Number($event.target.value)" @change="commitTextScale">
           <output>{{ textScaleShown }}%</output>
         </div>
       </div>
       <div class="row top">
-        <div class="label"><strong>Coloured chips</strong><span class="muted">Performers, tags and music on the video page and in the list view; performer and uploader names in related videos.</span></div>
+        <div class="label"><strong>{{ $t("Coloured chips") }}</strong><span class="muted">{{ $t("Performers, tags and music on the video page and in the list view; performer and uploader names in related videos.") }}</span></div>
         <div class="stack">
-          <label class="switch"><input type="checkbox" :checked="session.prefs.chipColorsOn" @change="savePref('chipColorsOn', $event.target.checked)">Use colours</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.chipColorsOn" @change="savePref('chipColorsOn', $event.target.checked)">{{ $t("Use colours") }}</label>
           <div v-for="k in CHIP_KINDS" :key="k.key" class="chip-row" :class="{ dim: !session.prefs.chipColorsOn }">
             <label class="color-field">
               <input type="color" :value="session.prefs.chipColors[k.key]" :disabled="!session.prefs.chipColorsOn" @input="setChipColor(k.key, $event.target.value)">
@@ -232,11 +235,11 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
         </div>
       </div>
       <div class="row">
-        <div class="label"><strong>💀 badge colour</strong><span class="muted">Background of the "removed from PMVHaven" badge.</span></div>
+        <div class="label"><strong>{{ $t("💀 badge colour") }}</strong><span class="muted">{{ $t("Background of the \"removed from PMVHaven\" badge.") }}</span></div>
         <div class="swatches">
           <button v-for="c in GONE_COLORS" :key="c" class="swatch" :class="{ on: session.prefs.goneColor === c }" :style="{ background: c }"
-                  :aria-label="`Use ${c}`" @click="savePref('goneColor', c)" />
-          <label class="swatch custom-swatch" title="Custom colour">
+                  :aria-label="$t('Use {colour}', { colour: c })" @click="savePref('goneColor', c)" />
+          <label class="swatch custom-swatch" :title="$t('Custom colour')">
             <input type="color" :value="session.prefs.goneColor" @input="savePref('goneColor', $event.target.value)">
           </label>
         </div>
@@ -246,18 +249,18 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     <!-- ================= Library ================= -->
     <section v-else-if="tab === 'library'" class="card group">
       <div class="row">
-        <div class="label"><strong>Default sort</strong><span class="muted">Used when no sort is chosen on the page.</span></div>
+        <div class="label"><strong>{{ $t("Default sort") }}</strong><span class="muted">{{ $t("Used when no sort is chosen on the page.") }}</span></div>
         <div class="inline">
           <select class="select" :value="session.prefs.defaultSort" @change="savePref('defaultSort', $event.target.value)">
             <option v-for="k in PREF_OPTIONS.SORT_KEYS" :key="k" :value="k">{{ SORT_LABELS[k] }}</option>
           </select>
           <select v-if="session.prefs.defaultSort !== 'random'" class="select" :value="session.prefs.defaultDir" @change="savePref('defaultDir', $event.target.value)">
-            <option value="desc">Descending</option><option value="asc">Ascending</option>
+            <option value="desc">{{ $t("Descending") }}</option><option value="asc">{{ $t("Ascending") }}</option>
           </select>
         </div>
       </div>
       <div class="row top">
-        <div class="label"><strong>Thumbnail badges</strong><span class="muted">Duration and quality are always shown.</span></div>
+        <div class="label"><strong>{{ $t("Thumbnail badges") }}</strong><span class="muted">{{ $t("Duration and quality are always shown.") }}</span></div>
         <div class="badges">
           <div class="toggles">
             <label v-for="b in OPTIONAL_BADGES" :key="b" class="switch">
@@ -268,14 +271,13 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
         </div>
       </div>
       <div class="row">
-        <div class="label"><strong>Group codec versions</strong><span class="muted">In Filters, show each codec once — AV1, AVC, HEVC… —
-          instead of every version (“AV1 (Main@L4.0)”, “AV1 (Main@L5.1)”…). Picking one finds all its versions.</span></div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.groupCodecs" @change="savePref('groupCodecs', $event.target.checked)">On</label>
+        <div class="label"><strong>{{ $t("Group codec versions") }}</strong><span class="muted">{{ $t("In Filters, show each codec once — AV1, AVC, HEVC… — instead of every version (“AV1 (Main@L4.0)”, “AV1 (Main@L5.1)”…). Picking one finds all its versions.") }}</span></div>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.groupCodecs" @change="savePref('groupCodecs', $event.target.checked)">{{ $t("On") }}</label>
       </div>
       <div class="row">
-        <div class="label"><strong>Table hover preview</strong><span class="muted">Size of the preview shown when hovering a row in the table view.</span></div>
+        <div class="label"><strong>{{ $t("Table hover preview") }}</strong><span class="muted">{{ $t("Size of the preview shown when hovering a row in the table view.") }}</span></div>
         <div class="range">
-          <input type="range" min="100" max="400" step="25" :value="session.prefs.tablePreviewScale" aria-label="Table preview size"
+          <input type="range" min="100" max="400" step="25" :value="session.prefs.tablePreviewScale" :aria-label="$t('Table preview size')"
                  @input="savePref('tablePreviewScale', Number($event.target.value))">
           <output>{{ session.prefs.tablePreviewScale }}%</output>
         </div>
@@ -286,29 +288,29 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     <section v-else-if="tab === 'video'" class="card group">
       <div class="row">
         <div class="label">
-          <strong>Related videos</strong>
-          <span class="muted">How many to show (0 hides the column). Ranked by shared performers (strongest), the same creator, then shared tags.</span>
+          <strong>{{ $t("Related videos") }}</strong>
+          <span class="muted">{{ $t("How many to show (0 hides the column). Ranked by shared performers (strongest), the same creator, then shared tags.") }}</span>
         </div>
         <div class="range">
-          <input type="range" min="0" max="40" step="1" :value="session.prefs.relatedCount" aria-label="Number of related videos"
+          <input type="range" min="0" max="40" step="1" :value="session.prefs.relatedCount" :aria-label="$t('Number of related videos')"
                  @input="savePref('relatedCount', Number($event.target.value))">
           <output>{{ session.prefs.relatedCount }}</output>
         </div>
       </div>
       <div class="row top">
         <div class="label">
-          <strong>Related-video badges</strong>
-          <span class="muted">Bottom row: up to {{ RELATED_BADGE_MAX }} fit on the small thumbnails. Rating and 💀 sit in the top corners and don't count.</span>
+          <strong>{{ $t("Related-video badges") }}</strong>
+          <span class="muted">{{ $t("Bottom row: up to {n} fit on the small thumbnails. Rating and 💀 sit in the top corners and don't count.", { n: RELATED_BADGE_MAX }) }}</span>
         </div>
         <div class="badges small-preview">
           <div class="toggles">
-            <span class="sub">Bottom row</span>
+            <span class="sub">{{ $t("Bottom row") }}</span>
             <label v-for="b in RELATED_BADGES_BOTTOM" :key="b" class="switch" :class="{ dim: relatedFull && !session.prefs.relatedBadges.includes(b) }">
               <input type="checkbox" :checked="session.prefs.relatedBadges.includes(b)"
                      :disabled="relatedFull && !session.prefs.relatedBadges.includes(b)"
                      @change="toggleRelatedBadge(b, $event.target.checked)">{{ BADGE_LABELS[b] }}
             </label>
-            <span class="sub">Top corners</span>
+            <span class="sub">{{ $t("Top corners") }}</span>
             <label v-for="b in RELATED_BADGES_TOP" :key="b" class="switch">
               <input type="checkbox" :checked="session.prefs.relatedBadges.includes(b)" @change="toggleRelatedBadge(b, $event.target.checked)">{{ BADGE_LABELS[b] }}
             </label>
@@ -318,103 +320,99 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
       </div>
       <div class="row">
         <div class="label">
-          <strong>Mini-player</strong>
-          <span class="muted">Leaving a video page while it plays (or while a playlist plays) keeps it going in a small floating player. Off: leaving the page stops the video.</span>
+          <strong>{{ $t("Mini-player") }}</strong>
+          <span class="muted">{{ $t("Leaving a video page while it plays (or while a playlist plays) keeps it going in a small floating player. Off: leaving the page stops the video.") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.miniPlayer" @change="savePref('miniPlayer', $event.target.checked)">Use the mini-player</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.miniPlayer" @change="savePref('miniPlayer', $event.target.checked)">{{ $t("Use the mini-player") }}</label>
       </div>
       <div class="row">
         <div class="label">
-          <strong>A-B repeat</strong>
-          <span class="muted">Adds an A-B button to the player for playing one part of a video over and over: click once to mark the start (A), again to mark the end (B), and a third time to stop.</span>
+          <strong>{{ $t("A-B repeat") }}</strong>
+          <span class="muted">{{ $t("Adds an A-B button to the player for playing one part of a video over and over: click once to mark the start (A), again to mark the end (B), and a third time to stop.") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.abRepeat" @change="savePref('abRepeat', $event.target.checked)">Show the A-B button</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.abRepeat" @change="savePref('abRepeat', $event.target.checked)">{{ $t("Show the A-B button") }}</label>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Continue where I left off</strong>
-          <span class="muted">Opening a video I stopped partway through starts there (with a <em>Start over</em> button for a few seconds). Saved for my account, so it follows me to other devices. Videos watched to the end start from the beginning.</span>
+          <strong>{{ $t("Continue where I left off") }}</strong>
+          <span class="muted"><Tx msg="Opening a video I stopped partway through starts there (with a {em1} button for a few seconds). Saved for my account, so it follows me to other devices. Videos watched to the end start from the beginning."><template #em1><em>{{ $t("Start over") }}</em></template></Tx></span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.resumePlayback !== false" @change="savePref('resumePlayback', $event.target.checked)">Continue</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.resumePlayback !== false" @change="savePref('resumePlayback', $event.target.checked)">{{ $t("Continue") }}</label>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Frames under the player</strong>
-          <span class="muted">A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file. Off by default: the seek bar's previews do the same.</span>
+          <strong>{{ $t("Frames under the player") }}</strong>
+          <span class="muted">{{ $t("A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file. Off by default: the seek bar's previews do the same.") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.videoFrames === true" @change="savePref('videoFrames', $event.target.checked)">Show them</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.videoFrames === true" @change="savePref('videoFrames', $event.target.checked)">{{ $t("Show them") }}</label>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Starting volume</strong>
-          <span class="muted">The volume a video starts at on a computer (phones use their own volume buttons).</span>
+          <strong>{{ $t("Starting volume") }}</strong>
+          <span class="muted">{{ $t("The volume a video starts at on a computer (phones use their own volume buttons).") }}</span>
         </div>
         <div class="stack">
           <div class="range">
-            <input type="range" min="0" max="100" step="5" :value="volumeShown" aria-label="Starting volume"
+            <input type="range" min="0" max="100" step="5" :value="volumeShown" :aria-label="$t('Starting volume')"
                    @input="volumeDraft = Number($event.target.value)" @change="commitVolume">
             <output>{{ volumeShown }}%</output>
           </div>
-          <label class="switch"><input type="checkbox" :checked="session.prefs.rememberVolume !== false" @change="savePref('rememberVolume', $event.target.checked)">Keep the volume I last set in this browser instead</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.rememberVolume !== false" @change="savePref('rememberVolume', $event.target.checked)">{{ $t("Keep the volume I last set in this browser instead") }}</label>
         </div>
       </div>
       <div class="row top">
         <div class="label">
-          <strong>Search this frame</strong>
-          <span class="muted">⚙ → Search frame in the player pauses the video and looks the picture up on a reverse image search site, in a
-            new tab. The picture is uploaded to that site straight from your browser. With several sites you pick one each time.
-            Google Lens and Yandex are built in (for Yandex the app's server uploads the picture — Yandex refuses it straight
-            from a browser); another site is added with the address its upload form sends the picture to and the form's file
-            field name.</span>
+          <strong>{{ $t("Search this frame") }}</strong>
+          <span class="muted">{{ $t("⚙ → Search frame in the player pauses the video and looks the picture up on a reverse image search site, in a new tab. The picture is uploaded to that site straight from your browser. With several sites you pick one each time. Google Lens and Yandex are built in (for Yandex the app's server uploads the picture — Yandex refuses it straight from a browser); another site is added with the address its upload form sends the picture to and the form's file field name.") }}</span>
         </div>
         <div class="stack">
           <ul class="engines">
             <li v-for="(e, n) in engines" :key="n"><strong>{{ e.name }}</strong><code class="muted small">{{ e.url }} · {{ e.field }}</code>
-              <button class="btn btn-ghost btn-sm" type="button" :title="`Remove ${e.name}`" @click="removeEngine(n)">Remove</button></li>
-            <li v-if="!engines.length" class="muted">None — Search frame is hidden in the player.</li>
+              <button class="btn btn-ghost btn-sm" type="button" :title="$t('Remove {name}', { name: e.name })" @click="removeEngine(n)">{{ $t("Remove") }}</button></li>
+            <li v-if="!engines.length" class="muted">{{ $t("None — Search frame is hidden in the player.") }}</li>
           </ul>
           <form class="engine-add" @submit.prevent="addEngine">
-            <input v-model="engineDraft.name" class="input" placeholder="Name" aria-label="Name" maxlength="40">
-            <input v-model="engineDraft.url" class="input" placeholder="https://… (upload address)" aria-label="Upload address">
-            <input v-model="engineDraft.field" class="input" placeholder="File field" aria-label="File field name" maxlength="60">
-            <button class="btn btn-sm" type="submit">Add</button>
+            <input v-model="engineDraft.name" class="input" :placeholder="$t('Name')" :aria-label="$t('Name')" maxlength="40">
+            <input v-model="engineDraft.url" class="input" :placeholder="$t('https://… (upload address)')" :aria-label="$t('Upload address')">
+            <input v-model="engineDraft.field" class="input" :placeholder="$t('File field')" :aria-label="$t('File field name')" maxlength="60">
+            <button class="btn btn-sm" type="submit">{{ $t("Add") }}</button>
           </form>
           <div class="presets">
-            <button v-for="p in missingPresets" :key="p.name" class="btn btn-sm" type="button" @click="addPreset(p)">Add {{ p.name }}</button>
-            <button v-if="!isDefault" class="btn btn-ghost btn-sm" type="button" @click="resetEngines">Back to Google Lens + Yandex</button>
+            <button v-for="p in missingPresets" :key="p.name" class="btn btn-sm" type="button" @click="addPreset(p)">{{ $t("Add {name}", { name: p.name }) }}</button>
+            <button v-if="!isDefault" class="btn btn-ghost btn-sm" type="button" @click="resetEngines">{{ $t("Back to Google Lens + Yandex") }}</button>
           </div>
         </div>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Show how far I got on thumbnails</strong>
-          <span class="muted">A thin red line along the bottom of a video's picture, like YouTube.</span>
+          <strong>{{ $t("Show how far I got on thumbnails") }}</strong>
+          <span class="muted">{{ $t("A thin red line along the bottom of a video's picture, like YouTube.") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.watchedBar !== false" @change="savePref('watchedBar', $event.target.checked)">Show it</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.watchedBar !== false" @change="savePref('watchedBar', $event.target.checked)">{{ $t("Show it") }}</label>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Panic keys</strong>
-          <span class="muted">Press these keys together anywhere in the app (on a keyboard) to stop playback at once and switch to an empty white page with no title. The browser's Back button returns. The browser's own shortcuts keep working; while you type in a text field, only keys including Ctrl, Alt or ⌘ / Win count.</span>
+          <strong>{{ $t("Panic keys") }}</strong>
+          <span class="muted">{{ $t("Press these keys together anywhere in the app (on a keyboard) to stop playback at once and switch to an empty white page with no title. The browser's Back button returns. The browser's own shortcuts keep working; while you type in a text field, only keys including Ctrl, Alt or ⌘ / Win count.") }}</span>
         </div>
         <PanicKeysSetting />
       </div>
       <div class="row">
         <div class="label">
-          <strong>Sides of the video in fullscreen (phones and tablets)</strong>
-          <span class="muted">Swipe up / down on the left for brightness and on the right for volume (iPhones and iPads don't let pages change the volume: use the buttons), or double-tap to skip back / forward. Outside fullscreen, double-tap always skips.</span>
+          <strong>{{ $t("Sides of the video in fullscreen (phones and tablets)") }}</strong>
+          <span class="muted">{{ $t("Swipe up / down on the left for brightness and on the right for volume (iPhones and iPads don't let pages change the volume: use the buttons), or double-tap to skip back / forward. Outside fullscreen, double-tap always skips.") }}</span>
         </div>
-        <select class="select" :value="session.prefs.touchSides" aria-label="Sides of the video in fullscreen" @change="savePref('touchSides', $event.target.value)">
-          <option value="swipe">Swipe: brightness / volume</option>
-          <option value="seek">Double-tap: skip 10 s</option>
+        <select class="select" :value="session.prefs.touchSides" :aria-label="$t('Sides of the video in fullscreen')" @change="savePref('touchSides', $event.target.value)">
+          <option value="swipe">{{ $t("Swipe: brightness / volume") }}</option>
+          <option value="seek">{{ $t("Double-tap: skip 10 s") }}</option>
         </select>
       </div>
       <div class="row">
         <div class="label">
-          <strong>Edit details: keep suggestions open</strong>
-          <span class="muted">After you pick a performer, tag or music value, the list of suggestions stays open so you can pick the next one. Off: it closes until you type again.</span>
+          <strong>{{ $t("Edit details: keep suggestions open") }}</strong>
+          <span class="muted">{{ $t("After you pick a performer, tag or music value, the list of suggestions stays open so you can pick the next one. Off: it closes until you type again.") }}</span>
         </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.suggestKeepOpen" @change="savePref('suggestKeepOpen', $event.target.checked)">Keep open</label>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.suggestKeepOpen" @change="savePref('suggestKeepOpen', $event.target.checked)">{{ $t("Keep open") }}</label>
       </div>
     </section>
 
@@ -422,45 +420,45 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     <section v-else-if="tab === 'notifications'" class="card group">
       <div class="row">
         <div class="label">
-          <strong>Pop-ups (toasts)</strong>
-          <span class="muted">A short pop-up in the corner when something finishes or fails in the background. Everything is also kept under
-            the bell, whatever you pick here. Low disk space always pops up.<template v-if="!isAdmin()"> You're told about the videos you added.</template></span>
+          <strong>{{ $t("Pop-ups (toasts)") }}</strong>
+          <span class="muted">{{ $t("A short pop-up in the corner when something finishes or fails in the background. Everything is also kept under the bell, whatever you pick here. Low disk space always pops up.") }}<template v-if="!isAdmin()"> {{ $t("You're told about the videos you added.") }}</template></span>
         </div>
         <div class="toggles">
-          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.download" @change="setToast('download', $event.target.checked)">Downloads finished / failed</label>
-          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.reencode" @change="setToast('reencode', $event.target.checked)">Re-encodes and repairs finished / failed</label>
-          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.upload" @change="setToast('upload', $event.target.checked)">Uploads finished / failed</label>
-          <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.job" @change="setToast('job', $event.target.checked)">Jobs finished / failed (scans, syncs, backups, performer matching)</label>
-          <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.duplicate" @change="setToast('duplicate', $event.target.checked)">Possible duplicates found</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.download" @change="setToast('download', $event.target.checked)">{{ $t("Downloads finished / failed") }}</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.reencode" @change="setToast('reencode', $event.target.checked)">{{ $t("Re-encodes and repairs finished / failed") }}</label>
+          <label class="switch"><input type="checkbox" :checked="session.prefs.toasts.upload" @change="setToast('upload', $event.target.checked)">{{ $t("Uploads finished / failed") }}</label>
+          <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.job" @change="setToast('job', $event.target.checked)">{{ $t("Jobs finished / failed (scans, syncs, backups, performer matching)") }}</label>
+          <label v-if="isAdmin()" class="switch"><input type="checkbox" :checked="session.prefs.toasts.duplicate" @change="setToast('duplicate', $event.target.checked)">{{ $t("Possible duplicates found") }}</label>
         </div>
       </div>
     </section>
 
     <!-- ================= Account ================= -->
+    <LanguageSettings v-else-if="tab === 'language'" />
     <section v-else-if="tab === 'account'" class="card group">
       <div class="row top">
-        <div class="label"><strong>Change password</strong><span class="muted">Signed in as {{ session.user?.username }}. Other devices are signed out.</span></div>
+        <div class="label"><strong>{{ $t("Change password") }}</strong><span class="muted">{{ $t("Signed in as {name}. Other devices are signed out.", { name: session.user?.username }) }}</span></div>
         <form class="pw" @submit.prevent="changePassword">
-          <input v-model="pw.current" class="input" type="password" autocomplete="current-password" placeholder="Current password" required>
-          <input v-model="pw.next" class="input" type="password" autocomplete="new-password" placeholder="New password" required>
-          <input v-model="pw.confirm" class="input" type="password" autocomplete="new-password" placeholder="Repeat new password" required>
+          <input v-model="pw.current" class="input" type="password" autocomplete="current-password" :placeholder="$t('Current password')" required>
+          <input v-model="pw.next" class="input" type="password" autocomplete="new-password" :placeholder="$t('New password')" required>
+          <input v-model="pw.confirm" class="input" type="password" autocomplete="new-password" :placeholder="$t('Repeat new password')" required>
           <PasswordChecklist :password="pw.next" :username="session.user?.username" />
-          <div v-if="pw.confirm && pw.confirm !== pw.next" class="error">The new passwords don't match.</div>
+          <div v-if="pw.confirm && pw.confirm !== pw.next" class="error">{{ $t("The new passwords don't match.") }}</div>
           <div v-if="pwError" class="error">{{ pwError }}</div>
-          <button class="btn btn-primary" :disabled="pwBusy">{{ pwBusy ? "Saving…" : "Change password" }}</button>
+          <button class="btn btn-primary" :disabled="pwBusy">{{ pwBusy ? $t("Saving…") : $t("Change password") }}</button>
         </form>
       </div>
       <div v-if="!isAdmin()" class="row top">
-        <div class="label"><strong>Delete my account</strong><span class="muted">Removes your account and settings for good and signs you out. The library is not affected.</span></div>
+        <div class="label"><strong>{{ $t("Delete my account") }}</strong><span class="muted">{{ $t("Removes your account and settings for good and signs you out. The library is not affected.") }}</span></div>
         <div>
-          <button v-if="!del.open" class="btn btn-danger" @click="del.open = true">Delete my account…</button>
+          <button v-if="!del.open" class="btn btn-danger" @click="del.open = true">{{ $t("Delete my account…") }}</button>
           <form v-else class="pw" @submit.prevent="deleteAccount">
-            <input v-model="del.username" class="input" autocomplete="off" :placeholder="`Type your username (${session.user?.username})`" required>
-            <input v-model="del.password" class="input" type="password" autocomplete="current-password" placeholder="Current password" required>
+            <input v-model="del.username" class="input" autocomplete="off" :placeholder="$t('Type your username ({name})', { name: session.user?.username })" required>
+            <input v-model="del.password" class="input" type="password" autocomplete="current-password" :placeholder="$t('Current password')" required>
             <div v-if="del.error" class="error">{{ del.error }}</div>
             <div class="inline">
-              <button class="btn" type="button" @click="del.open = false">Cancel</button>
-              <button class="btn btn-danger" :disabled="del.busy || del.username !== session.user?.username">{{ del.busy ? "Deleting…" : "Delete for good" }}</button>
+              <button class="btn" type="button" @click="del.open = false">{{ $t("Cancel") }}</button>
+              <button class="btn btn-danger" :disabled="del.busy || del.username !== session.user?.username">{{ del.busy ? $t("Deleting…") : $t("Delete for good") }}</button>
             </div>
           </form>
         </div>

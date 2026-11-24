@@ -1,9 +1,10 @@
 // Turns the saved metadata JSON (raw PMVHaven API shape, or the older
 // curated shape) into what the video page shows. Same rules as the classic UI.
+import { N_, t } from "./i18n.js";
 const FLAG_LABELS = [
-  ["hasExplicitContent", "Explicit content"], ["hasExtremeContent", "Extreme content"],
-  ["hasGayContent", "Gay content"], ["hasTransContent", "Trans content"],
-  ["hasVoiceOver", "Voice over"], ["seizureWarning", "Seizure warning"],
+  ["hasExplicitContent", N_("Explicit content")], ["hasExtremeContent", N_("Extreme content")],
+  ["hasGayContent", N_("Gay content")], ["hasTransContent", N_("Trans content")],
+  ["hasVoiceOver", N_("Voice over")], ["seizureWarning", N_("Seizure warning")],
 ];
 
 const nameOf = (x) => (typeof x === "string" ? x : (x && (x.name || x.title || x.label)) || "");
@@ -33,7 +34,7 @@ export function normalizeMetadata(meta) {
     tags: meta.tags || [],
     performers: (meta.starsTags || []).map(nameOf).filter(Boolean),
     music: (meta.music || []).map((m) => (m && (m.artist || m.song) ? [m.song, m.artist].filter(Boolean).join(" — ") : nameOf(m))).filter(Boolean),
-    flags: FLAG_LABELS.filter(([k]) => meta[k]).map(([, label]) => label),
+    flags: FLAG_LABELS.filter(([k]) => meta[k]).map(([, label]) => t(label)),
     technical: meta.video_details || {},
   };
 }

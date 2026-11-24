@@ -31,7 +31,8 @@ from typing import Optional
 
 from loguru import logger
 
-from .. import activity
+from .. import activity, i18n
+from ..i18n import L
 from .core import JobBlockedError
 
 try:
@@ -44,62 +45,62 @@ WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", 
 
 JOB_REGISTRY: dict[str, dict] = {
     "duplicate_scan": {
-        "label": "Duplicate scan",
+        "label": L('Duplicate scan'),
         "method": "run_duplicate_scan",  # see library_mixins/duplicate_worker.py
         "category": "invasive",
     },
     "library_repair": {
-        "label": "Library repair (all videos)",
+        "label": L('Library repair (all videos)'),
         "method": "_run_scheduled_library_repair",
         "category": "invasive",
     },
     "rss_feed_update": {
-        "label": "RSS feed update (placeholder)",
+        "label": L('RSS feed update (placeholder)'),
         "method": "_run_scheduled_rss_feed_update",
         "category": "non_invasive",
     },
     "stats_snapshot": {
-        "label": "Capture stats snapshot",
+        "label": L('Capture stats snapshot'),
         "method": "capture_stats_snapshot",  # see library_mixins/stats_worker.py
         "category": "non_invasive",
     },
     "update_check": {
-        "label": "Check for app updates",
+        "label": L('Check for app updates'),
         "method": "run_update_check",  # see library_mixins/system_worker.py
         "category": "non_invasive",
     },
     "site_sync": {
-        "label": "Sync library with PMVHaven",
+        "label": L('Sync library with PMVHaven'),
         "method": "run_site_sync",  # see library_mixins/site_sync_worker.py
         "category": "invasive",
     },
     "performer_sync": {
-        "label": "Match & refresh performers (ThePornDB)",
+        "label": L('Match & refresh performers (ThePornDB)'),
         "method": "run_performer_sync",  # see library_mixins/performers.py
         "category": "non_invasive",
     },
     "backup_test": {
-        "label": "Restore test of the newest backup",
+        "label": L('Restore test of the newest backup'),
         "method": "run_backup_test",  # see library_mixins/system_worker.py
         "category": "non_invasive",
     },
     "song_scan": {
-        "label": "Find songs in videos without music",
+        "label": L('Find songs in videos without music'),
         "method": "run_song_scan_job",  # see library_mixins/songs.py
         "category": "non_invasive",
     },
     "audio_fix": {
-        "label": "Make audio playable (convert audio browsers can't play to AAC)",
+        "label": L("Make audio playable (convert audio browsers can't play to AAC)"),
         "method": "run_audio_fix",  # see library_mixins/audio_fix.py (3.2.0)
         "category": "invasive",
     },
     "preview_fix": {
-        "label": "Make previews H.264 (convert hover previews in other formats)",
+        "label": L('Make previews H.264 (convert hover previews in other formats)'),
         "method": "run_preview_fix",  # see library_mixins/preview_fix.py (3.3.0)
         "category": "non_invasive",
     },
     "backup": {
-        "label": "Backup database + settings",
+        "label": L('Backup database + settings'),
         "method": "run_backup",  # see library_mixins/system_worker.py
         "category": "non_invasive",
     },
@@ -111,7 +112,7 @@ def _parse_hhmm(time_str: str) -> tuple[int, int]:
         hh_str, mm_str = time_str.split(":")
         return int(hh_str), int(mm_str)
     except (ValueError, AttributeError) as exc:
-        raise ValueError(f"Invalid time '{time_str}' -- expected HH:MM") from exc
+        raise ValueError(L("Invalid time '{time}' -- expected HH:MM", time=time_str)) from exc
 
 
 def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: Optional[float] = None) -> float:
@@ -135,7 +136,7 @@ def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: O
         try:
             return datetime.fromisoformat(str(schedule_config.get("at") or "")).timestamp()
         except ValueError as exc:
-            raise ValueError(f"Invalid date and time '{schedule_config.get('at')}' -- expected YYYY-MM-DDTHH:MM") from exc
+            raise ValueError(L("Invalid date and time '{value}' -- expected YYYY-MM-DDTHH:MM", value=schedule_config.get('at'))) from exc
 
     if kind == "interval_hours":
         hours = float(schedule_config.get("hours", 24))
@@ -152,7 +153,7 @@ def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: O
         hh, mm = _parse_hhmm(schedule_config.get("time", "03:00"))
         day_name = (schedule_config.get("day") or "monday").lower()
         if day_name not in WEEKDAYS:
-            raise ValueError(f"Unknown weekday: {day_name}")
+            raise ValueError(L('Unknown weekday: {day}', day=day_name))
         target_idx = WEEKDAYS.index(day_name)
         candidate = dt_now.replace(hour=hh, minute=mm, second=0, microsecond=0)
         days_ahead = (target_idx - dt_now.weekday()) % 7
@@ -161,7 +162,7 @@ def _compute_next_run_at(schedule_mode: str, schedule_config: dict, from_time: O
             candidate += timedelta(days=7)
         return candidate.timestamp()
 
-    raise ValueError(f"Unknown schedule kind: {kind}")
+    raise ValueError(L('Unknown schedule kind: {kind}', kind=kind))
 
 
 class SchedulerWorkerMixin:
@@ -223,7 +224,7 @@ class SchedulerWorkerMixin:
         act_token = activity._current.set(act)
         try:
             if not registry_entry:
-                raise ValueError(f"Unknown job type: {job_type}")
+                raise ValueError(L("Unknown job type: {type}", type=job_type))
             method = getattr(self, registry_entry["method"])
             # Only duplicate_scan currently reads a job_config option
             # (verbose_logging) -- every other registered job type's
@@ -233,13 +234,13 @@ class SchedulerWorkerMixin:
             else:
                 result = await method()
             status = "cancelled" if act.stopped_by else "interrupted" if self._shutting_down else "success"
-            summary = (f"Stopped by {act.stopped_by}" if act.stopped_by
+            summary = (L("Stopped by {name}", name=act.stopped_by) if act.stopped_by
                        else json.dumps(result) if isinstance(result, dict) else str(result))
         except asyncio.CancelledError:
             if act.stopped_by:  # the Stop button (Tasks / Scheduler page): this run ends here
-                status, summary = "cancelled", f"Stopped by {act.stopped_by}"
+                status, summary = "cancelled", L("Stopped by {name}", name=act.stopped_by)
             else:
-                status, summary = "interrupted", "Cancelled by server shutdown"
+                status, summary = "interrupted", L("Cancelled by server shutdown")
                 raise
         except JobBlockedError as exc:
             status = "blocked"
@@ -252,7 +253,8 @@ class SchedulerWorkerMixin:
         finally:
             activity._current.reset(act_token)
             act.finish(status, activity.summarize(result) if status == "success" else summary)
-            self.db.finish_job_run(run_id, status, summary)
+            stored = i18n.to_stored(summary) if status != "success" else None
+            self.db.finish_job_run(run_id, status, summary, json.dumps(stored, ensure_ascii=False) if stored else None)
             schedule_config = job["schedule_config"]
             if isinstance(schedule_config, str):
                 schedule_config = json.loads(schedule_config)
@@ -308,6 +310,7 @@ class SchedulerWorkerMixin:
             "running": row["id"] in self._scheduler_active_jobs,
             "progress": activity.for_job(row["id"]) if row["id"] in self._scheduler_active_jobs else None,
             "system": bool(row.get("system_key")),
+            "name": i18n.known(row["name"]),  # a built-in job's name, translated while it isn't renamed (3.7.0)
         }
 
     def list_scheduled_jobs(self) -> list[dict]:
@@ -318,7 +321,7 @@ class SchedulerWorkerMixin:
             job_config: Optional[dict] = None,
     ) -> dict:
         if job_type not in JOB_REGISTRY:
-            raise ValueError(f"Unknown job type: {job_type}")
+            raise ValueError(L('Unknown job type: {type}', type=job_type))
         next_run_at = _compute_next_run_at(schedule_mode, schedule_config) if enabled else None
         job_id = str(uuid.uuid4())
         now = time.time()
@@ -335,7 +338,7 @@ class SchedulerWorkerMixin:
     def update_scheduled_job(self, job_id: str, updates: dict) -> dict:
         existing = self.db.get_scheduled_job(job_id)
         if not existing:
-            raise ValueError("Job not found")
+            raise ValueError(L('Job not found'))
 
         merged_mode = updates.get("schedule_mode", existing["schedule_mode"])
         merged_config = updates.get("schedule_config", json.loads(existing["schedule_config"]))
@@ -354,21 +357,21 @@ class SchedulerWorkerMixin:
 
     def delete_scheduled_job(self, job_id: str) -> None:
         if job_id in self._scheduler_active_jobs:
-            raise ValueError("Can't delete a job while it's running -- wait for it to finish first")
+            raise ValueError(L("Can't delete a job while it's running -- wait for it to finish first"))
         existing = self.db.get_scheduled_job(job_id)
         if not existing:
-            raise ValueError("Job not found")
+            raise ValueError(L('Job not found'))
         if existing.get("system_key"):
-            raise ValueError("This is a built-in system job -- it can be disabled, but not deleted")
+            raise ValueError(L('This is a built-in system job -- it can be disabled, but not deleted'))
         self.db.delete_scheduled_job(job_id)
         logger.info("Scheduler: deleted job '{}' ({})", existing["name"], job_id)
 
     def request_scheduled_job_run_now(self, job_id: str) -> None:
         job = self.db.get_scheduled_job(job_id)
         if not job:
-            raise ValueError("Job not found")
+            raise ValueError(L('Job not found'))
         if job_id in self._scheduler_active_jobs:
-            raise ValueError("This job is already running")
+            raise ValueError(L('This job is already running'))
         logger.info("Scheduler: manual run requested for job '{}' ({})", job["name"], job_id)
         task = asyncio.create_task(self._execute_scheduled_job(job, trigger="manual"))
         self._scheduler_active_jobs[job_id] = task
@@ -378,7 +381,7 @@ class SchedulerWorkerMixin:
         uploads), what finished recently, and the next Scheduler runs."""
         now = time.time()
         upcoming = sorted(
-            ({"job_id": j["id"], "name": j["name"], "kind": j["job_type"], "next_run_at": j["next_run_at"]}
+            ({"job_id": j["id"], "name": i18n.known(j["name"]), "kind": j["job_type"], "next_run_at": j["next_run_at"]}
              for j in self.db.list_scheduled_jobs()
              if j.get("enabled") and j.get("next_run_at") and j["id"] not in self._scheduler_active_jobs),
             key=lambda j: j["next_run_at"])
@@ -406,11 +409,11 @@ class SchedulerWorkerMixin:
         _execute_scheduled_job() above) if something else invasive is
         already running."""
         if not self._try_acquire_invasive_lock("library_repair"):
-            raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+            raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
         started = time.time()
         try:
             queued = self.request_repair_all(max_concurrent=self._repair_max_concurrent or 1)
-            async with activity.track("library_repair", "Repairing all videos",
+            async with activity.track("library_repair", L('Repairing all videos'),
                                       progress=lambda: self._repair_all_activity(queued), stop=self._stop_repair_all):
                 await self._wait_for_repairs()
             elapsed = round(time.time() - started, 1)

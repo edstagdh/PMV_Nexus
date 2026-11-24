@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from .i18n import L
 from . import proxy
 from .config import get_settings
 from .sites import get_site
@@ -94,7 +95,7 @@ class PMVClient:
             if use_proxy:
                 url = proxy.address()
                 if not url:
-                    raise RuntimeError("The proxy is turned on but has no address (Server Settings → Proxy)")
+                    raise RuntimeError(L('The proxy is turned on but has no address (Server Settings → Proxy)'))
                 if self._proxy_client is None or self._proxy_client_url != url:
                     if self._proxy_client is not None:
                         await self._proxy_client.aclose()
@@ -211,8 +212,7 @@ class PMVClient:
         async with client.stream("GET", url, headers=headers) as resp:
             if resp.status_code in (401, 403, 404) and "/api/videos/" in url and url.endswith("/download"):
                 raise RuntimeError(
-                    f"The site didn't give the file (HTTP {resp.status_code}): it may not be offered for download, "
-                    "be private or removed, or need your API key (Server Settings → Credentials).")
+                    L("The site didn't give the file (HTTP {status}): it may not be offered for download, be private or removed, or need your API key (Server Settings → Credentials).", status=resp.status_code))
             resp.raise_for_status()
             total = int(resp.headers.get("Content-Length", 0)) or None
             done = 0

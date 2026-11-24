@@ -65,18 +65,18 @@ onBeforeUnmount(() => window.removeEventListener("pmv-frames-redo", onRedone));
 </script>
 
 <template>
-  <section v-if="frames.length || data?.pending" class="frames" :class="{ portrait, many: frames.length > 12 }" aria-label="Video frames">
+  <section v-if="frames.length || data?.pending" class="frames" dir="ltr" :class="{ portrait, many: frames.length > 12 }" :aria-label="$t('Video frames')">
     <div class="frames-row" :style="{ '--n': frames.length || 8 }">
       <template v-if="frames.length">
         <button v-for="(f, i) in frames" :key="f.url" type="button" class="frame" :class="{ on: i === current }"
-                :aria-label="`Jump to ${formatDuration(f.seconds)}`" :title="`Jump to ${formatDuration(f.seconds)}`"
+                :aria-label="$t('Jump to {time}', { time: formatDuration(f.seconds) })" :title="$t('Jump to {time}', { time: formatDuration(f.seconds) })"
                 @click="seekPlayer(f.seconds)">
           <span class="pic"><img :src="f.url" alt="" loading="lazy" decoding="async"></span>
           <span class="time">{{ frames.length <= 12 || i % 3 === 0 || i === current ? formatDuration(f.seconds) : "\u00a0" }}</span>
         </button>
       </template>
       <template v-else>
-        <div v-for="n in 8" :key="n" class="frame placeholder" aria-hidden="true"><span class="pic skeleton" /><span class="time">&nbsp;</span></div>
+        <div v-for="n in 8" :key="n" class="frame placeholder" aria-hidden="true"><span class="pic skeleton" /><span class="time">{{ "\u00a0" }}</span></div>
       </template>
     </div>
   </section>

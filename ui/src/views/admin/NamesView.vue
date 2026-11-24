@@ -5,6 +5,7 @@
 // and the fix can be remembered for new videos (backend/library_mixins/names.py).
 // Also: likely typos (names a letter or two apart), the remembered fixes,
 // and upper/lower case spellings (SpellingsPanel, moved here from Maintenance).
+import { t, tn, formatNumber } from "../../lib/i18n.js";
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, watch } from "vue";
 import Icon from "../../components/Icon.vue";
@@ -12,7 +13,14 @@ import SpellingsPanel from "../../components/admin/SpellingsPanel.vue";
 import { api, qs } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
-const FIELDS = [{ key: "tags", label: "Tags", one: "tag" }, { key: "performers", label: "Performers", one: "performer" }, { key: "music", label: "Music", one: "music name" }];
+const FIELDS = [
+  { key: "tags", label: t("Tags"), intro: t("Rename a tag, or merge a misspelled one into the right one: every video that has it is changed."),
+    all: t("All tags"), find: t("Find a tag") },
+  { key: "performers", label: t("Performers"), intro: t("Rename a performer, or merge a misspelled one into the right one: every video that has it is changed."),
+    all: t("All performers"), find: t("Find a performer") },
+  { key: "music", label: t("Music"), intro: t("Rename a music name, or merge a misspelled one into the right one: every video that has it is changed."),
+    all: t("All music"), find: t("Find a music name") },
+];
 const field = ref("tags");
 const fieldInfo = computed(() => FIELDS.find((f) => f.key === field.value));
 const data = ref(null);
@@ -38,13 +46,13 @@ function dismiss(p) {
 async function load() {
   error.value = "";
   try {
-    const [n, t] = await Promise.all([
+    const [n, typoList] = await Promise.all([
       api(`/api/names?${qs({ field: field.value })}`),
       api(`/api/names/typos?${qs({ field: field.value })}`),
     ]);
     data.value = n;
-    typos.value = t.pairs;
-  } catch (err) { error.value = err.message || "Could not load the names"; }
+    typos.value = typoList.pairs;
+  } catch (err) { error.value = err.message || t("Could not load the names"); }
 }
 watch(field, () => { data.value = null; typos.value = null; editing.value = null; q.value = ""; shown.value = 150; load(); }, { immediate: true });
 
@@ -66,34 +74,35 @@ async function rename(old, to, rememberIt = remember.value) {
   if (caseOnly && to === old && data.value?.names.find((n) => n.value === old)?.shown === old) return;
   const into = caseOnly ? 0 : countOf(to);
   const msg = caseOnly
-    ? `Write “${old}” as “${to}” in every video (all its writings)?`
+    ? t("Write “{old}” as “{new}” in every video (all its writings)?", { old, new: to })
     : into
-    ? `Merge “${old}” into “${to}”? Every video with “${old}” gets “${to}” instead (${to} already has ${into} ${into === 1 ? "video" : "videos"}).`
-    : `Rename “${old}” to “${to}” in every video?`;
-  if (!(await askConfirm(msg, { ok: into ? "Merge" : "Rename" }))) return;
+    ? tn("Merge “{old}” into “{new}”? Every video with “{old}” gets “{new}” instead ({new} already has {n} video).",
+      "Merge “{old}” into “{new}”? Every video with “{old}” gets “{new}” instead ({new} already has {n} videos).", into, { old, new: to })
+    : t("Rename “{old}” to “{new}” in every video?", { old, new: to });
+  if (!(await askConfirm(msg, { ok: into ? t("Merge") : t("Rename") }))) return;
   busy.value = true;
   try {
     const r = await api("/api/names/rename", { method: "POST", body: { field: field.value, old, new: to, remember: rememberIt } });
-    toast(`“${old}” → “${to}” in ${r.videos} ${r.videos === 1 ? "video" : "videos"}`, { type: "success" });
+    toast(tn("“{old}” → “{new}” in {n} video", "“{old}” → “{new}” in {n} videos", r.videos, { old, new: to }), { type: "success" });
     editing.value = null;
     await load();
-  } catch (err) { toast(err.message || "Could not rename", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not rename"), { type: "error" }); }
   finally { busy.value = false; }
 }
 async function forget(rule) {
   try {
     await api("/api/names/rules/delete", { method: "POST", body: { field: field.value, old: rule.old } });
-    toast("Fix forgotten — videos keep their current names");
+    toast(t("Fix forgotten — videos keep their current names"));
     await load();
-  } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
 }
 </script>
 
 <template>
   <div class="page names">
     <div class="top">
-      <p class="muted small intro">Rename a {{ fieldInfo.one }}, or merge a misspelled one into the right one: every video that has it is changed.
-        With <strong>Remember</strong>, the same misspelling is shown fixed on videos added later too.</p>
+      <p class="muted small intro">{{ fieldInfo.intro }}
+        <Tx msg="With {remember}, the same misspelling is shown fixed on videos added later too."><template #remember><strong>{{ $t("Remember") }}</strong></template></Tx></p>
       <div class="seg" role="tablist">
         <button v-for="f in FIELDS" :key="f.key" type="button" class="btn btn-sm" :class="{ 'btn-primary': field === f.key }" @click="field = f.key">{{ f.label }}</button>
       </div>
@@ -101,16 +110,16 @@ async function forget(rule) {
     <p v-if="error" class="error-text">{{ error }}</p>
 
     <section v-if="visibleTypos.length" class="card block">
-      <h2>Possible typos <span class="count">{{ visibleTypos.length }}</span></h2>
-      <p class="muted small">Names only a letter or two apart. Merge the wrong one into the right one, or mark them as different.</p>
+      <h2>{{ $t("Possible typos") }} <span class="count">{{ visibleTypos.length }}</span></h2>
+      <p class="muted small">{{ $t("Names only a letter or two apart. Merge the wrong one into the right one, or mark them as different.") }}</p>
       <ul class="pairs">
         <li v-for="p in visibleTypos.slice(0, 50)" :key="pairKey(p)">
           <span class="pair"><span class="nm">{{ p.b }}</span><span class="muted">{{ p.b_count }}</span>
             <Icon name="right" :size="14" /><span class="nm good">{{ p.a }}</span><span class="muted">{{ p.a_count }}</span></span>
           <span class="acts">
-            <button class="btn btn-sm btn-primary" :disabled="busy" @click="rename(p.b, p.a, true)">Merge into “{{ p.a }}”</button>
-            <button class="btn btn-ghost btn-sm" :disabled="busy" @click="rename(p.a, p.b, true)">Other way</button>
-            <button class="btn btn-ghost btn-sm" @click="dismiss(p)">Not the same</button>
+            <button class="btn btn-sm btn-primary" :disabled="busy" @click="rename(p.b, p.a, true)">{{ $t("Merge into “{name}”", { name: p.a }) }}</button>
+            <button class="btn btn-ghost btn-sm" :disabled="busy" @click="rename(p.a, p.b, true)">{{ $t("Other way") }}</button>
+            <button class="btn btn-ghost btn-sm" @click="dismiss(p)">{{ $t("Not the same") }}</button>
           </span>
         </li>
       </ul>
@@ -118,43 +127,43 @@ async function forget(rule) {
 
     <section class="card block">
       <div class="block-head">
-        <h2>All {{ fieldInfo.label.toLowerCase() }} <span v-if="data" class="count">{{ data.names.length }}</span></h2>
-        <input v-model="q" class="input search" type="search" :placeholder="`Find a ${fieldInfo.one}`" :aria-label="`Find a ${fieldInfo.one}`">
+        <h2>{{ fieldInfo.all }} <span v-if="data" class="count">{{ data.names.length }}</span></h2>
+        <input v-model="q" class="input search" type="search" :placeholder="fieldInfo.find" :aria-label="fieldInfo.find">
       </div>
       <div v-if="!data" class="skeleton" style="height: 6rem; border-radius: var(--radius)" />
-      <p v-else-if="!filtered.length" class="muted small">Nothing matches.</p>
+      <p v-else-if="!filtered.length" class="muted small">{{ $t("Nothing matches.") }}</p>
       <ul v-else class="list">
         <li v-for="n in filtered.slice(0, shown)" :key="n.value">
           <template v-if="editing === n.value">
             <form class="edit" @submit.prevent="rename(n.value, target)">
               <span class="nm">{{ n.value }}</span><Icon name="right" :size="14" />
-              <input v-model="target" class="input" list="names-all" maxlength="120" aria-label="New name" autofocus>
-              <label class="switch small"><input v-model="remember" type="checkbox">Remember</label>
+              <input v-model="target" class="input" list="names-all" maxlength="120" :aria-label="$t('New name')" autofocus>
+              <label class="switch small"><input v-model="remember" type="checkbox">{{ $t("Remember") }}</label>
               <!-- 3.3.0: a change of upper/lower case only ("Pmv" -> "PMV") counts as a change -->
               <button class="btn btn-sm btn-primary" :disabled="busy || !target.trim() || (target.trim() === n.value && n.shown === n.value)">
-                {{ countOf(target) && target.trim().toLowerCase() !== n.value.toLowerCase() ? "Merge" : "Rename" }}</button>
-              <button type="button" class="btn btn-ghost btn-sm" @click="editing = null">Cancel</button>
+                {{ countOf(target) && target.trim().toLowerCase() !== n.value.toLowerCase() ? $t("Merge") : $t("Rename") }}</button>
+              <button type="button" class="btn btn-ghost btn-sm" @click="editing = null">{{ $t("Cancel") }}</button>
             </form>
           </template>
           <template v-else>
             <span class="nm">{{ n.value }}</span>
-            <span v-if="n.shown !== n.value" class="muted small">shown as “{{ n.shown }}”</span>
-            <span class="muted small cnt">{{ n.count }} {{ n.count === 1 ? "video" : "videos" }}</span>
-            <button class="btn btn-ghost btn-sm" @click="startEdit(n)"><Icon name="edit" :size="14" />Rename / merge</button>
+            <span v-if="n.shown !== n.value" class="muted small">{{ $t("shown as “{name}”", { name: n.shown }) }}</span>
+            <span class="muted small cnt">{{ $tn("{n} video", "{n} videos", n.count) }}</span>
+            <button class="btn btn-ghost btn-sm" @click="startEdit(n)"><Icon name="edit" :size="14" />{{ $t("Rename / merge") }}</button>
           </template>
         </li>
       </ul>
       <datalist id="names-all"><option v-for="n in (data?.names || []).slice(0, 2000)" :key="n.value" :value="n.value" /></datalist>
-      <button v-if="filtered.length > shown" class="btn btn-sm more" @click="shown += 300">Show more ({{ filtered.length - shown }} left)</button>
+      <button v-if="filtered.length > shown" class="btn btn-sm more" @click="shown += 300">{{ $t("Show more ({n} left)", { n: formatNumber(filtered.length - shown) }) }}</button>
     </section>
 
     <section v-if="data?.rules?.length" class="card block">
-      <h2>Remembered fixes <span class="count">{{ data.rules.length }}</span></h2>
-      <p class="muted small">These misspellings are shown fixed wherever they turn up (new downloads, syncs). Forgetting one doesn't change any video.</p>
+      <h2>{{ $t("Remembered fixes") }} <span class="count">{{ data.rules.length }}</span></h2>
+      <p class="muted small">{{ $t("These misspellings are shown fixed wherever they turn up (new downloads, syncs). Forgetting one doesn't change any video.") }}</p>
       <ul class="list">
         <li v-for="r in data.rules" :key="r.old">
           <span class="nm">{{ r.old }}</span><Icon name="right" :size="14" /><span class="nm good">{{ r.new }}</span>
-          <button class="btn btn-ghost btn-sm" style="margin-left: auto" @click="forget(r)">Forget</button>
+          <button class="btn btn-ghost btn-sm" style="margin-inline-start: auto" @click="forget(r)">{{ $t("Forget") }}</button>
         </li>
       </ul>
     </section>
@@ -178,7 +187,7 @@ async function forget(rule) {
 .list li, .pairs li { display: flex; align-items: center; gap: 0.625rem; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; min-height: 2.6rem; }
 .nm { font-weight: 600; overflow-wrap: anywhere; }
 .nm.good { color: var(--success); }
-.cnt { margin-left: auto; }
+.cnt { margin-inline-start: auto; }
 .pair { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; flex: 1; min-width: 14rem; }
 .acts { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .edit { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; width: 100%; }

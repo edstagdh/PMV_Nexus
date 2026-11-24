@@ -13,7 +13,7 @@ const parts = computed(() => {
 
 <template>
   <template v-if="parts">{{ parts.before }}<router-link :to="{ name: 'video', params: { id: item.id } }" class="item-link"
-    :title="`Open “${item.title}”`" @click.stop>{{ parts.name }}</router-link>{{ parts.after }}</template>
+    :title="$t('Open “{title}”', { title: item.title })" @click.stop>{{ parts.name }}</router-link>{{ parts.after }}</template>
   <template v-else>{{ text }}</template>
 </template>
 

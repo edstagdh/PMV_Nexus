@@ -14,6 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
+from .. import notifications
 from ..library_manager import library_manager
 from ..security import AuthContext, get_current_user
 
@@ -32,7 +33,7 @@ class ReadRequest(BaseModel):
 def list_notifications(after: int = Query(0, ge=0), problems: bool = False, limit: int = Query(100, ge=1, le=300),
                        user: AuthContext = Depends(get_current_user)):
     db = library_manager.db
-    return {"items": db.list_notifications(user.id, _admin(user), after=after, limit=limit, problems_only=problems),
+    return {"items": [notifications.readable(r) for r in db.list_notifications(user.id, _admin(user), after=after, limit=limit, problems_only=problems)],
             **db.notification_counts(user.id, _admin(user))}
 
 

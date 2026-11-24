@@ -7,7 +7,9 @@ moves... -- everything that isn't one video's download / re-encode / repair
 A job wraps its work in `async with activity.track(kind, title, progress=fn)`.
 `fn()` returns what it's doing right now -- {"stage", "done", "total",
 "detail"}, any of them -- and is read whenever the Tasks page asks, so the
-job keeps its own counters and doesn't have to push updates.
+job keeps its own counters and doesn't have to push updates. A job in steps
+(3.7.0, e.g. a backup) adds "step" / "steps" and its own overall "percent";
+done / total are then the current step's (shown as step_percent).
 
 The Scheduler starts an activity for each run (named after the job) and
 makes it the current one (a ContextVar); a job method that calls track()
@@ -38,6 +40,8 @@ from contextlib import asynccontextmanager
 from typing import Callable, Optional
 
 from loguru import logger
+
+from .i18n import L, Msg
 
 KEEP_FINISHED = 30
 
@@ -92,9 +96,9 @@ class Activity:
 
     def request_stop(self, by: str) -> None:
         if not self.can_stop():
-            raise ValueError("This job can't be stopped right now")
+            raise ValueError(L("This job can't be stopped right now"))
         self.stopped_by = by or "someone"
-        self.stage = "Stopping…"
+        self.stage = L('Stopping…')
         self.progress = None
         self.stopper()
         _changed()
@@ -125,19 +129,23 @@ class Activity:
                "status": self.status, "stage": self.stage, "summary": self.summary,
                "started_at": self.started_at, "finished_at": self.finished_at,
                "done": None, "total": None, "percent": None, "detail": None,
+               "step": None, "steps": None, "step_percent": None,
                "can_stop": self.can_stop(), "stopped_by": self.stopped_by, "item": self.item}
         if self.progress is not None:
             try:
                 p = self.progress() or {}
             except Exception:  # noqa: BLE001 -- a progress probe must never break the Tasks page
                 p = {}
-            for k in ("stage", "done", "total", "detail", "item"):
+            for k in ("stage", "done", "total", "detail", "item", "step", "steps"):
                 if p.get(k) is not None:
                     out[k] = p[k]
             if p.get("percent") is not None:
                 out["percent"] = round(float(p["percent"]), 1)
-        if out["percent"] is None and out["total"]:
-            out["percent"] = round(min(100.0, (out["done"] or 0) / out["total"] * 100), 1)
+        step_pct = round(min(100.0, (out["done"] or 0) / out["total"] * 100), 1) if out["total"] else None
+        if out["steps"]:  # (3.7.0) a job in steps: percent is the whole job, step_percent this step
+            out["step_percent"] = step_pct
+        elif out["percent"] is None:
+            out["percent"] = step_pct
         return out
 
 
@@ -200,14 +208,14 @@ async def track(kind: str, title: str, progress: Optional[Callable[[], dict]] = 
     except BaseException as exc:
         cancelled = type(exc).__name__ == "CancelledError"
         if cancelled and act.stopped_by:
-            act.finish("cancelled", f"Stopped by {act.stopped_by}")
+            act.finish("cancelled", L('Stopped by {name}', name=act.stopped_by))
         else:
             status = "interrupted" if cancelled else ("blocked" if type(exc).__name__ == "JobBlockedError" else "failed")
             act.finish(status, str(exc)[:300] or type(exc).__name__)
         raise
     else:
         act.finish("cancelled" if act.stopped_by else "success",
-                   f"Stopped by {act.stopped_by}" if act.stopped_by else act.summary)
+                   L('Stopped by {name}', name=act.stopped_by) if act.stopped_by else act.summary)
     finally:
         _current.reset(token)
 
@@ -217,12 +225,36 @@ def item_ref(item) -> Optional[dict]:
     return {"id": item.id, "title": item.title} if item is not None and getattr(item, "title", None) else None
 
 
+# Words for the keys jobs return, so a result reads in the reader's language (3.7.0).
+# A key not listed shows as it is ("some_key" -> "some key").
+RESULT_WORDS = {
+    "matched": L("matched"), "refreshed": L("refreshed"), "photos": L("photos"), "checked": L("checked"),
+    "updated": L("updated"), "removed": L("removed"), "with_changes": L("with changes"), "queued": L("queued"),
+    "converted": L("converted"), "failed": L("failed"), "skipped": L("skipped"), "deleted": L("deleted"),
+    "found": L("found"), "added": L("added"), "scanned": L("scanned"), "videos": L("videos"), "songs": L("songs"),
+    "left": L("left"), "hashed": L("read"), "matches_found": L("possible duplicates"), "unusable": L("unreadable"),
+    "rejected_by_audio": L("rejected by the sound check"), "size_bytes": L("size (bytes)"), "name": L("name"),
+    "current": L("this version"), "latest": L("latest version"), "elapsed_seconds": L("seconds"), "note": L("note"),
+    "fixed": L("fixed"), "repaired": L("repaired"), "done": L("done"), "total": L("total"), "trigger": L("trigger"),
+}
+
+
 def summarize(result) -> Optional[str]:
-    """A job's result for the Tasks page: {"matched": 7, "refreshed": 0} -> "matched 7 · refreshed 0"."""
+    """A job's result for the Tasks page: {"matched": 7, "refreshed": 0} -> "matched 7 · refreshed 0"
+    (a translatable text: the words come from RESULT_WORDS)."""
     if isinstance(result, dict):
-        parts = [f"{k.replace('_', ' ')} {v}" for k, v in result.items()
-                 if isinstance(v, (int, float, str)) and not isinstance(v, bool) and len(str(v)) < 60]
-        return " · ".join(parts[:6]) or None
+        # Timestamps and addresses say nothing to people (3.7.0: left out).
+        parts = [(k, v) for k, v in result.items()
+                 if isinstance(v, (int, float, str)) and not isinstance(v, bool) and len(str(v)) < 60
+                 and not k.endswith(("_at", "_url", "url")) and k != "app_version"][:6]
+        if not parts:
+            return None
+        params, pieces = {}, []
+        for i, (k, v) in enumerate(parts):
+            params[f"k{i}"] = RESULT_WORDS.get(k) or k.replace("_", " ")
+            params[f"v{i}"] = v
+            pieces.append(f"{{k{i}}} {{v{i}}}")
+        return Msg(" · ".join(pieces), params)
     return str(result)[:200] if result not in (None, "") else None
 
 

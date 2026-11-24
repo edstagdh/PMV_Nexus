@@ -6,6 +6,7 @@ VERSION file in the project root (also what the update check compares against
 on GitHub).
 """
 from __future__ import annotations
+from .i18n import L
 
 import importlib.metadata
 import os
@@ -104,7 +105,7 @@ def _binary_status(name: str) -> dict:
     path = shutil.which(name)
     if not path:
         return {"name": name, "kind": "binary", "ok": False, "version": None, "path": None,
-                "hint": "Install FFmpeg and make sure it is on PATH (https://ffmpeg.org/download.html)."}
+                "hint": L('Install FFmpeg and make sure it is on PATH (https://ffmpeg.org/download.html).')}
     line = _run_version([name, "-version"]) or ""
     m = re.search(rf"{name} version (\S+)", line)
     return {"name": name, "kind": "binary", "ok": True, "version": m.group(1) if m else line,
@@ -119,18 +120,31 @@ def _requirements() -> list[tuple[str, str]]:
     except OSError:
         return out
     for raw in lines:
-        line = raw.split("#")[0].strip()
-        if not line:
+        line, _, marker = raw.split("#")[0].strip().partition(";")
+        if not line or not _marker_applies(marker):
             continue
-        m = re.match(r"^([A-Za-z0-9_.\-]+)(\[[^\]]*\])?\s*(.*)$", line)
+        m = re.match(r"^([A-Za-z0-9_.\-]+)(\[[^\]]*\])?\s*(.*)$", line.strip())
         if m:
             out.append((m.group(1), m.group(3).strip()))
     return out
 
 
+def _marker_applies(marker: str) -> bool:
+    """The only markers requirements.txt uses: sys_platform == / != "..." (e.g. pystray, Windows only)."""
+    m = re.fullmatch(r"\s*sys_platform\s*(==|!=)\s*[\"']([^\"']+)[\"']\s*", marker)
+    if not m:
+        return True
+    return (sys.platform == m.group(2)) == (m.group(1) == "==")
+
+
 def _spec_satisfied(installed: str, spec: str) -> bool:
-    m = re.match(r"^>=\s*([\d.]+)", spec)
-    return not m or parse_version(installed) >= parse_version(m.group(1))
+    """requirements.txt pins the versions the app was tested with (3.7.0: "=="); older ones gave ">="."""
+    m = re.match(r"^(==|>=)\s*([\d.]+)", spec)
+    if not m:
+        return True
+    if m.group(1) == "==":
+        return parse_version(installed) == parse_version(m.group(2))
+    return parse_version(installed) >= parse_version(m.group(2))
 
 
 def _package_status(name: str, spec: str) -> dict:
@@ -141,7 +155,7 @@ def _package_status(name: str, spec: str) -> dict:
                 "hint": "pip install -r requirements.txt"}
     ok = _spec_satisfied(version, spec)
     return {"name": name, "kind": "python", "ok": ok, "version": version, "required": spec or None,
-            "hint": None if ok else f'pip install --upgrade "{name}{spec}"'}
+            "hint": None if ok else "pip install -r requirements.txt"}
 
 
 def _mediainfo_status() -> dict:
@@ -150,9 +164,8 @@ def _mediainfo_status() -> dict:
         ok = bool(MediaInfo.can_parse())
     except Exception:  # noqa: BLE001
         ok = False
-    return {"name": "MediaInfo library", "kind": "library", "ok": ok, "version": None, "path": None,
-            "hint": None if ok else "Install MediaInfo (bundled with pymediainfo on Windows; "
-                                    "`apt install libmediainfo0v5` on Debian/Ubuntu)."}
+    return {"name": L("MediaInfo library"), "kind": "library", "ok": ok, "version": None, "path": None,
+            "hint": None if ok else L('Install MediaInfo (bundled with pymediainfo on Windows; `apt install libmediainfo0v5` on Debian/Ubuntu).')}
 
 
 def tool_status() -> dict:
@@ -161,7 +174,7 @@ def tool_status() -> dict:
     packages = [_package_status(n, s) for n, s in _requirements()]
     return {
         "python": {"version": platform.python_version(), "executable": sys.executable,
-                   "ok": sys.version_info >= (3, 11)},
+                   "ok": (3, 12) <= sys.version_info[:2] <= (3, 14)},
         "platform": platform.platform(),
         "tools": tools,
         "packages": packages,

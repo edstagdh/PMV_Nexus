@@ -18,9 +18,9 @@ const status = computed(() => workStatus(props.item));
       <router-link :to="{ name: 'video', params: { id: item.id } }" class="vrow-title">{{ itemUrlTitle(item) }}</router-link>
       <div class="vrow-meta">
         <template v-for="(c, i) in makers(item)" :key="c"><span v-if="i" class="muted">, </span><button class="linkish text-creator"
-          :title="uploadedBy(item) ? `Show videos by ${c} (uploaded by ${uploadedBy(item)})` : `Show videos by ${c}`" @click="emit('filter', 'creator', c)">{{ c }}</button></template>
-        <span v-if="item.download_datetime" class="muted">Downloaded {{ formatDate(item.download_datetime) }}</span>
-        <span v-if="item.site_stats?.views != null" class="muted">{{ item.site_stats.views.toLocaleString() }} views</span>
+          :title="uploadedBy(item) ? $t('Show videos by {name} (uploaded by {uploader})', { name: c, uploader: uploadedBy(item) }) : $t('Show videos by {name}', { name: c })" @click="emit('filter', 'creator', c)">{{ c }}</button></template>
+        <span v-if="item.download_datetime" class="muted">{{ $t("Downloaded {date}", { date: formatDate(item.download_datetime) }) }}</span>
+        <span v-if="item.site_stats?.views != null" class="muted">{{ $tn("{n} view", "{n} views", item.site_stats.views) }}</span>
         <span v-if="status" class="status" :class="status.kind" :title="status.detail">{{ status.label }}</span>
       </div>
       <div v-if="item.performers?.length" class="vrow-chips">
@@ -28,7 +28,7 @@ const status = computed(() => workStatus(props.item));
       </div>
       <div v-if="item.tags?.length" class="vrow-chips">
         <button v-for="t in item.tags.slice(0, 12)" :key="t" class="chip chip-tag" @click="emit('filter', 'tag', t)">#{{ t }}</button>
-        <span v-if="item.tags.length > 12" class="muted" :title="item.tags.slice(12).join(', ')">+{{ item.tags.length - 12 }}</span>
+        <span v-if="item.tags.length > 12" class="muted num" :title="item.tags.slice(12).join(', ')">+{{ item.tags.length - 12 }}</span>
       </div>
       <ActionBar :item="item" class="vrow-actions" />
     </div>

@@ -19,10 +19,13 @@ Never put secrets, codes or phone numbers in a notification.
 """
 from __future__ import annotations
 
+import json
 import time
 from typing import Optional
 
 from loguru import logger
+
+from . import i18n
 
 KEEP_DAYS = 30
 KEEP_MAX = 2000
@@ -45,8 +48,10 @@ def notify(category: str, level: str, title: str, body: Optional[str] = None, li
     if _db is None:
         return
     try:
+        stored = {"t": i18n.to_stored(title), "b": i18n.to_stored(body) if body else None}
         _db.add_notification(user_id, category if category in CATEGORIES else "system",
-                             level if level in LEVELS else "info", title[:200], (body or None) and body[:1000], link)
+                             level if level in LEVELS else "info", title[:200], (body or None) and body[:1000], link,
+                             json.dumps(stored, ensure_ascii=False) if stored["t"] or stored["b"] else None)
         _db._note_change(["notifications"])
         if category in ("download", "reencode", "upload", "extension", "job") and level in ("success", "error"):
             from . import stats_store
@@ -64,3 +69,16 @@ def video_link(item) -> str:
 
 def title_of(item) -> str:
     return f"“{(getattr(item, 'title', '') or 'a video')[:80]}”"
+
+
+def readable(row: dict) -> dict:
+    """A stored notification for the API: its title/body as translatable texts (3.7.0)."""
+    if row.get("msg"):
+        try:
+            stored = json.loads(row["msg"])
+            row["title"] = i18n.from_stored(stored.get("t"), row["title"])
+            row["body"] = i18n.from_stored(stored.get("b"), row["body"]) if row.get("body") else row["body"]
+        except (ValueError, AttributeError):
+            pass
+    row.pop("msg", None)
+    return row

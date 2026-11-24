@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from starlette.requests import ClientDisconnect
 
+from ..i18n import L
 from .. import activity, storyboard
 from ..library_manager import library_manager
 from ..hardening import scrub_item
@@ -88,7 +89,7 @@ async def check_exists_external(url: str, _=Depends(verify_api_key)):
         return {
             # status stays "merged" so existing userscripts keep working; label/duplicate_of are new.
             "exists": True, "status": "merged", "title": kept.title if kept else "",
-            "label": f"Duplicate of “{kept.title}”" if kept else "Duplicate (already downloaded)",
+            "label": L('Duplicate of “{title}”', title=kept.title) if kept else L('Duplicate (already downloaded)'),
             "duplicate_of": {"id": kept.id, "title": kept.title, "url": kept.url} if kept else None,
         }
     label = "Already downloaded" if item.status == "done" else f"In the library ({item.status})"
@@ -217,7 +218,7 @@ async def get_storyboard_vtt(video_id: str, user: AuthContext = Depends(require_
     info = library_manager.storyboard_info(video_id)
     if not info:
         library_manager.request_storyboard(video_id, first=True)
-        raise HTTPException(status_code=404, detail="No seekbar previews yet")
+        raise HTTPException(status_code=404, detail=L('No seekbar previews yet'))
     v = int(info.get("made_at") or 0)
     body = storyboard.vtt(info, f"/api/library/{video_id}/storyboard/{{n}}.webp?v={v}")
     return Response(body, media_type="text/vtt; charset=utf-8", headers={"Cache-Control": "no-cache"})
@@ -227,7 +228,7 @@ async def get_storyboard_vtt(video_id: str, user: AuthContext = Depends(require_
 def get_storyboard_sheet(video_id: str, n: int, user: AuthContext = Depends(require_permission("library.stream"))):
     path = library_manager.storyboard_sheet(video_id, n)
     if not path:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=2592000"})
 
 
@@ -262,7 +263,7 @@ async def get_video_frames(video_id: str, user: AuthContext = Depends(require_pe
 def get_video_frame(video_id: str, n: int, user: AuthContext = Depends(require_permission("library.stream"))):
     path = library_manager.frame_file(video_id, n)
     if not path:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=2592000"})
 
 
@@ -270,7 +271,7 @@ def get_video_frame(video_id: str, n: int, user: AuthContext = Depends(require_p
 async def redo_video_frames(video_id: str, user: AuthContext = Depends(require_permission("videos.edit"))):
     """Makes the video's frames again, from the file (3.4.2; the site's are the ones it had)."""
     if not library_manager.redo_frames(video_id):
-        raise HTTPException(status_code=404, detail="Only downloaded videos have frames")
+        raise HTTPException(status_code=404, detail=L('Only downloaded videos have frames'))
     return {"queued": True}
 
 
@@ -338,7 +339,7 @@ async def stop_library_activity(activity_id: str, user: AuthContext = Depends(re
     """The Stop button (Tasks / Scheduler page) for a running job that can be stopped."""
     act = activity.get(activity_id)
     if act is None:
-        raise HTTPException(status_code=404, detail="That job has already finished")
+        raise HTTPException(status_code=404, detail=L('That job has already finished'))
     try:
         act.request_stop(user.username)
     except ValueError as exc:
@@ -376,7 +377,7 @@ async def remove_from_library(
 ):
     result = await library_manager.remove(video_id, delete_files=delete_files)
     if not result["existed"]:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return result
 
 
@@ -384,7 +385,7 @@ async def remove_from_library(
 async def retry_item(video_id: str, user: AuthContext = Depends(require_permission("videos.add"))):
     ok = await library_manager.retry(video_id)
     if not ok:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return {"ok": True}
 
 
@@ -521,7 +522,7 @@ def discover_random_video(user: AuthContext = Depends(require_permission("librar
     library has been shown (see library_mixins/discover.py)."""
     pick = library_manager.pick_discover_item(user.id)
     if pick is None:
-        raise HTTPException(status_code=404, detail="The library has no downloaded videos yet")
+        raise HTTPException(status_code=404, detail=L('The library has no downloaded videos yet'))
     return pick
 
 
@@ -531,7 +532,7 @@ def get_library_item(video_id: str, user: AuthContext = Depends(require_permissi
     the library page currently loaded (e.g. opened from Issues or a link)."""
     item = library_manager.get_item_dict(video_id)
     if item is None:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return library_manager.with_watch([scrub_item(item, user)], user)[0]
 
 
@@ -546,7 +547,7 @@ def save_position(video_id: str, body: PositionReport, user: AuthContext = Depen
     try:
         return library_manager.save_watch_position(str(user.id), video_id, body.position, body.duration)
     except KeyError:
-        raise HTTPException(status_code=404, detail="Not found") from None
+        raise HTTPException(status_code=404, detail=L('Not found')) from None
 
 
 @router.delete("/api/library/{video_id}/position")
@@ -567,7 +568,7 @@ def report_watch(video_id: str, body: WatchReport, user: AuthContext = Depends(r
     try:
         library_manager.record_watch(user.id, video_id, body.seconds, body.started)
     except KeyError:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return {"ok": True}
 
 
@@ -577,14 +578,14 @@ def get_related_items(video_id: str, limit: int = 12, user: AuthContext = Depend
         return {"items": library_manager.with_watch(
             [scrub_item(i, user) for i in library_manager.related_items(video_id, max(1, min(limit, 50)))], user)}
     except KeyError:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
 
 
 @router.get("/api/library/{video_id}/metadata")
 async def get_item_metadata(video_id: str, user: AuthContext = Depends(require_permission("library.view"))):
     meta = await library_manager.get_metadata(video_id)
     if meta is None:
-        raise HTTPException(status_code=404, detail="No metadata available")
+        raise HTTPException(status_code=404, detail=L('No metadata available'))
     item = library_manager.get_item_dict(video_id) or {}
     # App-side state for the video page (not part of the sidecar file).
     meta["_site_sync"] = {"status": item.get("site_status"), "synced_at": item.get("site_synced_at")}
@@ -595,10 +596,10 @@ async def get_item_metadata(video_id: str, user: AuthContext = Depends(require_p
 async def get_thumbnail(video_id: str, user: AuthContext = Depends(require_permission("library.view"))):
     item = library_manager.get_item_dict(video_id)
     if not item or not item.get("thumbnail_path"):
-        raise HTTPException(status_code=404, detail="No thumbnail available")
+        raise HTTPException(status_code=404, detail=L('No thumbnail available'))
     path = Path(item["thumbnail_path"])
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Thumbnail file missing on disk")
+        raise HTTPException(status_code=404, detail=L('Thumbnail file missing on disk'))
     media_type = mimetypes.guess_type(str(path))[0] or "image/jpeg"
     return FileResponse(str(path), media_type=media_type)
 
@@ -607,10 +608,10 @@ async def get_thumbnail(video_id: str, user: AuthContext = Depends(require_permi
 async def stream_video(video_id: str, request: Request, user: AuthContext = Depends(require_permission("library.stream"))):
     item = library_manager.get_item_dict(video_id)
     if not item or not item.get("video_path"):
-        raise HTTPException(status_code=404, detail="Video not found")
+        raise HTTPException(status_code=404, detail=L('Video not found'))
     path = Path(item["video_path"])
     if not path.exists():
-        raise HTTPException(status_code=404, detail="File missing on disk")
+        raise HTTPException(status_code=404, detail=L('File missing on disk'))
     return stream_file(path, request)
 
 
@@ -619,7 +620,7 @@ async def stream_video(video_id: str, request: Request, user: AuthContext = Depe
 async def start_live(video_id: str, user: AuthContext = Depends(require_permission("library.stream"))):
     item = library_manager.get_item_dict(video_id)
     if not item or not item.get("video_path"):
-        raise HTTPException(status_code=404, detail="Video not found")
+        raise HTTPException(status_code=404, detail=L('Video not found'))
     try:
         s = await live_transcoder.start(get_settings(), video_id, user.id, item["video_path"],
                                         title=item.get("title") or "", username=user.username)
@@ -633,8 +634,8 @@ def _live_session(sid: str, user: AuthContext):
         return live_transcoder.get(sid, user.id)
     except KeyError:
         if sid in live_transcoder.stopped:  # stopped on Tasks: the player plays the original instead
-            raise HTTPException(status_code=410, detail="Converting was stopped on Tasks") from None
-        raise HTTPException(status_code=404, detail="This conversion has ended -- start the video again") from None
+            raise HTTPException(status_code=410, detail=L('Converting was stopped on Tasks')) from None
+        raise HTTPException(status_code=404, detail=L('This conversion has ended -- start the video again')) from None
 
 
 @router.get("/api/live/{sid}/index.m3u8")
@@ -668,10 +669,10 @@ async def stream_preview(video_id: str, request: Request, user: AuthContext = De
     # Converts previews browsers can't decode (10-bit) the first time they're asked for.
     preview_path = await library_manager.ensure_playable_preview(video_id)
     if not preview_path:
-        raise HTTPException(status_code=404, detail="No preview available")
+        raise HTTPException(status_code=404, detail=L('No preview available'))
     path = Path(preview_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Preview file missing on disk")
+        raise HTTPException(status_code=404, detail=L('Preview file missing on disk'))
     return stream_file(path, request)
 
 
@@ -708,7 +709,7 @@ async def receive_local_upload(upload_id: str, request: Request, user: AuthConte
     except UploadError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
     except ClientDisconnect as exc:
-        raise HTTPException(status_code=400, detail="The upload was cancelled") from exc
+        raise HTTPException(status_code=400, detail=L('The upload was cancelled')) from exc
 
 
 @router.get("/api/library/local/{upload_id}")
@@ -831,12 +832,12 @@ async def upload_thumbnail_image(video_id: str, request: Request, user: AuthCont
     """Your own picture as the thumbnail: the raw image as the body."""
     ext = _IMAGE_TYPES.get((request.headers.get("content-type") or "").split(";")[0].strip().lower())
     if not ext:
-        raise HTTPException(status_code=415, detail="Send a JPEG, PNG or WebP image")
+        raise HTTPException(status_code=415, detail=L('Send a JPEG, PNG or WebP image'))
     data = bytearray()
     async for chunk in request.stream():
         data += chunk
         if len(data) > _MAX_THUMB_BYTES:
-            raise HTTPException(status_code=413, detail="That image is too big (15 MB at most)")
+            raise HTTPException(status_code=413, detail=L('That image is too big (15 MB at most)'))
     try:
         return await library_manager.set_thumbnail(video_id, "upload", image=bytes(data), image_ext=ext)
     except ValueError as exc:

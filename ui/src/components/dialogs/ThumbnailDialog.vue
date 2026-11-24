@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../lib/i18n.js";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import { api } from "../../lib/api.js";
@@ -26,7 +27,7 @@ async function load() {
     options.value = await api(`/api/library/${id}/thumbnail-options`);
     stamp.value = Date.now();
     if (!options.value.timeline_thumbnails?.length) mode.value = "video";
-  } catch (err) { error.value = err.message || "Could not load thumbnail options"; }
+  } catch (err) { error.value = err.message || t("Could not load thumbnail options"); }
 }
 function step(seconds) {
   const v = player.value;
@@ -51,8 +52,8 @@ function pickFrame() {
 }
 function confirmPick() {
   const st = staged.value;
-  if (st.kind === "frame") apply({ source: "frame", seconds: st.seconds }, "Thumbnail updated");
-  else apply({ source: "timeline", url: st.url, seconds: st.seconds }, "Thumbnail updated");
+  if (st.kind === "frame") apply({ source: "frame", seconds: st.seconds }, t("Thumbnail updated"));
+  else apply({ source: "timeline", url: st.url, seconds: st.seconds }, t("Thumbnail updated"));
 }
 onBeforeUnmount(() => {
   // Let go of the file (Windows keeps it locked while a page has it open).
@@ -68,7 +69,7 @@ async function apply(body, message) {
     staged.value = null;
     await load();
   } catch (err) {
-    error.value = err.message || "Could not update the thumbnail";
+    error.value = err.message || t("Could not update the thumbnail");
   } finally {
     busy.value = false;
   }
@@ -77,53 +78,53 @@ onMounted(load);
 </script>
 
 <template>
-  <ModalDialog title="Change thumbnail" width="56rem" @close="emit('close')">
+  <ModalDialog :title="$t('Change thumbnail')" width="56rem" @close="emit('close')">
     <div class="top">
       <figure>
-        <figcaption>Current{{ options?.thumbnail_source === "custom" ? " (custom)" : "" }}</figcaption>
+        <figcaption>{{ options?.thumbnail_source === "custom" ? $t("Current (custom)") : $t("Current") }}</figcaption>
         <img :src="`/api/library/${id}/thumbnail?_=${stamp}`" alt="">
         <button v-if="options?.thumbnail_source === 'custom'" class="btn btn-sm" :disabled="busy"
-                @click="apply({ source: 'original' }, 'Reverted to the original thumbnail')">Revert to original</button>
+                @click="apply({ source: 'original' }, 'Reverted to the original thumbnail')">{{ $t("Revert to original") }}</button>
       </figure>
       <figure v-if="staged">
-        <figcaption>Selected: {{ staged.kind === "frame" ? `video frame at ${fmtPrecise(staged.seconds)}` : `timeline frame (${fmt(staged.seconds)})` }}</figcaption>
+        <figcaption>{{ staged.kind === "frame" ? $t("Selected: video frame at {time}", { time: fmtPrecise(staged.seconds) }) : $t("Selected: timeline frame ({time})", { time: fmt(staged.seconds) }) }}</figcaption>
         <img v-if="staged.kind === 'timeline'" :src="staged.url" alt="">
         <img v-else-if="staged.preview" :src="staged.preview" alt="">
-        <div v-else class="frame-note">The picture at {{ fmtPrecise(staged.seconds) }} will be saved as the thumbnail.</div>
+        <div v-else class="frame-note">{{ $t("The picture at {time} will be saved as the thumbnail.", { time: fmtPrecise(staged.seconds) }) }}</div>
       </figure>
     </div>
     <p v-if="error" class="error">{{ error }}</p>
     <nav class="seg" role="tablist">
-      <button class="btn btn-sm" :class="{ active: mode === 'timeline' }" @click="mode = 'timeline'">Site timeline frames</button>
-      <button class="btn btn-sm" :class="{ active: mode === 'video' }" @click="mode = 'video'">Pick a frame from the video</button>
+      <button class="btn btn-sm" :class="{ active: mode === 'timeline' }" @click="mode = 'timeline'">{{ $t("Site timeline frames") }}</button>
+      <button class="btn btn-sm" :class="{ active: mode === 'video' }" @click="mode = 'video'">{{ $t("Pick a frame from the video") }}</button>
     </nav>
     <template v-if="mode === 'timeline'">
-      <div v-if="!options && !error" class="muted">Loading timeline frames…</div>
-      <div v-else-if="options && !options.timeline_thumbnails?.length" class="muted">No timeline frames available for this video — pick a frame from the video instead.</div>
+      <div v-if="!options && !error" class="muted">{{ $t("Loading timeline frames…") }}</div>
+      <div v-else-if="options && !options.timeline_thumbnails?.length" class="muted">{{ $t("No timeline frames available for this video — pick a frame from the video instead.") }}</div>
       <div v-else-if="options" class="tiles">
         <button v-for="t in options.timeline_thumbnails" :key="t.url" class="tile" :class="{ on: staged?.url === t.url }" @click="pickTimeline(t)">
-          <img :src="t.url" loading="lazy" :alt="`Frame at ${fmt(t.seconds)}`"><span>{{ fmt(t.seconds) }}</span>
+          <img :src="t.url" loading="lazy" :alt="$t('Frame at {time}', { time: fmt(t.seconds) })"><span>{{ fmt(t.seconds) }}</span>
         </button>
       </div>
     </template>
     <div v-else class="frame-picker">
       <video ref="player" :src="`/api/library/${id}/stream`" :data-item-id="item.id" preload="metadata" playsinline muted controls
              @loadedmetadata="duration = $event.target.duration" @timeupdate="position = $event.target.currentTime" @seeked="position = $event.target.currentTime" />
-      <input type="range" min="0" :max="duration || 0" step="0.04" :value="position" aria-label="Position in the video" @input="seek">
+      <input type="range" min="0" :max="duration || 0" step="0.04" :value="position" :aria-label="$t('Position in the video')" @input="seek">
       <div class="frame-controls">
-        <button class="btn btn-sm" title="Back 1 second" @click="step(-1)">−1s</button>
-        <button class="btn btn-sm" title="Back one frame" @click="step(-1 / 25)">‹ frame</button>
+        <button class="btn btn-sm" :title="$t('Back 1 second')" @click="step(-1)">−1s</button>
+        <button class="btn btn-sm" :title="$t('Back one frame')" @click="step(-1 / 25)">{{ $t("‹ frame") }}</button>
         <span class="pos">{{ fmtPrecise(position) }} / {{ fmt(duration) }}</span>
-        <button class="btn btn-sm" title="Forward one frame" @click="step(1 / 25)">frame ›</button>
-        <button class="btn btn-sm" title="Forward 1 second" @click="step(1)">+1s</button>
-        <button class="btn btn-primary btn-sm" @click="pickFrame">Use this frame</button>
+        <button class="btn btn-sm" :title="$t('Forward one frame')" @click="step(1 / 25)">{{ $t("frame ›") }}</button>
+        <button class="btn btn-sm" :title="$t('Forward 1 second')" @click="step(1)">+1s</button>
+        <button class="btn btn-primary btn-sm" @click="pickFrame">{{ $t("Use this frame") }}</button>
       </div>
     </div>
     <template #footer>
-      <button class="btn" @click="emit('close')">Close</button>
+      <button class="btn" @click="emit('close')">{{ $t("Close") }}</button>
       <button class="btn btn-primary" :disabled="!staged || busy"
               @click="confirmPick">
-        {{ busy ? "Applying…" : "Set as thumbnail" }}
+        {{ busy ? $t("Applying…") : $t("Set as thumbnail") }}
       </button>
     </template>
   </ModalDialog>
@@ -138,7 +139,7 @@ figure img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radi
 .tile { position: relative; padding: 0; border: 2px solid transparent; border-radius: var(--radius); overflow: hidden; background: #000; cursor: pointer; }
 .tile.on { border-color: var(--accent); }
 .tile img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
-.tile span { position: absolute; right: 0.25rem; bottom: 0.25rem; background: rgba(0, 0, 0, 0.75); color: #fff; font-size: 0.69rem; padding: 0 0.3rem; border-radius: 0.25rem; }
+.tile span { position: absolute; inset-inline-end: 0.25rem; bottom: 0.25rem; background: rgba(0, 0, 0, 0.75); color: #fff; font-size: 0.69rem; padding: 0 0.3rem; border-radius: 0.25rem; }
 .error { color: var(--danger); font-size: 0.84rem; }
 .seg { display: flex; gap: 0.25rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
 .frame-picker { display: flex; flex-direction: column; gap: 0.5rem; }

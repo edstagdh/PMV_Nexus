@@ -12,6 +12,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from loguru import logger
 
+from ..i18n import L
 from .. import ip_privacy
 from ..hardening import login_throttle
 
@@ -104,7 +105,7 @@ async def login(payload: LoginRequest, request: Request, response: Response):
     wait = login_throttle.wait_seconds(*keys)
     if wait:
         failed("throttled")
-        raise HTTPException(status_code=429, detail=f"Too many failed sign-ins — try again in {max(1, round(wait / 60))} min",
+        raise HTTPException(status_code=429, detail=L('Too many failed sign-ins — try again in {max} min', max=max(1, round(wait / 60))),
                             headers={"Retry-After": str(wait)})
 
     user = library_manager.db.get_user_by_username(payload.username)
@@ -117,11 +118,11 @@ async def login(payload: LoginRequest, request: Request, response: Response):
     if not user or not password_ok:
         login_throttle.failed(*keys)
         failed("unknown user" if not user else "wrong password")
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail=L('Invalid username or password'))
     if not user.is_active:
         # Only said to someone who knows the password.
         failed("account disabled")
-        raise HTTPException(status_code=401, detail="This account has been disabled. Contact an administrator.")
+        raise HTTPException(status_code=401, detail=L('This account has been disabled. Contact an administrator.'))
     login_throttle.succeeded(*keys)
 
     role = library_manager.db.get_role(user.role)

@@ -72,7 +72,7 @@ const empty = computed(() => !props.series.some((s) => s.values.some((v) => v)))
 </script>
 
 <template>
-  <div class="chart">
+  <div class="chart" dir="ltr">
     <div class="legend" v-if="series.length > 1 || type === 'line'">
       <span v-for="s in series" :key="s.name"><i :style="{ background: s.color }" />{{ s.name }}</span>
     </div>
@@ -88,7 +88,7 @@ const empty = computed(() => !props.series.some((s) => s.values.some((v) => v)))
         <path v-for="l in lines" :key="l.name" :d="l.d" :stroke="l.color" fill="none" stroke-width="2" vector-effect="non-scaling-stroke" />
         <line v-if="hover !== null" class="cursor" :x1="x(hover)" :x2="x(hover)" :y1="PAD_T" :y2="PAD_T + plotH" />
       </svg>
-      <div v-if="empty" class="none muted">Nothing in this range yet</div>
+      <div v-if="empty" class="none muted">{{ $t("Nothing in this range yet") }}</div>
       <div v-if="hover !== null && !empty" class="tip" :style="{ left: `${(x(hover) / W) * 100}%` }">
         <strong>{{ xFormat(labels[hover], true) }}</strong>
         <div v-for="s in series" :key="s.name"><i :style="{ background: s.color }" />{{ s.name }}: {{ format(s.values[hover] || 0) }}</div>

@@ -3,6 +3,7 @@
 // a ThePornDB profile always come first, then the others (grey placeholder
 // unless someone added a photo of them). Search, sort and a filter; the list
 // grows as you scroll ("Show more").
+import { t, formatNumber } from "../lib/i18n.js";
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
 import Icon from "../components/Icon.vue";
@@ -14,16 +15,16 @@ import { isFavorite, loadBadges } from "../stores/performerBadges.js";
 
 // Sort by a field, either way (2.31.0); each field starts in its natural direction.
 const SORTS = [
-  { key: "videos", label: "Videos", dir: "desc", asc: "Fewest videos first", desc: "Most videos first" },
-  { key: "name", label: "Name", dir: "asc", asc: "A to Z", desc: "Z to A" },
+  { key: "videos", label: t("Videos"), dir: "desc", asc: t("Fewest videos first"), desc: t("Most videos first") },
+  { key: "name", label: t("Name"), dir: "asc", asc: t("A to Z"), desc: t("Z to A") },
   // 3.6.0: your favourites first (or last), then most videos.
-  { key: "favorites", label: "Favourites", dir: "desc", asc: "Favourites last", desc: "Favourites first" },
+  { key: "favorites", label: t("Favourites"), dir: "desc", asc: t("Favourites last"), desc: t("Favourites first") },
 ];
 const SHOWS = [
-  { key: "all", label: "Everyone" },
-  { key: "linked", label: "On ThePornDB" },
-  { key: "unlinked", label: "Not on ThePornDB" },
-  { key: "favorites", label: "♥ Favourites" },
+  { key: "all", label: t("Everyone") },
+  { key: "linked", label: t("On ThePornDB") },
+  { key: "unlinked", label: t("Not on ThePornDB") },
+  { key: "favorites", label: t("♥ Favourites") },
 ];
 const PREF = "pmv-performers-view";
 let saved = {};
@@ -47,7 +48,7 @@ watch(q, () => { shown.value = 120; });
 
 async function load() {
   try { all.value = (await api("/api/performers/browse")).performers; error.value = ""; }
-  catch (err) { error.value = err.message || "Could not load the performers"; }
+  catch (err) { error.value = err.message || t("Could not load the performers"); }
 }
 let timer = null;
 let stop = null;
@@ -75,23 +76,23 @@ const f = ref({ ...EMPTY, ...savedF });
 const showFilters = ref(false);
 watch(f, (v) => { shown.value = 120; try { sessionStorage.setItem(FKEY, JSON.stringify(v)); } catch { /* private mode */ } }, { deep: true });
 const CHOICES = [
-  { key: "gender", label: "Gender", field: "gender_label" },
-  { key: "nationality", label: "Nationality", field: "nationality" },
-  { key: "ethnicity", label: "Ethnicity", field: "ethnicity" },
-  { key: "hair", label: "Hair", field: "hair" },
-  { key: "eyes", label: "Eyes", field: "eyes" },
-  { key: "cup", label: "Cup size", field: "cup" },
+  { key: "gender", label: t("Gender"), field: "gender_label" },
+  { key: "nationality", label: t("Nationality"), field: "nationality" },
+  { key: "ethnicity", label: t("Ethnicity"), field: "ethnicity" },
+  { key: "hair", label: t("Hair"), field: "hair" },
+  { key: "eyes", label: t("Eyes"), field: "eyes" },
+  { key: "cup", label: t("Cup size"), field: "cup" },
 ];
 const RANGES = [
-  { key: "age", label: "Age", field: "age", unit: "years" },
-  { key: "height", label: "Height", field: "height", unit: "cm" },
-  { key: "weight", label: "Weight", field: "weight", unit: "kg" },
+  { key: "age", label: t("Age"), field: "age", unit: "years" },
+  { key: "height", label: t("Height"), field: "height", unit: "cm" },
+  { key: "weight", label: t("Weight"), field: "weight", unit: "kg" },
 ];
 const YES_NO = [
-  { key: "active", label: "Still active", field: "active", yes: "Active", no: "Retired" },
-  { key: "enhanced", label: "Enhanced breasts", field: "enhanced", yes: "Yes", no: "No" },
-  { key: "tattoos", label: "Tattoos", field: "tattoos", yes: "Yes", no: "No" },
-  { key: "piercings", label: "Piercings", field: "piercings", yes: "Yes", no: "No" },
+  { key: "active", label: t("Still active"), field: "active", yes: t("Active"), no: t("Retired") },
+  { key: "enhanced", label: t("Enhanced breasts"), field: "enhanced", yes: t("Yes"), no: t("No") },
+  { key: "tattoos", label: t("Tattoos"), field: "tattoos", yes: t("Yes"), no: t("No") },
+  { key: "piercings", label: t("Piercings"), field: "piercings", yes: t("Yes"), no: t("No") },
 ];
 const options = computed(() => {
   const out = {};
@@ -104,7 +105,7 @@ const known = (field) => (all.value || []).some((p) => p[field] !== null && p[fi
 const activeFilters = computed(() => {
   const v = f.value;
   return CHOICES.filter((c) => v[c.key].length).length
-    + RANGES.filter((r) => v[`${r.key}Min`] != null || v[`${r.key}Max`] != null).length
+    + RANGES.filter((r) => v[`${r.key}Min`] != null || v[`${r.key}Max`] != null).length  // i18n-ignore
     + YES_NO.filter((y) => v[y.key] !== "any").length;
 });
 function clearFilters() { f.value = { ...EMPTY }; }
@@ -112,7 +113,7 @@ function passes(p) {
   const v = f.value;
   for (const c of CHOICES) if (v[c.key].length && !v[c.key].includes(p[c.field])) return false;
   for (const r of RANGES) {
-    const lo = v[`${r.key}Min`], hi = v[`${r.key}Max`];
+    const lo = v[`${r.key}Min`], hi = v[`${r.key}Max`];  // i18n-ignore
     if (lo == null && hi == null) continue;
     const n = p[r.field];
     if (n == null || (lo != null && n < lo) || (hi != null && n > hi)) return false;
@@ -122,7 +123,7 @@ function passes(p) {
 }
 const num = (e) => (e.target.value === "" ? null : Number(e.target.value));
 
-// A favourite (3.6.0): any of her names is one of yours (her page favourites all of them).
+// A favourite (3.6.0): any of their names is one of yours (their page favourites all of them).
 const fav = (p) => isFavorite(p.link) || isFavorite(p.name);
 const SHOW_TEST = { all: () => true, linked: (p) => p.linked, unlinked: (p) => !p.linked, favorites: fav };
 const list = computed(() => {
@@ -154,15 +155,15 @@ const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "fa
     <div class="toolbar">
       <div class="search-wrap">
         <Icon name="search" :size="16" />
-        <input v-model="q" class="input" type="search" placeholder="Find a performer" aria-label="Find a performer">
+        <input v-model="q" class="input" type="search" :placeholder="$t('Find a performer')" :aria-label="$t('Find a performer')">
       </div>
-      <div class="seg" role="group" aria-label="Show">
+      <div class="seg" role="group" :aria-label="$t('Show')">
         <button v-for="s in SHOWS" :key="s.key" class="btn btn-sm" :class="{ 'btn-primary': show === s.key }" @click="show = s.key">
           {{ s.label }}<span v-if="all && s.key !== 'all'" class="n">{{ counts[s.key] }}</span>
         </button>
       </div>
       <div class="sortbox">
-        <select :value="sort" class="input sort" aria-label="Sort by" @change="setSort($event.target.value)">
+        <select :value="sort" class="input sort" :aria-label="$t('Sort by')" @change="setSort($event.target.value)">
           <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
         </select>
         <button class="btn btn-icon" :title="sortOf(sort)[dir]" :aria-label="`Order: ${sortOf(sort)[dir]}`"
@@ -171,36 +172,36 @@ const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "fa
         </button>
       </div>
       <button class="btn" :class="{ active: showFilters }" :aria-expanded="showFilters" @click="showFilters = !showFilters">
-        <Icon name="filter" :size="16" />Filters<span v-if="activeFilters" class="badge-n">{{ activeFilters }}</span>
+        <Icon name="filter" :size="16" />{{ $t("Filters") }}<span v-if="activeFilters" class="badge-n">{{ activeFilters }}</span>
       </button>
     </div>
     <section v-if="showFilters && all" class="card pfilters">
       <div v-for="c in CHOICES.filter((c) => options[c.key].length)" :key="c.key" class="field">
         <label class="field-title" :for="`pf-${c.key}`">{{ c.label }}</label>
-        <MultiSelect v-model="f[c.key]" :input-id="`pf-${c.key}`" :options="options[c.key]" :placeholder="`Any ${c.label.toLowerCase()}`" />
+        <MultiSelect v-model="f[c.key]" :input-id="`pf-${c.key}`" :options="options[c.key]" :placeholder="$t('Any {field}', { field: c.label.toLowerCase() })" />
       </div>
       <div v-for="r in RANGES.filter((r) => known(r.field))" :key="r.key" class="field">
         <span>{{ r.label }} ({{ r.unit }})</span>
         <div class="range">
-          <input class="input" type="number" min="0" placeholder="Min" :value="f[`${r.key}Min`] ?? ''" :aria-label="`${r.label} from`"
+          <input class="input" type="number" min="0" :placeholder="$t('Min')" :value="f[`${r.key}Min`] ?? ''" :aria-label="$t('{name} from', { name: r.label })"
                  @change="f[`${r.key}Min`] = num($event)">
-          <span class="muted">to</span>
-          <input class="input" type="number" min="0" placeholder="Max" :value="f[`${r.key}Max`] ?? ''" :aria-label="`${r.label} to`"
+          <span class="muted">{{ $t("to") }}</span>
+          <input class="input" type="number" min="0" :placeholder="$t('Max')" :value="f[`${r.key}Max`] ?? ''" :aria-label="$t('{name} to', { name: r.label })"
                  @change="f[`${r.key}Max`] = num($event)">
         </div>
       </div>
       <div v-for="y in YES_NO.filter((y) => known(y.field))" :key="y.key" class="field">
         <span>{{ y.label }}</span>
         <div class="seg">
-          <button v-for="o in [['any', 'Any'], ['yes', y.yes], ['no', y.no]]" :key="o[0]" type="button" class="btn btn-sm"
+          <button v-for="o in [['any', $t('Any')], ['yes', y.yes], ['no', y.no]]" :key="o[0]" type="button" class="btn btn-sm"
                   :class="{ 'btn-primary': f[y.key] === o[0] }" @click="f[y.key] = o[0]">{{ o[1] }}</button>
         </div>
       </div>
       <p v-if="!CHOICES.some((c) => options[c.key].length) && !RANGES.some((r) => known(r.field))" class="muted small">
-        No details to filter by yet — they come from ThePornDB profiles.</p>
+        {{ $t("No details to filter by yet — they come from ThePornDB profiles.") }}</p>
       <div class="pf-foot">
-        <span class="muted small">Details come from ThePornDB; performers without a detail are hidden while it's filtered on.</span>
-        <button class="btn btn-sm" :disabled="!activeFilters" @click="clearFilters">Clear filters</button>
+        <span class="muted small">{{ $t("Details come from ThePornDB; performers without a detail are hidden while it's filtered on.") }}</span>
+        <button class="btn btn-sm" :disabled="!activeFilters" @click="clearFilters">{{ $t("Clear filters") }}</button>
       </div>
     </section>
     <p v-if="error" class="error-text">{{ error }}</p>
@@ -208,23 +209,23 @@ const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "fa
       <div v-for="n in 12" :key="n" class="skeleton" style="aspect-ratio: 2 / 3; border-radius: var(--radius)" />
     </div>
     <template v-else>
-      <p class="muted small">{{ list.length.toLocaleString() }} {{ list.length === 1 ? "performer" : "performers" }}
-        <template v-if="show === 'all' && sort !== 'favorites'"> · matched to ThePornDB first</template></p>
-      <p v-if="!list.length" class="muted">Nobody matches.</p>
+      <p class="muted small">{{ $tn("{n} performer", "{n} performers", list.length) }}
+        <template v-if="show === 'all' && sort !== 'favorites'"> {{ $t("· matched to ThePornDB first") }}</template></p>
+      <p v-if="!list.length" class="muted">{{ $t("Nobody matches.") }}</p>
       <div class="grid">
         <template v-for="(p, n) in list.slice(0, shown)" :key="p.name + p.linked">
-          <div v-if="n === firstUnlinked && n > 0" class="divider"><span>Not on ThePornDB</span></div>
+          <div v-if="n === firstUnlinked && n > 0" class="divider"><span>{{ $t("Not on ThePornDB") }}</span></div>
           <RouterLink :to="{ name: 'performer', params: { name: p.link } }" class="card-p" :title="p.name">
             <span class="pic">
               <img v-if="p.photo" :src="p.photo" alt="" loading="lazy" decoding="async" @error="p.photo = null">
               <PerformerPlaceholder v-else :gender="p.gender" />
             </span>
-            <span class="name"><span v-if="fav(p)" class="fav-mark" title="One of your favourites">♥ </span>{{ p.name }}</span>
-            <span class="meta muted">{{ p.videos }} {{ p.videos === 1 ? "video" : "videos" }}<template v-if="p.names > 1"> · {{ p.names }} names</template></span>
+            <span class="name"><span v-if="fav(p)" class="fav-mark" :title="$t('One of your favourites')">♥ </span>{{ p.name }}</span>
+            <span class="meta muted">{{ $tn("{n} video", "{n} videos", p.videos) }}<template v-if="p.names > 1"> · {{ $t("{n} names", { n: p.names }) }}</template></span>
           </RouterLink>
         </template>
       </div>
-      <button v-if="list.length > shown" class="btn btn-sm more" @click="shown += 240">Show more ({{ (list.length - shown).toLocaleString() }} left)</button>
+      <button v-if="list.length > shown" class="btn btn-sm more" @click="shown += 240">{{ $t("Show more ({n} left)", { n: formatNumber(list.length - shown) }) }}</button>
     </template>
   </div>
 </template>
@@ -232,15 +233,15 @@ const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "fa
 <style scoped>
 .toolbar { display: flex; gap: 0.625rem; align-items: center; flex-wrap: wrap; }
 .search-wrap { position: relative; flex: 1 1 16rem; max-width: 26rem; display: flex; align-items: center; }
-.search-wrap svg { position: absolute; left: 0.7rem; color: var(--text-dim); pointer-events: none; }
-.search-wrap .input { padding-left: 2.1rem; width: 100%; height: 2.4rem; }
+.search-wrap svg { position: absolute; inset-inline-start: 0.7rem; color: var(--text-dim); pointer-events: none; }
+.search-wrap .input { padding-inline-start: 2.1rem; width: 100%; height: 2.4rem; }
 .seg { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .fav-mark { color: var(--chip-female, #ec4899); }
-.n { margin-left: 0.35rem; font-size: 0.72rem; opacity: 0.75; }
+.n { margin-inline-start: 0.35rem; font-size: 0.72rem; opacity: 0.75; }
 .sortbox { display: flex; gap: 0.25rem; }
 .sort { width: auto; height: 2.4rem; }
 .sortbox .btn { height: 2.4rem; }
-.badge-n { margin-left: 0.35rem; background: var(--accent); color: #fff; border-radius: 999px; font-size: 0.7rem; padding: 0 0.4rem; }
+.badge-n { margin-inline-start: 0.35rem; background: var(--accent); color: #fff; border-radius: 999px; font-size: 0.7rem; padding: 0 0.4rem; }
 .pfilters { padding: 1rem 1.125rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.875rem 1.25rem; }
 .range { display: flex; align-items: center; gap: 0.4rem; }
 .range .input { width: 100%; min-width: 0; }

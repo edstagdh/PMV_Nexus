@@ -1,3 +1,4 @@
+import { t, N_ } from "./lib/i18n.js";
 import { createRouter, createWebHistory } from "vue-router";
 import LibraryView from "./views/LibraryView.vue";
 import VideoView from "./views/VideoView.vue";
@@ -27,23 +28,23 @@ export const router = createRouter({
   // "not allowed" otherwise; the server checks every request again).
   routes: [
     { path: "/", name: "library", component: LibraryView },
-    { path: "/video/:id", name: "video", component: VideoView, props: true, meta: { title: "Video" } },
-    { path: "/settings", name: "settings", component: SettingsView, meta: { title: "My Settings" } },
-    { path: "/playlists", name: "playlists", component: PlaylistsView, meta: { title: "Playlists" } },
-    { path: "/playlist/:id", name: "playlist", component: PlaylistView, props: true, meta: { title: "Playlist" } },
-    { path: "/performers", name: "performers", component: PerformersView, meta: { title: "Performers" } },
+    { path: "/video/:id", name: "video", component: VideoView, props: true, meta: { title: N_("Video") } },
+    { path: "/settings", name: "settings", component: SettingsView, meta: { title: N_("My Settings") } },
+    { path: "/playlists", name: "playlists", component: PlaylistsView, meta: { title: N_("Playlists") } },
+    { path: "/playlist/:id", name: "playlist", component: PlaylistView, props: true, meta: { title: N_("Playlist") } },
+    { path: "/performers", name: "performers", component: PerformersView, meta: { title: N_("Performers") } },
     { path: "/performer/:name", name: "performer", component: PerformerView, props: true, meta: { title: (to) => to.params.name } },
-    { path: "/upload", name: "upload", component: UploadView, meta: { title: "Upload", permission: "videos.upload" } },
+    { path: "/upload", name: "upload", component: UploadView, meta: { title: N_("Upload"), permission: "videos.upload" } },
     // The panic keys' page (2.24.0): an ordinary-looking article (2.24.4), at an ordinary-looking address.
     { path: "/read/:slug?", name: "blank", component: BlankView, meta: { bare: true } },
-    { path: "/playing", name: "playing", component: NowPlayingView, meta: { title: "Currently Playing", permission: "live.view" } },
-    { path: "/tasks", name: "tasks", component: TasksView, meta: { title: "Tasks", permission: "tasks.view" } },
+    { path: "/playing", name: "playing", component: NowPlayingView, meta: { title: N_("Currently Playing"), permission: "live.view" } },
+    { path: "/tasks", name: "tasks", component: TasksView, meta: { title: N_("Tasks"), permission: "tasks.view" } },
     { path: "/help/:tab(guide|changelog|terms|about)?", name: "help", component: HelpView,
-      meta: { title: (to) => ({ changelog: "Changelog", about: "About" }[to.params.tab] || "Help") } },
-    { path: "/admin/server", name: "server", component: ServerSettingsView, meta: { title: "Server Settings", admin: true } },
+      meta: { title: (to) => ({ changelog: t("Changelog"), about: t("About") }[to.params.tab] || t("Help")) } },
+    { path: "/admin/server", name: "server", component: ServerSettingsView, meta: { title: N_("Server Settings"), admin: true } },
     // Users, Duplicates, Maintenance, Scheduler, Backups, Stats, Logs, Tools: tabs of one page (2.7.0).
     { path: "/admin/portal/:tab?", name: "portal", component: AdminPortalView,
-      meta: { title: (to) => PORTAL_TABS.find((t) => t.key === to.params.tab)?.label || "Management" } },
+      meta: { title: (to) => PORTAL_TABS.find((tab) => tab.key === to.params.tab)?.label || t("Management") } },
     { path: "/admin/:tab(users|duplicates|maintenance|scheduler|backups|stats|logs|tools)",
       redirect: (to) => ({ name: "portal", params: { tab: to.params.tab }, query: to.query }) },
     // Addresses of the old (classic) interface, so bookmarks keep working.
@@ -56,7 +57,7 @@ export const router = createRouter({
     { path: "/users", redirect: "/admin/portal/users" },
     // Signed in already (e.g. Back to the sign-in page): the library, not "Page not found".
     { path: "/login", redirect: "/" },
-    { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView, meta: { title: "Page not found" } },
+    { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView, meta: { title: N_("Page not found") } },
   ],
   scrollBehavior(to, from, saved) {
     // Filter/search edits replace the query on the same page: keep position.

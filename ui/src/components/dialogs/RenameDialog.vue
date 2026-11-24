@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../lib/i18n.js";
 import { ref } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import { api } from "../../lib/api.js";
@@ -17,10 +18,10 @@ async function submit() {
   releaseMedia(props.item.id); // an open stream keeps the file locked on Windows
   try {
     await api(`/api/library/${encodeURIComponent(props.item.id)}/rename`, { method: "POST", body: { new_name: name.value.trim() } });
-    toast("Renamed", { type: "success" });
+    toast(t("Renamed"), { type: "success" });
     emit("close");
   } catch (err) {
-    error.value = err.message || "Could not rename that file";
+    error.value = err.message || t("Could not rename that file");
   } finally {
     busy.value = false;
   }
@@ -28,17 +29,17 @@ async function submit() {
 </script>
 
 <template>
-  <ModalDialog title="Rename video" @close="emit('close')">
+  <ModalDialog :title="$t('Rename video')" @close="emit('close')">
     <form id="rename-form" @submit.prevent="submit">
       <label class="field">
-        <span>New name (used for the title and the file names)</span>
+        <span>{{ $t("New name (used for the title and the file names)") }}</span>
         <input v-model="name" class="input" required autofocus>
       </label>
       <p v-if="error" class="error">{{ error }}</p>
     </form>
     <template #footer>
-      <button class="btn" @click="emit('close')">Cancel</button>
-      <button class="btn btn-primary" form="rename-form" :disabled="busy || !name.trim()">{{ busy ? "Renaming…" : "Rename" }}</button>
+      <button class="btn" @click="emit('close')">{{ $t("Cancel") }}</button>
+      <button class="btn btn-primary" form="rename-form" :disabled="busy || !name.trim()">{{ busy ? $t("Renaming…") : $t("Rename") }}</button>
     </template>
   </ModalDialog>
 </template>

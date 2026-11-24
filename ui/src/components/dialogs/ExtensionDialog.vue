@@ -24,9 +24,9 @@ function done(msg) {
   <ModalDialog :title="title || options.action.label" @close="emit('close')">
     <ExtensionForm ref="formRef" :endpoint="endpoint" :item-ids="ids" @done="done" @title="(t) => t && (title = t)" />
     <template #footer>
-      <button class="btn" @click="emit('close')">Cancel</button>
+      <button class="btn" @click="emit('close')">{{ $t("Cancel") }}</button>
       <button v-if="formRef?.form" class="btn btn-primary" :form="'xf-' + endpoint" :disabled="formRef?.busy">
-        {{ formRef?.busy ? "Please wait…" : formRef.form.submit || "Continue" }}
+        {{ formRef?.busy ? $t("Please wait…") : formRef.form.submit || $t("Continue") }}
       </button>
     </template>
   </ModalDialog>

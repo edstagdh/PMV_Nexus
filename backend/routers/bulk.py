@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..i18n import L
 from ..config import get_settings
 from ..library_manager import library_manager
 from ..models import ReencodeOptions
@@ -45,13 +46,13 @@ async def bulk_action(action: str, body: BulkRequest,
                       user: AuthContext = Depends(require_any("songs.manage", "videos.maintain"))):
     permission = _PERMISSION.get(action)
     if permission is None:
-        raise HTTPException(status_code=404, detail="Unknown action")
+        raise HTTPException(status_code=404, detail=L('Unknown action'))
     if not user.has_permission(permission):
-        raise HTTPException(status_code=403, detail="You don't have permission for this")
+        raise HTTPException(status_code=403, detail=L("You don't have permission for this"))
     ids = list(dict.fromkeys(body.ids))
     features = get_settings().features
     if action == "reencode" and not features.reencode:
-        raise HTTPException(status_code=403, detail="That's switched off in Server Settings")
+        raise HTTPException(status_code=403, detail=L("That's switched off in Server Settings"))
 
     if action == "songs":
         result = library_manager.start_song_scan_many(ids, user.username, body.method)

@@ -3,6 +3,7 @@
 // (?q=…&tag=…&page=2), so back/forward, refresh and bookmarks keep the view.
 // The server does the filtering/paging; live events refresh the page only
 // when something on it (or the number of videos) changed.
+import { t, formatNumber } from "../lib/i18n.js";
 import { ref, computed, watch, onMounted, onActivated, onDeactivated, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icon from "../components/Icon.vue";
@@ -31,17 +32,17 @@ const route = useRoute();
 const router = useRouter();
 
 const SORTS = [
-  { key: "download_datetime", label: "Date acquired" },
-  { key: "upload_date", label: "Uploaded to PMVHaven" },
-  { key: "title", label: "Title" },
-  { key: "creator", label: "Creator" },
-  { key: "ratings", label: "Rating" },
-  { key: "views", label: "Views on PMVHaven" },
-  { key: "tech_duration", label: "Duration (length)" },
-  { key: "tech_filesize", label: "File size" },
-  { key: "tech_resolution", label: "Resolution" },
-  { key: "fav_performers", label: "Favourite performers" },  // 3.5.0: desc = theirs first, asc = last
-  { key: "random", label: "Random" },  // 3.4.1: the order button shuffles again
+  { key: "download_datetime", label: t("Date acquired") },
+  { key: "upload_date", label: t("Uploaded to PMVHaven") },
+  { key: "title", label: t("Title") },
+  { key: "creator", label: t("Creator") },
+  { key: "ratings", label: t("Rating") },
+  { key: "views", label: t("Views on PMVHaven") },
+  { key: "tech_duration", label: t("Duration (length)") },
+  { key: "tech_filesize", label: t("File size") },
+  { key: "tech_resolution", label: t("Resolution") },
+  { key: "fav_performers", label: t("Favourite performers") },  // 3.5.0: desc = theirs first, asc = last
+  { key: "random", label: t("Random") },  // 3.4.1: the order button shuffles again
 ];
 // Random without a seed in the URL (e.g. it's your default sort): one per visit to the page.
 const visitSeed = newSeed();
@@ -144,7 +145,7 @@ async function fetchPage({ background = false } = {}) {
     doneCountAtFetch = live.summary?.done_count ?? null;
     stale = false;
   } catch (err) {
-    if (err.name !== "AbortError") error.value = err.message || "Could not load the library";
+    if (err.name !== "AbortError") error.value = err.message || t("Could not load the library");
   } finally {
     if (controller === mine) { clearTimeout(dotTimer); loading.value = false; }
   }
@@ -173,9 +174,10 @@ const stopLive = onLibraryChange((changed) => {
   const visible = new Set((data.value?.items || []).map((i) => i.id));
   const countChanged = doneCountAtFetch != null && live.summary && live.summary.done_count !== doneCountAtFetch;
   const hit = changed?.find((id) => visible.has(id));
-  if (changed === null) scheduleRefresh("many changes at once");
-  else if (countChanged) scheduleRefresh(`videos in the library: ${doneCountAtFetch} → ${live.summary.done_count}`);
-  else if (hit) scheduleRefresh(`a listed video changed (${hit})`);
+  // (reasons for the console's debug line, not shown on the page)
+  if (changed === null) scheduleRefresh("many changes at once");  // i18n-ignore
+  else if (countChanged) scheduleRefresh(`videos in the library: ${doneCountAtFetch} → ${live.summary.done_count}`);  // i18n-ignore
+  else if (hit) scheduleRefresh(`a listed video changed (${hit})`);  // i18n-ignore
 });
 
 const facets = ref(null);
@@ -215,22 +217,22 @@ const chips = computed(() => {
   const out = [];
   s.performers.forEach((v) => out.push({ label: v, key: "performer", value: v }));
   s.tags.forEach((v) => out.push({ label: `#${v}`, key: "tag", value: v }));
-  s.creators.forEach((v) => out.push({ label: `by ${v}`, key: "creator", value: v }));
+  s.creators.forEach((v) => out.push({ label: t("by {name}", { name: v }), key: "creator", value: v }));
   s.codecs.forEach((v) => out.push({ label: v, key: "codec", value: v }));
   if (s.dsmin != null || s.dsmax != null) out.push({ label: `${formatDuration(s.dsmin || 0)}–${s.dsmax != null ? formatDuration(s.dsmax) : "∞"}`, key: "duration" });
-  if (s.x.trim()) out.push({ label: `not: ${s.x.trim()}`, key: "x" });
-  if (s.nomusic) out.push({ label: "No music", key: "nomusic" });
-  if (s.noperf) out.push({ label: "No performers", key: "noperf" });
+  if (s.x.trim()) out.push({ label: t("not: {words}", { words: s.x.trim() }), key: "x" });
+  if (s.nomusic) out.push({ label: t("No music"), key: "nomusic" });
+  if (s.noperf) out.push({ label: t("No performers"), key: "noperf" });
   if (s.rating != null) out.push({ label: `★ ${s.rating}%+`, key: "rating" });
   s.quality.forEach((v) => out.push({ label: qualityLabel(v), key: "quality", value: v }));
-  if (s.qmin) out.push({ label: `${qualityLabel(s.qmin)} or better`, key: "qmin" });
+  if (s.qmin) out.push({ label: t("{quality} or better", { quality: qualityLabel(s.qmin) }), key: "qmin" });
   if (s.orient) out.push({ label: ORIENTATIONS.find((o) => o.key === s.orient)?.label || s.orient, key: "orient" });
-  if (s.gone !== null) out.push({ label: s.gone ? "💀 gone from PMVHaven" : "Still on PMVHaven", key: "gone" });
-  s.pcup.forEach((v) => out.push({ label: `Cup ${v}`, key: "pcup", value: v }));
-  if (s.pamin != null || s.pamax != null) out.push({ label: `Age ${s.pamin ?? "…"}–${s.pamax ?? "…"}`, key: "page" });
-  s.phair.forEach((v) => out.push({ label: `${v} hair`, key: "phair", value: v }));
-  s.peyes.forEach((v) => out.push({ label: `${v} eyes`, key: "peyes", value: v }));
-  if (s.penh !== null) out.push({ label: s.penh ? "Enhanced" : "Natural", key: "penh" });
+  if (s.gone !== null) out.push({ label: s.gone ? t("💀 gone from PMVHaven") : t("Still on PMVHaven"), key: "gone" });
+  s.pcup.forEach((v) => out.push({ label: t("Cup {cup}", { cup: v }), key: "pcup", value: v }));
+  if (s.pamin != null || s.pamax != null) out.push({ label: t("Age {from}–{to}", { from: s.pamin ?? "…", to: s.pamax ?? "…" }), key: "page" });
+  s.phair.forEach((v) => out.push({ label: t("{colours} hair", { colours: v }), key: "phair", value: v }));
+  s.peyes.forEach((v) => out.push({ label: t("{colours} eyes", { colours: v }), key: "peyes", value: v }));
+  if (s.penh !== null) out.push({ label: s.penh ? t("Enhanced") : t("Natural"), key: "penh" });
   return out;
 });
 function removeChip(c) {
@@ -278,38 +280,38 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
       <div class="search">
         <Icon name="search" class="search-icon" />
         <input ref="searchInput" v-model="searchText" class="input search-input" type="search"
-               placeholder="Search… (try performer:, tag:, creator:, title:)" aria-label="Search the library">
+               :placeholder="$t('Search… (try performer:, tag:, creator:, title:)')" :aria-label="$t('Search the library')">
         <span class="search-end"><SearchHelp @pick="(q) => { searchText = q; searchInput?.focus(); }" /><kbd class="kbd">/</kbd></span>
       </div>
       <!-- Clear search and filters (3.5.0; the search too since 3.6.0) -- the sort stays. -->
-      <button class="btn btn-icon clear-x" :disabled="!activeFilterCount && !searchText.trim()" title="Clear search and filters"
-              aria-label="Clear search and filters" @click="clearFilters({ search: true })"><Icon name="x" :size="20" /></button>
+      <button class="btn btn-icon clear-x" :disabled="!activeFilterCount && !searchText.trim()" :title="$t('Clear search and filters')"
+              :aria-label="$t('Clear search and filters')" @click="clearFilters({ search: true })"><Icon name="x" :size="20" /></button>
       <button class="btn" :class="{ active: showFilters }" @click="showFilters = !showFilters">
-        <Icon name="filter" />Filters<span v-if="activeFilterCount" class="count-pill">{{ activeFilterCount }}</span>
+        <Icon name="filter" />{{ $t("Filters") }}<span v-if="activeFilterCount" class="count-pill">{{ activeFilterCount }}</span>
       </button>
       <SavedSearches />
       <div class="sort">
-        <select class="select" :value="state.sort" aria-label="Sort by"
+        <select class="select" :value="state.sort" :aria-label="$t('Sort by')"
                 @change="setQuery({ sort: $event.target.value, seed: $event.target.value === 'random' ? String(newSeed()) : undefined })">
           <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>
         </select>
-        <button v-if="state.sort === 'random'" class="btn btn-icon" title="Shuffle again" aria-label="Shuffle again"
+        <button v-if="state.sort === 'random'" class="btn btn-icon" :title="$t('Shuffle again')" :aria-label="$t('Shuffle again')"
                 @click="setQuery({ seed: String(newSeed()) })">
           <Icon name="shuffle" />
         </button>
-        <button v-else class="btn btn-icon" :title="state.sort === 'fav_performers' ? (state.dir === 'asc' ? 'Favourite performers last' : 'Favourite performers first')
-                  : state.dir === 'asc' ? 'Ascending' : 'Descending'"
+        <button v-else class="btn btn-icon" :title="state.sort === 'fav_performers' ? (state.dir === 'asc' ? $t('Favourite performers last') : $t('Favourite performers first'))
+                  : state.dir === 'asc' ? $t('Ascending') : $t('Descending')"
                 @click="setQuery({ dir: state.dir === 'asc' ? 'desc' : 'asc' })">
           <Icon :name="state.dir === 'asc' ? 'sortAsc' : 'sortDesc'" />
         </button>
       </div>
-      <button class="btn" title="Add every video in this view to a playlist, or save it as a smart playlist" :disabled="!total"
-              @click="openDialog('playlist', null, { query: toApiParams(state), count: total })"><Icon name="playlist" />Playlist</button>
-      <button v-if="canBulk" class="btn" :class="{ active: selectMode }" :title="canBulkEdit ? 'Pick videos to add them to playlists or edit their tags, performers or music together' : 'Pick videos to add them to playlists'"
-              @click="selectMode ? endSelect() : (selectMode = true)"><Icon name="check" />{{ selectMode ? "Done" : "Select" }}</button>
-      <div v-if="isAdmin()" class="views" role="group" aria-label="Layout">
+      <button class="btn" :title="$t('Add every video in this view to a playlist, or save it as a smart playlist')" :disabled="!total"
+              @click="openDialog('playlist', null, { query: toApiParams(state), count: total })"><Icon name="playlist" />{{ $t("Playlist") }}</button>
+      <button v-if="canBulk" class="btn" :class="{ active: selectMode }" :title="canBulkEdit ? $t('Pick videos to add them to playlists or edit their tags, performers or music together') : $t('Pick videos to add them to playlists')"
+              @click="selectMode ? endSelect() : (selectMode = true)"><Icon name="check" />{{ selectMode ? $t("Done") : $t("Select") }}</button>
+      <div v-if="isAdmin()" class="views" role="group" :aria-label="$t('Layout')">
         <button v-for="v in PREF_OPTIONS.VIEWS" :key="v" class="btn btn-icon" :class="{ active: session.prefs.view === v }"
-                :title="`${v[0].toUpperCase()}${v.slice(1)} view`" @click="savePref('view', v)"><Icon :name="v" /></button>
+                :title="$t('{toUpperCase}{slice} view', { toUpperCase: v[0].toUpperCase(), slice: v.slice(1) })" @click="savePref('view', v)"><Icon :name="v" /></button>
       </div>
     </div>
 
@@ -319,16 +321,16 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 
     <div class="summary-row">
       <span class="count">
-        <strong>{{ total.toLocaleString() }}</strong> {{ total === 1 ? "video" : "videos" }}
-        <span v-if="loading" class="dot-loading" aria-label="Loading" />
+        <Tx msg="{n} video" plural="{n} videos" :n="total"><template #n><strong>{{ formatNumber(total) }}</strong></template></Tx>
+        <span v-if="loading" class="dot-loading" :aria-label="$t('Loading')" />
       </span>
       <span v-for="c in chips" :key="c.key + (c.value ?? '')" class="chip chip-accent">
-        {{ c.label }}<button class="chip-x" :aria-label="`Remove ${c.label}`" @click="removeChip(c)">×</button>
+        {{ c.label }}<button class="chip-x" :aria-label="$t('Remove {name}', { name: c.label })" @click="removeChip(c)">×</button>
       </span>
-      <button v-if="chips.length" class="btn btn-ghost btn-sm" @click="clearFilters">Clear all</button>
+      <button v-if="chips.length" class="btn btn-ghost btn-sm" @click="clearFilters">{{ $t("Clear all") }}</button>
     </div>
 
-    <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}<button class="btn" @click="fetchPage">Try again</button></div>
+    <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}<button class="btn" @click="fetchPage">{{ $t("Try again") }}</button></div>
 
     <div v-else-if="!data" class="grid">
       <div v-for="n in 12" :key="n" class="skel"><div class="skeleton skel-thumb" /><div class="skeleton skel-line" /><div class="skeleton skel-line short" /></div>
@@ -337,10 +339,10 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
     <div v-else-if="!data.items.length" class="empty">
       <div class="empty-icon">{{ chips.length || state.q ? "🔍" : "🎞️" }}</div>
       <template v-if="chips.length || state.q">
-        <h3>No videos match</h3>
-        <button class="btn" @click="clearFilters({ search: true })">Clear search and filters</button>
+        <h3>{{ $t("No videos match") }}</h3>
+        <button class="btn" @click="clearFilters({ search: true })">{{ $t("Clear search and filters") }}</button>
       </template>
-      <template v-else><h3>Your library is empty</h3><span>Use <strong>Add videos</strong> in the sidebar to get started.</span></template>
+      <template v-else><h3>{{ $t("Your library is empty") }}</h3><span><Tx msg="Use {b1} in the sidebar to get started."><template #b1><strong>{{ $t("Add videos") }}</strong></template></Tx></span></template>
     </div>
 
     <template v-else>
@@ -362,21 +364,21 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
                   @filter="addFilter" />
       </div>
 
-      <div v-if="selectMode" class="pick-bar card" role="toolbar" aria-label="Selected videos">
-        <strong>{{ picked.size }} selected</strong>
-        <button class="btn btn-sm" @click="pickPage">Select this page</button>
-        <button class="btn btn-ghost btn-sm" :disabled="!picked.size" @click="picked = new Set()">Clear</button>
+      <div v-if="selectMode" class="pick-bar card" role="toolbar" :aria-label="$t('Selected videos')">
+        <strong>{{ $t("{n} selected", { n: picked.size }) }}</strong>
+        <button class="btn btn-sm" @click="pickPage">{{ $t("Select this page") }}</button>
+        <button class="btn btn-ghost btn-sm" :disabled="!picked.size" @click="picked = new Set()">{{ $t("Clear") }}</button>
         <span style="flex: 1" />
-        <button class="btn btn-sm" :disabled="!picked.size" @click="openDialog('playlist', null, { ids: [...picked] })"><Icon name="playlist" :size="15" />Add to playlists…</button>
-        <button v-if="hasPermission('songs.manage')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'songs'"><Icon name="music" :size="15" />Find songs</button>
+        <button class="btn btn-sm" :disabled="!picked.size" @click="openDialog('playlist', null, { ids: [...picked] })"><Icon name="playlist" :size="15" />{{ $t("Add to playlists…") }}</button>
+        <button v-if="hasPermission('songs.manage')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'songs'"><Icon name="music" :size="15" />{{ $t("Find songs") }}</button>
         <template v-if="hasPermission('videos.maintain')">
-          <button class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'repair'"><Icon name="wrench" :size="15" />Repair / update</button>
-          <button v-if="featureOn('reencode')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'reencode'"><Icon name="cpu" :size="15" />Re-encode…</button>
+          <button class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'repair'"><Icon name="wrench" :size="15" />{{ $t("Repair / update") }}</button>
+          <button v-if="featureOn('reencode')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'reencode'"><Icon name="cpu" :size="15" />{{ $t("Re-encode…") }}</button>
         </template>
         <button v-for="a in extensionActions('bulk')" :key="a.id" class="btn btn-sm" :disabled="!picked.size"
                 @click="openDialog('extension', { ids: [...picked] }, { action: a })"><Icon :name="a.icon || 'plus'" :size="15" />{{ a.label }}</button>
-        <button v-if="canBulkEdit" class="btn btn-primary btn-sm" :disabled="!picked.size" @click="bulkOpen = true"><Icon name="edit" :size="15" />Edit tags, performers, music…</button>
-        <button class="btn btn-ghost btn-sm" @click="endSelect">Done</button>
+        <button v-if="canBulkEdit" class="btn btn-primary btn-sm" :disabled="!picked.size" @click="bulkOpen = true"><Icon name="edit" :size="15" />{{ $t("Edit tags, performers, music…") }}</button>
+        <button class="btn btn-ghost btn-sm" @click="endSelect">{{ $t("Done") }}</button>
       </div>
       <BulkEditDialog v-if="bulkOpen" :ids="[...picked]" @close="bulkOpen = false" @done="fetchPage" />
       <BulkActionDialog v-if="bulkAction" :ids="[...picked]" :action="bulkAction" @close="bulkAction = null" @done="fetchPage({ background: true })" />
@@ -384,7 +386,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
       <footer class="foot">
         <PageNav :page="data.page" :total-pages="data.total_pages" @go="(p) => setQuery({ page: p }, { keepPage: true, push: true })" />
         <label class="page-size muted">
-          Per page
+          {{ $t("Per page") }}
           <select class="select" :value="session.prefs.pageSize" @change="savePref('pageSize', Number($event.target.value)); setQuery({})">
             <option v-for="n in PREF_OPTIONS.PAGE_SIZES" :key="n" :value="n">{{ n }}</option>
           </select>
@@ -402,9 +404,9 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 /* Long filter lists scroll inside the panel, so it never covers the whole screen. */
 .filters-pop { max-height: min(32rem, 60vh); overflow-y: auto; overscroll-behavior: contain; box-shadow: var(--shadow); margin-bottom: 0.5rem; }
 .search { position: relative; z-index: 12; flex: 1 1 15rem; min-width: 0; } /* its tips pop-up opens over the Filters panel */
-.search-icon { position: absolute; left: 0.6875rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
-.search-input { width: 100%; padding-left: 2.25rem; padding-right: 3.75rem; height: 2.5rem; }
-.search-end { position: absolute; right: 0.375rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.25rem; }
+.search-icon { position: absolute; inset-inline-start: 0.6875rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
+.search-input { width: 100%; padding-inline-start: 2.25rem; padding-inline-end: 3.75rem; height: 2.5rem; }
+.search-end { position: absolute; inset-inline-end: 0.375rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 0.25rem; }
 .kbd { font: 0.6875rem var(--mono); color: var(--text-dim); border: 1px solid var(--border-strong); border-radius: 0.25rem; padding: 0 0.3125rem; }
 .toolbar > .btn, .sort .btn, .sort .select, .views .btn { height: 2.5rem; }
 .toolbar > .btn { gap: 0.5rem; }
@@ -413,7 +415,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 .views .btn { height: 2.125rem; width: 2.125rem; border: 0; background: none; }
 .views .btn.active { background: var(--accent-soft); color: var(--accent); }
 .summary-row { display: flex; flex-wrap: wrap; gap: 0.375rem; align-items: center; min-height: 1.75rem; }
-.count { margin-right: 0.375rem; color: var(--text-2); display: inline-flex; align-items: center; gap: 0.5rem; }
+.count { margin-inline-end: 0.375rem; color: var(--text-2); display: inline-flex; align-items: center; gap: 0.5rem; }
 .dot-loading { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); animation: pulse 0.8s infinite alternate; }
 @keyframes pulse { to { opacity: 0.25; } }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr)); gap: 1.375rem 1rem; }
@@ -428,7 +430,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 @media (max-width: 56.25rem) {
   .library { padding: 0.75rem 1rem 1.5rem; }
   .topbar { top: 3.25rem; }
-  .search-input { padding-right: 2.25rem; }
+  .search-input { padding-inline-end: 2.25rem; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.75rem), 1fr)); gap: 1.125rem 0.75rem; }
   .kbd { display: none; }
 }
@@ -438,7 +440,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
 .pick-wrap { position: relative; min-width: 0; }
 .picking .pick-wrap, .picking :deep(tr[data-id]) { cursor: pointer; }
 .picking .pick-wrap :deep(*) { pointer-events: none; }
-.pick-box { position: absolute; top: 0.5rem; left: 0.5rem; width: 1.6rem; height: 1.6rem; border-radius: 0.4rem; z-index: 3;
+.pick-box { position: absolute; top: 0.5rem; inset-inline-start: 0.5rem; width: 1.6rem; height: 1.6rem; border-radius: 0.4rem; z-index: 3;
   border: 2px solid #fff; background: rgb(0 0 0 / 0.45); color: #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgb(0 0 0 / 0.5); }
 .pick-wrap.picked .pick-box { background: var(--accent); border-color: var(--accent); }
 .picking .pick-wrap.picked { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-lg); }

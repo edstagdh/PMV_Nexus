@@ -7,11 +7,14 @@ export const QUALITIES = [
 ];
 export const qualityLabel = (key) => QUALITIES.find((q) => q.key === key)?.label || key;
 export const ORIENTATIONS = [
-  { key: "landscape", label: "🖥️ Horizontal" }, { key: "portrait", label: "📱 Vertical" }, { key: "square", label: "⬜ Square" },
+  // Getters: this list is made before a language loads, so the labels translate when read (3.7.0).
+  { key: "landscape", get label() { return t("🖥️ Horizontal"); } }, { key: "portrait", get label() { return t("📱 Vertical"); } },
+  { key: "square", get label() { return t("⬜ Square"); } },
 ];
 </script>
 
 <script setup>
+import { t } from "../lib/i18n.js";
 import MultiSelect from "./MultiSelect.vue";
 import DurationRange from "./DurationRange.vue";
 import { computed, ref, onMounted } from "vue";
@@ -36,51 +39,51 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
 <template>
   <section class="fpanel card">
     <div class="field exclude">
-      <label class="field-title" for="flt-exclude">Exclude</label>
+      <label class="field-title" for="flt-exclude">{{ $t("Exclude") }}</label>
       <input id="flt-exclude" class="input" type="search" :value="state.x" maxlength="500" autocomplete="off"
-             placeholder="Leave out… e.g. tag:avc title:downbad music:remix pov"
-             title="Videos with any of these are left out. A word alone: anywhere. field:word: only there (tag:, performer:, title:, creator:, music:, description:, codec:). &quot;Two words&quot; together; * as in the search."
+             :placeholder="$t('Leave out… e.g. tag:avc title:downbad music:remix pov')"
+             :title="$t('Videos with any of these are left out. A word alone: anywhere. field:word: only there (tag:, performer:, title:, creator:, music:, description:, codec:). “Two words” together; * as in the search.')"
              @change="emit('set', { x: $event.target.value.trim() })" @keydown.enter="emit('set', { x: $event.target.value.trim() })">
     </div>
     <div class="field">
-      <label class="field-title" for="flt-performers">Performers</label>
-      <MultiSelect input-id="flt-performers" :options="facets?.performers || []" :model-value="state.performers" placeholder="Search performers…"
+      <label class="field-title" for="flt-performers">{{ $t("Performers") }}</label>
+      <MultiSelect input-id="flt-performers" :options="facets?.performers || []" :model-value="state.performers" :placeholder="$t('Search performers…')"
                    @update:model-value="emit('set', { performer: $event })" />
     </div>
     <div class="field">
-      <label class="field-title" for="flt-tags">Tags</label>
-      <MultiSelect input-id="flt-tags" :options="facets?.tags || []" :model-value="state.tags" placeholder="Search tags…"
+      <label class="field-title" for="flt-tags">{{ $t("Tags") }}</label>
+      <MultiSelect input-id="flt-tags" :options="facets?.tags || []" :model-value="state.tags" :placeholder="$t('Search tags…')"
                    @update:model-value="emit('set', { tag: $event })" />
     </div>
     <div class="field">
-      <label class="field-title" for="flt-creators">Creators</label>
-      <MultiSelect input-id="flt-creators" :options="facets?.creators || []" :model-value="state.creators" placeholder="Search creators…"
+      <label class="field-title" for="flt-creators">{{ $t("Creators") }}</label>
+      <MultiSelect input-id="flt-creators" :options="facets?.creators || []" :model-value="state.creators" :placeholder="$t('Search creators…')"
                    @update:model-value="emit('set', { creator: $event })" />
     </div>
     <div class="field">
-      <label class="field-title" for="flt-codecs">Codecs</label>
-      <MultiSelect input-id="flt-codecs" :options="codecOptions" :model-value="state.codecs" placeholder="Search codecs…"
+      <label class="field-title" for="flt-codecs">{{ $t("Codecs") }}</label>
+      <MultiSelect input-id="flt-codecs" :options="codecOptions" :model-value="state.codecs" :placeholder="$t('Search codecs…')"
                    @update:model-value="emit('set', { codec: $event })" />
     </div>
     <div class="field duration">
-      <span>Duration</span>
+      <span>{{ $t("Duration") }}</span>
       <DurationRange :min="state.dsmin" :max="state.dsmax"
                      @change="emit('set', { dsmin: $event.min ?? '', dsmax: $event.max ?? '', dmin: '', dmax: '' })" />
     </div>
     <div class="field quality">
-      <span>Quality</span>
-      <div class="qchips" role="group" aria-label="Exact qualities">
+      <span>{{ $t("Quality") }}</span>
+      <div class="qchips" role="group" :aria-label="$t('Exact qualities')">
         <button v-for="q in QUALITIES" :key="q.key" type="button" class="qchip" :class="{ on: state.quality.includes(q.key) }"
                 :aria-pressed="state.quality.includes(q.key)"
                 @click="emit('set', { quality: state.quality.includes(q.key) ? state.quality.filter((x) => x !== q.key) : [...state.quality, q.key] })">
           {{ q.label }}
         </button>
       </div>
-      <select class="select select-sm" :value="state.qmin ?? ''" aria-label="Minimum quality" @change="emit('set', { qmin: $event.target.value })">
-        <option value="">Any quality or better</option>
-        <option v-for="q in QUALITIES.slice(0, -1)" :key="q.key" :value="q.key">{{ q.label }} or better</option>
+      <select class="select select-sm" :value="state.qmin ?? ''" :aria-label="$t('Minimum quality')" @change="emit('set', { qmin: $event.target.value })">
+        <option value="">{{ $t("Any quality or better") }}</option>
+        <option v-for="q in QUALITIES.slice(0, -1)" :key="q.key" :value="q.key">{{ $t("{quality} or better", { quality: q.label }) }}</option>
       </select>
-      <div class="qchips orient" role="group" aria-label="Orientation">
+      <div class="qchips orient" role="group" :aria-label="$t('Orientation')">
         <button v-for="o in ORIENTATIONS" :key="o.key" type="button" class="qchip" :class="{ on: state.orient === o.key }"
                 :aria-pressed="state.orient === o.key" @click="emit('set', { orient: state.orient === o.key ? '' : o.key })">
           {{ o.label }}
@@ -88,76 +91,76 @@ onMounted(async () => { try { pf.value = await api("/api/library/performer-filte
       </div>
     </div>
     <label class="field">
-      <span>Minimum rating</span>
+      <span>{{ $t("Minimum rating") }}</span>
       <select class="select" :value="state.rating ?? ''" @change="emit('set', { rating: $event.target.value })">
-        <option v-for="r in RATINGS" :key="String(r)" :value="r ?? ''">{{ r ? `${r}% or higher` : "Any rating" }}</option>
+        <option v-for="r in RATINGS" :key="String(r)" :value="r ?? ''">{{ r ? $t("{percent}% or higher", { percent: r }) : $t("Any rating") }}</option>
       </select>
     </label>
     <div class="toggles">
-      <label class="switch" title="Off: videos with ANY selected tag/performer. On: videos with ALL of them.">
+      <label class="switch" :title="$t('Off: videos with ANY selected tag/performer. On: videos with ALL of them.')">
         <input type="checkbox" :checked="state.all" @change="emit('set', { match: $event.target.checked ? 'all' : '' })">
-        Must match all tags / performers
+        {{ $t("Must match all tags / performers") }}
       </label>
-      <label class="switch" title="Only videos with no music listed (e.g. to run Find songs on them)">
+      <label class="switch" :title="$t('Only videos with no music listed (e.g. to run Find songs on them)')">
         <input type="checkbox" :checked="state.nomusic" @change="emit('set', { nomusic: $event.target.checked ? '1' : '' })">
-        Only without music
+        {{ $t("Only without music") }}
       </label>
-      <label class="switch" title="Only videos with no performers listed">
+      <label class="switch" :title="$t('Only videos with no performers listed')">
         <input type="checkbox" :checked="state.noperf" @change="emit('set', { noperf: $event.target.checked ? '1' : '' })">
-        Only without performers
+        {{ $t("Only without performers") }}
       </label>
       <label class="site-status">
-        <span>On PMVHaven</span>
+        <span>{{ $t("On PMVHaven") }}</span>
         <select class="select select-sm" :value="state.gone === true ? '1' : state.gone === false ? '0' : ''"
                 @change="emit('set', { gone: $event.target.value })">
-          <option value="">Any</option>
-          <option value="0">Still on PMVHaven</option>
-          <option value="1">💀 Gone from PMVHaven{{ goneCount ? ` (${goneCount})` : "" }}</option>
+          <option value="">{{ $t("Any") }}</option>
+          <option value="0">{{ $t("Still on PMVHaven") }}</option>
+          <option value="1">💀 {{ $t("Gone from PMVHaven") }}{{ goneCount ? ` (${goneCount})` : "" }}</option>
         </select>
       </label>
     </div>
     <div class="field pdetails">
-      <span class="field-title" title="A video matches when one of its performers has all of these (matched to ThePornDB)">Performer details</span>
-      <p v-if="pf && !pf.known" class="muted small">Needs performers matched to ThePornDB (Management → Maintenance → Performers).</p>
+      <span class="field-title" :title="$t('A video matches when one of its performers has all of these (matched to ThePornDB)')">{{ $t("Performer details") }}</span>
+      <p v-if="pf && !pf.known" class="muted small">{{ $t("Needs performers matched to ThePornDB (Management → Maintenance → Performers).") }}</p>
       <div v-else-if="pf" class="pgrid">
         <div class="field">
-          <label class="field-title sub" for="flt-pcup">Cup size</label>
-          <MultiSelect input-id="flt-pcup" :options="pf.cups" :model-value="state.pcup" placeholder="Any cup…"
+          <label class="field-title sub" for="flt-pcup">{{ $t("Cup size") }}</label>
+          <MultiSelect input-id="flt-pcup" :options="pf.cups" :model-value="state.pcup" :placeholder="$t('Any cup…')"
                        @update:model-value="emit('set', { pcup: $event })" />
         </div>
         <div class="field">
-          <span class="field-title sub">Age</span>
+          <span class="field-title sub">{{ $t("Age") }}</span>
           <div class="range">
-            <input class="input" type="number" min="18" max="99" :placeholder="pf.age_min ? `${pf.age_min}` : 'Min'" aria-label="Youngest age"
+            <input class="input" type="number" min="18" max="99" :placeholder="pf.age_min ? `${pf.age_min}` : $t('Min')" :aria-label="$t('Youngest age')"
                    :value="state.pamin ?? ''" @change="emit('set', { pamin: $event.target.value })">
-            <span class="muted">to</span>
-            <input class="input" type="number" min="18" max="99" :placeholder="pf.age_max ? `${pf.age_max}` : 'Max'" aria-label="Oldest age"
+            <span class="muted">{{ $t("to") }}</span>
+            <input class="input" type="number" min="18" max="99" :placeholder="pf.age_max ? `${pf.age_max}` : $t('Max')" :aria-label="$t('Oldest age')"
                    :value="state.pamax ?? ''" @change="emit('set', { pamax: $event.target.value })">
           </div>
         </div>
         <div class="field">
-          <label class="field-title sub" for="flt-phair">Hair</label>
-          <MultiSelect input-id="flt-phair" :options="pf.hair" :model-value="state.phair" placeholder="Any hair colour…"
+          <label class="field-title sub" for="flt-phair">{{ $t("Hair") }}</label>
+          <MultiSelect input-id="flt-phair" :options="pf.hair" :model-value="state.phair" :placeholder="$t('Any hair colour…')"
                        @update:model-value="emit('set', { phair: $event })" />
         </div>
         <div class="field">
-          <label class="field-title sub" for="flt-peyes">Eyes</label>
-          <MultiSelect input-id="flt-peyes" :options="pf.eyes" :model-value="state.peyes" placeholder="Any eye colour…"
+          <label class="field-title sub" for="flt-peyes">{{ $t("Eyes") }}</label>
+          <MultiSelect input-id="flt-peyes" :options="pf.eyes" :model-value="state.peyes" :placeholder="$t('Any eye colour…')"
                        @update:model-value="emit('set', { peyes: $event })" />
         </div>
         <div class="field">
-          <label class="field-title sub" for="flt-penh">Breasts</label>
+          <label class="field-title sub" for="flt-penh">{{ $t("Breasts") }}</label>
           <select id="flt-penh" class="select" :value="state.penh === true ? '1' : state.penh === false ? '0' : ''"
                   @change="emit('set', { penh: $event.target.value })">
-            <option value="">Any</option>
-            <option value="1">Enhanced</option>
-            <option value="0">Natural</option>
+            <option value="">{{ $t("Any") }}</option>
+            <option value="1">{{ $t("Enhanced") }}</option>
+            <option value="0">{{ $t("Natural") }}</option>
           </select>
         </div>
       </div>
     </div>
     <div class="foot">
-      <span class="muted">{{ activeCount ? `${activeCount} ${activeCount === 1 ? "filter" : "filters"} on — ✕ next to the search box clears them` : "No filters on" }}</span>
+      <span class="muted">{{ activeCount ? $tn("{n} filter on — ✕ next to the search box clears them", "{n} filters on — ✕ next to the search box clears them", activeCount) : $t("No filters on") }}</span>
     </div>
   </section>
 </template>

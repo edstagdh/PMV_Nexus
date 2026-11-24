@@ -56,40 +56,41 @@ onBeforeUnmount(() => listen(false));
     <!-- 1. Recording -->
     <template v-if="stage === 'recording'">
       <div class="state rec" aria-live="polite">
-        <span class="dot" aria-hidden="true" /><strong>Recording keys…</strong>
-        <span class="muted">Press the keys together (up to {{ MAX_KEYS }}), then let go. Esc to cancel.</span>
+        <span class="dot" aria-hidden="true" /><strong>{{ $t("Recording keys…") }}</strong>
+        <span class="muted">{{ $t("Press the keys together (up to {max}), then let go. Esc to cancel.", { max: MAX_KEYS }) }}</span>
       </div>
       <div class="keys">
         <kbd v-for="k in held" :key="k.code">{{ k.label }}</kbd>
-        <span v-if="!held.length" class="muted">Waiting for keys…</span>
+        <span v-if="!held.length" class="muted">{{ $t("Waiting for keys…") }}</span>
       </div>
-      <button class="btn btn-sm" @click="cancel">Cancel</button>
+      <button class="btn btn-sm" @click="cancel">{{ $t("Cancel") }}</button>
     </template>
 
     <!-- 2. Confirm what was detected -->
     <template v-else-if="stage === 'confirm'">
       <div class="state" aria-live="polite">
-        <span>The app detected <strong>{{ held.length === 1 ? "this key" : `these ${held.length} keys` }}</strong>:</span>
+        <Tx v-if="held.length === 1" msg="The app detected {keys}:"><template #keys><strong>{{ $t("this key") }}</strong></template></Tx>
+        <Tx v-else msg="The app detected {keys}:"><template #keys><strong>{{ $t("these {n} keys", { n: held.length }) }}</strong></template></Tx>
       </div>
       <div class="keys"><kbd v-for="k in held" :key="k.code">{{ k.label }}</kbd></div>
-      <small v-if="tooMany" class="warn">More than {{ MAX_KEYS }} keys were pressed — only the first {{ MAX_KEYS }} were kept.</small>
-      <small v-if="plain(held)" class="warn">One key on its own is easy to press by accident — two or three is safer (e.g. A + D).</small>
-      <span class="muted small">Not what you pressed? Some keyboards don't report certain keys pressed together — try again, or pick other keys.</span>
+      <small v-if="tooMany" class="warn">{{ $t("More than {max} keys were pressed — only the first {max} were kept.", { max: MAX_KEYS }) }}</small>
+      <small v-if="plain(held)" class="warn">{{ $t("One key on its own is easy to press by accident — two or three is safer (e.g. A + D).") }}</small>
+      <span class="muted small">{{ $t("Not what you pressed? Some keyboards don't report certain keys pressed together — try again, or pick other keys.") }}</span>
       <div class="notice" role="note">
-        <strong>{{ held.length === 1 ? "This key belongs" : "These keys belong" }} to this site from now on.</strong>
-        Here, outside text fields, the browser won't act on {{ held.length === 1 ? "it" : "them" }} — e.g. Firefox's
-        “search for text when you start typing” — so the panic is never missed. With another Ctrl / Alt / Shift / ⌘ held
-        (Ctrl + F, Ctrl + A…) the browser still gets {{ held.length === 1 ? "it" : "them" }}. Other sites aren't affected.
+        <strong>{{ held.length === 1 ? $t("This key belongs to this site from now on.") : $t("These keys belong to this site from now on.") }}</strong>
+        {{ held.length === 1
+          ? $t("Here, outside text fields, the browser won't act on it — e.g. Firefox's “search for text when you start typing” — so the panic is never missed. With another Ctrl / Alt / Shift / ⌘ held (Ctrl + F, Ctrl + A…) the browser still gets it. Other sites aren't affected.")
+          : $t("Here, outside text fields, the browser won't act on them — e.g. Firefox's “search for text when you start typing” — so the panic is never missed. With another Ctrl / Alt / Shift / ⌘ held (Ctrl + F, Ctrl + A…) the browser still gets them. Other sites aren't affected.") }}
         <template v-if="clashes.length">
-          <br><strong>Also the player's shortcut:</strong>
+          <br><strong>{{ $t("Also the player's shortcut:") }}</strong>
           <span v-for="(c, i) in clashes" :key="c.label">{{ c.label }} ({{ c.does }}){{ i < clashes.length - 1 ? ", " : "" }}</span>
-          — that shortcut stops working.
+          {{ $t("— that shortcut stops working.") }}
         </template>
       </div>
       <div class="btns">
-        <button class="btn btn-sm btn-primary" @click="confirmKeys">Use these keys</button>
-        <button class="btn btn-sm" @click="record">Try again</button>
-        <button class="btn btn-sm btn-ghost" @click="cancel">Cancel</button>
+        <button class="btn btn-sm btn-primary" @click="confirmKeys">{{ $t("Use these keys") }}</button>
+        <button class="btn btn-sm" @click="record">{{ $t("Try again") }}</button>
+        <button class="btn btn-sm btn-ghost" @click="cancel">{{ $t("Cancel") }}</button>
       </div>
     </template>
 
@@ -97,13 +98,13 @@ onBeforeUnmount(() => listen(false));
     <template v-else>
       <div class="keys">
         <template v-if="keys.length"><kbd v-for="k in keys" :key="k.code">{{ k.label }}</kbd></template>
-        <span v-else class="muted">Off</span>
+        <span v-else class="muted">{{ $t("Off") }}</span>
       </div>
-      <small v-if="keys.length" class="muted small">Only pressing {{ keys.length === 1 ? keys[0].label : `${joined(keys)} all at once` }} sets it off.
-        On this site the browser doesn't act on {{ keys.length === 1 ? "this key" : "these keys" }} (outside text fields).</small>
+      <small v-if="keys.length" class="muted small">{{ keys.length === 1 ? $t("Only pressing {key} sets it off.", { key: keys[0].label }) : $t("Only pressing {keys} all at once sets it off.", { keys: joined(keys) }) }}
+        {{ keys.length === 1 ? $t("On this site the browser doesn't act on this key (outside text fields).") : $t("On this site the browser doesn't act on these keys (outside text fields).") }}</small>
       <div class="btns">
-        <button class="btn btn-sm" @click="record">{{ keys.length ? "Change" : "Set keys" }}</button>
-        <button v-if="keys.length" class="btn btn-sm btn-ghost" @click="savePref('panicKeys', [])">Turn off</button>
+        <button class="btn btn-sm" @click="record">{{ keys.length ? $t("Change") : $t("Set keys") }}</button>
+        <button v-if="keys.length" class="btn btn-sm btn-ghost" @click="savePref('panicKeys', [])">{{ $t("Turn off") }}</button>
       </div>
     </template>
   </div>

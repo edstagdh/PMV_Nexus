@@ -2,6 +2,7 @@
 // Management -> Songs (2.14.0): songs found in videos, waiting to be added to
 // their Music or dismissed; "Find songs now" runs the Scheduler job once
 // (videos without music); and the settings (backend/library_mixins/songs.py).
+import { t, tn } from "../../lib/i18n.js";
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
@@ -17,7 +18,7 @@ const data = ref(null);
 const error = ref("");
 const cfg = ref(null);
 const busy = ref("");
-const rows = ref({}); // suggestion id -> SongSuggestion (for "Add all")
+const rows = ref({}); // suggestion id -> SongSuggestion (for t("Add all"))
 const canSettings = hasPermission("settings.manage");
 
 async function load() {
@@ -25,7 +26,7 @@ async function load() {
     data.value = await api("/api/songs");
     if (!cfg.value) cfg.value = { ...data.value.settings };
     error.value = "";
-  } catch (err) { error.value = err.message || "Could not load the songs"; }
+  } catch (err) { error.value = err.message || t("Could not load the songs"); }
 }
 let timer = null;
 let stop = null;
@@ -35,18 +36,18 @@ onMounted(() => {
 });
 onBeforeUnmount(() => { stop?.(); clearTimeout(timer); });
 
-const isSure = (s) => s.hits >= 2 && s.source !== "Gemini (AI)";  // AI-only finds are never "sure"
+const isSure = (s) => s.hits >= 2 && s.source !== "Gemini (AI)";  // i18n-ignore (the server's name)  // AI-only finds are never "sure"
 const sureCount = computed(() => (data.value?.videos || []).reduce((n, v) => n + v.suggestions.filter(isSure).length, 0));
 
 async function scanNow() {
   busy.value = "scan";
-  try { await api("/api/songs/scan-now", { method: "POST" }); toast("Listening to videos without music — follow it on Tasks", { type: "success" }); }
-  catch (err) { toast(err.message || "Could not start", { type: "error" }); }
+  try { await api("/api/songs/scan-now", { method: "POST" }); toast(t("Listening to videos without music — follow it on Tasks"), { type: "success" }); }
+  catch (err) { toast(err.message || t("Could not start"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 async function addAllSure() {
   const sure = data.value.videos.flatMap((v) => v.suggestions.filter(isSure));
-  if (!(await askConfirm(`Add ${sure.length} songs heard in two or more samples to their videos?`, { ok: "Add" }))) return;
+  if (!(await askConfirm(tn("Add {n} song heard in two or more samples to its video?", "Add {n} songs heard in two or more samples to their videos?", sure.length), { ok: t("Add") }))) return;
   busy.value = "all";
   for (const s of sure) await rows.value[s.id]?.add();
   busy.value = "";
@@ -54,34 +55,32 @@ async function addAllSure() {
 }
 async function saveSettings() {
   busy.value = "settings";
-  try { await api("/api/settings/songs", { method: "POST", body: cfg.value }); toast("Saved", { type: "success" }); }
-  catch (err) { toast(err.message || "Could not save", { type: "error" }); }
+  try { await api("/api/settings/songs", { method: "POST", body: cfg.value }); toast(t("Saved"), { type: "success" }); }
+  catch (err) { toast(err.message || t("Could not save"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 </script>
 
 <template>
   <div class="page songs">
-    <p class="muted small intro">Songs heard in videos, waiting for you. <strong>Add</strong> puts one in the video's Music (you can fix its
-      name first); <strong>Dismiss</strong> hides it for that video for good. Songs heard in two or more samples are the surest.
-      A single video: <strong>Find songs</strong> in its ⋮ menu.</p>
+    <p class="muted small intro"><Tx msg="Songs heard in videos, waiting for you. {b1} puts one in the video's Music (you can fix its name first); {b2} hides it for that video for good. Songs heard in two or more samples are the surest. A single video: {b3} in its ⋮ menu."><template #b1><strong>{{ $t("Add") }}</strong></template><template #b2><strong>{{ $t("Dismiss") }}</strong></template><template #b3><strong>{{ $t("Find songs") }}</strong></template></Tx></p>
     <p v-if="error" class="error-text">{{ error }}</p>
 
     <section v-if="data" class="card block head">
       <div class="stats">
-        <div><strong>{{ data.counts.without_music }}</strong><span>videos without music</span></div>
-        <div><strong>{{ data.counts.to_scan }}</strong><span>to listen to</span></div>
-        <div><strong>{{ data.counts.pending }}</strong><span>songs waiting ({{ data.counts.pending_videos }} videos)</span></div>
-        <div><strong>{{ data.counts.added }}</strong><span>added so far</span></div>
+        <div><strong>{{ data.counts.without_music }}</strong><span>{{ $t("videos without music") }}</span></div>
+        <div><strong>{{ data.counts.to_scan }}</strong><span>{{ $t("to listen to") }}</span></div>
+        <div><strong>{{ data.counts.pending }}</strong><span>{{ $t("songs waiting ({n} videos)", { n: data.counts.pending_videos }) }}</span></div>
+        <div><strong>{{ data.counts.added }}</strong><span>{{ $t("added so far") }}</span></div>
       </div>
       <div class="acts">
         <button class="btn btn-sm btn-primary" :disabled="busy === 'scan' || !data.counts.to_scan" @click="scanNow">
-          <Icon name="music" :size="14" />Find songs now ({{ Math.min(data.counts.to_scan, data.settings.per_run) }} videos)</button>
-        <button v-if="sureCount" class="btn btn-sm" :disabled="busy === 'all'" @click="addAllSure">Add all sure ones ({{ sureCount }})</button>
+          <Icon name="music" :size="14" />{{ $t("Find songs now ({n} videos)", { n: Math.min(data.counts.to_scan, data.settings.per_run) }) }}</button>
+        <button v-if="sureCount" class="btn btn-sm" :disabled="busy === 'all'" @click="addAllSure">{{ $t("Add all sure ones ({n})", { n: sureCount }) }}</button>
       </div>
-      <p class="muted small">To do this regularly: Management → Scheduler → new job <strong>Find songs in videos without music</strong>
-        (it listens to {{ data.settings.per_run }} videos per run, newest first). Uses the way set below.</p>
-      <p v-if="data.scanning.length" class="muted small">Listening now: {{ data.scanning.length }} video(s) — see Tasks.</p>
+      <Tx tag="p" class="muted small" msg="To do this regularly: Management → Scheduler → new job {job} (it listens to {n} videos per run, newest first). Uses the way set below." :params="{ n: data.settings.per_run }">
+        <template #job><strong>{{ $t("Find songs in videos without music") }}</strong></template></Tx>
+      <p v-if="data.scanning.length" class="muted small">{{ $tn("Listening now: {n} video — see Tasks.", "Listening now: {n} videos — see Tasks.", data.scanning.length) }}</p>
     </section>
     <div v-else class="skeleton" style="height: 6rem; border-radius: var(--radius)" />
 
@@ -92,30 +91,28 @@ async function saveSettings() {
         </RouterLink>
         <div>
           <RouterLink :to="{ name: 'video', params: { id: v.item_id } }" class="vtitle">{{ v.title }}</RouterLink>
-          <div class="muted small">{{ v.creator }}<template v-if="v.music.length"> · Music now: {{ v.music.join(", ") }}</template></div>
+          <div class="muted small">{{ v.creator }}<template v-if="v.music.length"> · {{ $t("Music now: {songs}", { songs: v.music.join(", ") }) }}</template></div>
         </div>
       </div>
       <SongSuggestion v-for="s in v.suggestions" :key="s.id" :ref="(el) => { if (el) rows[s.id] = el; else delete rows[s.id]; }" :s="s" @done="load" />
     </section>
-    <p v-if="data && !data.videos.length" class="muted">No songs waiting.</p>
+    <p v-if="data && !data.videos.length" class="muted">{{ $t("No songs waiting.") }}</p>
 
     <section v-if="canSettings && cfg" class="card block">
-      <h2>Settings</h2>
+      <h2>{{ $t("Settings") }}</h2>
       <div class="grid">
-        <label>A sample every<span><input v-model.number="cfg.interval" class="input input-num" type="number" min="15" max="300"> s of the video</span></label>
-        <label>At most<span><input v-model.number="cfg.max_samples" class="input input-num" type="number" min="1" max="40"> samples per video</span></label>
-        <label>Each Scheduler run<span><input v-model.number="cfg.per_run" class="input input-num" type="number" min="1" max="500"> videos</span></label>
-        <label>Listen again after<span><input v-model.number="cfg.rescan_days" class="input input-num" type="number" min="0" max="3650"> days (0 = never)</span></label>
-        <label class="switch"><input v-model="cfg.shazam_retry" type="checkbox">Shazam: try a missed sample again 7 s later</label>
-        <SongMethodPicker v-model="cfg.method" :gemini="!!data?.gemini" label="Find songs with (Scheduler, Find songs now; preselected elsewhere)" class="wide" />
-        <label>Gemini, at most<span><input v-model.number="cfg.gemini_max_samples" class="input input-num" type="number" min="1" max="20"> clips per video</span></label>
+        <label>{{ $t("A sample every") }}<span><input v-model.number="cfg.interval" class="input input-num" type="number" min="15" max="300"> {{ $t("s of the video") }}</span></label>
+        <label>{{ $t("At most") }}<span><input v-model.number="cfg.max_samples" class="input input-num" type="number" min="1" max="40"> {{ $t("samples per video") }}</span></label>
+        <label>{{ $t("Each Scheduler run") }}<span><input v-model.number="cfg.per_run" class="input input-num" type="number" min="1" max="500"> {{ $t("videos") }}</span></label>
+        <label>{{ $t("Listen again after") }}<span><input v-model.number="cfg.rescan_days" class="input input-num" type="number" min="0" max="3650"> {{ $t("days (0 = never)") }}</span></label>
+        <label class="switch"><input v-model="cfg.shazam_retry" type="checkbox">{{ $t("Shazam: try a missed sample again 7 s later") }}</label>
+        <SongMethodPicker v-model="cfg.method" :gemini="!!data?.gemini" :label="$t('Find songs with (Scheduler, Find songs now; preselected elsewhere)')" class="wide" />
+        <label>{{ $t("Gemini, at most") }}<span><input v-model.number="cfg.gemini_max_samples" class="input input-num" type="number" min="1" max="20"> {{ $t("clips per video") }}</span></label>
       </div>
-      <p class="muted small">Optional. Gemini is Google's AI: it gets a 20-second sound clip of a spot in the video and names the
-        song only when it's sure. When finding songs by hand (a video's Find songs, or picked videos) the way can be
-        changed each time; its finds are marked “Gemini (AI)” — check them before adding. It needs a free
-        API key in Server Settings → Credentials{{ data?.gemini ? " (saved)" : " (not saved yet)" }}; the free tier allows a
-        limited number of requests a day, and Google may use free-tier requests to improve its products.</p>
-      <div><button class="btn btn-primary btn-sm" :disabled="busy === 'settings'" @click="saveSettings">Save</button></div>
+      <p class="muted small">{{ $t("Optional. Gemini is Google's AI: it gets a 20-second sound clip of a spot in the video and names the song only when it's sure. When finding songs by hand (a video's Find songs, or picked videos) the way can be changed each time; its finds are marked “Gemini (AI)” — check them before adding.") }}
+        {{ data?.gemini ? $t("It needs a free API key in Server Settings → Credentials (saved); the free tier allows a limited number of requests a day, and Google may use free-tier requests to improve its products.")
+          : $t("It needs a free API key in Server Settings → Credentials (not saved yet); the free tier allows a limited number of requests a day, and Google may use free-tier requests to improve its products.") }}</p>
+      <div><button class="btn btn-primary btn-sm" :disabled="busy === 'settings'" @click="saveSettings">{{ $t("Save") }}</button></div>
     </section>
   </div>
 </template>

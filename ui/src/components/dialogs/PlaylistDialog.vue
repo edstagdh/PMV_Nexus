@@ -8,6 +8,7 @@
 //    playlist, or keep the view as a SMART playlist that updates itself;
 //  - videos picked in the library (options.ids, Library -> Select): add
 //    them to one or more playlists, or a new one.
+import { t, formatNumber } from "../../lib/i18n.js";
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import ModalDialog from "../ModalDialog.vue";
@@ -44,7 +45,7 @@ onMounted(async () => {
     playlists.value = list.playlists;
     containing.value = new Set(has.playlist_ids);
   } catch (err) {
-    error.value = err.message || "Could not load your playlists";
+    error.value = err.message || t("Could not load your playlists");
   }
 });
 
@@ -57,9 +58,9 @@ async function toggle(p, on) {
     const s = new Set(containing.value);
     on ? s.add(p.id) : s.delete(p.id);
     containing.value = s;
-    toast(on ? `Added to ${p.name}` : `Removed from ${p.name}`);
+    toast(on ? t("Added to {name}", { name: p.name }) : t("Removed from {name}", { name: p.name }));
   } catch (err) {
-    toast(err.message || "That didn't work", { type: "error" });
+    toast(err.message || t("That didn't work"), { type: "error" });
   } finally {
     busy.value = "";
   }
@@ -100,11 +101,12 @@ async function addView(p) {
   try {
     const r = await api(`/api/playlists/${p.id}/items`, { method: "POST", body: ids.value ? { item_ids: ids.value } : { query: query.value } });
     loadFavorites(true);  // the ♥ badges
-    toast(`Added ${r.added} to ${p.name}${r.skipped ? ` (${r.skipped} already in it)` : ""}`, { type: "success" });
+    toast(r.skipped ? t("Added {added} to {name} ({skipped} already in it)", { added: r.added, name: p.name, skipped: r.skipped })
+      : t("Added {added} to {name}", { added: r.added, name: p.name }), { type: "success" });
     if (ids.value) { addedTo.value = new Set([...addedTo.value, p.id]); busy.value = ""; return; }  // picked videos: more playlists can follow
     emit("close");
   } catch (err) {
-    toast(err.message || "That didn't work", { type: "error" });
+    toast(err.message || t("That didn't work"), { type: "error" });
     busy.value = "";
   }
 }
@@ -118,10 +120,10 @@ async function createManual() {
       body: { name: fresh.value.name, visibility: fresh.value.visibility, kind: "manual", item_ids: props.item ? [props.item.id] : ids.value || [] },
     });
     if (query.value) await api(`/api/playlists/${p.id}/items`, { method: "POST", body: { query: query.value } });
-    toast(`Created ${p.name}`, { type: "success" });
+    toast(t("Created {name}", { name: p.name }), { type: "success" });
     emit("close");
   } catch (err) {
-    toast(err.message || "Could not create the playlist", { type: "error" });
+    toast(err.message || t("Could not create the playlist"), { type: "error" });
     busy.value = "";
   }
 }
@@ -132,42 +134,42 @@ async function saveSmart() {
     let p;
     if (smart.value.replace) {
       p = await api(`/api/playlists/${smart.value.replace}`, { method: "PATCH", body: { smart_query: query.value } });
-      toast(`Updated the filter of ${p.name}`, { type: "success" });
+      toast(t("Updated the filter of {name}", { name: p.name }), { type: "success" });
     } else {
       if (!smart.value.name.trim()) { busy.value = ""; return; }
       p = await api("/api/playlists", {
         method: "POST", body: { name: smart.value.name, visibility: smart.value.visibility, kind: "smart", smart_query: query.value },
       });
-      toast(`Created smart playlist ${p.name}`, { type: "success" });
+      toast(t("Created smart playlist {name}", { name: p.name }), { type: "success" });
     }
     emit("close");
     router.push({ name: "playlist", params: { id: p.id } });
   } catch (err) {
-    toast(err.message || "Could not save the smart playlist", { type: "error" });
+    toast(err.message || t("Could not save the smart playlist"), { type: "error" });
     busy.value = "";
   }
 }
 </script>
 
 <template>
-  <ModalDialog :title="item ? 'Add to playlist' : ids ? `Add ${count} ${count === 1 ? 'video' : 'videos'} to playlists` : `Playlist from this view (${count.toLocaleString()} videos)`" width="34rem" @close="emit('close')">
+  <ModalDialog :title="item ? $t('Add to playlist') : ids ? $tn('Add {n} video to playlists', 'Add {n} videos to playlists', count) : $t('Playlist from this view ({n} videos)', { n: formatNumber(count) })" width="34rem" @close="emit('close')">
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!playlists" class="skeleton" style="height: 6rem; border-radius: var(--radius)" />
     <template v-else>
       <p v-if="item" class="lead">“{{ item.title || item.url }}”</p>
-      <p v-else-if="ids" class="lead muted">The videos you picked. Add them to as many playlists as you like.</p>
-      <p v-else class="lead muted">Filter: {{ describeQuery(query) }}</p>
+      <p v-else-if="ids" class="lead muted">{{ $t("The videos you picked. Add them to as many playlists as you like.") }}</p>
+      <p v-else class="lead muted">{{ $t("Filter: {filter}", { filter: describeQuery(query) }) }}</p>
 
       <template v-if="item">
-        <h4>In your playlists</h4>
+        <h4>{{ $t("In your playlists") }}</h4>
         <div v-if="manual.length" class="combo">
           <div class="tag-input input" @click="findBox?.focus()">
             <span v-for="p in inList" :key="p.id" class="chip">
-              {{ p.name }}<button type="button" class="chip-x" :aria-label="`Remove from ${p.name}`" :disabled="busy === p.id"
+              {{ p.name }}<button type="button" class="chip-x" :aria-label="$t('Remove from {name}', { name: p.name })" :disabled="busy === p.id"
                                   @click.stop="toggle(p, false)">×</button>
             </span>
             <input ref="findBox" v-model="find" role="combobox" autocomplete="off" :aria-expanded="listOpen && offered.length > 0"
-                   aria-label="Find a playlist" :placeholder="inList.length ? '' : 'Find one of your playlists…'"
+                   :aria-label="$t('Find a playlist')" :placeholder="inList.length ? '' : $t('Find one of your playlists…')"
                    @keydown="onFindKey" @focus="listOpen = true" @input="listOpen = true; active = find.trim() ? 0 : -1" @blur="onFindBlur">
           </div>
           <ul v-if="listOpen && offered.length" class="suggestions scroll-thin" role="listbox">
@@ -176,52 +178,52 @@ async function saveSmart() {
               <span>{{ p.name }}</span><span class="count">{{ p.item_count }} · {{ p.visibility }}</span>
             </li>
           </ul>
-          <p v-else-if="listOpen && find.trim()" class="muted small none">No other playlist matches — create it below.</p>
+          <p v-else-if="listOpen && find.trim()" class="muted small none">{{ $t("No other playlist matches — create it below.") }}</p>
         </div>
-        <p v-else class="muted small">You have no playlists yet.</p>
-        <h4>New playlist with this video</h4>
+        <p v-else class="muted small">{{ $t("You have no playlists yet.") }}</p>
+        <h4>{{ $t("New playlist with this video") }}</h4>
       </template>
-      <h4 v-else>Add all of them to</h4>
+      <h4 v-else>{{ $t("Add all of them to") }}</h4>
       <ul v-if="!item && manual.length" class="list scroll-thin">
         <li v-for="p in manual" :key="p.id">
           <div class="add-row">
             <span class="pname">{{ p.name }}</span><span class="muted small">{{ p.item_count }} · {{ p.visibility }}</span>
-            <button class="btn btn-sm" :disabled="!!busy || addedTo.has(p.id)" @click="addView(p)">{{ busy === p.id ? "Adding…" : addedTo.has(p.id) ? "Added ✓" : "Add" }}</button>
+            <button class="btn btn-sm" :disabled="!!busy || addedTo.has(p.id)" @click="addView(p)">{{ busy === p.id ? $t("Adding…") : addedTo.has(p.id) ? $t("Added ✓") : $t("Add") }}</button>
           </div>
         </li>
       </ul>
-      <p v-else-if="!item" class="muted small">You have no playlists yet.</p>
+      <p v-else-if="!item" class="muted small">{{ $t("You have no playlists yet.") }}</p>
 
       <form class="new" @submit.prevent="createManual">
-        <input v-model="fresh.name" class="input" maxlength="120" :placeholder="item ? 'Playlist name' : 'Or a new playlist with all of them'" aria-label="New playlist name">
-        <select v-model="fresh.visibility" class="select" aria-label="Who can see it">
-          <option value="private">Private</option>
-          <option value="public">Public</option>
+        <input v-model="fresh.name" class="input" maxlength="120" :placeholder="item ? $t('Playlist name') : $t('Or a new playlist with all of them')" :aria-label="$t('New playlist name')">
+        <select v-model="fresh.visibility" class="select" :aria-label="$t('Who can see it')">
+          <option value="private">{{ $t("Private") }}</option>
+          <option value="public">{{ $t("Public") }}</option>
         </select>
-        <button class="btn btn-primary" :disabled="!fresh.name.trim() || !!busy">{{ busy === "new" ? "Creating…" : "Create" }}</button>
+        <button class="btn btn-primary" :disabled="!fresh.name.trim() || !!busy">{{ busy === "new" ? $t("Creating…") : $t("Create") }}</button>
       </form>
 
       <section v-if="query" class="smart">
-        <h4>Smart playlist</h4>
-        <p class="muted small">Keeps this filter instead of a fixed list: new videos that match show up in it by themselves.</p>
+        <h4>{{ $t("Smart playlist") }}</h4>
+        <p class="muted small">{{ $t("Keeps this filter instead of a fixed list: new videos that match show up in it by themselves.") }}</p>
         <form class="new" @submit.prevent="saveSmart">
-          <select v-if="mySmart.length" v-model="smart.replace" class="select" aria-label="New or existing smart playlist">
-            <option value="">New smart playlist</option>
-            <option v-for="p in mySmart" :key="p.id" :value="p.id">Replace the filter of “{{ p.name }}”</option>
+          <select v-if="mySmart.length" v-model="smart.replace" class="select" :aria-label="$t('New or existing smart playlist')">
+            <option value="">{{ $t("New smart playlist") }}</option>
+            <option v-for="p in mySmart" :key="p.id" :value="p.id">{{ $t("Replace the filter of “{name}”", { name: p.name }) }}</option>
           </select>
           <template v-if="!smart.replace">
-            <input v-model="smart.name" class="input" maxlength="120" placeholder="Smart playlist name" aria-label="Smart playlist name">
-            <select v-model="smart.visibility" class="select" aria-label="Who can see it">
-              <option value="private">Private</option>
-              <option value="public">Public</option>
+            <input v-model="smart.name" class="input" maxlength="120" :placeholder="$t('Smart playlist name')" :aria-label="$t('Smart playlist name')">
+            <select v-model="smart.visibility" class="select" :aria-label="$t('Who can see it')">
+              <option value="private">{{ $t("Private") }}</option>
+              <option value="public">{{ $t("Public") }}</option>
             </select>
           </template>
-          <button class="btn" :disabled="(!smart.replace && !smart.name.trim()) || !!busy">{{ busy === "smart" ? "Saving…" : "Save" }}</button>
+          <button class="btn" :disabled="(!smart.replace && !smart.name.trim()) || !!busy">{{ busy === "smart" ? $t("Saving…") : $t("Save") }}</button>
         </form>
       </section>
-      <p class="muted small hint">Public playlists can be seen and played by every user of this app; only you can change them.</p>
+      <p class="muted small hint">{{ $t("Public playlists can be seen and played by every user of this app; only you can change them.") }}</p>
     </template>
-    <template #footer><button class="btn" @click="emit('close')">Done</button></template>
+    <template #footer><button class="btn" @click="emit('close')">{{ $t("Done") }}</button></template>
   </ModalDialog>
 </template>
 

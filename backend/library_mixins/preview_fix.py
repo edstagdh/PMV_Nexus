@@ -15,6 +15,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from ..i18n import L
 from .. import activity
 
 SEED_FLAG = "seeded_job_preview_h264_330"
@@ -30,14 +31,14 @@ class PreviewFixMixin:
         state["total"] = len(items)
 
         def progress() -> dict:
-            return {"stage": "Checking", "done": state["checked"], "total": state["total"],
+            return {"stage": L('Checking'), "done": state["checked"], "total": state["total"],
                     "detail": f"{state['converted']} converted" + (f" · {state['current']}" if state["current"] else ""),
                     "item": state.get("item") if state["current"] else None}
 
         def stop_now() -> None:
             stop["now"] = True
 
-        async with activity.track("preview_fix", "Making previews H.264", progress=progress, stop=stop_now):
+        async with activity.track("preview_fix", L('Making previews H.264'), progress=progress, stop=stop_now):
             for item in items:
                 if stop["now"] or self._shutting_down:
                     break
@@ -72,7 +73,7 @@ class PreviewFixMixin:
                 at = datetime.now().replace(hour=2, minute=30, second=0, microsecond=0)
                 if at <= datetime.now():
                     at += timedelta(days=1)
-                self.create_scheduled_job("preview_fix", "Make previews H.264 (one time)", True, "simple",
+                self.create_scheduled_job("preview_fix", L("Make previews H.264 (one time)"), True, "simple",
                                           {"kind": "once", "at": at.strftime("%Y-%m-%dT%H:%M")}, {})
                 logger.info("Scheduler: added a one-time 'Make previews H.264' job for {}", at.strftime("%Y-%m-%d %H:%M"))
             self.db.set_app_state(SEED_FLAG, time.time())

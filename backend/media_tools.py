@@ -6,6 +6,7 @@ HEVC with the same ffmpeg parameters as the original script, reporting
 progress via a callback instead of a tqdm bar.
 """
 from __future__ import annotations
+from .i18n import L
 
 import json
 import os
@@ -1144,7 +1145,7 @@ def sample_frame_hashes(
     with _suppress_native_av_output():
         cap = cv2.VideoCapture(file_path)
         if not cap.isOpened():
-            raise RuntimeError(f"Could not open video file: {file_path}")
+            raise RuntimeError(L('Could not open video file: {file}', file=file_path))
 
         fps = cap.get(cv2.CAP_PROP_FPS) or 0
         frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
@@ -1157,7 +1158,7 @@ def sample_frame_hashes(
 
         if not duration_ms or duration_ms <= 0:
             cap.release()
-            raise RuntimeError(f"Could not determine duration for: {file_path}")
+            raise RuntimeError(L('Could not determine duration for: {file}', file=file_path))
 
         hex_len = hash_size * hash_size // 4
         hashes: list[str] = []
@@ -1174,7 +1175,7 @@ def sample_frame_hashes(
         cap.release()
 
     if not hashes:
-        raise RuntimeError(f"Could not extract any frames from: {file_path}")
+        raise RuntimeError(L('Could not extract any frames from: {file}', file=file_path))
     return hashes
 
 
@@ -1209,7 +1210,7 @@ def get_video_duration_ffprobe(file_path: str) -> float:
     try:
         duration = float(json.loads(result.stdout)["format"]["duration"])
     except (KeyError, ValueError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Could not parse a duration from ffprobe output for {file_path}") from exc
+        raise RuntimeError(L('Could not parse a duration from ffprobe output for {file}', file=file_path)) from exc
         if duration <= 0:
             raise RuntimeError(f"ffprobe reported a non-positive duration for {file_path}")
         return duration
@@ -1235,7 +1236,7 @@ def get_fps_ffprobe(file_path: str) -> float:
         num, den = rate_str.split("/")
         fps = float(num) / float(den) if float(den) else 0.0
     except (KeyError, IndexError, ValueError, ZeroDivisionError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Could not parse an fps from ffprobe output for {file_path}") from exc
+        raise RuntimeError(L('Could not parse an fps from ffprobe output for {file}', file=file_path)) from exc
     if fps <= 0:
         raise RuntimeError(f"ffprobe reported a non-positive fps for {file_path}")
     return fps
@@ -1339,12 +1340,12 @@ def sample_frame_hashes_ffmpeg_fallback(file_path: str, num_samples: int = 48, h
 
     sprite = cv2.imdecode(np.frombuffer(result.stdout, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
     if sprite is None:
-        raise RuntimeError(f"Could not decode the fallback sprite image for {file_path}")
+        raise RuntimeError(L('Could not decode the fallback sprite image for {file}', file=file_path))
 
     cell_h = sprite.shape[0] // rows
     cell_w = sprite.shape[1] // columns
     if cell_h <= 0 or cell_w <= 0:
-        raise RuntimeError(f"Fallback sprite for {file_path} had unexpected dimensions {sprite.shape}")
+        raise RuntimeError(L('Fallback sprite for {file} had unexpected dimensions {shape}', file=file_path, shape=sprite.shape))
 
     hex_len = hash_size * hash_size // 4
     hashes: list[str] = []
@@ -1359,7 +1360,7 @@ def sample_frame_hashes_ffmpeg_fallback(file_path: str, num_samples: int = 48, h
             hashes.append(f"{value:0{hex_len}x}")
 
     if not hashes:
-        raise RuntimeError(f"Fallback sprite produced no frame hashes for {file_path}")
+        raise RuntimeError(L('Fallback sprite produced no frame hashes for {file}', file=file_path))
     return hashes
 
 

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from ..i18n import L
 from .. import activity, tpdb
 from ..config import save_overrides
 from ..library_manager import library_manager
@@ -47,7 +48,7 @@ async def _run(coro):
 
 
 class FavoriteBody(BaseModel):
-    names: list[str] = Field(..., min_length=1, max_length=50)  # every name she has in the library
+    names: list[str] = Field(..., min_length=1, max_length=50)  # every name they have in the library
     on: bool = True
 
 
@@ -61,7 +62,7 @@ def performer_badges(user: AuthContext = Depends(_viewer)):
 
 @router.post("/api/performers/favorites")
 def performer_favorite(body: FavoriteBody, user: AuthContext = Depends(_viewer)):
-    """3.5.0: adds / removes a favourite performer (yours only), with all her names."""
+    """3.5.0: adds / removes a favourite performer (yours only), with all their names."""
     from ..spellings import fold
     for raw in body.names:
         name = " ".join(str(raw).split())[:200]
@@ -72,7 +73,7 @@ def performer_favorite(body: FavoriteBody, user: AuthContext = Depends(_viewer))
 
 @router.get("/api/performers/profile")
 def performer_profile(name: str, user: AuthContext = Depends(_viewer)):
-    """Her profile by any of her names: details, photo, names in the library, similar performers."""
+    """The profile by any of the performer's names: details, photo, names in the library, similar performers."""
     return library_manager.performer_profile(name)
 
 
@@ -80,7 +81,7 @@ def performer_profile(name: str, user: AuthContext = Depends(_viewer)):
 def performer_photo(performer_id: str, n: int = Query(0, ge=0, le=80), user: AuthContext = Depends(_viewer)):
     path = library_manager.performer_photo_path(performer_id, n)
     if not path or not Path(path).is_file():  # a missing file is a 404, not an error (3.2.0)
-        raise HTTPException(status_code=404, detail="No photo")
+        raise HTTPException(status_code=404, detail=L('No photo'))
     return FileResponse(path, headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -146,12 +147,12 @@ _MAX_PHOTO_BYTES = 30 * 1024 * 1024
 @router.put("/api/performers/{performer_id}/photos/upload")
 async def performers_add_photo(performer_id: str, request: Request, user: AuthContext = Depends(_manager)):
     if not (request.headers.get("content-type") or "").lower().startswith("image/"):
-        raise HTTPException(status_code=415, detail="Send a picture")
+        raise HTTPException(status_code=415, detail=L('Send a picture'))
     data = bytearray()
     async for chunk in request.stream():
         data += chunk
         if len(data) > _MAX_PHOTO_BYTES:
-            raise HTTPException(status_code=413, detail="That picture is too big (30 MB at most)")
+            raise HTTPException(status_code=413, detail=L('That picture is too big (30 MB at most)'))
     try:
         return await library_manager.add_custom_photo(performer_id, bytes(data), user.username)
     except PerformerError as exc:
@@ -162,7 +163,7 @@ async def performers_add_photo(performer_id: str, request: Request, user: AuthCo
 def performers_custom_photo(performer_id: str, photo_id: str, user: AuthContext = Depends(_viewer)):
     path = library_manager.custom_photo_file(performer_id, photo_id)
     if not path or not Path(path).is_file():
-        raise HTTPException(status_code=404, detail="No photo")
+        raise HTTPException(status_code=404, detail=L('No photo'))
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -181,7 +182,7 @@ class MainPhoto(BaseModel):
 
 @router.post("/api/performers/{performer_id}/photos/main")
 def performers_main_photo(performer_id: str, body: MainPhoto, user: AuthContext = Depends(_manager)):
-    """A photo added by hand shown first (her main photo); none: ThePornDB's again."""
+    """A photo added by hand shown first (the main photo); none: ThePornDB's again."""
     try:
         library_manager.set_main_custom_photo(performer_id, body.photo_id)
     except PerformerError as exc:
@@ -196,7 +197,7 @@ async def performers_convert_photos(user: AuthContext = Depends(_manager)):
     if not count:
         return {"ok": True, "count": 0}
     if any(a.get("kind") == "performer_photos" for a in activity.running()):
-        raise HTTPException(status_code=409, detail="Already converting — see Tasks")
+        raise HTTPException(status_code=409, detail=L('Already converting — see Tasks'))
     asyncio.get_running_loop().create_task(_convert_quietly())
     return {"ok": True, "count": count}
 
@@ -213,7 +214,7 @@ async def performers_match_now(retry_none: bool = False, user: AuthContext = Dep
     """Runs the Scheduler job "Match & refresh performers" now (with retry_none
     the names not found before are looked up again too)."""
     if not tpdb.configured():
-        raise HTTPException(status_code=400, detail="Add the ThePornDB API key in Server Settings → Credentials first")
+        raise HTTPException(status_code=400, detail=L('Add the ThePornDB API key in Server Settings → Credentials first'))
     if retry_none:
         library_manager._perf_load()
         for row in list(library_manager._perf_names.values()):
@@ -221,7 +222,7 @@ async def performers_match_now(retry_none: bool = False, user: AuthContext = Dep
                 library_manager._perf_names.pop(row["name_key"], None)
     job = library_manager.performer_job()
     if not job:
-        raise HTTPException(status_code=404, detail="The performer job is missing from the Scheduler — restart the app")
+        raise HTTPException(status_code=404, detail=L('The performer job is missing from the Scheduler — restart the app'))
     try:
         library_manager.request_scheduled_job_run_now(job["id"])
     except ValueError as exc:

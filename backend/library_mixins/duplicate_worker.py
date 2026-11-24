@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 from loguru import logger
 
+from ..i18n import L
 from .. import dupfinder
 from ..config import get_settings
 from .. import activity, notifications
@@ -213,13 +214,13 @@ class DuplicateWorkerMixin:
             if not new:
                 return
             if len(new) > self.DUP_NOTIFY_ONE_BY_ONE:
-                notifications.notify("duplicate", "warning", f"{len(new)} possible duplicates found",
-                                     "Compare them side by side and keep the best copy.", link="/admin/duplicates")
+                notifications.notify("duplicate", "warning", L('{count} possible duplicates found', count=len(new)),
+                                     L('Compare them side by side and keep the best copy.'), link="/admin/duplicates")
                 return
             for a, b, pct in new:
                 newer, older = sorted((self._items[a], self._items[b]), key=lambda i: i.created_at, reverse=True)
-                notifications.notify("duplicate", "warning", f"Possible duplicate: {title_of(newer)}",
-                                     f"Looks like {title_of(older)} ({pct:.0f}% match).", link="/admin/duplicates")
+                notifications.notify("duplicate", "warning", L('Possible duplicate: {title}', title=title_of(newer)),
+                                     L('Looks like {title} ({pct}% match).', title=title_of(older), pct=format(pct, '.0f')), link="/admin/duplicates")
         except Exception:  # noqa: BLE001 -- never fail a scan over its notifications
             logger.opt(exception=True).warning("Couldn't announce the new duplicates")
 
@@ -304,9 +305,9 @@ class DuplicateWorkerMixin:
                                  source: str = "manual") -> dict:
         """The scan, shown on the Tasks page while it runs (see _duplicate_scan)."""
         if self._duplicate_scan_running:
-            raise JobBlockedError("Blocked: a duplicate scan is already running")
+            raise JobBlockedError(L('Blocked: a duplicate scan is already running'))
         if self._invasive_lock_holder is not None:
-            raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+            raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
         # The pairs known before this scan (3.2.0): on the first scan with duplicate
         # notifications, every pair already found counts as known -- read before the
         # scan stores its own new ones (or a full re-compare empties the table).
@@ -320,10 +321,10 @@ class DuplicateWorkerMixin:
     def _duplicate_scan_activity(self) -> dict:
         p = self._duplicate_scan_progress
         if p.get("phase") == "hashing":
-            return {"stage": "Reading videos", "done": p["hashed"], "total": p["hash_total"]}
+            return {"stage": L('Reading videos'), "done": p["hashed"], "total": p["hash_total"]}
         if p.get("phase") == "comparing":
-            return {"stage": "Comparing videos", "done": p["compared"], "total": p["compare_total"]}
-        return {"stage": "Preparing"}
+            return {"stage": L('Comparing videos'), "done": p["compared"], "total": p["compare_total"]}
+        return {"stage": L('Preparing')}
 
     async def _duplicate_scan(self, verbose: bool = False, full: bool = False) -> dict:
         """Duplicate detection in two phases (see backend/dupfinder.py).
@@ -348,9 +349,9 @@ class DuplicateWorkerMixin:
         MUTUAL EXCLUSION: raises JobBlockedError immediately if this is
         already running or another invasive operation holds the lock."""
         if self._duplicate_scan_running:
-            raise JobBlockedError("Blocked: a duplicate scan is already running")
+            raise JobBlockedError(L('Blocked: a duplicate scan is already running'))
         if not self._try_acquire_invasive_lock("duplicate_scan"):
-            raise JobBlockedError(f"Blocked: '{self._invasive_lock_holder}' is already running")
+            raise JobBlockedError(L("Blocked: '{job}' is already running", job=self._invasive_lock_holder))
 
         self._duplicate_scan_running = True
         started = time.time()

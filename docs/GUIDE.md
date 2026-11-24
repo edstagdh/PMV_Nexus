@@ -6,7 +6,7 @@ PMV Nexus downloads, organizes, re-encodes and de-duplicates videos from PMVHave
 ## Getting started
 
 ### Requirements
-- **Python 3.11 or newer**
+- **Python 3.12 to 3.14**
 - **FFmpeg** (both `ffmpeg` and `ffprobe`) on your PATH
 - **MediaInfo** (bundled with `pymediainfo` on Windows)
 
@@ -297,10 +297,13 @@ Videos with a key frame every few seconds (most PMVs) take a few seconds; others
 instead (and again to go back). On the video page the keys (Space, ←/→, M, F, …) work anywhere on the page.
 
 On phones and tablets tap the video to show the controls — a big play/pause button sits in the middle while they
-show — and double-tap the left or right side to skip 10 s.
+show, with **Loop** on its left and **⏭** (next video, while a playlist plays) on its right — and double-tap the left
+or right side to skip 10 s.
 In fullscreen the sides work differently by default: **swipe up / down on the left for brightness and on the right
 for volume** (brightness only changes the video's picture, from 20% to 150% — pages can't change the screen's own
-brightness; iPhones and iPads don't let pages change the volume, so use the buttons there). To keep double-tap to
+brightness; the volume is the video's own level inside the device's volume, so 100% is whatever the device is set to —
+pages can't change the device's volume either; iPhones and iPads don't let pages change even the video's volume, so
+use the buttons there). To keep double-tap to
 skip in fullscreen: **My Settings → Video page → Sides of the video in fullscreen → Double-tap**. On a phone the
 screen turns to suit each video in fullscreen and stays turned while a playlist moves on to a video of the same shape.
 
@@ -426,16 +429,16 @@ video.
 
 ![Performers](screenshots/performers.webp)
 
-Click a performer on a video's page to open her profile. If ThePornDB is set up (API key in **Server Settings →
+Click a performer on a video's page to open their profile. If ThePornDB is set up (API key in **Server Settings →
 Credentials → ThePornDB**), the profile shows:
 - photo, age, details, bio and aliases;
-- similar performers you have, and all her videos (**Her videos in the library** opens them in the library).
+- similar performers you have, and all their videos (**Videos in the library** opens them in the library).
 
-**♥ Add to favourites** (3.5.0, on her page) makes her one of *your* favourite performers (each person has their own):
-her badges get a ♥, and **Library → sort Favourite performers** puts her videos first or last. All her names in the
-library count. **Gender** (3.5.0): her badge colour comes from her ThePornDB profile; for someone not on ThePornDB,
-**Gender: Female / Male / Trans** on her page sets it (and her placeholder picture). Until then her badges are grey —
-matching her to ThePornDB fills it in.
+**♥ Add to favourites** (3.5.0, on the performer's page) makes them one of *your* favourite performers (each person
+has their own): their badges get a ♥, and **Library → sort Favourite performers** puts their videos first or last. All
+their names in the library count. **Gender** (3.5.0): the badge colour comes from the ThePornDB profile; for someone not
+on ThePornDB, **Gender: Female / Male / Trans** on their page sets it (and the placeholder picture). Until then the
+badges are grey and the placeholder is a neutral one — matching the name to ThePornDB fills it in.
 
 How it works:
 - **Matching:** each performer name is matched once to a ThePornDB profile, and that link is kept.
@@ -443,11 +446,12 @@ How it works:
     Scheduler page, daily at 05:00 by default). **Match now** in Management → Maintenance → Performers runs it
     straight away.
   - Names that could be several people are listed in **Management → Maintenance → Performers**. Pick the right
-    person there (or on her profile), search ThePornDB yourself, or **Skip** the name.
+    person there (or on the performer's profile), search ThePornDB yourself, or **Skip** the name.
 - **Aliases:** names ThePornDB lists as aliases of the same person (e.g. "Luna P" for Luna Prism) are treated as
-  her. With **Server Settings → Performers → merge aliases** on, they're shown under her main name everywhere.
-  - If a name was merged wrongly, open the profile and use **Not her — split off** next to it. It's never merged
-    into her again.
+  that performer. With **Server Settings → Performers → merge aliases** on, they're shown under the main name
+  everywhere.
+  - If a name was merged wrongly, open the profile and use **Someone else — split off** next to it. It's never merged
+    into that profile again.
   - **Wrong person?** picks a different profile.
 - **Not too fast:** the app sends ThePornDB at most one request a second. If ThePornDB still says "too many
   requests", the app waits as long as it asks, retries, and stays slower until it restarts.
@@ -458,11 +462,11 @@ How it works:
   third to two thirds smaller than the JPEG/PNG ThePornDB sends. Photos saved before 2.15.0: **Maintenance →
   Performers → Convert photos to WebP** converts them all once (in the background, on Tasks; it can be stopped
   and run again later — finished ones stay converted). Its result says how much space it freed.
-- **Her photos** on the profile change by themselves every few seconds; to look through them yourself use the
+- **Photos** on the profile change by themselves every few seconds; to look through them yourself use the
   arrows on the sides, drag or swipe sideways, the dots, or ←/→ after clicking the photo. "2 / 5" shows where you are.
 - **Performers page** (sidebar → Performers): everyone in your videos, one card per person (names linked to the same
   ThePornDB profile together). Performers matched to ThePornDB always come first, then the others under "Not on
-  ThePornDB" with a grey placeholder (female by default; on their page **Placeholder: Female / Male** switches it,
+  ThePornDB" with a grey placeholder (a neutral one until a gender is set; on their page **Gender: Female / Male / Trans** sets it,
   for people with the Performers permission). Find by name, sort by number of videos, name or **Favourites** (yours
   first, then most videos; the arrow button puts them last), either way (the arrow button), or show only one group —
   **♥ Favourites** shows only your favourite performers (♥ before their names). The choice is remembered in this browser.
@@ -474,8 +478,8 @@ How it works:
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture
   from your computer next to ThePornDB's — pick it or drop it on the panel; **Replace photo** swaps it (after asking). It's converted to WebP like the
   others (JPEG, PNG, WebP, GIF, BMP, TIFF; 30 MB at most; iPhone HEIC isn't readable — export it as JPEG). **Show
-  first** makes one her main photo (also on similar-performer cards); **Unset first** puts ThePornDB's first again.
-  They're kept when her profile refreshes, saved in the app's `data/performer_photos` folder, and included in every
+  first** makes one the main photo (also on similar-performer cards); **Unset first** puts ThePornDB's first again.
+  They're kept when the profile refreshes, saved in the app's `data/performer_photos` folder, and included in every
   backup (they can't be downloaded again). Performers not on ThePornDB can have photos too (the first one replaces
   their placeholder); if they're matched to ThePornDB later, their photos move to the profile.
 
@@ -496,6 +500,29 @@ most recently. Each user has their own history.
 ### Help
 **Help** (sidebar) has this guide, the changelog and **About**: the version, **Check now** for updates, a
 prefilled bug-report link, server details and the license.
+
+### Language
+**My Settings → Language** sets the language of the interface for your account — on every device you sign in on.
+**The server's default** follows what the admin chose; texts a language doesn't have yet show in English. Video
+titles, names, tags and descriptions always stay as they are. The sign-in page has its own small language list
+(🌐) at the bottom, for that browser.
+
+Languages written right to left mirror the whole layout: the sidebar moves to the right, buttons and lists read
+right to left. The player, its seekbar, the frames under it, charts and the duration slider stay left to right,
+like time does.
+
+**For admins** (the same tab):
+- **Get languages from GitHub** lists the languages published with the app, with how much of each is translated.
+  **Install** / **Update** downloads one; the server checks its size and SHA-256 against GitHub's list and every
+  text in it before installing it. Nothing from a language file can run or change the page: texts are shown as
+  plain text, and an entry whose `{placeholders}` don't match the English is ignored.
+- **Install from a file…** installs a language file from this computer (no internet needed; also to try a
+  translation before publishing it). The same checks apply; afterwards you see which texts were left in English
+  and why.
+- **Default language** is the one for the sign-in page and for accounts that keep “The server's default”.
+- **Remove** uninstalls one. Installed languages are in `data/languages` and are part of every backup.
+
+Making or updating a translation (with an AI model, too): [languages/TRANSLATING.md](../languages/TRANSLATING.md).
 
 ## Management
 
@@ -591,7 +618,7 @@ videos get "PMV", and that's the spelling shown).
 With **Remember** (on by default) the misspelling is also kept as a fix, so it shows corrected when it turns up again
 on a new download or a sync (**Remembered fixes** lists them; **Forget** stops that without changing any video).
 **Possible typos** suggests names only a letter or two apart (numbers that differ, like "Vol 2" / "Vol 3", aren't
-suggested) — merge either way, or mark them as different. A performer's ThePornDB link moves with her name.
+suggested) — merge either way, or mark them as different. A performer's ThePornDB link moves with the name.
 
 **Bulk edit:** in the library, **Select** (next to the layout buttons), click videos to pick them (or **Select this
 page**; picks are kept across pages), then **Add to playlists…** (tick one or more playlists, or make a new one with
@@ -730,11 +757,30 @@ Changing any of them makes the next scan compare everything again.
 ## Backups
 
 **Management → Backups → Create backup now** saves the library database and your settings into a zip file
-(default folder `data/backups`). You can also include:
-- the **thumbnail / preview cache** (can be large)
-
-Performer photos and playlist covers are always included (they can't be downloaded again).
+(default folder `data/backups`). The installed languages, the performer photos you added and playlist covers are
+always included (they can't be downloaded again). Each of these can be added, and the page shows how many files and
+how much space each one is before you choose:
 - **secrets**: the encrypted credentials (with their key) and extensions' saved sign-ins. Keep such backups private.
+- **ThePornDB performer photos**, **thumbnails, previews and details files**, **video frames**, **seekbar previews**
+  (all can be made or downloaded again; including them saves that time after a restore).
+- **the videos — the whole library**: needs as much free space as the library itself and takes long; the page asks a
+  second time before including them.
+
+Under the choices the page shows the backup's estimated size and the **free space where backups go**, updated every
+few seconds; **Create backup now** is off while it wouldn't fit. Clicking it lists exactly what the backup will hold
+and asks to confirm. The backup then runs in the background — **Tasks** shows the whole job and the step it's on,
+each with its own bar — and a notification says how it went. It's checked again right before it starts (also for
+scheduled backups: one that wouldn't fit fails at once and says why), and it stops by itself, removing the
+unfinished file, if the disk fills up while it's being written. Pictures and videos are stored as they are (they're
+compressed already), so a backup with the videos is about as big as the videos.
+
+**Split into parts:** **Split big backups into parts** (same panel) writes any backup bigger than the size you set
+as numbered parts — `name.zip.001`, `name.zip.002`, … — of at most that size: 3.9 GB (the buttons: one Telegram
+file) up to 115 GB (one 128 GB flash drive). It applies to scheduled backups too. The list shows such a backup once,
+with its number of parts; **Download** offers each part, and Test, Restore and Delete take all of them. Keep the parts
+together in one folder: 7-Zip opens the whole backup from the `.001` part, and Setup restores it when you choose the
+`.001` file. (Joining them gives the plain zip: `copy /b name.zip.0* name.zip` on Windows, `cat name.zip.0* > name.zip`
+elsewhere.) A flash drive formatted FAT32 can't hold files over 4 GB — use exFAT or NTFS for bigger parts.
 
 A weekly backup is a built-in System job on the Scheduler page; only the newest 10 backups are kept
 (`backup.keep` in `config.yaml`).
@@ -749,7 +795,8 @@ include secrets or are copied off the computer.
 **Restore test:** right after each backup is made, and with **Test** next to any backup, the app opens it like a
 restore would — without changing anything — and checks that every file in the zip is intact, everything listed is
 there and restores inside the app's folders, the database passes SQLite's integrity check (with its number of
-videos, users and playlists), the settings can be read, and this version of the app can restore it. The result shows next to the backup; a failure is also
+videos, users and playlists), the settings can be read, and this version of the app can restore it. The videos of a
+backup that has them are checked by their sizes, not read back (that would take as long again). The result shows next to the backup; a failure is also
 a notification. A **Restore test of the newest backup** job can be added on the Scheduler page.
 
 ### Restoring
@@ -757,8 +804,11 @@ a notification. A **Restore test of the newest backup** job can be added on the 
 **What a backup holds:** the library database (videos, their details and your edits, users, roles and groups,
 playlists, watch history, stats, notifications), `config.yaml`, the settings changed in the app
 (`data/settings_overrides.json`) and the performer photos you added. Optionally the **secrets** (credentials, their key, site sign-ins)
-and the **cache** (thumbnails and previews). **Never the video files themselves** — keep a copy of the download
-folder yourself (another drive, a NAS).
+the pictures (thumbnails, previews, frames, seekbar previews, ThePornDB photos), and the **video files** when
+"The videos" was ticked. Without them, keep a copy of the download folder yourself (another drive, a NAS). Restoring
+a backup with the videos puts them back into the videos folder — the one you pick for this computer when it
+differs — and skips the ones already there. Restoring a password-protected backup that the saved password opens
+doesn't make a decrypted copy first any more (3.7.0), so it needs no extra space.
 
 **How a restore works:** click **Restore** next to a backup, then restart the app (`start.bat` or `run.py`). Until
 the restart nothing changes, and **Cancel the restore** on the Backups page calls it off. At the start the backup is

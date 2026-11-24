@@ -2,6 +2,7 @@
 // Currently Playing (2.20.0, permission live.view): the videos someone is playing
 // right now, so people see what others enjoy. Only the videos -- never who
 // plays them, where they are in them or since when. Updates by itself.
+import { t } from "../lib/i18n.js";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import VideoCard from "../components/VideoCard.vue";
 import { api } from "../lib/api.js";
@@ -16,7 +17,7 @@ async function load() {
   if (busy) { again = true; return; }
   busy = true;
   try { items.value = (await api("/api/now-playing")).items; error.value = ""; }
-  catch (err) { error.value = err.message || "Could not load what's playing"; }
+  catch (err) { error.value = err.message || t("Could not load what's playing"); }
   finally {
     busy = false;
     if (again) { again = false; load(); }
@@ -32,21 +33,20 @@ onBeforeUnmount(() => { stopLive(); clearInterval(poll); });
   <div class="page">
     <header class="page-head">
       <div>
-        <h1>Currently Playing</h1>
-        <p>Videos being played right now — see what others are into. It updates by itself; it never shows who is
-          watching, where they are in the video or since when.</p>
+        <h1>{{ $t("Currently Playing") }}</h1>
+        <p>{{ $t("Videos being played right now — see what others are into. It updates by itself; it never shows who is watching, where they are in the video or since when.") }}</p>
       </div>
     </header>
 
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!items" class="grid"><div v-for="n in 3" :key="n" class="skeleton" style="aspect-ratio: 16 / 12; border-radius: var(--radius-lg)" /></div>
     <template v-else-if="items.length">
-      <p class="count muted">{{ items.length }} {{ items.length === 1 ? "video" : "videos" }} playing</p>
+      <p class="count muted">{{ $tn("{n} video playing", "{n} videos playing", items.length) }}</p>
       <TransitionGroup name="np" tag="div" class="grid">
         <div v-for="v in items" :key="v.id" class="np-item"><VideoCard :item="v" /></div>
       </TransitionGroup>
     </template>
-    <div v-else class="card empty"><div class="empty-icon">📺</div><p>Nothing is playing right now. Videos show up here as soon as someone plays one.</p></div>
+    <div v-else class="card empty"><div class="empty-icon">📺</div><p>{{ $t("Nothing is playing right now. Videos show up here as soon as someone plays one.") }}</p></div>
   </div>
 </template>
 

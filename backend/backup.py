@@ -22,8 +22,22 @@ zip -- 7-Zip / WinRAR open it with that password. Only backup_info.json
 (version, date, what's inside) stays readable without it, so the Backups page
 can list it. Restoring an encrypted backup first writes a decrypted copy to
 data/restore_staged.zip, which the next start applies and deletes.
+
+What's in it (3.7.0): the database, settings, installed languages, own performer photos
+and playlist covers always; PARTS can be added one by one (secrets, ThePornDB photos,
+thumbnails & previews, video frames, seekbar previews, and the videos themselves).
+plan_backup() counts each beforehand -- files, size, and the free space where backups
+go -- so the Backups page can show it and ask first, and a backup that wouldn't fit
+isn't started. Pictures and videos are stored, not compressed (they're compressed already).
+
+Split backups (3.7.0): with backup.split_gb set (3.9-115 GB), a backup bigger than that is
+written as numbered parts -- name.zip.001, name.zip.002, ... (backend/split_file.py): one
+normal zip cut into pieces, which 7-Zip opens from the .001 part. The app lists, tests,
+restores and deletes the parts together under the backup's name (name.zip).
 """
 from __future__ import annotations
+from .i18n import L
+from .split_file import SplitFile, base_of, part_path, parts_of
 
 import json
 import re
@@ -32,6 +46,7 @@ import sqlite3
 import tempfile
 import time
 import zipfile
+import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
@@ -76,17 +91,40 @@ def set_password(password: Optional[str]) -> None:
     """Save (or with "" / None: remove) the password new backups are protected with."""
     password = password or ""
     if password and len(password) < MIN_PASSWORD:
-        raise ValueError(f"Use at least {MIN_PASSWORD} characters")
+        raise ValueError(L('Use at least {n} characters', n=MIN_PASSWORD))
     if password and pyzipper is None:
         raise ValueError(_NEEDS_PYZIPPER)
     from . import secrets_store
     secrets_store.write({"backup_password": password})
 
 
+SPLIT_MIN_GB, SPLIT_MAX_GB = 3.9, 115.0  # Telegram's largest file .. a 128 GB flash drive
+
+
+def files_of(path: Path) -> list[Path]:
+    """The file(s) of a backup: name.zip itself, or its parts name.zip.001, .002, ..."""
+    path = base_of(Path(path))
+    return [path] if path.is_file() else parts_of(path)
+
+
+def exists(path: Path) -> bool:
+    return bool(files_of(path))
+
+
+def _zip(path: Path, cls=zipfile.ZipFile):
+    """A backup opened for reading, split into parts or not."""
+    path = base_of(Path(path))
+    if path.is_file():
+        return cls(path)
+    zf = cls(SplitFile(path, "r"))
+    zf._filePassed = 0  # closing the zip closes the parts too
+    return zf
+
+
 def _open(path: Path, password: Optional[str] = None):
     if pyzipper is None:
-        return zipfile.ZipFile(path)
-    zf = pyzipper.AESZipFile(path)
+        return _zip(path)
+    zf = _zip(path, pyzipper.AESZipFile)
     if password:
         zf.setpassword(password.encode("utf-8"))
     return zf
@@ -107,15 +145,21 @@ def _read(zf, arc: str) -> bytes:
 def _unlock(path: Path, password: Optional[str] = None):
     """(open zip, manifest or None) -- opened with the password given, else the
     saved one; PasswordNeeded when neither opens it. Plain zips need none."""
+    zf, manifest, _pw = _unlock_with(path, password)
+    return zf, manifest
+
+
+def _unlock_with(path: Path, password: Optional[str] = None):
+    """_unlock, plus the password that opened it (None: none needed)."""
     tries = [p for p in dict.fromkeys([password, saved_password()]) if p] or [None]
     for pw in tries:
         zf = _open(path, pw)
         try:
-            return zf, json.loads(_read(zf, MANIFEST))
+            return zf, json.loads(_read(zf, MANIFEST)), pw
         except PasswordNeeded:
             zf.close()
         except (KeyError, json.JSONDecodeError):
-            return zf, None
+            return zf, None, pw
         except Exception:
             zf.close()
             raise
@@ -135,114 +179,295 @@ def _arcname_for(path: Path) -> tuple[str, dict]:
         return f"external/{safe}", {"abs": str(path)}
 
 
-def create_backup(settings, *, include_cache: bool, include_secrets: bool, trigger: str,
-                  progress: Optional[Callable[..., None]] = None, password: Optional[str] = None) -> dict:
+# --------------------------------------------------------------- what goes in (3.7.0)
+# key -> label; the order is the order they're written (and shown)
+PARTS = {
+    "secrets": L("Secrets (credentials and extensions' sign-ins)"),
+    "performer_photos": L("ThePornDB performer photos"),
+    "thumbnails": L("Thumbnails, previews and details files"),
+    "frames": L("Video frames"),
+    "storyboards": L("Seekbar previews"),
+    "videos": L("The videos (the whole library)"),
+}
+CACHE_PARTS = ("performer_photos", "thumbnails", "frames", "storyboards")  # what "include_cache" meant before
+_STORED = {".mp4", ".m4v", ".mkv", ".webm", ".mov", ".avi", ".webp", ".jpg", ".jpeg", ".png", ".gif", ".zip"}
+SPACE_MARGIN = 200 * 1024 * 1024  # kept free on top of the estimate
+
+
+def parts_from(include=None, include_cache: bool = False, include_secrets: bool = False) -> set[str]:
+    """The optional parts asked for -- a list of PARTS keys, or the older two switches."""
+    if include is not None:
+        return {k for k in include if k in PARTS}
+    return (set(CACHE_PARTS) if include_cache else set()) | ({"secrets"} if include_secrets else set())
+
+
+def _files(folder: Path, *, skip_dirs: tuple = ()) -> list[Path]:
+    if not folder.is_dir():
+        return []
+    out = []
+    for f in folder.rglob("*"):
+        rel = f.relative_to(folder).parts
+        if rel and rel[0] in skip_dirs:
+            continue
+        if f.is_file() and not f.name.endswith(".part"):
+            out.append(f)
+    return out
+
+
+def _library_videos(settings) -> list[Path]:
+    """The video (and funscript) files the library points to, that exist."""
+    out = []
+    try:
+        con = sqlite3.connect(f"file:{settings.library_db_file}?mode=ro", uri=True)
+        try:
+            rows = con.execute("SELECT data FROM library_items").fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return out
+    for (data,) in rows:
+        try:
+            d = json.loads(data)
+        except (TypeError, ValueError):
+            continue
+        for key in ("video_path", "funscript_path"):
+            if d.get(key):
+                f = Path(d[key])
+                f = f if f.is_absolute() else (ROOT_DIR / f)
+                if f.is_file():
+                    out.append(f.resolve())
+    return sorted(set(out))
+
+
+def _collect(settings) -> dict[str, list[tuple[Path, str]]]:
+    """Every file a backup can hold: group -> [(path, entry kind)]. "always" is always in."""
+    from . import secrets_store
+    data_dir = settings.library_db_file.parent
+    always: list[tuple[Path, str]] = []
+    for p in (ROOT_DIR / "config.yaml", ROOT_DIR / "data" / "settings_overrides.json"):
+        if p.is_file():
+            always.append((p, "settings"))
+    always += [(p, "settings") for p in sorted((ROOT_DIR / "data" / "languages").glob("*.json"))]
+    for folder in ("performer_photos", "playlist_covers"):  # can't be downloaded again
+        always += [(f, "photos") for f in sorted((data_dir / folder).glob("*")) if f.is_file()]
+    secrets = [(p, "secrets") for p in (secrets_store.DB_FILE, secrets_store.KEY_FILE, ROOT_DIR / ".env") if p.is_file()]
+    secrets += [(f, "secrets") for f in _files(settings.session_dir)]
+    cache = settings.cache_dir
+    return {
+        "always": always,
+        "secrets": secrets,
+        "performer_photos": [(f, "cache") for f in _files(data_dir / "performers")],
+        "thumbnails": [(f, "cache") for f in _files(cache, skip_dirs=(".storyboards", ".frames", ".transcode", ".incoming"))],
+        "frames": [(f, "cache") for f in _files(cache / ".frames")],
+        "storyboards": [(f, "cache") for f in _files(cache / ".storyboards")],
+        "videos": [(f, "video") for f in _library_videos(settings)],
+    }
+
+
+def _bytes(files) -> int:
+    total = 0
+    for f, _kind in files:
+        try:
+            total += f.stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+def free_space(settings) -> dict:
+    """Free space where backups are written (live: the Backups page asks every few seconds)."""
+    folder = settings.backup_dir
+    probe = folder
+    while not probe.exists() and probe.parent != probe:
+        probe = probe.parent
+    try:
+        usage = shutil.disk_usage(probe)
+        return {"dir": str(folder), "free_bytes": usage.free, "total_bytes": usage.total}
+    except OSError:
+        return {"dir": str(folder), "free_bytes": None, "total_bytes": None}
+
+
+def plan_backup(settings, include=(), collected: Optional[dict] = None) -> dict:
+    """What a backup with `include` would hold: every part with its files and size (the ones
+    not asked for too, so the page can offer them), the estimated zip size, and whether it fits.
+    BLOCKING (walks the cache folder) -- run in a worker thread."""
+    collected = collected or _collect(settings)
+    include = parts_from(include)
+    db_size = settings.library_db_file.stat().st_size if settings.library_db_file.is_file() else 0
+    always = _bytes(collected["always"])
+    parts = []
+    for key, label in PARTS.items():
+        files = collected[key]
+        parts.append({"key": key, "label": label, "files": len(files), "bytes": _bytes(files), "included": key in include})
+    chosen = sum(p["bytes"] for p in parts if p["included"])
+    # the database shrinks to about a third in a zip; pictures and videos stay their size
+    estimate = db_size // 3 + always + chosen
+    space = free_space(settings)
+    needed = estimate + SPACE_MARGIN
+    return {
+        "always": {"database_bytes": db_size, "files": len(collected["always"]) + 1, "bytes": always + db_size,
+                   "languages": sum(1 for f, _k in collected["always"] if f.parent.name == "languages"),
+                   "photos": sum(1 for f, _k in collected["always"] if f.parent.name == "performer_photos"),
+                   "covers": sum(1 for f, _k in collected["always"] if f.parent.name == "playlist_covers")},
+        "parts": parts, "include": sorted(include), "estimate_bytes": estimate, "needed_bytes": needed,
+        "margin_bytes": SPACE_MARGIN,
+        **space, "enough": space["free_bytes"] is None or space["free_bytes"] >= needed,
+    }
+
+
+class NotEnoughSpace(RuntimeError):
+    pass
+
+
+def space_problem(plan: dict) -> Optional[str]:
+    if plan["enough"]:
+        return None
+    gb = lambda n: f"{n / 1024 ** 3:.1f} GB" if n >= 1024 ** 3 else f"{n / 1024 ** 2:.0f} MB"  # noqa: E731
+    return L("Not enough free space for this backup: it needs about {needed}, {free} is free in {folder}",
+             needed=gb(plan["needed_bytes"]), free=gb(plan["free_bytes"]), folder=plan["dir"])
+
+
+def create_backup(settings, *, include=None, include_cache: bool = False, include_secrets: bool = False,
+                  trigger: str, progress: Optional[Callable[..., None]] = None, password: Optional[str] = None) -> dict:
     """BLOCKING -- run in a worker thread. Returns the new backup's summary.
-    progress(stage, done=None, total=None) reports what it's doing (Tasks page).
-    With a password: an AES-256 encrypted zip (see the module docstring)."""
+    `include`: PARTS keys (3.7.0); without it the older include_cache / include_secrets.
+    progress(stage, done, total, step=, steps=, bytes_done=, bytes_total=) reports what it's
+    doing (Tasks page: each step and the whole). With a password: an AES-256 encrypted zip
+    (see the module docstring). NotEnoughSpace before anything is written when it wouldn't
+    fit, or while writing when the disk gets close to full (the partial file is removed)."""
     progress = progress or (lambda *a, **k: None)
     if password and pyzipper is None:
         raise RuntimeError(_NEEDS_PYZIPPER)
     from .app_info import APP_VERSION  # local import: avoids import cycle at startup
 
+    parts = parts_from(include, include_cache, include_secrets)
+    progress(L("Checking what goes in and the free space"))
+    collected = _collect(settings)
+    plan = plan_backup(settings, parts, collected)
+    problem = space_problem(plan)
+    if problem:
+        raise NotEnoughSpace(problem)
+
     dest_dir = settings.backup_dir
+    dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"pmvnexus_backup_{stamp}.zip"
     n = 1
-    while (dest_dir / name).exists():
+    while exists(dest_dir / name):
         name = f"pmvnexus_backup_{stamp}_{n}.zip"
         n += 1
     target = dest_dir / name
     partial = target.with_suffix(".zip.part")
+    split = settings.backup.split_bytes()  # None: one file
     entries: list[dict] = []
+    # the steps, in order: (stage text, files)
+    steps: list[tuple[str, list]] = [(L("Copying the database"), []), (L("Adding the settings and own pictures"), collected["always"])]
+    steps += [(PARTS[k], collected[k]) for k in PARTS if k in parts]
+    total_bytes = plan["always"]["bytes"] + sum(p["bytes"] for p in plan["parts"] if p["included"])
+    state = {"bytes": 0}
 
-    with tempfile.TemporaryDirectory() as tmp:
-        progress("Copying the database")
-        db_copy = Path(tmp) / "library.db"
-        src = sqlite3.connect(f"file:{settings.library_db_file}?mode=ro", uri=True)
-        dst = sqlite3.connect(str(db_copy))
-        try:
-            src.backup(dst)
-        finally:
-            dst.close()
-            src.close()
+    def report(i: int, done=None, total=None):
+        progress(steps[i][0], done, total, step=i + 1, steps=len(steps), bytes_done=state["bytes"], bytes_total=total_bytes)
 
-        if password:
-            zf = pyzipper.AESZipFile(partial, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
-            zf.setpassword(password.encode("utf-8"))
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            report(0)
+            db_copy = Path(tmp) / "library.db"
+            src = sqlite3.connect(f"file:{settings.library_db_file}?mode=ro", uri=True)
+            dst = sqlite3.connect(str(db_copy))
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+                src.close()
+
+            out = SplitFile(partial, "w", part_size=split) if split else partial
+            if password:
+                zf = pyzipper.AESZipFile(out, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
+                zf.setpassword(password.encode("utf-8"))
+            else:
+                zf = zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6)
+            if split:
+                zf._filePassed = 0  # closing the zip closes the parts too
+            with zf:
+                def add(path: Path, source: Optional[Path] = None, kind: str = "file", part: Optional[str] = None) -> None:
+                    arc, where = _arcname_for(path)
+                    stored = path.suffix.lower() in _STORED
+                    zf.write(source or path, arc, compress_type=zipfile.ZIP_STORED if stored else None)
+                    size = (source or path).stat().st_size
+                    entry = {"arc": arc, "kind": kind, **where, "size": size}
+                    if part:
+                        entry["part"] = part
+                    entries.append(entry)
+                    state["bytes"] += size
+
+                def check_space() -> None:
+                    free = free_space(settings)["free_bytes"]
+                    if free is not None and free < SPACE_MARGIN // 2:
+                        raise NotEnoughSpace(L("The disk the backups go to is almost full -- the backup was stopped"))
+
+                add(settings.library_db_file, db_copy, kind="database")
+                keys = [None, None] + [k for k in PARTS if k in parts]
+                for i in range(1, len(steps)):
+                    files = steps[i][1]
+                    report(i, 0, len(files))
+                    for n, (f, kind) in enumerate(files, 1):
+                        try:
+                            add(f, kind=kind, part=keys[i])
+                        except FileNotFoundError:  # gone since it was counted (e.g. a preview remade)
+                            continue
+                        if n % 25 == 0 or n == len(files) or kind == "video":
+                            report(i, n, len(files))
+                            check_space()
+
+                manifest = {
+                    "app_version": APP_VERSION, "created_at": time.time(), "trigger": trigger,
+                    "root": str(ROOT_DIR),  # where relative folders were, for finding the files on another computer (2.25.1)
+                    "include": sorted(parts), "include_cache": any(k in parts for k in CACHE_PARTS),
+                    "include_secrets": "secrets" in parts, "include_videos": "videos" in parts, "entries": entries,
+                }
+                zf.writestr(MANIFEST, json.dumps(manifest, indent=2))
+        if password:  # what the Backups page shows, readable without the password
+            info = {k: v for k, v in manifest.items() if k != "entries"}
+            out = SplitFile(partial, "r+", part_size=split) if split else partial
+            with zipfile.ZipFile(out, "a", compression=zipfile.ZIP_DEFLATED) as zf:
+                if split:
+                    zf._filePassed = 0
+                zf.writestr(INFO, json.dumps({**info, "encrypted": True}, indent=2))
+            manifest = {**manifest, "encrypted": True}
+        if not split:
+            partial.replace(target)
         else:
-            zf = zipfile.ZipFile(partial, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6)
-        with zf:
-            def add(path: Path, source: Optional[Path] = None, kind: str = "file") -> None:
-                arc, where = _arcname_for(path)
-                zf.write(source or path, arc)
-                entries.append({"arc": arc, "kind": kind, **where})
-
-            progress("Compressing the database")
-            add(settings.library_db_file, db_copy, kind="database")
-            for p in (ROOT_DIR / "config.yaml", ROOT_DIR / "data" / "settings_overrides.json"):
-                if p.is_file():
-                    add(p, kind="settings")
-            if include_secrets:
-                # Encrypted credential store + its key (they only work together),
-                # plus a legacy .env if one is still around.
-                from . import secrets_store
-                for p in (secrets_store.DB_FILE, secrets_store.KEY_FILE, ROOT_DIR / ".env"):
-                    if p.is_file():
-                        add(p, kind="secrets")
-                if settings.session_dir.is_dir():
-                    for f in settings.session_dir.rglob("*"):
-                        if f.is_file():
-                            add(f, kind="secrets")
-            # Performer photos added by hand (2.16.0) and playlist cover images (2.18.0):
-            # they can't be downloaded again, so always kept.
-            for folder in ("performer_photos", "playlist_covers"):
-                custom_dir = settings.library_db_file.parent / folder
-                if custom_dir.is_dir():
-                    for f in custom_dir.iterdir():
-                        if f.is_file():
-                            add(f, kind="photos")
-            if include_cache and settings.cache_dir.is_dir():
-                cached = [f for f in settings.cache_dir.rglob("*") if f.is_file()]
-                # ThePornDB photos (3.2.0: data/performers, was cache/performers): they can be
-                # downloaded again, so they come along with the cache like before.
-                tpdb_photos = settings.library_db_file.parent / "performers"
-                if tpdb_photos.is_dir():
-                    cached += [f for f in tpdb_photos.iterdir() if f.is_file()]
-                for n, f in enumerate(cached, 1):
-                    add(f, kind="cache")
-                    if n % 25 == 0 or n == len(cached):
-                        progress("Adding thumbnails and previews", n, len(cached))
-
-            manifest = {
-                "app_version": APP_VERSION, "created_at": time.time(), "trigger": trigger,
-                "root": str(ROOT_DIR),  # where relative folders were, for finding the files on another computer (2.25.1)
-                "include_cache": include_cache, "include_secrets": include_secrets, "entries": entries,
-            }
-            zf.writestr(MANIFEST, json.dumps(manifest, indent=2))
-    if password:  # what the Backups page shows, readable without the password
-        info = {k: v for k, v in manifest.items() if k != "entries"}
-        with zipfile.ZipFile(partial, "a", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(INFO, json.dumps({**info, "encrypted": True}, indent=2))
-        manifest = {**manifest, "encrypted": True}
-    partial.replace(target)
+            parts = parts_of(partial)
+            if len(parts) == 1:  # it fit in one: a plain name.zip
+                parts[0].replace(target)
+            else:
+                for i, part in enumerate(parts, 1):
+                    part.replace(part_path(target, i))
+    except BaseException:
+        partial.unlink(missing_ok=True)  # never leave half a backup behind
+        for part in parts_of(partial):
+            part.unlink(missing_ok=True)
+        raise
     prune_backups(settings)
     return _summary(target, manifest)
 
 
 def _summary(path: Path, manifest: Optional[dict] = None) -> dict:
-    st = path.stat()
-    info = {"name": path.name, "size_bytes": st.st_size, "created_at": st.st_mtime}
+    path = base_of(Path(path))
+    files = files_of(path)
+    info = {"name": path.name, "size_bytes": sum(f.stat().st_size for f in files), "created_at": files[0].stat().st_mtime,
+            "parts": len(files) if files[0] != path else 0, "part_sizes": [f.stat().st_size for f in files] if files[0] != path else []}
     if manifest is None:
         try:
-            with zipfile.ZipFile(path) as zf:
+            with _zip(path) as zf:
                 if INFO in zf.namelist():
                     manifest = {**json.loads(zf.read(INFO)), "encrypted": True}
                 else:
                     manifest = json.loads(zf.read(MANIFEST))
         except (KeyError, zipfile.BadZipFile, json.JSONDecodeError, OSError, RuntimeError, NotImplementedError):
             manifest = {}
-    info.update({k: manifest.get(k) for k in ("app_version", "trigger", "include_cache", "include_secrets")})
+    info.update({k: manifest.get(k) for k in ("app_version", "trigger", "include_cache", "include_secrets", "include_videos", "include")})
     if manifest.get("created_at"):
         info["created_at"] = manifest["created_at"]
     info["encrypted"] = bool(manifest.get("encrypted"))
@@ -252,21 +477,27 @@ def _summary(path: Path, manifest: Optional[dict] = None) -> dict:
 
 
 def list_backups(settings) -> list[dict]:
-    files = [p for p in settings.backup_dir.iterdir() if p.is_file() and BACKUP_NAME_RE.match(p.name)]
-    return sorted((_summary(p) for p in files), key=lambda b: b["created_at"], reverse=True)
+    names = set()
+    for p in settings.backup_dir.iterdir():
+        if p.is_file():
+            base = base_of(p)  # the parts of a split backup count once, by name.zip
+            if BACKUP_NAME_RE.match(base.name) and (base == p or p.name.endswith(".001")):
+                names.add(base)
+    return sorted((_summary(p) for p in names), key=lambda b: b["created_at"], reverse=True)
 
 
 def resolve_backup(settings, name: str) -> Path:
     if not BACKUP_NAME_RE.match(name or ""):
-        raise ValueError("Invalid backup name")
+        raise ValueError(L('Invalid backup name'))
     path = settings.backup_dir / name
-    if not path.is_file():
+    if not exists(path):
         raise FileNotFoundError(name)
     return path
 
 
 def delete_backup(settings, name: str) -> None:
-    resolve_backup(settings, name).unlink()
+    for f in files_of(resolve_backup(settings, name)):
+        f.unlink()
 
 
 def prune_backups(settings) -> int:
@@ -274,7 +505,8 @@ def prune_backups(settings) -> int:
     removed = 0
     for b in backups[settings.backup.keep:]:
         try:
-            (settings.backup_dir / b["name"]).unlink()
+            for f in files_of(settings.backup_dir / b["name"]):
+                f.unlink()
             removed += 1
         except OSError:
             pass
@@ -307,22 +539,29 @@ def stage_restore_file(path: Path, password: Optional[str] = None,
     """Stages any backup zip (e.g. `run.py --restore <zip>` on a new install, 2.25.0).
     A password-protected one is decrypted now into STAGED_FILE (PasswordNeeded
     if the password -- given or saved -- doesn't open it), so the next start
-    needs no password."""
-    path = Path(path).resolve()
-    if not path.is_file():
+    needs no password -- unless the saved password opens it (3.7.0): then the next
+    start uses that one and no copy is written. A split backup: its .001 part or name."""
+    path = base_of(Path(path).resolve())  # a split backup: its .001 part or its name
+    if not exists(path):
         raise FileNotFoundError(str(path))
     summary = _summary(path)
     problem = version_problem(summary.get("app_version"))
     if problem:
         raise ValueError(problem)
     if not summary["valid"]:
-        raise ValueError("This backup has no manifest and cannot be restored automatically")
-    source = path
+        raise ValueError(L('This backup has no manifest and cannot be restored automatically'))
+    source, with_saved = path, False
     if summary["encrypted"]:
-        zf, manifest = _unlock(path, password)
+        zf, manifest, used = _unlock_with(path, password)
         if not manifest:
             zf.close()
-            raise ValueError("This backup has no manifest and cannot be restored automatically")
+            raise ValueError(L('This backup has no manifest and cannot be restored automatically'))
+        with_saved = bool(used) and used == saved_password()
+    if summary["encrypted"] and with_saved:
+        # (3.7.0) The saved password opens it: the next start opens it with that password,
+        # so no decrypted copy (as big as the backup, videos and all) is written first.
+        zf.close()
+    elif summary["encrypted"]:
         part = STAGED_FILE.with_suffix(".zip.part")
         part.parent.mkdir(parents=True, exist_ok=True)
         with zf, zipfile.ZipFile(part, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as out:
@@ -337,7 +576,8 @@ def stage_restore_file(path: Path, password: Optional[str] = None,
         source = STAGED_FILE
     PENDING_RESTORE_FILE.parent.mkdir(parents=True, exist_ok=True)
     PENDING_RESTORE_FILE.write_text(json.dumps({"zip": str(source), "name": path.name, "staged_at": time.time(),
-                                                "decrypted_copy": source == STAGED_FILE}), encoding="utf-8")
+                                                "decrypted_copy": source == STAGED_FILE,
+                                                "saved_password": with_saved}), encoding="utf-8")
     return summary
 
 
@@ -382,9 +622,35 @@ def verify_backup(settings, name: str, progress: Optional[Callable[..., None]] =
         with zf:
             if _summary(path)["encrypted"]:
                 check("Opens with its password", True, "AES-256 encrypted")
-            progress("Reading every file in the backup")
-            bad = zf.testzip()
-            check("Every file in the zip is intact", bad is None, f"damaged: {bad}" if bad else f"{len(zf.namelist())} files")
+            # Every file is read back (its checksum checked) -- except the videos of a full
+            # library backup (3.7.0): reading hundreds of GB again would take as long as the
+            # backup did; their sizes are checked instead.
+            videos = {e.get("arc"): e for e in (manifest or {}).get("entries", []) if e.get("kind") == "video"}
+            infos = zf.infolist()
+            to_read = [i for i in infos if i.filename not in videos]
+            total_bytes = sum(i.file_size for i in to_read)
+            done_bytes, bad = 0, None
+            for n, info in enumerate(to_read, 1):
+                try:
+                    with zf.open(info) as f:
+                        while f.read(1024 * 1024):
+                            pass
+                except (zipfile.BadZipFile, zlib.error, EOFError) as exc:
+                    bad = f"{info.filename} ({exc})"
+                    break
+                except RuntimeError as exc:  # a protected entry
+                    if "password" in str(exc).lower():
+                        raise PasswordNeeded(wrong=bool(password)) from exc
+                    raise
+                done_bytes += info.file_size
+                if n % 25 == 0 or n == len(to_read):
+                    progress(L("Reading every file in the backup"), n, len(to_read), bytes_done=done_bytes, bytes_total=total_bytes)
+            check("Every file in the zip is intact", bad is None, f"damaged: {bad}" if bad else f"{len(to_read)} files")
+            if videos:
+                by_name = {i.filename: i for i in infos}
+                wrong = [a for a, e in videos.items() if a not in by_name or (e.get("size") is not None and by_name[a].file_size != e["size"])]
+                check("Every video is in the zip with its size", not wrong,
+                      ", ".join(wrong[:5]) if wrong else f"{len(videos)} videos (not read back, to save time)")
             if manifest is None:
                 check("Has a list of its contents (manifest)", False, "missing or unreadable")
             if manifest:
@@ -403,7 +669,7 @@ def verify_backup(settings, name: str, progress: Optional[Callable[..., None]] =
                 check("Every file restores to a safe place", not unsafe, ", ".join(map(str, unsafe[:5])))
                 db_entry = next((e for e in entries if e.get("kind") == "database"), None)
                 if check("Has the library database", db_entry is not None) and db_entry["arc"] in names:
-                    progress("Checking the database")
+                    progress(L("Checking the database"))
                     with tempfile.TemporaryDirectory() as tmp:
                         db = Path(tmp) / "test.db"
                         with zf.open(db_entry["arc"]) as src, open(db, "wb") as dst:
@@ -479,16 +745,18 @@ def restore_plan(zip_path: Path):
     from a plain (not password-protected) backup zip; None if it can't be read."""
     from . import folders
     try:
-        with zipfile.ZipFile(zip_path) as zf:
-            manifest = json.loads(zf.read(MANIFEST))
+        zf, manifest = _unlock(zip_path)  # plain, split, or opened with the saved password
+        with zf:
+            if manifest is None:
+                return None
             found: dict[str, object] = {}
             for e in manifest.get("entries", []):
                 target = _entry_target(e)
                 if target == folders.CONFIG:
                     import yaml
-                    found["config"] = yaml.safe_load(zf.read(e["arc"])) or {}
+                    found["config"] = yaml.safe_load(_read(zf, e["arc"])) or {}
                 elif target == folders.OVERRIDES:
-                    found["overrides"] = json.loads(zf.read(e["arc"]))
+                    found["overrides"] = json.loads(_read(zf, e["arc"]))
     except (OSError, KeyError, ValueError, zipfile.BadZipFile, Exception):  # noqa: BLE001 -- yaml errors too
         return None
     if "config" not in found:
@@ -509,11 +777,12 @@ def apply_pending_restore(log=print, relocate: Optional[list[tuple[str, str]]] =
     zip_path = Path(pending.get("zip", ""))
     shown = pending.get("name") or zip_path.name
     PENDING_RESTORE_FILE.unlink(missing_ok=True)  # never retry a failing restore in a loop
-    if not zip_path.is_file():
+    if not exists(zip_path):
         log(f"[restore] Backup not found, skipping: {zip_path}")
         return False
+    password = saved_password() if pending.get("saved_password") else None
     try:
-        _apply(zip_path, log, [(Path(a), Path(b)) for a, b in (relocate or []) if a != b], progress)
+        _apply(zip_path, log, [(Path(a), Path(b)) for a, b in (relocate or []) if a != b], progress, password)
     finally:
         if pending.get("decrypted_copy"):
             zip_path.unlink(missing_ok=True)  # the decrypted copy of a password-protected backup
@@ -531,11 +800,11 @@ def _moved(target: Path, relocate: list[tuple[Path, Path]]) -> Path:
 
 
 def _apply(zip_path: Path, log, relocate: list[tuple[Path, Path]],
-           progress: Optional[Callable[[int, int], None]] = None) -> None:
+           progress: Optional[Callable[[int, int], None]] = None, password: Optional[str] = None) -> None:
     skipped = 0
     unreachable: set[str] = set()
-    with zipfile.ZipFile(zip_path) as zf:
-        manifest = json.loads(zf.read(MANIFEST))
+    with _open(zip_path, password) if password else _zip(zip_path) as zf:
+        manifest = json.loads(_read(zf, MANIFEST))
         entries = manifest.get("entries", [])
         for n, entry in enumerate(entries, 1):
             if progress:
@@ -551,7 +820,9 @@ def _apply(zip_path: Path, log, relocate: list[tuple[Path, Path]],
                 skipped += 1
                 unreachable.add(str(target.parent))
                 continue
-            keep_old = entry.get("kind") != "cache"
+            if entry.get("kind") == "video" and target.is_file() and entry.get("size") == target.stat().st_size:
+                continue  # (3.7.0) the same video is already there
+            keep_old = entry.get("kind") not in ("cache", "video")
             if target.exists() and keep_old:
                 shutil.move(str(target), str(target) + ".pre-restore")
             if entry.get("kind") == "database":

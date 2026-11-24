@@ -1,6 +1,9 @@
 <script setup>
 // Inline SVG icons (stroke style), so nothing is loaded from a CDN.
 defineProps({ name: { type: String, required: true }, size: { type: [Number, String], default: 18 } });
+// Icons that point a way are mirrored in right-to-left languages (3.7.0; base.css .flip-rtl).
+// Play / skip keep their direction, as media controls do everywhere.
+const FLIP = new Set(["left", "right", "back", "logout", "external", "sidebar", "list", "playlist", "sortAsc", "sortDesc"]);
 const PATHS = {
   library: '<rect x="2" y="3" width="20" height="18" rx="2.5"/><path d="M7 3v18M17 3v18M2 12h20M2 7.5h5M2 16.5h5M17 7.5h5M17 16.5h5"/>',
   dice: '<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/>',
@@ -71,7 +74,7 @@ const PATHS = {
 
 <template>
   <svg :style="{ width: `${size / 16}rem`, height: `${size / 16}rem` }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon" v-html="PATHS[name] || ''" />
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon" :class="{ 'flip-rtl': FLIP.has(name) }" v-html="PATHS[name] || ''" />
 </template>
 
 <style scoped>

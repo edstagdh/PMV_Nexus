@@ -1,0 +1,30 @@
+# Translations (3.7.0): on every push and pull request that touches texts or languages.
+#  - languages/en.json must match the texts in the code   (fix: python -m Tools.i18n extract)
+#  - no English written straight into the interface          (wrap it in $t() / t() / tn() / N_())
+#  - every languages/<code>.json is a valid language file     (bad entries are listed)
+#  - languages/manifest.json lists every file's size + SHA-256 (fix: python -m Tools.i18n manifest)
+# The app downloads languages from this repository and checks them against that manifest.
+name: Translations
+
+on:
+  push:
+    paths: ["languages/**", "ui/src/**", "backend/**", "Tools/i18n.py", ".github/workflows/translations.yml"]
+  pull_request:
+    paths: ["languages/**", "ui/src/**", "backend/**", "Tools/i18n.py", ".github/workflows/translations.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install what the checker imports
+        run: python -m pip install --quiet fastapi loguru
+      - name: Check texts, language files and the manifest
+        run: python -m Tools.i18n check

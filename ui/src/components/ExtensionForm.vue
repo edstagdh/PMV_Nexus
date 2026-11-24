@@ -2,6 +2,7 @@
 // Draws the forms an extension's action or panel returns and sends the answers
 // back, step by step, until it says it's done (2.30.0; backend/extensions.py has
 // the form format). Used by the extension dialog and Server Settings → Extensions.
+import { t } from "../lib/i18n.js";
 import { ref, onMounted } from "vue";
 import { api } from "../lib/api.js";
 
@@ -42,7 +43,7 @@ async function send(step, vals) {
   try {
     show(await api(props.endpoint, { method: "POST", body: { item_ids: props.itemIds, step, values: vals } }));
   } catch (err) {
-    error.value = err.message || "That didn't work";
+    error.value = err.message || t("That didn't work");
   } finally {
     busy.value = false;
   }
@@ -61,7 +62,7 @@ defineExpose({ submit, busy, form });
 <template>
   <div class="xf">
     <p v-if="message" class="xf-msg" :class="message.level">{{ message.text }}</p>
-    <div v-if="!form && busy" class="muted small">Loading…</div>
+    <div v-if="!form && busy" class="muted small">{{ $t("Loading…") }}</div>
     <form v-if="form" :id="'xf-' + endpoint" class="xf-form" @submit.prevent="submit">
       <h3 v-if="embedded && form.title && form.title !== heading" class="xf-title">{{ form.title }}</h3>
       <p v-if="form.description" class="help-text xf-desc">{{ form.description }}</p>
@@ -92,7 +93,7 @@ defineExpose({ submit, busy, form });
       </template>
       <p v-if="error" class="xf-msg error">{{ error }}</p>
       <div v-if="embedded" class="form-actions">
-        <button class="btn btn-primary btn-sm" :disabled="busy">{{ busy ? "Please wait…" : form.submit || "Continue" }}</button>
+        <button class="btn btn-primary btn-sm" :disabled="busy">{{ busy ? $t("Please wait…") : form.submit || $t("Continue") }}</button>
       </div>
     </form>
     <p v-else-if="error" class="xf-msg error">{{ error }}</p>

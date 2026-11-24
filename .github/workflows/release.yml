@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PYTHON_VERSION: "3.12.10"   # installed by Setup when the PC has no Python 3.11-3.14
+  PYTHON_VERSION: "3.12.10"   # installed by Setup when the PC has no Python 3.12-3.14
   WINSW_VERSION: "v2.12.0"    # Windows service wrapper (https://github.com/winsw/winsw)
 
 jobs:
@@ -41,6 +41,12 @@ jobs:
       - name: Check the Python code compiles
         shell: pwsh
         run: python -m compileall -q backend Tools run.py
+
+      - name: Translations
+        shell: pwsh
+        run: |
+          python -m pip install --quiet fastapi loguru
+          python -m Tools.i18n check
 
       - name: Fetch WinSW and the Python installer's checksum
         shell: pwsh

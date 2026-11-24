@@ -37,17 +37,17 @@ onBeforeUnmount(() => clearTimeout(timer));
 <template>
   <div class="thumb" :class="{ compact, contain }" @mouseenter="enter" @mouseleave="leave">
     <img v-if="thumb" :src="thumb" alt="" loading="lazy" decoding="async" @load="onThumbLoad">
-    <div v-else class="thumb-empty">No thumbnail</div>
+    <div v-else class="thumb-empty">{{ $t("No thumbnail") }}</div>
     <PreviewVideo v-if="(hovering || playing) && preview && !previewFailed" :src="preview" :item-id="item.id" class="thumb-preview"
                   @failed="previewFailed = $event; hovering = false" />
-    <div v-if="previewFailed && (hovering || playing)" class="preview-note">Preview {{ previewFailed }}</div>
-    <div v-if="watched" class="watched" :title="watched >= 0.95 ? 'Watched' : `Watched ${Math.round(watched * 100)}%`">
+    <div v-if="previewFailed && (hovering || playing)" class="preview-note">{{ $t("Preview {problem}", { problem: previewFailed }) }}</div>
+    <div v-if="watched" class="watched" :title="watched >= 0.95 ? $t('Watched') : $t('Watched {n}%', { n: Math.round(watched * 100) })">
       <i :style="{ width: `${Math.max(2, watched * 100)}%` }" />
     </div>
     <template v-if="!compact">
       <div class="tl">
-        <span v-if="show.gone && item.site_status === 'removed'" class="badge badge-gone" title="Gone from the site (not found during the last sync)">💀</span>
-        <span v-if="show.favorite !== false && isFavorite(item.id)" class="badge badge-fav" title="In your Favorites">♥</span>
+        <span v-if="show.gone && item.site_status === 'removed'" class="badge badge-gone" :title="$t('Gone from the site (not found during the last sync)')">💀</span>
+        <span v-if="show.favorite !== false && isFavorite(item.id)" class="badge badge-fav" :title="$t('In your Favorites')">♥</span>
         <span v-if="show.status && status" class="badge" :class="`badge-status-${status.kind}`" :title="status.detail || status.label">{{ status.label }}</span>
       </div>
       <div class="tr">
@@ -63,8 +63,8 @@ onBeforeUnmount(() => clearTimeout(timer));
       </div>
     </template>
     <template v-else>
-      <div class="tl"><span v-if="small.has('gone') && item.site_status === 'removed'" class="badge badge-gone" title="Gone from the site">💀</span><span
-        v-if="small.has('favorite') && isFavorite(item.id)" class="badge badge-fav" title="In your Favorites">♥</span></div>
+      <div class="tl"><span v-if="small.has('gone') && item.site_status === 'removed'" class="badge badge-gone" :title="$t('Gone from the site')">💀</span><span
+        v-if="small.has('favorite') && isFavorite(item.id)" class="badge badge-fav" :title="$t('In your Favorites')">♥</span></div>
       <div class="tr"><span v-if="small.has('rating') && item.ratings" class="badge" :class="tier && `badge-rating-${tier}`">★ {{ item.ratings }}</span></div>
       <div class="bottom">
         <span v-if="small.has('codec') && codec" class="badge" :class="{ 'badge-hevc': codec === 'HEVC' }">{{ codec }}</span>
@@ -81,18 +81,18 @@ onBeforeUnmount(() => clearTimeout(timer));
 .thumb img, .thumb-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .thumb-preview { animation: fade 0.2s ease; }
 .thumb.contain img, .thumb.contain .thumb-preview { object-fit: contain; background: #000; }
-.watched { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgb(255 255 255 / 0.35); z-index: 1; }
+.watched { position: absolute; inset-inline-start: 0; inset-inline-end: 0; bottom: 0; height: 4px; background: rgb(255 255 255 / 0.35); z-index: 1; }
 .watched i { display: block; height: 100%; background: var(--watched-color, #e11d2e); }
 .compact .watched { height: 3px; }
 .thumb-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-dim); font-size: 0.75rem; }
 .tl, .tr, .bottom { position: absolute; display: flex; gap: 0.25rem; }
-.tl { top: 0.375rem; left: 0.375rem; right: 40%; flex-wrap: wrap; }
-.tr { top: 0.375rem; right: 0.375rem; }
-.bottom { bottom: 0.375rem; right: 0.375rem; left: 0.375rem; justify-content: flex-end; flex-wrap: wrap-reverse; }
-.compact .bottom { bottom: 0.25rem; right: 0.25rem; left: 0.25rem; flex-wrap: nowrap; overflow: hidden; }
+.tl { top: 0.375rem; inset-inline-start: 0.375rem; inset-inline-end: 40%; flex-wrap: wrap; }
+.tr { top: 0.375rem; inset-inline-end: 0.375rem; }
+.bottom { bottom: 0.375rem; inset-inline-end: 0.375rem; inset-inline-start: 0.375rem; justify-content: flex-end; flex-wrap: wrap-reverse; }
+.compact .bottom { bottom: 0.25rem; inset-inline-end: 0.25rem; inset-inline-start: 0.25rem; flex-wrap: nowrap; overflow: hidden; }
 .compact .tl, .compact .tr { top: 0.25rem; }
 .compact .badge { height: 1.125rem; padding: 0 0.3rem; font-size: 0.625rem; }
-.preview-note { position: absolute; left: 0.375rem; right: 0.375rem; top: 50%; transform: translateY(-50%); text-align: center; font-size: 0.7rem; color: #fff; background: rgba(0, 0, 0, 0.6); border-radius: var(--radius-sm); padding: 0.25rem; pointer-events: none; }
+.preview-note { position: absolute; inset-inline-start: 0.375rem; inset-inline-end: 0.375rem; top: 50%; transform: translateY(-50%); text-align: center; font-size: 0.7rem; color: #fff; background: rgba(0, 0, 0, 0.6); border-radius: var(--radius-sm); padding: 0.25rem; pointer-events: none; }
 .badge-fav { background: rgba(0, 0, 0, 0.65); color: #f43f5e; font-size: 0.85rem; height: 1.375rem; padding: 0 0.375rem; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 .badge-gone { background: var(--gone-bg, #dc2626); color: #fff; font-size: 0.8rem; height: 1.375rem; padding: 0 0.375rem; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 .badge-status-busy { background: var(--accent); color: #fff; }

@@ -12,6 +12,7 @@ Every write notes a change "playlist:<id>" in LibraryDB, so open pages get a
 live update through /api/events like any other library change.
 """
 from __future__ import annotations
+from ..i18n import L
 
 import asyncio
 import json
@@ -71,7 +72,7 @@ class PlaylistsMixin:
     def _playlist_or_404(self, playlist_id: str) -> dict:
         row = self.db.get_playlist(playlist_id)
         if not row:
-            raise PlaylistError("Playlist not found", 404)
+            raise PlaylistError(L('Playlist not found'), 404)
         return row
 
     # Someone's Favorites belong to them alone: always private, and not shown to
@@ -152,12 +153,12 @@ class PlaylistsMixin:
         row = self._editable(playlist_id, user)
         if mode == "video":
             if not item_id or item_id not in self._playlist_ids(row):
-                raise PlaylistError("Pick one of the playlist's videos")
+                raise PlaylistError(L("Pick one of the playlist's videos"))
             self.db.update_playlist(playlist_id, {"cover_mode": "video", "cover_item": item_id})
         elif mode == "collage":
             self.db.update_playlist(playlist_id, {"cover_mode": "collage"})
         else:
-            raise PlaylistError("Unknown cover type")
+            raise PlaylistError(L('Unknown cover type'))
         if row.get("cover_path"):  # your picture isn't the cover any more: don't keep (and back up) it
             self._remove_cover_file(row["id"])
             self.db.update_playlist(playlist_id, {"cover_path": None})
@@ -171,7 +172,7 @@ class PlaylistsMixin:
         try:
             webp = await asyncio.to_thread(images.to_webp, data)
         except ValueError:
-            raise PlaylistError("That file isn't a picture the app can read (JPEG, PNG, WebP…)") from None
+            raise PlaylistError(L("That file isn't a picture the app can read (JPEG, PNG, WebP…)")) from None
         dest = self._cover_file(row["id"])
         dest.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(dest.write_bytes, webp)
@@ -181,7 +182,7 @@ class PlaylistsMixin:
     def playlist_cover_file(self, playlist_id: str, user) -> Optional[str]:
         row = self._playlist_or_404(playlist_id)
         if not self._can_see(row, user):
-            raise PlaylistError("Playlist not found", 404)
+            raise PlaylistError(L('Playlist not found'), 404)
         path = self._cover_file(row["id"])
         return str(path) if path.is_file() else None
 
@@ -203,7 +204,7 @@ class PlaylistsMixin:
     def set_favorite(self, item_id: str, user, on: bool) -> bool:
         """Adds the video to / removes it from the user's Favorites. Returns the new state."""
         if not self._done(item_id):
-            raise PlaylistError("Only downloaded videos can be favorites")
+            raise PlaylistError(L('Only downloaded videos can be favorites'))
         fav = self.favorites_playlist(user)
         if on:
             self.db.add_playlist_items(fav["id"], [item_id])
@@ -232,7 +233,7 @@ class PlaylistsMixin:
     def get_playlist(self, playlist_id: str, user) -> dict:
         row = self._playlist_or_404(playlist_id)
         if not self._can_see(row, user):
-            raise PlaylistError("Playlist not found", 404)
+            raise PlaylistError(L('Playlist not found'), 404)
         ids = self._playlist_ids(row)
         items = [self._items[i].model_dump() for i in ids if self._done(i)]
         return {**self._playlist_public(row, user, self._owner_names(), ids[:4], len(items)), "items": items}
@@ -247,11 +248,11 @@ class PlaylistsMixin:
     def _editable(self, playlist_id: str, user, manual: bool = False) -> dict:
         row = self._playlist_or_404(playlist_id)
         if not self._can_see(row, user):
-            raise PlaylistError("Playlist not found", 404)
+            raise PlaylistError(L('Playlist not found'), 404)
         if not self._can_edit(row, user):
-            raise PlaylistError("Only the owner can change this playlist", 403)
+            raise PlaylistError(L('Only the owner can change this playlist'), 403)
         if manual and row["kind"] != "manual":
-            raise PlaylistError("A smart playlist is filled by its filter; edit the filter instead")
+            raise PlaylistError(L('A smart playlist is filled by its filter; edit the filter instead'))
         return row
 
     @staticmethod
@@ -260,13 +261,13 @@ class PlaylistsMixin:
         if name is not None:
             name = name.strip()
             if not name:
-                raise PlaylistError("Give the playlist a name")
+                raise PlaylistError(L('Give the playlist a name'))
             out["name"] = name[:MAX_NAME]
         if description is not None:
             out["description"] = description.strip()[:MAX_DESCRIPTION]
         if visibility is not None:
             if visibility not in ("private", "public"):
-                raise PlaylistError("Visibility must be private or public")
+                raise PlaylistError(L('Visibility must be private or public'))
             out["visibility"] = visibility
         return out
 
@@ -274,7 +275,7 @@ class PlaylistsMixin:
                         kind: str = "manual", smart_query: Optional[dict] = None,
                         item_ids: Optional[list[str]] = None) -> dict:
         if kind not in ("manual", "smart"):
-            raise PlaylistError("Unknown playlist type")
+            raise PlaylistError(L('Unknown playlist type'))
         fields = self._clean_fields(name, description, visibility)
         query = clean_smart_query(smart_query) if kind == "smart" else None
         now = time.time()
@@ -293,13 +294,13 @@ class PlaylistsMixin:
                         smart_query: Optional[dict] = None) -> dict:
         row = self._editable(playlist_id, user)
         if row.get("system_key") and name is not None and name.strip() != row["name"]:
-            raise PlaylistError(f"“{row['name']}” is built in and can't be renamed")
+            raise PlaylistError(L("“{name}” is built in and can't be renamed", name=row['name']))
         fields = self._clean_fields(name, description, visibility)
         if row.get("system_key") == FAVORITES and fields.get("visibility", "private") != "private":
-            raise PlaylistError("Favorites are always private")
+            raise PlaylistError(L('Favorites are always private'))
         if smart_query is not None:
             if row["kind"] != "smart":
-                raise PlaylistError("Only a smart playlist has a filter")
+                raise PlaylistError(L('Only a smart playlist has a filter'))
             fields["smart_query"] = json.dumps(clean_smart_query(smart_query))
         fields["updated_at"] = time.time()
         self.db.update_playlist(playlist_id, fields)
@@ -308,7 +309,7 @@ class PlaylistsMixin:
     def delete_playlist(self, playlist_id: str, user) -> None:
         row = self._editable(playlist_id, user)
         if row.get("system_key"):
-            raise PlaylistError(f"“{row['name']}” is built in and can't be deleted")
+            raise PlaylistError(L("“{name}” is built in and can't be deleted", name=row['name']))
         self.db.delete_playlist(playlist_id)
         self._remove_cover_file(row["id"])
 

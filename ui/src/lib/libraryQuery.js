@@ -1,3 +1,4 @@
+import { t, N_ } from "./i18n.js";
 // Library view state (the URL: ?q=…&tag=…&dmin=…) <-> GET /api/library
 // parameters. Used by the library page, and by playlists: "add everything in
 // this view" sends the parameters, a smart playlist stores them, and "open
@@ -55,10 +56,11 @@ export function toLibraryQuery(p = {}) {
   return q;
 }
 
+// Words for describeQuery(), marked N_ and translated when used (made before a language loads; 3.7.0).
 const SORT_LABELS = {
-  download_datetime: "date acquired", upload_date: "upload date", created_at: "date acquired", title: "title", creator: "creator", ratings: "rating",
-  views: "views", tech_duration: "duration", tech_filesize: "file size", tech_resolution: "resolution",
-  random: "random order", fav_performers: "favourite performers",
+  download_datetime: N_("date acquired"), upload_date: N_("upload date"), created_at: N_("date acquired"), title: N_("title"),
+  creator: N_("creator"), ratings: N_("rating"), views: N_("views"), tech_duration: N_("duration"), tech_filesize: N_("file size"),
+  tech_resolution: N_("resolution"), random: N_("random order"), fav_performers: N_("favourite performers"),
 };
 
 /** A new order for sort "random" (the URL's ?seed=). */
@@ -68,29 +70,35 @@ export const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 export function describeQuery(p = {}) {
   const parts = [];
   if (p.search) parts.push(`“${p.search}”`);
-  for (const [key, label] of [["performers", "performer"], ["tags", "tag"], ["creators", "creator"], ["codecs", "codec"], ["qualities", "quality"]]) {
-    if (p[key]?.length) parts.push(`${label}${p[key].length > 1 ? "s" : ""} ${p[key].join(p.match_all ? " + " : " / ")}`);
+  const lists = { performers: [N_("performer: {values}"), N_("performers: {values}")], tags: [N_("tag: {values}"), N_("tags: {values}")],
+    creators: [N_("creator: {values}"), N_("creators: {values}")], codecs: [N_("codec: {values}"), N_("codecs: {values}")],
+    qualities: [N_("quality: {values}"), N_("qualities: {values}")] };
+  for (const [key, [one, many]] of Object.entries(lists)) {
+    if (p[key]?.length) parts.push(t(p[key].length > 1 ? many : one, { values: p[key].join(p.match_all ? " + " : " / ") }));
   }
   if (p.min_quality) parts.push(`${p.min_quality}+`);
   if (p.orientation) parts.push(p.orientation);
   if (p.min_duration != null || p.max_duration != null) {
     const a = p.min_duration != null ? Math.round(p.min_duration / 60) : null;
     const b = p.max_duration != null ? Math.round(p.max_duration / 60) : null;
-    parts.push(a != null && b != null ? `${a}–${b} min` : a != null ? `${a}+ min` : `up to ${b} min`);
+    parts.push(a != null && b != null ? t("{from}–{to} min", { from: a, to: b }) : a != null ? t("{from}+ min", { from: a }) : t("up to {to} min", { to: b }));
   }
-  if (p.exclude) parts.push(`not ${p.exclude}`);
-  if (p.no_music) parts.push("no music");
-  if (p.no_performers) parts.push("no performers");
-  if (p.min_rating != null) parts.push(`rating ${p.min_rating}%+`);
+  if (p.exclude) parts.push(t("not {words}", { words: p.exclude }));
+  if (p.no_music) parts.push(t("no music"));
+  if (p.no_performers) parts.push(t("no performers"));
+  if (p.min_rating != null) parts.push(t("rating {percent}%+", { percent: p.min_rating }));
   const who = [];
-  if (p.p_cups?.length) who.push(`cup ${p.p_cups.join("/")}`);
-  if (p.p_age_min != null || p.p_age_max != null) who.push(`age ${p.p_age_min ?? ""}–${p.p_age_max ?? ""}`);
-  if (p.p_hair?.length) who.push(`${p.p_hair.join("/")} hair`);
-  if (p.p_eyes?.length) who.push(`${p.p_eyes.join("/")} eyes`);
-  if (p.p_enhanced != null) who.push(p.p_enhanced ? "enhanced" : "natural");
-  if (who.length) parts.push(`a performer with ${who.join(", ")}`);
-  if (p.gone === true) parts.push("💀 gone from the site");
-  if (p.gone === false) parts.push("still on the site");
-  if (p.sort_key) parts.push(`sorted by ${SORT_LABELS[p.sort_key] || p.sort_key}${p.sort_dir === "asc" ? " (ascending)" : ""}`);
-  return parts.join(" · ") || "every video";
+  if (p.p_cups?.length) who.push(t("cup {cups}", { cups: p.p_cups.join("/") }));
+  if (p.p_age_min != null || p.p_age_max != null) who.push(t("age {from}–{to}", { from: p.p_age_min ?? "", to: p.p_age_max ?? "" }));
+  if (p.p_hair?.length) who.push(t("{colours} hair", { colours: p.p_hair.join("/") }));
+  if (p.p_eyes?.length) who.push(t("{colours} eyes", { colours: p.p_eyes.join("/") }));
+  if (p.p_enhanced != null) who.push(p.p_enhanced ? t("enhanced") : t("natural"));
+  if (who.length) parts.push(t("a performer with {details}", { details: who.join(", ") }));
+  if (p.gone === true) parts.push(t("💀 gone from the site"));
+  if (p.gone === false) parts.push(t("still on the site"));
+  if (p.sort_key) {
+    const by = t(SORT_LABELS[p.sort_key] || p.sort_key);
+    parts.push(p.sort_dir === "asc" ? t("sorted by {field} (ascending)", { field: by }) : t("sorted by {field}", { field: by }));
+  }
+  return parts.join(" · ") || t("every video");
 }

@@ -31,6 +31,7 @@ from typing import Callable, Optional
 
 from loguru import logger
 
+from .i18n import L
 from . import images, media_tools
 
 FOLDER = ".frames"
@@ -86,7 +87,7 @@ def fit_webp(data: bytes) -> bytes:
             if im.format == "WEBP" and max(im.size) <= MAX_SIDE:
                 return data
     except (UnidentifiedImageError, OSError) as exc:
-        raise ValueError(f"Not a usable image ({exc.__class__.__name__})") from exc
+        raise ValueError(L('Not a usable image ({name})', name=exc.__class__.__name__)) from exc
     return images.to_webp(data, max_side=MAX_SIDE, quality=QUALITY)
 
 
@@ -112,11 +113,11 @@ def from_site(entries: list[dict], folder: Path, fetch: Callable[[str], bytes], 
             seconds = entry.get("seconds")
             frames.append({"file": name, "seconds": float(seconds) if seconds is not None else times[n]})
         if not frames:
-            raise ValueError("None of the site's frames could be downloaded")
+            raise ValueError(L("None of the site's frames could be downloaded"))
         if len(frames) > 1 and len(seen) * 2 <= len(frames):
-            raise ValueError(f"The site's frames are placeholders ({len(frames)} frames, {len(seen)} different picture(s))")
+            raise ValueError(L("The site's frames are placeholders ({count} frames, {total} different picture(s))", count=len(frames), total=len(seen)))
         if any(f["seconds"] is None for f in frames):
-            raise ValueError("The site's frames have no times")
+            raise ValueError(L("The site's frames have no times"))
         frames.sort(key=lambda f: f["seconds"])
         return _finish(work, folder, frames, "site", duration)
     except BaseException:
@@ -136,7 +137,7 @@ def from_video(video_path: str, folder: Path, stop=None, count: int = COUNT, max
     info = media_tools.probe_streams(video_path)
     duration = float(info.get("duration") or 0)
     if duration <= 0:
-        raise ValueError("Couldn't read the video's length")
+        raise ValueError(L("Couldn't read the video's length"))
     work = _work_folder(folder)
     try:
         frames = []
@@ -158,7 +159,7 @@ def from_video(video_path: str, folder: Path, stop=None, count: int = COUNT, max
             else:
                 logger.debug("Frame at {}s of {}: {}", seconds, video_path, result.stderr.decode(errors="replace")[-300:])
         if len(frames) < at_least:
-            raise ValueError(f"FFmpeg made {len(frames)} of {count} frames" if frames else "FFmpeg made no frames")
+            raise ValueError(L('FFmpeg made {count} of {total} frames', count=len(frames), total=count) if frames else L('FFmpeg made no frames'))
         return _finish(work, folder, frames, "video", duration)
     except BaseException:
         shutil.rmtree(work, ignore_errors=True)

@@ -23,6 +23,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import activity, song_recognition as rec
 from ..notifications import notify, title_of, video_link
 from ..spellings import fold, spellings
@@ -57,14 +58,14 @@ class SongsMixin:
         method = method or cfg.method
         key = self.settings.gemini_api_key if method != "shazam" else None
         if method == "gemini" and not key:
-            raise rec.RecognitionError("Gemini needs its API key (Server Settings → Credentials → Google Gemini)")
+            raise rec.RecognitionError(L('Gemini needs its API key (Server Settings → Credentials → Google Gemini)'))
         use_shazam = method != "gemini"
         from ..media_tools import probe_streams
         info = await asyncio.to_thread(probe_streams, item.video_path)
         duration = float(info.get("duration") or 0)
         if not info.get("audio"):
             self.db.save_song_scan(item.id, 0, 0, "done", "No sound in this video")
-            return {"samples": 0, "found": 0, "detail": "No sound in this video"}
+            return {"samples": 0, "found": 0, "detail": L('No sound in this video')}
         times = rec.sample_times(duration, cfg.interval, cfg.max_samples)
         songs: dict[str, dict] = {}
         unmatched: list[float] = []
@@ -182,7 +183,7 @@ class SongsMixin:
     def start_song_scan(self, item_id: str, user: str, method: Optional[str] = None) -> dict:
         item = self._items.get(item_id)
         if not self._song_scannable(item):
-            raise ValueError("This video's file isn't available")
+            raise ValueError(L("This video's file isn't available"))
         lock = self._songs_lock()
         if item_id in self._song_state:
             return self._song_state[item_id]
@@ -197,22 +198,22 @@ class SongsMixin:
             st = self._song_state.get(item.id) or {}
             if st.get("state") == "waiting":
                 # 2.18.0: on Tasks while it waits for the other song scan (Scheduler / Find songs now).
-                return {"stage": "Waiting for the song scan that's running"}
-            return {"stage": "Listening", "done": st.get("done"), "total": st.get("total"),
-                    "detail": f"{st.get('found', 0)} song(s) so far"}
+                return {"stage": L("Waiting for the song scan that's running")}
+            return {"stage": L('Listening'), "done": st.get("done"), "total": st.get("total"),
+                    "detail": L('{n} song(s) so far', n=st.get('found', 0))}
 
         def on_sample(done, total, found):
             self._set_song_state(item.id, done=done, total=total, found=found)
 
         try:
-            async with activity.track("song_scan", f"Finding songs: {title_of(item)}", stop=True, progress=progress,
+            async with activity.track("song_scan", L('Finding songs: {title}', title=title_of(item)), stop=True, progress=progress,
                                       item=activity.item_ref(item)) as act:
                 async with lock:
                     self._set_song_state(item.id, state="scanning")
                     result = await self._scan_video(item, on_sample, method)
                     act.summary = result["detail"]
             if result.get("new"):
-                notify("job", "info", f"{result['new']} song(s) found in {title_of(item)}", link=video_link(item))
+                notify("job", "info", L('Songs found in {title}: {new}', new=result['new'], title=title_of(item)), link=video_link(item))
         except rec.RecognitionError as exc:
             self.db.save_song_scan(item.id, 0, 0, "failed", str(exc))
         except asyncio.CancelledError:
@@ -274,8 +275,8 @@ class SongsMixin:
 
         def progress() -> dict:
             if state["waiting"] and lock.locked():
-                return {"stage": "Waiting for the song scan that's running", "done": 0, "total": state["total"]}
-            return {"stage": f"Listening to {state['title']}" if state["title"] else "Starting",
+                return {"stage": L("Waiting for the song scan that's running"), "done": 0, "total": state["total"]}
+            return {"stage": L('Listening to {title}', title=state['title']) if state["title"] else L('Starting'),
                     "done": state["done"], "total": state["total"], "detail": f"songs found in {found_in} so far",
                     "item": state.get("item")}
 
@@ -291,16 +292,16 @@ class SongsMixin:
                             item, lambda d, t, f, i=item.id: self._set_song_state(i, done=d, total=t, found=f), method)
                     except rec.RecognitionError as exc:
                         self.db.save_song_scan(item.id, 0, 0, "failed", str(exc))
-                        act.summary = f"Stopped after {state['done']} video(s): {exc}"
+                        act.summary = L('Stopped after {done} videos: {error}', done=state['done'], error=exc)
                         raise
                     finally:
                         self._set_song_state(item.id, state=None)
                     state["done"] += 1
                     if result.get("new"):
                         found_in += 1
-            act.summary = f"{state['done']} video(s) listened to, songs found in {found_in}"
+            act.summary = L('{done} video(s) listened to, songs found in {n}', done=state['done'], n=found_in)
         if found_in:
-            notify("job", "info", f"Songs found in {found_in} video(s) — waiting for you", link="/admin/portal/songs")
+            notify("job", "info", L('Songs found in {n} video(s) — waiting for you', n=found_in), link="/admin/portal/songs")
         return {"videos": state["done"], "with_songs": found_in}
 
     # ------------------------------------------------------------ suggestions
@@ -325,7 +326,7 @@ class SongsMixin:
             raise KeyError(suggestion_id)
         value = (label or s["label"]).strip()[:200]
         if not value:
-            raise ValueError("The song needs a name")
+            raise ValueError(L('The song needs a name'))
         item = self._items.get(s["item_id"])
         if not item:
             raise KeyError(suggestion_id)

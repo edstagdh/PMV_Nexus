@@ -8,7 +8,11 @@ every other admin-config page reached through the Admin Portal.
 """
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
+
+from .. import activity, i18n
 
 from ..library_manager import library_manager
 from ..library_mixins.scheduler_worker import JOB_REGISTRY
@@ -79,4 +83,23 @@ async def run_job_now(job_id: str, user: AuthContext = Depends(require_permissio
 
 @router.get("/api/scheduler/jobs/{job_id}/runs")
 def get_job_runs(job_id: str, user: AuthContext = Depends(require_permission("settings.manage"))):
-    return library_manager.get_job_run_history(job_id)
+    runs = library_manager.get_job_run_history(job_id)
+    for r in runs if isinstance(runs, list) else []:
+        _readable_result(r)
+    return runs
+
+
+def _readable_result(run: dict) -> None:
+    """3.7.0: "result_text", the run's result in the reader's language (the raw result_summary stays)."""
+    stored = run.pop("result_msg", None)
+    if stored:
+        try:
+            run["result_text"] = i18n.from_stored(json.loads(stored), run.get("result_summary") or "")
+            return
+        except ValueError:
+            pass
+    if run.get("status") == "success" and run.get("result_summary"):
+        try:
+            run["result_text"] = activity.summarize({k: v for k, v in json.loads(run["result_summary"]).items() if k != "verbose_log"})
+        except (ValueError, AttributeError):
+            pass

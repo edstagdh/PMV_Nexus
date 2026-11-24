@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 import httpx
 from loguru import logger
 
+from .i18n import L
 from .config import get_settings
 
 via_proxy: contextvars.ContextVar[bool] = contextvars.ContextVar("via_proxy", default=False)
@@ -123,7 +124,7 @@ async def check(force: bool = False) -> dict:
     """{ok, ip, latency_ms, error, checked_at} for the proxy, cached for CHECK_TTL."""
     url = address()
     if not url:
-        return {"ok": False, "error": "No proxy address set", "checked_at": time.time()}
+        return {"ok": False, "error": L('No proxy address set'), "checked_at": time.time()}
     async with _check_lock:
         if not force and _last_check.get("url") == url and time.time() - _last_check.get("checked_at", 0) < CHECK_TTL:
             return _last_check
@@ -169,7 +170,7 @@ async def speed_test() -> dict:
     download speed (about 10 MB each). Also refreshes the check cache."""
     url = address()
     if not url:
-        return {"error": "No proxy address set"}
+        return {"error": L('No proxy address set')}
     direct, via = await asyncio.gather(_probe(None), _probe(url))
     direct_speed = await _speed(None) if direct["ok"] else {}
     proxy_speed = await _speed(url) if via["ok"] else {}

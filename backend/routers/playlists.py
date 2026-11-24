@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from ..i18n import L
 from ..hardening import scrub_item
 from ..library_manager import library_manager
 from ..library_mixins.playlists import PlaylistError
@@ -111,7 +112,7 @@ def delete_playlist(playlist_id: str, user: AuthContext = Depends(_viewer)):
 @router.post("/api/playlists/{playlist_id}/items")
 def add_items(playlist_id: str, body: PlaylistAdd, user: AuthContext = Depends(_viewer)):
     if body.item_ids is None and body.query is None:
-        raise HTTPException(status_code=400, detail="Send item_ids or a query")
+        raise HTTPException(status_code=400, detail=L('Send item_ids or a query'))
     return _run(library_manager.add_to_playlist, playlist_id, user, body.item_ids, body.query)
 
 
@@ -143,12 +144,12 @@ _MAX_COVER_BYTES = 20 * 1024 * 1024
 @router.put("/api/playlists/{playlist_id}/cover/image")
 async def upload_playlist_cover(playlist_id: str, request: Request, user: AuthContext = Depends(_viewer)):
     if not (request.headers.get("content-type") or "").lower().startswith("image/"):
-        raise HTTPException(status_code=415, detail="Send a picture")
+        raise HTTPException(status_code=415, detail=L('Send a picture'))
     data = bytearray()
     async for chunk in request.stream():
         data += chunk
         if len(data) > _MAX_COVER_BYTES:
-            raise HTTPException(status_code=413, detail="That picture is too big (20 MB at most)")
+            raise HTTPException(status_code=413, detail=L('That picture is too big (20 MB at most)'))
     try:
         return await library_manager.set_playlist_cover_image(playlist_id, user, bytes(data))
     except PlaylistError as exc:
@@ -159,5 +160,5 @@ async def upload_playlist_cover(playlist_id: str, request: Request, user: AuthCo
 def playlist_cover_image(playlist_id: str, user: AuthContext = Depends(_viewer)):
     path = _run(library_manager.playlist_cover_file, playlist_id, user)
     if not path:
-        raise HTTPException(status_code=404, detail="No cover image")
+        raise HTTPException(status_code=404, detail=L('No cover image'))
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})

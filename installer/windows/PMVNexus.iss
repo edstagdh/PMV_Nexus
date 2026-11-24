@@ -69,10 +69,13 @@ Name: "{app}"; Permissions: users-modify
 
 [Files]
 Source: "..\..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; \
-  Excludes: "\.git\*,\.github\*,\extensions\.git\*,\extensions\.github\*,\extensions\*.md,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\config.yaml,__pycache__,*.pyc,node_modules"
+  Excludes: "\.git\*,\.github\*,\extensions\.git\*,\extensions\.github\*,\extensions\*.md,\ui\*,\installer\*,\data\*,\runtime\*,\.venv\*,\downloads\*,\languages\*,\config.yaml,__pycache__,*.pyc,node_modules"
+; Languages (3.7.0): only the English list ships; other languages are installed from the app.
+Source: "..\..\languages\en.json"; DestDir: "{app}\languages"; Flags: ignoreversion
 Source: "app.ico"; DestDir: "{app}\installer"; Flags: ignoreversion
 ; What the shortcuts start, so Windows shows "PMV Nexus" (Task Manager -> Startup) instead of
-; "pythonw" (3.2.0; installer\windows\launcher, built by build_launcher.ps1).
+; "pythonw" (3.2.0; installer\windows\launcher, built by build_launcher.ps1). 3.7.0: a copy in
+; .venv\Scripts (InstallAfterFiles) runs Python itself, so the running app is "PMV Nexus" too.
 Source: "build\PMVNexus.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
@@ -91,10 +94,10 @@ Name: "{autoprograms}\{#AppName} (console)"; Filename: "{app}\start.bat"; Workin
   IconFilename: "{app}\installer\app.ico"; Check: not WizardIsTaskSelected('service')
 
 [Run]
-Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app"; WorkingDir: "{app}"; \
+Filename: "{app}\PMVNexus.exe"; WorkingDir: "{app}"; \
   Description: "Open PMV Nexus now"; Flags: postinstall nowait skipifsilent; Check: AppReadyNew
 ; An update (2.34.0): the app's Help -> Changelog instead -- the usual "what's new" on an updater's last page.
-Filename: "{app}\.venv\Scripts\pythonw.exe"; Parameters: "-m Tools.open_app --page /help/changelog"; WorkingDir: "{app}"; \
+Filename: "{app}\PMVNexus.exe"; Parameters: "-m Tools.open_app --page /help/changelog"; WorkingDir: "{app}"; \
   Description: "See what's new in version {#AppVersion}"; Flags: postinstall nowait skipifsilent; Check: AppReadyUpdated
 
 [InstallDelete]
@@ -106,6 +109,7 @@ Type: filesandordirs; Name: "{app}\frontend"
 Type: filesandordirs; Name: "{app}\Tools"
 Type: filesandordirs; Name: "{app}\userscript"
 Type: filesandordirs; Name: "{app}\docs"
+Type: filesandordirs; Name: "{app}\languages"
 ; Left over from older versions: the site-login browser (2.32.0).
 Type: filesandordirs; Name: "{app}\runtime\ms-playwright"
 
@@ -120,6 +124,7 @@ Type: filesandordirs; Name: "{app}\frontend"
 Type: filesandordirs; Name: "{app}\Tools"
 Type: filesandordirs; Name: "{app}\userscript"
 Type: filesandordirs; Name: "{app}\docs"
+Type: filesandordirs; Name: "{app}\languages"
 Type: filesandordirs; Name: "{app}\__pycache__"
 
 [Code]
@@ -200,23 +205,22 @@ begin
   Result := ExpandConstant('{tmp}\progress.txt');
 end;
 
-{ Python 3.10-3.13 from python.org / the Microsoft Store, found through the registry (PEP 514). }
-{ The Pythons the app supports, newest first (2.34.2): 3.14, 3.13, 3.12, 3.11 -- every package
-  the app needs has Windows builds for them. Not 3.10 (end of life since October 2026); 3.15 and
+{ The Pythons the app supports, newest first (3.7.0): 3.14, 3.13, 3.12 -- requirements.txt pins
+  the package versions the app is tested with, and they need 3.12 or newer (numpy). 3.15 and
   newer once their packages are out and tested. Found through the
   registry entries python.org's installers make (PEP 514); a Python without them (conda,
   pyenv, a zip) isn't seen. }
 function FindPython: Boolean;
 var
-  Versions: array[0..3] of String;
+  Versions: array[0..2] of String;
   Roots: array[0..2] of Integer;
   I, J: Integer;
   Exe: String;
 begin
   Result := False;
-  Versions[0] := '3.14'; Versions[1] := '3.13'; Versions[2] := '3.12'; Versions[3] := '3.11';
+  Versions[0] := '3.14'; Versions[1] := '3.13'; Versions[2] := '3.12';
   Roots[0] := HKCU; Roots[1] := HKLM64; Roots[2] := HKLM32;
-  for I := 0 to 3 do
+  for I := 0 to 2 do
     for J := 0 to 2 do
       if RegQueryStringValue(Roots[J], 'Software\Python\PythonCore\' + Versions[I] + '\InstallPath', 'ExecutablePath', Exe) and FileExists(Exe) then
       begin
@@ -243,8 +247,7 @@ begin
     if (P > 0) and (Pos('version', Lowercase(Trim(Copy(Lines[I], 1, P - 1)))) = 1) then
     begin
       Value := Trim(Copy(Lines[I], P + 1, 20)) + '.';
-      if (Pos('3.11.', Value) = 1) or (Pos('3.12.', Value) = 1) or (Pos('3.13.', Value) = 1) or
-         (Pos('3.14.', Value) = 1) then
+      if (Pos('3.12.', Value) = 1) or (Pos('3.13.', Value) = 1) or (Pos('3.14.', Value) = 1) then
       begin
         Result := True;
         Exit;
@@ -429,14 +432,15 @@ begin
   { These come after the installation (wpInfoAfter), on a first install only. }
   ModePage := CreateInputOptionPage(wpInfoAfter, 'Your library',
     'Start with an empty library, or bring one back from a backup?',
-    'A backup is a .zip from the Backups page of an earlier install (this computer or another one).', True, False);
+    'A backup is a .zip from the Backups page of an earlier install (this computer or another one). ' +
+    'A backup split into parts: choose its .zip.001 file, with the other parts next to it.', True, False);
   ModePage.Add('Set up a new, empty library');
   ModePage.Add('Set up from a backup');
   ModePage.SelectedValueIndex := 0;
 
   BackupFilePage := CreateInputFilePage(ModePage.ID, 'Backup',
     'Which backup?', 'The library, users, playlists and settings come back from it. Video files are never in a backup: copy your video folder to this computer yourself.');
-  BackupFilePage.Add('Backup file:', 'Backups (*.zip)|*.zip', '.zip');
+  BackupFilePage.Add('Backup file:', 'Backups (*.zip, *.zip.001)|*.zip;*.zip.001', '.zip');
 
   BackupPwPage := CreateInputQueryPage(BackupFilePage.ID, 'Backup password',
     'This backup is protected with a password', 'Enter the backup password (set on the Backups page of the install it came from). It''s checked before anything is unpacked.');
@@ -663,7 +667,7 @@ begin
     DownloadPage.Clear;
     if NeedPython then
     begin
-      if MsgBox('Python 3.11 to 3.14 wasn''t found on this computer. PMV Nexus needs one of them.' + #13#10#13#10 +
+      if MsgBox('Python 3.12 to 3.14 wasn''t found on this computer. PMV Nexus needs one of them.' + #13#10#13#10 +
         'Setup will now download Python {#PythonVersion} from python.org and install it for your user account ' +
         '(it shows its own progress window), then continue.', mbInformation, MB_OKCANCEL) <> IDOK then
       begin
@@ -871,6 +875,9 @@ begin
         '-m pip install --disable-pip-version-check -r "' + AppDir + '\requirements.txt"', '');
       if Ok and DirExists(AppDir + '\extensions') then   { a build with extensions (2.30.0) }
         Ok := RunLogged('Installing the extensions'' packages...', VenvPython, '-m Tools.install_extensions', '');
+      { 3.7.0: the copy that runs Python itself (Task Manager shows PMV Nexus, not pythonw.exe) }
+      if Ok and not FileCopy(AppDir + '\PMVNexus.exe', AppDir + '\.venv\Scripts\PMVNexus.exe', False) then
+        Log('Could not copy PMVNexus.exe into .venv\Scripts: the app runs as pythonw.exe');
     end;
     if Ok and WizardIsTaskSelected('ffmpeg') then
     begin
@@ -894,7 +901,7 @@ begin
       RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '')
     else if AppWasRunning and not WizardIsTaskSelected('service') then
       { closed for the update: back in the tray, as the person who ran Setup (not as admin) }
-      ExecAsOriginalUser(AppDir + '\.venv\Scripts\pythonw.exe', '"' + AppDir + '\run.py" --tray', AppDir,
+      ExecAsOriginalUser(AppDir + '\PMVNexus.exe', 'run.py --tray', AppDir,
         SW_HIDE, ewNoWait, Code);
   finally
     WorkPage.Hide;
@@ -965,9 +972,96 @@ begin
   end;
 end;
 
+{ What of your things to delete (3.7.0): Tools\uninstall_data.py lists them (before any file is
+  removed, while the app's Python is still there) and deletes only the app's own files -- never
+  anything else in a folder you chose. Returns e.g. 'library,cache'; '' = keep everything. }
+function AskWhatToDelete(const Ini: String): String;
+var
+  Form: TSetupForm;
+  Intro, Note: TNewStaticText;
+  Boxes: array[0..3] of TNewCheckBox;
+  Infos: array[0..3] of TNewStaticText;
+  Kinds, Titles: array[0..3] of String;
+  OkButton, KeepButton: TNewButton;
+  I, Top: Integer;
+begin
+  Result := '';
+  Kinds[0] := 'library'; Titles[0] := 'Library database and settings (videos list, playlists, users, credentials, logs)';
+  Kinds[1] := 'cache';   Titles[1] := 'Thumbnails, previews, seekbar previews and frames';
+  Kinds[2] := 'backups'; Titles[2] := 'Backups';
+  Kinds[3] := 'videos';  Titles[3] := 'Downloaded and uploaded videos';
+  Form := CreateCustomForm(460, 330, False, False);
+  try
+    Form.Caption := 'Uninstall PMV Nexus';
+    Intro := TNewStaticText.Create(Form);
+    Intro.Parent := Form;
+    Intro.Left := ScaleX(12); Intro.Top := ScaleY(12); Intro.Width := Form.ClientWidth - ScaleX(24);
+    Intro.AutoSize := False; Intro.WordWrap := True; Intro.Height := ScaleY(42);
+    Intro.Caption := 'The program is removed either way. Also delete any of these? Nothing ticked keeps them all ' +
+      '(installing again later picks them up).';
+    Top := ScaleY(60);
+    for I := 0 to 3 do
+    begin
+      Boxes[I] := TNewCheckBox.Create(Form);
+      Boxes[I].Parent := Form;
+      Boxes[I].Left := ScaleX(12); Boxes[I].Top := Top; Boxes[I].Width := Form.ClientWidth - ScaleX(24);
+      Boxes[I].Height := ScaleY(17);
+      Boxes[I].Caption := Titles[I];
+      Infos[I] := TNewStaticText.Create(Form);
+      Infos[I].Parent := Form;
+      Infos[I].Left := ScaleX(30); Infos[I].Top := Top + ScaleY(18); Infos[I].Width := Form.ClientWidth - ScaleX(42);
+      Infos[I].AutoSize := False; Infos[I].Height := ScaleY(30); Infos[I].WordWrap := True;
+      Infos[I].Font.Color := clGray;
+      if StrToIntDef(GetIniString(Kinds[I], 'count', '0', Ini), 0) > 0 then
+        Infos[I].Caption := GetIniString(Kinds[I], 'count', '0', Ini) + ' files, ' + GetIniString(Kinds[I], 'size', '', Ini) +
+          ' - ' + GetIniString(Kinds[I], 'path', '', Ini)
+      else
+      begin
+        Infos[I].Caption := 'Nothing there';
+        Boxes[I].Enabled := False;
+      end;
+      Top := Top + ScaleY(54);
+    end;
+    Note := TNewStaticText.Create(Form);
+    Note.Parent := Form;
+    Note.Left := ScaleX(12); Note.Top := Top; Note.Width := Form.ClientWidth - ScaleX(24);
+    Note.AutoSize := False; Note.WordWrap := True; Note.Height := ScaleY(30);
+    Note.Caption := 'Only files PMV Nexus made are deleted; other files in these folders stay.';
+    OkButton := TNewButton.Create(Form);
+    OkButton.Parent := Form;
+    OkButton.Caption := 'Continue';
+    OkButton.Width := ScaleX(90); OkButton.Height := ScaleY(25);
+    OkButton.Top := Form.ClientHeight - ScaleY(37); OkButton.Left := Form.ClientWidth - ScaleX(196);
+    OkButton.ModalResult := mrOk; OkButton.Default := True;
+    KeepButton := TNewButton.Create(Form);
+    KeepButton.Parent := Form;
+    KeepButton.Caption := 'Keep all';
+    KeepButton.Width := ScaleX(90); KeepButton.Height := ScaleY(25);
+    KeepButton.Top := OkButton.Top; KeepButton.Left := Form.ClientWidth - ScaleX(100);
+    KeepButton.ModalResult := mrCancel; KeepButton.Cancel := True;
+    if Form.ShowModal <> mrOk then
+      Exit;
+    if Boxes[3].Checked and (SuppressibleMsgBox('Delete ' + GetIniString('videos', 'count', '0', Ini) + ' video files (' +
+        GetIniString('videos', 'size', '', Ini) + ') for good?' + #13#10#13#10 +
+        'They can''t be brought back, unless a backup made with "Include the videos" has them.',
+        mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) <> IDYES) then
+      Boxes[3].Checked := False;
+    for I := 0 to 3 do
+      if Boxes[I].Checked then
+      begin
+        if Result <> '' then
+          Result := Result + ',';
+        Result := Result + Kinds[I];
+      end;
+  finally
+    Form.Free;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Code: Integer;
+  Ini, Kinds: String;
 begin
   if CurUninstallStep = usUninstall then
   begin
@@ -975,20 +1069,25 @@ begin
     ServiceCommand('uninstall');
     if IsAdminInstallMode then
       Exec('netsh', 'advfirewall firewall delete rule name="PMV Nexus"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Ini := GetTempDir + 'pmvnexus_uninstall.ini';
+    DeleteFile(Ini);
+    if not UninstallSilent and FileExists(VenvPython) and FileExists(AppDir + '\Tools\uninstall_data.py') and
+       Exec(VenvPython, '-m Tools.uninstall_data scan --out "' + Ini + '"', AppDir, SW_HIDE, ewWaitUntilTerminated, Code) and
+       (Code = 0) then
+    begin
+      Kinds := AskWhatToDelete(Ini);
+      if Kinds <> '' then
+        if not Exec(VenvPython, '-m Tools.uninstall_data delete --kinds ' + Kinds, AppDir, SW_HIDE, ewWaitUntilTerminated, Code)
+           or (Code <> 0) then
+          SuppressibleMsgBox('Some files couldn''t be deleted (in use, or no permission). They stay where they are.',
+            mbInformation, MB_OK, IDOK);
+    end;
+    DeleteFile(Ini);
   end;
   if CurUninstallStep = usPostUninstall then
   begin
     DeletePyCaches(AppDir);
     RemoveDir(AppDir + '\extensions');   { only when nothing else is left in it }
-    if DirExists(AppDir + '\data') and (SuppressibleMsgBox(
-      'Also delete your library and settings?' + #13#10#13#10 +
-      'This deletes the data folder (database, thumbnails, backups, logs - and the videos, if they are in data\videos) ' +
-      'and config.yaml in ' + AppDir + '. Videos in other folders are not touched.' + #13#10#13#10 +
-      'Choose No to keep them (installing again later picks them up).', mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES) then
-    begin
-      DelTree(AppDir + '\data', True, True, True);
-      DeleteFile(AppDir + '\config.yaml');
-      RemoveDir(AppDir);
-    end;
+    RemoveDir(AppDir);                   { only when nothing is left (nothing kept) }
   end;
 end;

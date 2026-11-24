@@ -104,7 +104,7 @@ def verify(out: Path, zip_path: str, password_file: str | None) -> int:
     password = _read_password(password_file)
     try:
         path = Path(zip_path).resolve()
-        if not path.is_file():
+        if not backup.exists(path):  # name.zip, or a split backup's name.zip.001 (3.7.0)
             raise FileNotFoundError(f"Not found: {path}")
         summary = backup._summary(path)
         result["app_version"] = str(summary.get("app_version") or "")

@@ -17,7 +17,7 @@ onBeforeUnmount(() => { document.removeEventListener("keydown", onKey); window.r
       <div class="modal card" role="dialog" aria-modal="true" :aria-label="title" :style="{ maxWidth: width }">
         <header class="modal-head">
           <h3>{{ title }}</h3>
-          <button class="btn btn-ghost btn-icon btn-sm" aria-label="Close" @click="emit('close')"><Icon name="x" /></button>
+          <button class="btn btn-ghost btn-icon btn-sm" :aria-label="$t('Close')" @click="emit('close')"><Icon name="x" /></button>
         </header>
         <div class="modal-body"><slot /></div>
         <footer v-if="$slots.footer" class="modal-foot"><slot name="footer" /></footer>

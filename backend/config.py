@@ -6,13 +6,13 @@ from pathlib import Path
 from functools import lru_cache
 import json
 import shutil
-from typing import Literal
+from typing import Literal, Optional
 
 import yaml
 from dotenv import load_dotenv
 
 from . import secrets_store
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # Legacy: .env is loaded only so secrets_store can import old values once on
@@ -314,6 +314,12 @@ class DuplicateScanConfig(BaseModel):
         return data
 
 
+class LanguageConfig(BaseModel):
+    """The interface language for the sign-in page and for accounts that didn't pick one (3.7.0).
+    Each person can choose their own in My Settings -> Language (from the installed ones)."""
+    default: str = Field(default="en", pattern=r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
+
+
 class TrayConfig(BaseModel):
     """Opening the app in a browser (the tray icon, the Windows shortcuts; 2.29.0).
       browser      -- the program "Open PMV Nexus" uses, with arguments -- e.g.
@@ -336,13 +342,26 @@ class BackupConfig(BaseModel):
     dir: str = "./data/backups"
     keep: int = Field(10, ge=1, le=500)
     include_cache: bool = False
+    # (3.7.0) Split backups bigger than this into parts of at most this many GB (GiB):
+    # 0 = one file; else 3.9 (a Telegram file) .. 115 (fits a 128 GB flash drive).
+    split_gb: float = 0
+
+    @field_validator("split_gb")
+    @classmethod
+    def _split_range(cls, v: float) -> float:
+        if v and not 3.9 <= v <= 115:
+            raise ValueError("split_gb is 0 (no split) or 3.9 to 115")
+        return round(float(v), 1)
+
+    def split_bytes(self) -> Optional[int]:
+        return int(self.split_gb * 1024 ** 3) if self.split_gb else None
 
 
 class PerformersConfig(BaseModel):
     """Admin -> Server Settings -> Performers (ThePornDB; API key in Credentials).
       merge_aliases -- names ThePornDB lists as aliases of the same performer
-                       show as one (her main name) everywhere; a wrong merge
-                       can be split on her profile page.
+                       show as one (their main name) everywhere; a wrong merge
+                       can be split on the profile page.
       (Matching new names and refreshing profiles is the Scheduler system job
       "Match & refresh performers".)
       refresh_days  -- re-read each matched profile this often."""
@@ -422,6 +441,7 @@ class Settings(BaseModel):
     duplicate_scan: DuplicateScanConfig
     backup: BackupConfig
     tray: TrayConfig = TrayConfig()
+    language: LanguageConfig = LanguageConfig()
 
     # --- credentials, from the encrypted store (secrets_store.py) ---
     #
@@ -527,6 +547,13 @@ def _ensure_config_file() -> Path:
     return path
 
 
+def _language(raw: dict, overrides: dict) -> "LanguageConfig":
+    try:
+        return LanguageConfig(**{**(raw.get("language") or {}), **overrides.get("language", {})})
+    except Exception:  # noqa: BLE001 -- a bad value must never stop the app starting
+        return LanguageConfig()
+
+
 @lru_cache
 def get_settings() -> Settings:
     raw = _load_yaml(_ensure_config_file())
@@ -572,6 +599,7 @@ def get_settings() -> Settings:
         duplicate_scan=DuplicateScanConfig(**duplicate_scan_raw),
         backup=BackupConfig(**{**raw.get("backup", {}), **overrides.get("backup", {})}),
         tray=TrayConfig(**{**(raw.get("tray") or {}), **overrides.get("tray", {})}),
+        language=_language(raw, overrides),
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],
         pmvhaven_api_key=creds["pmvhaven_api_key"],

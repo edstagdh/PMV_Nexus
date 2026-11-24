@@ -112,11 +112,11 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 ### Performers (ThePornDB)
 - Every performer name is matched to a **ThePornDB** profile: photos, age, measurements, bio, aliases, links and
   similar performers you have. Clear matches link themselves; doubtful ones wait for you to pick.
-- **Aliases merge:** different names of the same person show as one, and each performer has a page with all her
+- **Aliases merge:** different names of the same person show as one, and each performer has a page with all their
   videos. You can add your own photos.
 - **Performer badges are coloured by gender** (female, male, trans / non-binary, unknown). For performers who aren't
   on ThePornDB, set it by hand.
-- **Favourite performers** (per user): ♥ on her badges, and a library sort that puts her videos first or last.
+- **Favourite performers** (per user): ♥ on their badges, and a library sort that puts their videos first or last.
 
 ### Songs
 - **Find songs:** listens to a video and suggests the songs in it, using **Shazam** (free, no key) and optionally
@@ -142,6 +142,10 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   links to the log entries from when it ran.
 - **Scheduler** (daily, weekly, every few hours, one time or cron) for syncs, scans, backups, song finding and more.
 - **Notifications** (bell, plus pop-ups) for finished and failed downloads, re-encodes, uploads and jobs.
+- **Languages:** the interface and the server's messages in any language that has a file in
+  [`languages/`](languages/) — each person picks theirs; admins install them from GitHub (checked against a list of
+  SHA-256 hashes) or from a file. Right-to-left languages get a mirrored layout. Adding a language:
+  [languages/TRANSLATING.md](languages/TRANSLATING.md).
 - **Stats:** live CPU, memory, network and disks; library growth; watching and failures over time.
 - **Logs:** every action and change, searchable and exportable. Passwords and keys are never logged.
 - **Backups:** scheduled or by hand, optionally password-protected (AES-256), tested and restorable from the app.
@@ -211,8 +215,9 @@ project-root/
 ├── start.bat / install.bat   # Windows: start the app / console install (optionally from a backup)
 ├── install.sh                # Linux / macOS install (optionally from a backup, optional systemd user service)
 ├── installer/windows/        # Setup.exe (Inno Setup script, Windows service definition, icon)
-├── .github/workflows/        # release.yml: builds Setup.exe and the GitHub Release for each vX.Y.Z tag
-├── Tools/                    # helper scripts (first_install for install.bat, install_extensions, ...)
+├── .github/workflows/        # release.yml: Setup.exe + GitHub Release per vX.Y.Z tag; translations.yml: checks texts
+├── languages/                # en.json (all texts, generated), other languages, manifest.json -- see TRANSLATING.md
+├── Tools/                    # helper scripts (first_install, install_extensions, i18n: texts and languages, ...)
 ├── config.example.yaml       # settings template (committed); copied to config.yaml on first start
 ├── config.yaml               # your settings — created automatically, not committed
 ├── requirements.txt
@@ -231,7 +236,7 @@ project-root/
 ## Installation
 
 ### Prerequisites
-- **Python 3.11–3.14** (3.10 reached its end of life in October 2026).
+- **Python 3.12–3.14** (`requirements.txt` pins the package versions the app is tested with; they need 3.12 or newer).
 - **ffmpeg**, installed and available on your `PATH` — used for re-encoding and HLS remuxing.
 - A **PMVHaven API key** (from pmvhaven.com/api-keys) is recommended, so the site knows the requests are yours.
 
@@ -245,7 +250,7 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   **Windows service** (always on, before anyone signs in; Local System can't see mapped drives — use `\\server\share`
   paths or set an account under services.msc → Log On). Optional desktop shortcut. A firewall rule for the port is
   added for private networks (all-users installs; otherwise Windows asks the first time the app starts).
-- **Python:** a Python 3.14, 3.13, 3.12 or 3.11 already on the PC is used (newest first; found through the entries python.org's
+- **Python:** a Python 3.14, 3.13 or 3.12 already on the PC is used (newest first; found through the entries python.org's
   installers make — conda / pyenv ones aren't seen). An app folder whose `.venv` was made with another version gets a new
   one on the next update. If there's none, Setup says so, downloads Python 3.12
   from python.org (checked against the file the release was built with) and installs it — its own progress window shows.
@@ -260,8 +265,12 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   so and closes it — work in progress stops safely and continues later — and starts it again afterwards. The app's
   code folders (`backend`, `frontend`, `Tools`, `userscript`, `docs`) are replaced as a whole, so nothing old stays
   behind. Going back to an older version isn't supported (restore a backup instead).
-- **Uninstall** (Settings → Apps): removes the app; asks before deleting the library and settings (`data`,
-  `config.yaml`) — videos outside the app folder are never touched.
+- **Uninstall** (Settings → Apps): removes the app, then asks what else to delete — ticked separately, each with
+  its size and folder: the **library database and settings** (`data`, `config.yaml`), **thumbnails, previews and
+  frames**, **backups**, and the **videos** (asked again). Nothing ticked keeps everything for a later install. Only
+  files the app made are deleted: anything else in those folders stays.
+- **In Task Manager** the running app is **PMV Nexus** (`PMVNexus.exe`, which runs Python inside it), not
+  `pythonw.exe`; a Windows service still runs as `python.exe`.
 - **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
 - The Start-menu shortcut starts the app if it isn't running — with a **tray icon**, no console window — and opens
   it in the browser. Setup's **Opening the app** page sets which browser (e.g. a Firefox or Chrome profile) and

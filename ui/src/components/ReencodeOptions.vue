@@ -1,6 +1,7 @@
 <script setup>
 // Re-encode dialog body (2.22.0): pick the codec, see the server's settings for it
 // and change them for this re-encode only. Used for one video and for picked ones.
+import { t } from "../lib/i18n.js";
 import { computed, watch } from "vue";
 import { AV1_PRESETS, CODEC_INFO, isChanged, reencodeState } from "../lib/reencodeOptions.js";
 
@@ -20,49 +21,49 @@ const info = computed(() => CODEC_INFO[c.value]);
 const d = computed(() => props.defaults);
 const changed = computed(() => isChanged(props.state, d.value));
 function reset() { Object.assign(props.state, reencodeState(d.value, props.exclude), { codec: props.state.codec }); }
-const presetLabel = (p) => (c.value === "av1" ? AV1_PRESETS.find((x) => x.value === String(p))?.label || p : p);
+const presetLabel = (p) => (c.value === "av1" ? t(AV1_PRESETS.find((x) => x.value === String(p))?.label || String(p)) : p);
 </script>
 
 <template>
   <div class="reopts">
     <div class="row">
-      <span class="lbl">Codec</span>
-      <div class="codecs" role="radiogroup" aria-label="Codec">
+      <span class="lbl">{{ $t("Codec") }}</span>
+      <div class="codecs" role="radiogroup" :aria-label="$t('Codec')">
         <label v-for="(ci, key) in CODEC_INFO" :key="key" class="codec" :class="{ on: c === key, off: blocked(key) }">
           <input v-model="state.codec" type="radio" :value="key" :disabled="blocked(key)">
           <strong>{{ ci.label }}</strong>
-          <small v-if="key === exclude && big && state.downscale">Its own codec: stays {{ ci.label.split(" ")[0] }}, only made 1080p</small>
-          <small v-else-if="key === exclude && big">The video already is {{ ci.label.split(" ")[0] }} (turn on Downscale to keep it and only make it 1080p)</small>
-          <small v-else-if="key === exclude">The video already is {{ ci.label.split(" ")[0] }}</small>
-          <small v-else-if="defaults.encoders?.[key] === false">Your FFmpeg has no encoder for it</small>
-          <small v-else>{{ ci.help }}<template v-if="key === defaults.codec"> · server default</template></small>
+          <small v-if="key === exclude && big && state.downscale">{{ $t("Its own codec: stays {codec}, only made 1080p", { codec: ci.label.split(" ")[0] }) }}</small>
+          <small v-else-if="key === exclude && big">{{ $t("The video already is {codec} (turn on Downscale to keep it and only make it 1080p)", { codec: ci.label.split(" ")[0] }) }}</small>
+          <small v-else-if="key === exclude">{{ $t("The video already is {codec}", { codec: ci.label.split(" ")[0] }) }}</small>
+          <small v-else-if="defaults.encoders?.[key] === false">{{ $t("Your FFmpeg has no encoder for it") }}</small>
+          <small v-else>{{ ci.help }}<template v-if="key === defaults.codec"> {{ $t("· server default") }}</template></small>
         </label>
       </div>
     </div>
 
     <div class="row">
-      <label class="lbl" :for="`re-crf-${c}`">Quality (CRF)<small>{{ info.crf[0] }}–{{ info.crf[1] }}, lower = better and bigger; {{ info.crfHelp }}. Server: {{ d[c].crf }}</small></label>
+      <label class="lbl" :for="`re-crf-${c}`">{{ $t("Quality (CRF)") }}<small>{{ $t("{min}–{max}, lower = better and bigger; {help}. Server: {value}", { min: info.crf[0], max: info.crf[1], help: info.crfHelp, value: d[c].crf }) }}</small></label>
       <div class="range"><input :id="`re-crf-${c}`" v-model.number="state[c].crf" type="range" :min="info.crf[0]" :max="info.crf[1]" step="1"><output>{{ state[c].crf }}</output></div>
     </div>
     <div class="row">
-      <label class="lbl" :for="`re-preset-${c}`">{{ c === "av1" ? "Speed preset" : "Encoding preset" }}<small>Slower = smaller file at the same quality. Server: {{ presetLabel(d[c].preset) }}</small></label>
+      <label class="lbl" :for="`re-preset-${c}`">{{ c === "av1" ? $t("Speed preset") : $t("Encoding preset") }}<small>{{ $t("Slower = smaller file at the same quality. Server: {value}", { value: presetLabel(d[c].preset) }) }}</small></label>
       <select :id="`re-preset-${c}`" v-model="state[c].preset" class="select">
-        <template v-if="c === 'av1'"><option v-for="p in AV1_PRESETS" :key="p.value" :value="p.value">{{ p.label }}</option></template>
+        <template v-if="c === 'av1'"><option v-for="p in AV1_PRESETS" :key="p.value" :value="p.value">{{ $t(p.label) }}</option></template>
         <template v-else><option v-for="p in defaults.hevc_presets" :key="p" :value="p">{{ p }}</option></template>
       </select>
     </div>
     <div class="row">
-      <span class="lbl">Options</span>
+      <span class="lbl">{{ $t("Options") }}</span>
       <div class="toggles">
-        <label class="switch"><input v-model="state.copy_audio" type="checkbox">Copy the audio when it's AAC</label>
-        <label class="switch"><input v-model="state.downscale" type="checkbox">Downscale to 1080p if larger</label>
-        <label class="switch"><input v-model="state.remove_chapters" type="checkbox">Remove chapters</label>
-        <label class="switch"><input v-model="state.keep_original_file" type="checkbox">Keep the original file as "_old"</label>
+        <label class="switch"><input v-model="state.copy_audio" type="checkbox">{{ $t("Copy the audio when it's AAC") }}</label>
+        <label class="switch"><input v-model="state.downscale" type="checkbox">{{ $t("Downscale to 1080p if larger") }}</label>
+        <label class="switch"><input v-model="state.remove_chapters" type="checkbox">{{ $t("Remove chapters") }}</label>
+        <label class="switch"><input v-model="state.keep_original_file" type="checkbox">{{ $t("Keep the original file as \"_old\"") }}</label>
       </div>
     </div>
     <p class="foot muted">
-      <template v-if="changed">Changed for this re-encode only. <button type="button" class="linkish" @click="reset">Back to the server's settings</button></template>
-      <template v-else>Server Settings (Server Settings → Re-encode). Changes here are for this re-encode only.</template>
+      <template v-if="changed">{{ $t("Changed for this re-encode only.") }} <button type="button" class="linkish" @click="reset">{{ $t("Back to the server's settings") }}</button></template>
+      <template v-else>{{ $t("Server Settings (Server Settings → Re-encode). Changes here are for this re-encode only.") }}</template>
     </p>
   </div>
 </template>

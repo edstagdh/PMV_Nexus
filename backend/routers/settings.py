@@ -19,6 +19,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
+from ..i18n import L
 from .. import upload_safety
 from .. import ip_privacy, proxy
 from ..config import get_settings, save_overrides
@@ -90,10 +91,9 @@ def set_tray_settings(payload: TraySettingsRequest, request: Request,
         browser = payload.browser.strip()
         if browser != get_settings().tray.browser:
             if not on_this_computer(request):
-                raise HTTPException(status_code=403, detail="The browser can only be changed on the computer the app runs "
-                                                            "on (open the app there at http://localhost)")
+                raise HTTPException(status_code=403, detail=L('The browser can only be changed on the computer the app runs on (open the app there at http://localhost)'))
             if "\n" in browser or "\r" in browser:
-                raise HTTPException(status_code=400, detail="The browser must be one line")
+                raise HTTPException(status_code=400, detail=L('The browser must be one line'))
             values["browser"] = browser
     save_overrides(tray=values)
     return {"ok": True}
@@ -254,10 +254,10 @@ def browse_dirs(path: str = "", user: AuthContext = Depends(require_permission("
     try:
         current = Path(path).expanduser().resolve()
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail=f"Invalid path: {exc}") from exc
+        raise HTTPException(status_code=400, detail=L('Invalid path: {error}', error=exc)) from exc
 
     if not current.exists() or not current.is_dir():
-        raise HTTPException(status_code=400, detail="Path does not exist or is not a directory")
+        raise HTTPException(status_code=400, detail=L('Path does not exist or is not a directory'))
 
     try:
         entries = sorted(
@@ -281,9 +281,9 @@ def browse_dirs_mkdir(payload: BrowseMkdirRequest, user: AuthContext = Depends(r
     try:
         parent = Path(payload.parent_path).expanduser().resolve()
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail=f"Invalid parent path: {exc}") from exc
+        raise HTTPException(status_code=400, detail=L('Invalid parent path: {error}', error=exc)) from exc
     if not parent.exists() or not parent.is_dir():
-        raise HTTPException(status_code=400, detail="Parent folder does not exist")
+        raise HTTPException(status_code=400, detail=L('Parent folder does not exist'))
 
     try:
         safe_name = safe_folder_name(payload.name)
@@ -292,11 +292,11 @@ def browse_dirs_mkdir(payload: BrowseMkdirRequest, user: AuthContext = Depends(r
 
     new_dir = parent / safe_name
     if new_dir.exists():
-        raise HTTPException(status_code=400, detail="A folder with that name already exists")
+        raise HTTPException(status_code=400, detail=L('A folder with that name already exists'))
 
     try:
         new_dir.mkdir(parents=False, exist_ok=False)
     except OSError as exc:
-        raise HTTPException(status_code=400, detail=f"Could not create folder: {exc}") from exc
+        raise HTTPException(status_code=400, detail=L('Could not create folder: {error}', error=exc)) from exc
 
     return {"created": str(new_dir)}

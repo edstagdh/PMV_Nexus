@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..i18n import L
 from ..pmv_details import extract_creators
 
 import asyncio
@@ -149,8 +150,9 @@ class DownloadWorkerMixin:
             self.db.save_item(item)
         if item.status == "failed":
             named = item.title and not item.title.startswith("Fetching")
-            what = "Couldn't get the details of" if retry_status == "fetching" else "Download failed:"
-            notify("download", "error", f"{what} {title_of(item) if named else item.url}",
+            what = title_of(item) if named else item.url
+            notify("download", "error", L("Couldn't get the details of {title}", title=what) if retry_status == "fetching"
+                   else L("Download failed: {title}", title=what),
                    body=error[:300], link="/tasks", user_id=item.added_by)
 
     async def _download_hls(self, item: LibraryItem, meta, video_path: Path) -> None:
@@ -188,8 +190,7 @@ class DownloadWorkerMixin:
         if mode == "all" or (mode == "split" and proxy.via_proxy.get()):
             input_args = proxy.ffmpeg_args(proxy.address())
             if input_args is None:  # a SOCKS proxy: FFmpeg can't use it
-                raise RuntimeError("This video is an HLS stream, which FFmpeg can only download through an HTTP proxy, "
-                                   "not SOCKS -- use an HTTP proxy, or don't send all site traffic through the proxy")
+                raise RuntimeError(L("This video is an HLS stream, which FFmpeg can only download through an HTTP proxy, not SOCKS -- use an HTTP proxy, or don't send all site traffic through the proxy"))
         proc_holder: dict = {}
         self._active_download_procs[item.id] = proc_holder
         try:
@@ -206,7 +207,7 @@ class DownloadWorkerMixin:
             self._active_download_procs.pop(item.id, None)
 
         if not ok:
-            raise RuntimeError("HLS video download failed -- check the server log for ffmpeg output")
+            raise RuntimeError(L('HLS video download failed -- check the server log for ffmpeg output'))
 
     async def _download(self, item: LibraryItem) -> None:
         meta = getattr(item, "_meta", None)
@@ -445,7 +446,7 @@ class DownloadWorkerMixin:
                 item.touch()
                 self.db.save_item(item)
                 logger.info("Download complete for '{}' [{}] -> {}", item.title, item.id, video_path)
-            notify("download", "success", f"Downloaded {title_of(item)}", link=video_link(item), user_id=item.added_by)
+            notify("download", "success", L('Downloaded {title}', title=title_of(item)), link=video_link(item), user_id=item.added_by)
             try:
                 stats_store.bump("download_bytes", Path(video_path).stat().st_size)
             except OSError:

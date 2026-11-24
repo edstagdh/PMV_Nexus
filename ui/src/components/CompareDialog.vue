@@ -38,7 +38,7 @@ onBeforeUnmount(() => all().forEach((v) => { v.pause(); v.removeAttribute("src")
 </script>
 
 <template>
-  <ModalDialog title="Compare side by side" width="96rem" @close="emit('close')">
+  <ModalDialog :title="$t('Compare side by side')" width="96rem" @close="emit('close')">
     <div class="grid" :style="{ gridTemplateColumns: `repeat(${Math.min(items.length, 3)}, minmax(0, 1fr))` }">
       <figure v-for="(it, i) in items" :key="it.id">
         <video :ref="(el) => (players[i] = el)" :src="`/api/library/${encodeURIComponent(it.id)}/stream`" :data-item-id="it.id"
@@ -47,20 +47,20 @@ onBeforeUnmount(() => all().forEach((v) => { v.pause(); v.removeAttribute("src")
         <figcaption>
           <span class="num">#{{ i + 1 }}</span> {{ itemUrlTitle(it) }}
           <span class="muted">· {{ it.tech_resolution }} · {{ it.tech_filesize }}</span>
-          <button class="btn btn-ghost btn-sm" :class="{ active: audioFrom === i }" title="Hear this one" @click="audioFrom = i">🔊</button>
+          <button class="btn btn-ghost btn-sm" :class="{ active: audioFrom === i }" :title="$t('Hear this one')" @click="audioFrom = i">🔊</button>
         </figcaption>
       </figure>
     </div>
     <div class="controls">
-      <button class="btn btn-primary btn-sm" @click="toggle">{{ playing ? "Pause all" : "Play all" }}</button>
+      <button class="btn btn-primary btn-sm" @click="toggle">{{ playing ? $t("Pause all") : $t("Play all") }}</button>
       <button class="btn btn-sm" @click="jump(-5)">−5s</button>
-      <input type="range" min="0" :max="duration || 0" step="0.1" :value="position" aria-label="Position" @input="seek">
+      <input type="range" min="0" :max="duration || 0" step="0.1" :value="position" :aria-label="$t('Position')" @input="seek">
       <button class="btn btn-sm" @click="jump(5)">+5s</button>
       <span class="pos">{{ fmt(position) }} / {{ fmt(duration) }}</span>
-      <button class="btn btn-sm" title="Move all to the first video's position" @click="resync">Re-sync</button>
-      <label class="vol" :title="`Volume of #${audioFrom + 1}`">
+      <button class="btn btn-sm" :title="$t('Move all to the first video\'s position')" @click="resync">{{ $t("Re-sync") }}</button>
+      <label class="vol" :title="$t('Volume of #{n}', { n: audioFrom + 1 })">
         <span aria-hidden="true">{{ volume === 0 ? "🔇" : "🔊" }}</span>
-        <input v-model.number="volume" type="range" min="0" max="1" step="0.01" aria-label="Volume">
+        <input v-model.number="volume" type="range" min="0" max="1" step="0.01" :aria-label="$t('Volume')">
         <output>{{ Math.round(volume * 100) }}%</output>
       </label>
     </div>

@@ -1,3 +1,4 @@
+// i18n-ignore-file: made-up articles for the panic page; they stay as they are in every language.
 // What the panic keys show (2.24.4): an ordinary-looking article page from an
 // invented lifestyle site, with a few made-up (safe-for-work) ads. Every site,
 // brand and person here is fictional. One is picked at random each time.

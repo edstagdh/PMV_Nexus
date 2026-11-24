@@ -28,6 +28,7 @@ LibraryItem serializes its tags/performers/music through canon_list();
 LibraryDB stores the raw values (model_dump(context={"raw": True})).
 """
 from __future__ import annotations
+from .i18n import L
 
 import re
 import threading
@@ -70,7 +71,7 @@ class Spellings:
         self._counts: dict[str, dict[str, dict[str, list]]] = {f: {} for f in FIELDS}
         self._chosen: dict[str, dict[str, str]] = {f: {} for f in FIELDS}
         # field -> fn(value) -> another name to show instead, or None. Performers use
-        # it to show ThePornDB aliases under her main name (library_mixins/performers.py).
+        # it to show ThePornDB aliases under their main name (library_mixins/performers.py).
         self._resolvers: dict[str, Callable[[str], Optional[str]]] = {}
         self._rules: dict[str, dict[str, str]] = {f: {} for f in FIELDS}  # field -> folded old -> new
 
@@ -198,14 +199,14 @@ class Spellings:
     def pin(self, field: str, value: str, spelling: Optional[str]) -> None:
         """Use `spelling` for every value written like `value`; None goes back to automatic."""
         if field not in FIELDS:
-            raise ValueError("Unknown field")
+            raise ValueError(L('Unknown field'))
         key = fold(value)
         if spelling is None:
             self._pins[field].pop(key, None)
         else:
             spelling = " ".join(str(spelling).split())
             if fold(spelling) != key:
-                raise ValueError("A spelling can only change upper/lower case")
+                raise ValueError(L('A spelling can only change upper/lower case'))
             self._pins[field][key] = spelling
         if self._db is not None:
             self._db.set_app_state(_PINS_KEY, self._pins)

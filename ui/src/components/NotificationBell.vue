@@ -2,6 +2,7 @@
 // The bell (sidebar and mobile bar) and the notification center it opens:
 // problems (failed downloads / jobs, low disk space...) or everything,
 // newest first. The badge counts unread problems.
+import { t } from "../lib/i18n.js";
 import { askConfirm, confirmState } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
@@ -26,16 +27,16 @@ function toggle() {
 // Clicking a notification opens its menu (3.6.0): where it points, Tasks for work that ran there,
 // the log from around that moment, and Copy.
 const openId = ref(null);
-const PLACES = [[/^\/video\//, "Open the video"], [/^\/tasks/, "Open Tasks"], [/songs/, "Open Songs"],
-  [/duplicates/, "Open Duplicates"], [/backups/, "Open Backups"], [/logs/, "Open Logs"]];
+const PLACES = [[/^\/video\//, t("Open the video")], [/^\/tasks/, t("Open Tasks")], [/songs/, t("Open Songs")],
+  [/duplicates/, t("Open Duplicates")], [/backups/, t("Open Backups")], [/logs/, t("Open Logs")]];
 const WORK = new Set(["download", "reencode", "repair", "upload", "job", "duplicate"]);
 function linksOf(n) {
   const out = [];
-  if (n.link) out.push({ label: (PLACES.find(([re]) => re.test(n.link)) || [null, "Open"])[1], to: n.link, icon: "external" });
-  if (WORK.has(n.category) && !String(n.link || "").startsWith("/tasks")) out.push({ label: "Open Tasks", to: "/tasks", icon: "list" });
+  if (n.link) out.push({ label: (PLACES.find(([re]) => re.test(n.link)) || [null, t("Open")])[1], to: n.link, icon: "external" });
+  if (WORK.has(n.category) && !String(n.link || "").startsWith("/tasks")) out.push({ label: t("Open Tasks"), to: "/tasks", icon: "list" });
   if (hasPermission("logs.view") && n.created_at) {
     const at = Number(n.created_at);
-    out.push({ label: "See the log from then", icon: "logs", to: { name: "portal", params: { tab: "logs" }, query: {
+    out.push({ label: t("See the log from then"), icon: "logs", to: { name: "portal", params: { tab: "logs" }, query: {
       cat: "all", ...(n.level === "error" || n.level === "warning" ? { level: "WARNING" } : {}),
       from: Math.floor(at - 120), to: Math.ceil(at + 5) } } });
   }
@@ -49,14 +50,14 @@ function go(to) {
 }
 async function copyNote(n) {
   const ok = await copyText([n.title, n.body, formatDateTime(n.created_at)].filter(Boolean).join("\n"));
-  toast(ok ? "Copied" : "The browser blocked copying", { type: ok ? "success" : "error" });
+  toast(ok ? t("Copied") : t("The browser blocked copying"), { type: ok ? "success" : "error" });
 }
 async function readAll() {
-  try { await markAllRead(); } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  try { await markAllRead(); } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
 }
 async function clearAll() {
-  if (!(await askConfirm("Delete all notifications?", { ok: "Delete", danger: true }))) return;
-  try { await clearNotifications(); } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  if (!(await askConfirm(t("Delete all notifications?"), { ok: t("Delete"), danger: true }))) return;
+  try { await clearNotifications(); } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
 }
 // Esc answers an open confirmation ("Delete all notifications?") first, not this panel (3.2.1).
 function onKey(e) { if (e.key === "Escape" && !confirmState.open) open.value = false; }
@@ -65,27 +66,27 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>
 
 <template>
-  <button class="btn btn-ghost btn-icon bell" :class="{ 'btn-sm': compact }" :title="notes.unread ? `${notes.unread} unread problem(s)` : 'Notifications'"
-          :aria-label="notes.unread ? `Notifications, ${notes.unread} unread problems` : 'Notifications'" :aria-expanded="open" @click="toggle">
+  <button class="btn btn-ghost btn-icon bell" :class="{ 'btn-sm': compact }" :title="notes.unread ? $t('{n} unread problem(s)', { n: notes.unread }) : $t('Notifications')"
+          :aria-label="notes.unread ? $t('Notifications, {n} unread problems', { n: notes.unread }) : $t('Notifications')" :aria-expanded="open" @click="toggle">
     <Icon name="bell" />
     <span v-if="notes.unread" class="badge">{{ notes.unread > 99 ? "99+" : notes.unread }}</span>
   </button>
   <Teleport to="body">
     <div v-if="open" class="nc-overlay" @click="open = false" />
     <Transition name="nc">
-      <aside v-if="open" class="nc card" role="dialog" aria-label="Notifications">
+      <aside v-if="open" class="nc card" role="dialog" :aria-label="$t('Notifications')">
         <header class="nc-head">
-          <h2>Notifications</h2>
-          <button class="btn btn-ghost btn-icon btn-sm" aria-label="Close" @click="open = false"><Icon name="x" /></button>
+          <h2>{{ $t("Notifications") }}</h2>
+          <button class="btn btn-ghost btn-icon btn-sm" :aria-label="$t('Close')" @click="open = false"><Icon name="x" /></button>
         </header>
         <div class="nc-bar">
           <div class="seg" role="tablist">
-            <button role="tab" :aria-selected="show === 'problems'" :class="{ on: show === 'problems' }" @click="show = 'problems'">Problems<span v-if="notes.unread" class="n">{{ notes.unread }}</span></button>
-            <button role="tab" :aria-selected="show === 'all'" :class="{ on: show === 'all' }" @click="show = 'all'">All</button>
+            <button role="tab" :aria-selected="show === 'problems'" :class="{ on: show === 'problems' }" @click="show = 'problems'">{{ $t("Problems") }}<span v-if="notes.unread" class="n">{{ notes.unread }}</span></button>
+            <button role="tab" :aria-selected="show === 'all'" :class="{ on: show === 'all' }" @click="show = 'all'">{{ $t("All") }}</button>
           </div>
           <span style="flex: 1" />
-          <button class="btn btn-ghost btn-sm" :disabled="!notes.unread" @click="readAll">Mark read</button>
-          <button class="btn btn-ghost btn-sm" :disabled="!notes.items.length" @click="clearAll">Clear</button>
+          <button class="btn btn-ghost btn-sm" :disabled="!notes.unread" @click="readAll">{{ $t("Mark read") }}</button>
+          <button class="btn btn-ghost btn-sm" :disabled="!notes.items.length" @click="clearAll">{{ $t("Clear") }}</button>
         </div>
         <ul v-if="items.length" class="nc-list scroll-thin">
           <li v-for="n in items" :key="n.id" :class="[n.level, { unread: !n.read && (n.level === 'error' || n.level === 'warning'), open: openId === n.id }]">
@@ -99,12 +100,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             </button>
             <div v-if="openId === n.id" class="nmenu" role="menu">
               <button v-for="l in linksOf(n)" :key="l.label" class="btn btn-sm" role="menuitem" type="button" @click="go(l.to)">{{ l.label }}</button>
-              <button class="btn btn-ghost btn-sm" role="menuitem" type="button" @click="copyNote(n)">Copy</button>
+              <button class="btn btn-ghost btn-sm" role="menuitem" type="button" @click="copyNote(n)">{{ $t("Copy") }}</button>
             </div>
           </li>
         </ul>
-        <p v-else class="muted nc-empty">{{ show === "problems" ? "No problems — nothing failed." : "Nothing yet." }}</p>
-        <p class="muted nc-foot">Pop-ups for these can be turned off per kind in My Settings → Notifications.</p>
+        <p v-else class="muted nc-empty">{{ show === "problems" ? $t("No problems — nothing failed.") : $t("Nothing yet.") }}</p>
+        <p class="muted nc-foot">{{ $t("Pop-ups for these can be turned off per kind in My Settings → Notifications.") }}</p>
       </aside>
     </Transition>
   </Teleport>
@@ -112,10 +113,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 <style scoped>
 .bell { position: relative; }
-.badge { position: absolute; top: -0.15rem; right: -0.15rem; min-width: 1.1rem; height: 1.1rem; padding: 0 0.25rem; border-radius: 999px;
+.badge { position: absolute; top: -0.15rem; inset-inline-end: -0.15rem; min-width: 1.1rem; height: 1.1rem; padding: 0 0.25rem; border-radius: 999px;
   background: var(--danger); color: #fff; font-size: 0.62rem; font-weight: 800; display: grid; place-items: center; line-height: 1; }
 .nc-overlay { position: fixed; inset: 0; z-index: 150; background: rgb(0 0 0 / 0.25); }
-.nc { position: fixed; top: 0.75rem; right: 0.75rem; bottom: 0.75rem; width: min(26rem, calc(100vw - 1.5rem)); z-index: 151;
+.nc { position: fixed; top: 0.75rem; inset-inline-end: 0.75rem; bottom: 0.75rem; width: min(26rem, calc(100vw - 1.5rem)); z-index: 151;
   display: flex; flex-direction: column; padding: 0; overflow: hidden; box-shadow: var(--shadow); }
 .nc-head { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem 0.25rem; }
 .nc-head h2 { font-size: 1.05rem; margin: 0; }
@@ -127,11 +128,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 .nc-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
 .nc-list li { border-bottom: 1px solid var(--border); }
 .row { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem; width: 100%; padding: 0.625rem 1rem; border: 0;
-  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .row:hover, li.open .row { background: var(--panel-hover); }
 .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .txt { display: flex; flex-direction: column; min-width: 0; }
-.nmenu { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 1rem 0.65rem 3.25rem; background: var(--panel-hover); }
+.nmenu { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-block: 0 0.65rem; padding-inline: 3.25rem 1rem; background: var(--panel-hover); }
 .nc-list li.unread { background: color-mix(in srgb, var(--danger) 7%, transparent); }
 .ic { width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center; background: var(--panel-hover); color: var(--text-2); }
 .success .ic { color: var(--success); }
@@ -142,6 +143,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 .when { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.15rem; }
 .nc-empty { padding: 2rem 1rem; text-align: center; flex: 1; }
 .nc-foot { font-size: 0.72rem; padding: 0.5rem 1rem; margin: 0; border-top: 1px solid var(--border); }
-.nc-enter-from, .nc-leave-to { opacity: 0; transform: translateX(1rem); }
+.nc-enter-from, .nc-leave-to { opacity: 0; transform: translateX(calc(1rem * var(--dir-x))); }
 .nc-enter-active, .nc-leave-active { transition: all 0.18s var(--ease); }
 </style>

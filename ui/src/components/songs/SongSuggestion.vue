@@ -2,6 +2,7 @@
 // One suggested song (backend/library_mixins/songs.py): its name can be
 // corrected before Add puts it in the video's Music; Dismiss hides it for
 // good for that video. Used by the Find songs dialog and Management -> Songs.
+import { t } from "../../lib/i18n.js";
 import { ref, computed } from "vue";
 import Icon from "../Icon.vue";
 import { api } from "../../lib/api.js";
@@ -11,18 +12,18 @@ const props = defineProps({ s: Object });
 const emit = defineEmits(["done"]);
 const label = ref(props.s.label);
 const busy = ref(false);
-const clock = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`;
+const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 // "Sure": heard in several samples -- and not only by the AI (2.33.0), which can be wrong.
-const aiOnly = computed(() => props.s.source === "Gemini (AI)");
+const aiOnly = computed(() => props.s.source === "Gemini (AI)");  // i18n-ignore: the server's source name
 const sure = computed(() => props.s.hits >= 2 && !aiOnly.value);
 
 async function act(what) {
   busy.value = true;
   try {
     await api(`/api/songs/${props.s.id}/${what}`, { method: "POST", body: what === "add" ? { label: label.value.trim() } : {} });
-    if (what === "add") toast(`Added “${label.value.trim()}” to Music`, { type: "success" });
+    if (what === "add") toast(t("Added “{song}” to Music", { song: label.value.trim() }), { type: "success" });
     emit("done", what);
-  } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
   finally { busy.value = false; }
 }
 defineExpose({ add: () => act("add") });
@@ -31,17 +32,17 @@ defineExpose({ add: () => act("add") });
 <template>
   <div class="sugg" :class="{ sure }">
     <div class="main">
-      <input v-model="label" class="input" maxlength="200" aria-label="Song — Artist">
+      <input v-model="label" class="input" maxlength="200" :aria-label="$t('Song — Artist')">
       <span class="meta">
-        <span class="pill" :title="sure ? 'Heard in several samples' : aiOnly ? 'Named by the AI only — check it' : 'Heard in one sample only — check it'">
-          {{ s.hits }} of {{ s.samples }} {{ s.samples === 1 ? "sample" : "samples" }}</span>
-        at {{ (s.times || []).map(clock).join(", ") }} · {{ s.source }}
-        <a v-if="s.url" :href="s.url" target="_blank" rel="noopener noreferrer"><Icon name="external" :size="12" />Open</a>
+        <span class="pill" :title="sure ? $t('Heard in several samples') : aiOnly ? $t('Named by the AI only — check it') : $t('Heard in one sample only — check it')">
+          {{ $tn("{hits} of {n} sample", "{hits} of {n} samples", s.samples, { hits: s.hits }) }}</span>
+        {{ $t("at {times}", { times: (s.times || []).map(clock).join(", ") }) }} · {{ s.source }}
+        <a v-if="s.url" :href="s.url" target="_blank" rel="noopener noreferrer"><Icon name="external" :size="12" />{{ $t("Open") }}</a>
       </span>
     </div>
     <div class="acts">
-      <button class="btn btn-sm btn-primary" :disabled="busy || !label.trim()" @click="act('add')"><Icon name="plus" :size="14" />Add</button>
-      <button class="btn btn-sm btn-ghost" :disabled="busy" @click="act('dismiss')">Dismiss</button>
+      <button class="btn btn-sm btn-primary" :disabled="busy || !label.trim()" @click="act('add')"><Icon name="plus" :size="14" />{{ $t("Add") }}</button>
+      <button class="btn btn-sm btn-ghost" :disabled="busy" @click="act('dismiss')">{{ $t("Dismiss") }}</button>
     </div>
   </div>
 </template>

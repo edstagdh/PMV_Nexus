@@ -3,21 +3,22 @@
 // itself without showing anything. Usage:
 //   if (!(await askConfirm("Delete it?", { ok: "Delete", danger: true }))) return;
 // askPassword() is the same window with a password field (2.25.0): the password, or null.
+import { t } from "../lib/i18n.js";
 import { reactive } from "vue";
 
 export const confirmState = reactive({
-  open: false, title: "", message: "", ok: "OK", cancel: "Cancel", danger: false, resolve: null,
+  open: false, title: "", message: "", ok: "", cancel: "", danger: false, resolve: null,
   input: false, value: "", error: "",
 });
 
-export function askConfirm(message, { title = "Are you sure?", ok = "OK", cancel = "Cancel", danger = false } = {}) {
+export function askConfirm(message, { title = t("Are you sure?"), ok = t("OK"), cancel = t("Cancel"), danger = false } = {}) {
   return new Promise((resolve) => {
     confirmState.resolve?.(false); // only one at a time: an older one counts as "Cancel"
     Object.assign(confirmState, { open: true, title, message, ok, cancel, danger, resolve, input: false, value: "", error: "" });
   });
 }
 
-export function askPassword(message, { title = "Password", ok = "OK", cancel = "Cancel", error = "" } = {}) {
+export function askPassword(message, { title = t("Password"), ok = t("OK"), cancel = t("Cancel"), error = "" } = {}) {
   return new Promise((resolve) => {
     confirmState.resolve?.(false);
     Object.assign(confirmState, { open: true, title, message, ok, cancel, danger: false, input: true, value: "", error,

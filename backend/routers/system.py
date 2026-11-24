@@ -2,6 +2,8 @@
 tool status and backups. See backend/app_info.py and backend/backup.py."""
 from __future__ import annotations
 
+import asyncio
+
 import json
 import re
 from urllib.parse import urlsplit
@@ -12,6 +14,7 @@ from loguru import logger
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
+from ..i18n import L
 from .. import app_info, backup
 from ..config import get_settings
 from ..library_manager import library_manager
@@ -21,8 +24,14 @@ router = APIRouter()
 
 
 class BackupRequest(BaseModel):
+    include: list[str] | None = None   # (3.7.0) backup.PARTS keys; else the two switches below
     include_cache: bool = False
     include_secrets: bool = False
+    confirm_videos: bool = False       # the videos only after the page asked a second time
+
+
+class BackupSettings(BaseModel):
+    split_gb: float = 0  # (3.7.0) 0 = one file, else 3.9..115 (checked by BackupConfig)
 
 
 class BackupPassword(BaseModel):
@@ -126,7 +135,7 @@ async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_
     logged when neither works."""
     data = await request.body()
     if not data or not data.startswith(b"\xff\xd8"):
-        raise HTTPException(status_code=400, detail="Not a frame from the player")
+        raise HTTPException(status_code=400, detail=L('Not a frame from the player'))
     tried = []
     try:
         async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=_BROWSER_HEADERS) as client:
@@ -138,7 +147,7 @@ async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_
             tried.append(f"upload: {resp.status_code} {urlsplit(final).hostname}{urlsplit(final).path} "
                          f"({resp.headers.get('content-type', '?').split(';')[0]})")
             if "captcha" in final or "showcaptcha" in resp.text[:20000]:
-                raise HTTPException(status_code=502, detail="Yandex asked to prove you're not a robot — try again later")
+                raise HTTPException(status_code=502, detail=L("Yandex asked to prove you're not a robot — try again later"))
             resp = await client.post(YANDEX_UPLOAD, params={"rpt": "imageview", "format": "json", "request": _YANDEX_BLOCKS},
                                      files={"upfile": ("frame.jpg", data, "image/jpeg")})
             try:
@@ -152,7 +161,7 @@ async def frame_search_yandex(request: Request, user: AuthContext = Depends(get_
     except httpx.HTTPError as exc:
         tried.append(exc.__class__.__name__)
     logger.warning("Search frame on Yandex: no results address — {}", " | ".join(tried))
-    raise HTTPException(status_code=502, detail="Yandex didn't answer as expected — try again later (details in the log)")
+    raise HTTPException(status_code=502, detail=L("Yandex didn't answer as expected — try again later (details in the log)"))
 
 
 @router.get("/frame-search", include_in_schema=False)
@@ -170,7 +179,7 @@ def get_doc_screenshot(name: str, user: AuthContext = Depends(get_current_user))
     """The Guide's pictures (docs/screenshots/, 3.2.0) for the in-app Help page."""
     path = app_info.doc_screenshot(name)
     if path is None:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail=L('Not found'))
     return FileResponse(path, headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -178,7 +187,7 @@ def get_doc_screenshot(name: str, user: AuthContext = Depends(get_current_user))
 def get_doc(key: str, user: AuthContext = Depends(get_current_user)):
     text = app_info.read_doc(key)
     if text is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail=L('Document not found'))
     return PlainTextResponse(text)
 
 
@@ -197,19 +206,53 @@ def list_backups(user: AuthContext = Depends(require_permission("settings.manage
         "backups": backup.list_backups(settings),
         "dir": str(settings.backup_dir),
         "keep": settings.backup.keep,
+        "split_gb": settings.backup.split_gb,
         "pending_restore": backup.get_pending_restore(),
         "password_set": bool(backup.saved_password()),
     }
 
 
+@router.get("/api/backups/plan")
+async def backup_plan(include: str = "", user: AuthContext = Depends(require_permission("settings.manage"))):
+    """What a backup would hold (3.7.0): every part with its files and size, the estimated
+    size and the free space where backups go. `include`: comma-separated backup.PARTS keys."""
+    parts = [k for k in include.split(",") if k]
+    return await asyncio.to_thread(backup.plan_backup, get_settings(), parts)
+
+
+@router.get("/api/backups/space")
+def backup_space(user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Free space where backups go, asked every few seconds while the page shows it (3.7.0)."""
+    return backup.free_space(get_settings())
+
+
 @router.post("/api/backups")
 async def create_backup(payload: BackupRequest, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Starts a backup (3.7.0: in the background -- followed on Tasks) after checking it fits."""
+    parts = backup.parts_from(payload.include, payload.include_cache, payload.include_secrets)
+    if "videos" in parts and not payload.confirm_videos:
+        raise HTTPException(status_code=400, detail=L("Including the videos has to be confirmed"))
+    plan = await asyncio.to_thread(backup.plan_backup, get_settings(), parts)
+    problem = backup.space_problem(plan)
+    if problem:
+        raise HTTPException(status_code=507, detail=problem)
     try:
-        return await library_manager.run_backup(
-            include_cache=payload.include_cache, include_secrets=payload.include_secrets, trigger="manual",
-        )
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"Backup failed: {exc}")
+        library_manager.start_backup(sorted(parts))
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"started": True, "plan": plan}
+
+
+@router.post("/api/backups/settings")
+def save_backup_settings(payload: BackupSettings, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Split size for new backups (3.7.0); scheduled backups use it too."""
+    from ..config import BackupConfig, save_overrides
+    try:
+        value = BackupConfig(split_gb=payload.split_gb).split_gb
+    except ValueError:
+        raise HTTPException(status_code=400, detail=L("Parts can be 3.9 to 115 GB (or 0: one file)"))
+    save_overrides(backup={"split_gb": value})
+    return {"split_gb": value}
 
 
 @router.post("/api/backups/{name}/test")
@@ -221,18 +264,23 @@ async def test_backup(name: str, payload: BackupPassword | None = None,
     except backup.PasswordNeeded as exc:
         raise _locked(exc) from exc
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Backup not found") from exc
+        raise HTTPException(status_code=404, detail=L('Backup not found')) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/api/backups/{name}/download")
-def download_backup(name: str, user: AuthContext = Depends(require_permission("settings.manage"))):
+def download_backup(name: str, part: int = 0, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """The backup file, or (a split backup, 3.7.0) its part number `part` (1, 2, ...)."""
     try:
-        path = backup.resolve_backup(get_settings(), name)
-    except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Backup not found")
-    return FileResponse(str(path), media_type="application/zip", filename=path.name)
+        files = backup.files_of(backup.resolve_backup(get_settings(), name))
+        path = files[part - 1] if part else files[0]
+        if not part and len(files) > 1:
+            raise ValueError("a split backup is downloaded part by part")
+    except (ValueError, FileNotFoundError, IndexError):
+        raise HTTPException(status_code=404, detail=L('Backup not found'))
+    return FileResponse(str(path), media_type="application/zip" if path.suffix == ".zip" else "application/octet-stream",
+                        filename=path.name)
 
 
 @router.delete("/api/backups/{name}")
@@ -240,7 +288,7 @@ def delete_backup(name: str, user: AuthContext = Depends(require_permission("set
     try:
         backup.delete_backup(get_settings(), name)
     except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Backup not found")
+        raise HTTPException(status_code=404, detail=L('Backup not found'))
     return {"ok": True}
 
 
@@ -252,7 +300,7 @@ def stage_restore(name: str, payload: BackupPassword | None = None,
     except backup.PasswordNeeded as exc:
         raise _locked(exc) from exc
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Backup not found")
+        raise HTTPException(status_code=404, detail=L('Backup not found'))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"ok": True, "backup": summary}

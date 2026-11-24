@@ -10,7 +10,7 @@ import Icon from "./Icon.vue";
 import PerformerPlaceholder from "./PerformerPlaceholder.vue";
 
 const props = defineProps({ photos: { type: Array, default: () => [] }, alt: String, interval: { type: Number, default: 5000 },
-  gender: { type: String, default: "female" } }); // placeholder without photos (2.17.0)
+  gender: { type: String, default: "unknown" } }); // placeholder without photos (2.17.0)
 const index = ref(0);
 const loaded = ref(new Set([0]));
 const box = ref(null);
@@ -69,8 +69,8 @@ function key(e) {
 </script>
 
 <template>
-  <div ref="box" class="slides" :class="{ many: photos.length > 1, dragging: !!drag?.sideways }"
-       :tabindex="photos.length > 1 ? 0 : undefined" :aria-label="photos.length > 1 ? `${alt || 'Photos'}: photo ${index + 1} of ${photos.length}` : undefined"
+  <div ref="box" dir="ltr" class="slides" :class="{ many: photos.length > 1, dragging: !!drag?.sideways }"
+       :tabindex="photos.length > 1 ? 0 : undefined" :aria-label="photos.length > 1 ? $t('{name}: photo {n} of {total}', { name: alt || $t('Photos'), n: index + 1, total: photos.length }) : undefined"
        @mouseenter="paused = true" @mouseleave="paused = false" @keydown="key"
        @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up">
     <template v-if="photos.length">
@@ -78,12 +78,12 @@ function key(e) {
            :class="{ on: n === index }" :aria-hidden="n !== index" decoding="async" draggable="false"
            :style="n === index && offset ? { transform: `translateX(${offset}px)`, opacity: 1 - Math.min(0.6, Math.abs(offset) / 400) } : null">
       <template v-if="photos.length > 1">
-        <button type="button" class="arrow prev" aria-label="Previous photo" @click="go(-1)"><Icon name="left" :size="22" /></button>
-        <button type="button" class="arrow next" aria-label="Next photo" @click="go(1)"><Icon name="right" :size="22" /></button>
+        <button type="button" class="arrow prev" :aria-label="$t('Previous photo')" @click="go(-1)"><Icon name="left" :size="22" /></button>
+        <button type="button" class="arrow next" :aria-label="$t('Next photo')" @click="go(1)"><Icon name="right" :size="22" /></button>
         <span class="count" aria-hidden="true">{{ index + 1 }} / {{ photos.length }}</span>
-        <div class="dots" role="tablist" aria-label="Photos">
+        <div class="dots" role="tablist" :aria-label="$t('Photos')">
           <button v-for="(src, n) in photos" :key="src" class="dot" :class="{ on: n === index }" role="tab" :aria-selected="n === index"
-                  :aria-label="`Photo ${n + 1}`" @click="show(n); start()" />
+                  :aria-label="$t('Photo {n}', { n: n + 1 })" @click="show(n); start()" />
         </div>
       </template>
     </template>
@@ -103,16 +103,16 @@ function key(e) {
 .slides.dragging img { transition: opacity 1.2s ease; } /* follow the pointer without lag */
 .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 2.25rem; height: 2.75rem; display: grid; place-items: center;
   border: 0; border-radius: var(--radius); background: rgb(0 0 0 / 0.45); color: #fff; cursor: pointer; opacity: 0; transition: opacity 0.15s, background 0.15s; }
-.arrow.prev { left: 0.375rem; }
-.arrow.next { right: 0.375rem; }
+.arrow.prev { inset-inline-start: 0.375rem; }
+.arrow.next { inset-inline-end: 0.375rem; }
 .arrow:hover { background: rgb(0 0 0 / 0.7); }
 .slides:hover .arrow, .slides:focus-within .arrow { opacity: 1; }
-.count { position: absolute; top: 0.4rem; right: 0.45rem; font-size: 0.7rem; font-weight: 650; color: #fff; background: rgb(0 0 0 / 0.45);
+.count { position: absolute; top: 0.4rem; inset-inline-end: 0.45rem; font-size: 0.7rem; font-weight: 650; color: #fff; background: rgb(0 0 0 / 0.45);
   border-radius: 999px; padding: 0.05rem 0.45rem; opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .slides:hover .count, .slides:focus-within .count { opacity: 1; }
 /* Touch screens have no hover: keep the arrows and the count visible. */
 @media (hover: none) { .arrow, .count { opacity: 1; } }
-.dots { position: absolute; left: 0; right: 0; bottom: 0.5rem; display: flex; justify-content: center; gap: 0.375rem; flex-wrap: wrap; padding: 0 2.75rem; }
+.dots { position: absolute; inset-inline-start: 0; inset-inline-end: 0; bottom: 0.5rem; display: flex; justify-content: center; gap: 0.375rem; flex-wrap: wrap; padding: 0 2.75rem; }
 .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; border: 0; padding: 0; background: rgb(255 255 255 / 0.45); cursor: pointer; }
 .dot.on { background: #fff; }
 @media (prefers-reduced-motion: reduce) { .slides img { transition: none; } }

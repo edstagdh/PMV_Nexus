@@ -2,14 +2,16 @@
 // editable state, and the request body with only what was changed -- the rest
 // follows Server Settings when the re-encode runs.
 import { api } from "./api.js";
+import { t, N_ } from "./i18n.js";
 
 export const AV1_PRESETS = Array.from({ length: 14 }, (_, i) => ({
-  value: String(i), label: i === 0 ? "0 — slowest, smallest" : i === 13 ? "13 — fastest" : i === 8 ? "8 — balanced" : String(i),
+  value: String(i), label: i === 0 ? N_("0 — slowest, smallest") : i === 13 ? N_("13 — fastest") : i === 8 ? N_("8 — balanced") : String(i),
 }));
+// help texts are getters, translated when read (made before a language loads).
 export const CODEC_INFO = {
-  hevc: { label: "HEVC (H.265)", help: "Plays almost everywhere (TVs, phones, browsers).", crf: [0, 51], crfHelp: "22–26 is typical" },
-  av1: { label: "AV1", help: "Smaller at the same quality; slower, and some older devices can't play it.", crf: [1, 63], crfHelp: "28–35 is typical" },
-  h264: { label: "AVC (H.264)", help: "Plays on every device; bigger files. For compatibility, not to save space.", crf: [0, 51], crfHelp: "18–22 from HEVC/AV1" },
+  hevc: { label: "HEVC (H.265)", get help() { return t("Plays almost everywhere (TVs, phones, browsers)."); }, crf: [0, 51], get crfHelp() { return t("22–26 is typical"); } },
+  av1: { label: "AV1", get help() { return t("Smaller at the same quality; slower, and some older devices can't play it."); }, crf: [1, 63], get crfHelp() { return t("28–35 is typical"); } },
+  h264: { label: "AVC (H.264)", get help() { return t("Plays on every device; bigger files. For compatibility, not to save space."); }, crf: [0, 51], get crfHelp() { return t("18–22 from HEVC/AV1"); } },
 };
 const TOGGLES = ["copy_audio", "downscale", "remove_chapters", "keep_original_file"];
 

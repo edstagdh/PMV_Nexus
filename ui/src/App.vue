@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "./lib/i18n.js";
 import { ref, computed, watch, watchEffect } from "vue";
 import { pageTitle, formatTitle, routeTitle } from "./lib/title.js";
 import { useRoute, useRouter } from "vue-router";
@@ -58,8 +59,8 @@ watchEffect(() => {
   if (route.meta?.bare) return; // the panic page sets its own (an article's) title
   let name;
   if (!session.ready) name = "";
-  else if (!session.user) name = session.setupRequired ? "Set up" : "Sign in";
-  else if (!allowed.value) name = "Not allowed";
+  else if (!session.user) name = session.setupRequired ? t("Set up") : t("Sign in");
+  else if (!allowed.value) name = t("Not allowed");
   else name = (pageTitle.path === route.path && pageTitle.text) || routeTitle(route);
   document.title = formatTitle(name);
 });
@@ -90,34 +91,32 @@ const disk = computed(() => live.summary?.disk);
     <AppSidebar :open="navOpen" @close="navOpen = false" @add="addOpen = true" />
     <div class="app-main">
       <header class="mobile-bar">
-        <button class="btn btn-ghost btn-icon" aria-label="Menu" @click="navOpen = true"><Icon name="menu" /></button>
+        <button class="btn btn-ghost btn-icon" :aria-label="$t('Menu')" @click="navOpen = true"><Icon name="menu" /></button>
         <router-link to="/" class="mobile-brand">PMV Nexus</router-link>
-        <button class="btn btn-ghost btn-icon" aria-label="Discover a random video" @click="discover"><Icon name="dice" /></button>
+        <button class="btn btn-ghost btn-icon" :aria-label="$t('Discover a random video')" @click="discover"><Icon name="dice" /></button>
         <NotificationBell />
       </header>
       <div v-if="offline" class="app-banner warn" role="status">
-        <Icon name="server" :size="18" /><span><strong>Lost the connection to the server.</strong> Trying again… (Is it running? Is the network up?)</span>
+        <Icon name="server" :size="18" /><span><strong>{{ $t("Lost the connection to the server.") }}</strong> {{ $t("Trying again… (Is it running? Is the network up?)") }}</span>
       </div>
       <div v-if="disk?.low" class="app-banner bad" role="alert">
         <Icon name="disk" :size="18" />
-        <span><strong>Downloads are stopped: low disk space.</strong> Only {{ disk.free_percent }}% ({{ disk.free_gb }} GB) is free where the app
-          saves videos. Free up space to avoid damaged files — downloads start again by themselves above {{ disk.limit + 1 }}%.
-          Re-encodes and everything else carry on.</span>
-        <router-link v-if="isAdmin()" :to="{ name: 'server', query: { tab: 'download' } }" class="btn btn-sm">Settings</router-link>
+        <span><strong>{{ $t("Downloads are stopped: low disk space.") }}</strong> {{ $t("Only {percent}% ({gb} GB) is free where the app saves videos. Free up space to avoid damaged files — downloads start again by themselves above {limit}%. Re-encodes and everything else carry on.", { percent: disk.free_percent, gb: disk.free_gb, limit: disk.limit + 1 }) }}</span>
+        <router-link v-if="isAdmin()" :to="{ name: 'server', query: { tab: 'download' } }" class="btn btn-sm">{{ $t("Settings") }}</router-link>
       </div>
       <div v-if="!allowed" class="empty" style="min-height: 60vh">
         <div class="empty-icon">🔒</div>
-        <h2>This page is for the admin</h2>
-        <router-link to="/" class="btn">Back to the library</router-link>
+        <h2>{{ $t("This page is for the admin") }}</h2>
+        <router-link to="/" class="btn">{{ $t("Back to the library") }}</router-link>
       </div>
       <!-- Server unreachable (2.24.1): every page's content shows the same box; the page stays
            loaded underneath and comes back, refreshed, when the connection does. The video
            page is left as it is: its player can keep playing what it already has. -->
       <div v-else-if="offline && route.name !== 'video'" class="empty offline-box" role="alert">
         <div class="empty-icon">⚠️</div>
-        <h2>Can't reach the server</h2>
-        <span>Is it running? Is the network up? This page comes back by itself once the connection does.</span>
-        <button class="btn" @click="reload">Reload now</button>
+        <h2>{{ $t("Can't reach the server") }}</h2>
+        <span>{{ $t("Is it running? Is the network up? This page comes back by itself once the connection does.") }}</span>
+        <button class="btn" @click="reload">{{ $t("Reload now") }}</button>
       </div>
       <div v-if="allowed" v-show="!(offline && route.name !== 'video')" class="page-host">
         <router-view v-slot="{ Component }">
@@ -130,9 +129,9 @@ const disk = computed(() => live.summary?.disk);
     <PlayerHost />
     <AddVideoDialog v-if="addOpen" @close="addOpen = false" />
     <div v-if="live.updateAvailable && !updateDismissed" class="update-banner card">
-      <span>PMV Nexus was updated to v{{ live.serverVersion }}.</span>
-      <button class="btn btn-primary btn-sm" @click="reload">Reload</button>
-      <button class="btn btn-ghost btn-sm" @click="updateDismissed = true">Later</button>
+      <span>{{ $t("PMV Nexus was updated to v{version}.", { version: live.serverVersion }) }}</span>
+      <button class="btn btn-primary btn-sm" @click="reload">{{ $t("Reload") }}</button>
+      <button class="btn btn-ghost btn-sm" @click="updateDismissed = true">{{ $t("Later") }}</button>
     </div>
   </div>
   <ToastHost v-if="!route.meta?.bare" />
@@ -144,12 +143,12 @@ const disk = computed(() => live.summary?.disk);
 .spinner { width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 3px solid var(--border-strong); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .shell { min-height: 100vh; }
-.app-main { margin-left: var(--sidebar-w); min-width: 0; transition: margin-left 0.2s var(--ease); }
-.shell.collapsed .app-main { margin-left: var(--sidebar-w-collapsed); }
+.app-main { margin-inline-start: var(--sidebar-w); min-width: 0; transition: margin-left 0.2s var(--ease); }
+.shell.collapsed .app-main { margin-inline-start: var(--sidebar-w-collapsed); }
 .mobile-bar { display: none; }
 .update-banner { position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 150; display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.875rem; box-shadow: var(--shadow); border-color: var(--accent); max-width: calc(100vw - 2rem); }
 @media (max-width: 56.25rem) {
-  .app-main, .shell.collapsed .app-main { margin-left: 0; }
+  .app-main, .shell.collapsed .app-main { margin-inline-start: 0; }
   .mobile-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; position: sticky; top: 0; z-index: 30; height: 3.25rem; padding: 0 0.5rem; background: var(--bg-elev); border-bottom: 1px solid var(--border); }
   .mobile-brand { font-weight: 750; color: var(--text); }
 }

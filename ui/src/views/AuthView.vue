@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from "vue";
+import { t, i18n, loadBoot, setLanguage } from "../lib/i18n.js";
+import { ref, onMounted } from "vue";
 import AppLogo from "../components/AppLogo.vue";
 import PasswordChecklist from "../components/PasswordChecklist.vue";
 import { session, login, completeSetup } from "../stores/session.js";
@@ -15,11 +16,11 @@ const busy = ref(false);
 async function submit() {
   error.value = "";
   if (session.setupRequired && !accepted.value) {
-    error.value = "Please accept the terms of use first";
+    error.value = t("Please accept the terms of use first");
     return;
   }
   if (session.setupRequired && password.value !== password2.value) {
-    error.value = "The passwords do not match";
+    error.value = t("The passwords do not match");
     return;
   }
   busy.value = true;
@@ -27,10 +28,19 @@ async function submit() {
     if (session.setupRequired) await completeSetup(setupCode.value, username.value, password.value);
     else await login(username.value, password.value);
   } catch (err) {
-    error.value = err.message || "Sign-in failed";
+    error.value = err.message || t("Sign-in failed");
   } finally {
     busy.value = false;
   }
+}
+
+// 3.7.0: the sign-in page in another installed language (this browser only; after signing in,
+// the account's choice in My Settings -> Language counts).
+const langs = ref([]);
+onMounted(async () => { langs.value = (await loadBoot())?.languages || []; });
+async function pickLanguage(code) {
+  await setLanguage(code);
+  window.location.reload();
 }
 </script>
 
@@ -41,48 +51,51 @@ async function submit() {
         <AppLogo size="2.75rem" />
         <div>
           <h1>PMV Nexus</h1>
-          <p class="muted">{{ session.setupRequired ? "First-run setup" : "Sign in to continue" }}</p>
+          <p class="muted">{{ session.setupRequired ? $t("First-run setup") : $t("Sign in to continue") }}</p>
         </div>
       </div>
-      <p v-if="session.setupRequired" class="hint">
-        No accounts exist yet. Create the administrator account. The setup code is shown in the window
-        where the app is running (and in <code>data/logs</code>).
-      </p>
+      <p v-if="session.setupRequired" class="hint"><Tx msg="No accounts exist yet. Create the administrator account. The setup code is shown in the window where the app is running (and in {folder})."><template #folder><code>data/logs</code></template></Tx></p>
       <label v-if="session.setupRequired" class="field">
-        <span>Setup code</span>
-        <input v-model="setupCode" class="input" autocomplete="off" placeholder="XXXX-XXXX-XXXX" required>
+        <span>{{ $t("Setup code") }}</span>
+        <input v-model="setupCode" class="input" autocomplete="off" :placeholder="$t('XXXX-XXXX-XXXX')" required>
       </label>
       <label class="field">
-        <span>Username</span>
+        <span>{{ $t("Username") }}</span>
         <input v-model="username" class="input" autocomplete="username" required autofocus>
       </label>
       <label class="field">
-        <span>Password</span>
+        <span>{{ $t("Password") }}</span>
         <input v-model="password" class="input" type="password" :autocomplete="session.setupRequired ? 'new-password' : 'current-password'" required>
       </label>
       <label v-if="session.setupRequired" class="field">
-        <span>Confirm password</span>
+        <span>{{ $t("Confirm password") }}</span>
         <input v-model="password2" class="input" type="password" autocomplete="new-password" required>
       </label>
       <PasswordChecklist v-if="session.setupRequired" :password="password" :username="username" />
       <div v-if="session.setupRequired" class="terms">
-        <p><strong>Terms of use.</strong> PMV Nexus is an independent project, not affiliated with PMVHaven or any other
-          site it works with. It's for adults only (18+, or the age of majority where you live). You're responsible for
-          how you use it: follow each site's terms (download only what a site offers for download, for your own personal
-          use), respect copyright, and don't redistribute content you have no rights to. Provided as is, without warranty.
-          Full text: <code>DISCLAIMER.md</code> in the app folder, and Help → Terms of use.</p>
-        <label class="switch"><input v-model="accepted" type="checkbox" required>I'm 18 or older and I accept these terms</label>
+        <p><strong>{{ $t("Terms of use.") }}</strong> {{ $t("PMV Nexus is an independent project, not affiliated with PMVHaven or any other site it works with. It's for adults only (18+, or the age of majority where you live). You're responsible for how you use it: follow each site's terms (download only what a site offers for download, for your own personal use), respect copyright, and don't redistribute content you have no rights to. Provided as is, without warranty.") }}
+          <Tx msg="Full text: {file} in the app folder, and Help → Terms of use."><template #file><code>DISCLAIMER.md</code></template></Tx></p>
+        <label class="switch"><input v-model="accepted" type="checkbox" required>{{ $t("I'm 18 or older and I accept these terms") }}</label>
       </div>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <button class="btn btn-primary submit" :disabled="busy">
-        {{ busy ? "Please wait…" : session.setupRequired ? "Create admin account" : "Sign in" }}
+        {{ busy ? $t("Please wait…") : session.setupRequired ? $t("Create admin account") : $t("Sign in") }}
       </button>
     </form>
+    <label v-if="langs.length" class="auth-lang muted small">
+      <span aria-hidden="true">🌐</span>
+      <select class="select" :value="i18n.code" :aria-label="$t('Language')" @change="pickLanguage($event.target.value)">
+        <option value="en" lang="en">English</option>  <!-- i18n-ignore -->
+        <option v-for="l in langs" :key="l.code" :value="l.code" :lang="l.code">{{ l.native }}</option>
+      </select>
+    </label>
   </div>
 </template>
 
 <style scoped>
-.auth { min-height: 100vh; display: grid; place-items: center; padding: 1rem;
+.auth-lang { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+.auth-lang .select { width: auto; }
+.auth { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem;
   background: radial-gradient(75rem 37.5rem at 50% -10%, var(--accent-soft), transparent 60%), var(--bg); }
 .auth-card { width: 100%; max-width: 23.75rem; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.875rem; box-shadow: var(--shadow); }
 .auth-brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }

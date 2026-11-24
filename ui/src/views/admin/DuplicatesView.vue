@@ -3,6 +3,7 @@
 // side by side with what tells them apart (quality, size, bitrate, ...), so
 // you can keep the best copy, remove one, compare them playing, or mark the
 // group as "not duplicates".
+import { t, locale } from "../../lib/i18n.js";
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icon from "../../components/Icon.vue";
@@ -36,7 +37,7 @@ async function load() {
     groups.value = res.issues.filter((g) => g.type === "duplicate");
     error.value = "";
   } catch (err) {
-    error.value = err.message || "Could not load duplicates";
+    error.value = err.message || t("Could not load duplicates");
   }
 }
 
@@ -55,43 +56,43 @@ async function loadPlan() { try { plan.value = await api("/api/library/issues/sc
 const planText = computed(() => {
   const p = plan.value;
   if (!p || status.value?.running) return "";
-  if (!p.to_read) return `Next scan: nothing new to read${p.full_compare ? " (will re-compare stored fingerprints)" : ""} — quick.`;
-  const why = [p.new && `${p.new} new`, p.changed && `${p.changed} changed`, p.settings && `${p.settings} after a settings change`,
-    p.audio_retry && `${p.audio_retry} audio retries`].filter(Boolean).join(", ");
-  return `Next scan reads ${p.to_read} of ${p.total} videos (${why}); the others reuse stored fingerprints.`;
+  if (!p.to_read) return p.full_compare ? t("Next scan: nothing new to read (will re-compare stored fingerprints) — quick.") : t("Next scan: nothing new to read — quick.");
+  const why = [p.new && t("{n} new", { n: p.new }), p.changed && t("{n} changed", { n: p.changed }),
+    p.settings && t("{n} after a settings change", { n: p.settings }), p.audio_retry && t("{n} audio retries", { n: p.audio_retry })].filter(Boolean).join(", ");
+  return t("Next scan reads {n} of {total} videos ({why}); the others reuse stored fingerprints.", { n: p.to_read, total: p.total, why });
 });
 const lastText = computed(() => {
   const r = status.value?.last_result;
   if (!r || status.value?.running) return "";
-  const mins = r.elapsed_seconds >= 90 ? `${Math.round(r.elapsed_seconds / 60)} min` : `${Math.round(r.elapsed_seconds)} s`;
-  return `Last scan read ${r.read} of ${r.of} videos in ${mins}.`;
+  const mins = r.elapsed_seconds >= 90 ? t("{n} min", { n: Math.round(r.elapsed_seconds / 60) }) : t("{n} s", { n: Math.round(r.elapsed_seconds) });
+  return t("Last scan read {n} of {total} videos in {time}.", { n: r.read, total: r.of, time: mins });
 });
 
 const statusText = computed(() => {
   const s = status.value;
   if (!s) return "";
-  if (s.running && s.phase === "hashing") return `Scanning: reading video ${s.hashed} of ${s.hash_total}…`;
-  if (s.running && s.phase === "comparing") return `Scanning: comparing video ${s.compared} of ${s.compare_total}…`;
-  if (s.running) return "Scan running…";
-  const parts = [s.last_run_at ? `Last scan ${new Date(s.last_run_at * 1000).toLocaleString()}` : "No scan has run yet"];
-  if (s.pending_backfill) parts.push(`${s.pending_backfill} of ${s.total_done_items} videos not scanned yet`);
-  if (s.unusable) parts.push(`${s.unusable} couldn't be read`);
+  if (s.running && s.phase === "hashing") return t("Scanning: reading video {n} of {total}…", { n: s.hashed, total: s.hash_total });
+  if (s.running && s.phase === "comparing") return t("Scanning: comparing video {n} of {total}…", { n: s.compared, total: s.compare_total });
+  if (s.running) return t("Scan running…");
+  const parts = [s.last_run_at ? t("Last scan {time}", { time: new Date(s.last_run_at * 1000).toLocaleString(locale()) }) : t("No scan has run yet")];
+  if (s.pending_backfill) parts.push(t("{n} of {total} videos not scanned yet", { n: s.pending_backfill, total: s.total_done_items }));
+  if (s.unusable) parts.push(t("{n} couldn't be read", { n: s.unusable }));
   return parts.join(" · ");
 });
 
 async function scanNow() {
   try {
     await api("/api/library/issues/scan", { method: "POST" });
-    toast("Duplicate scan started");
+    toast(t("Duplicate scan started"));
     setTimeout(loadStatus, 500);
-  } catch (err) { toast(err.message || "Could not start the scan", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not start the scan"), { type: "error" }); }
 }
 // "Auto: after downloads, re-encodes" -- set in Server Settings -> Duplicate scan.
 const autoText = computed(() => {
-  const t = status.value?.auto_triggers;
-  if (!t) return "";
-  const on = [t.download && "downloads", t.reencode && "re-encodes", t.repair && "repairs"].filter(Boolean);
-  return on.length ? `Auto: after ${on.join(", ")}` : "Auto: off";
+  const trig = status.value?.auto_triggers;
+  if (!trig) return "";
+  const on = [trig.download && t("downloads"), trig.reencode && t("re-encodes"), trig.repair && t("repairs")].filter(Boolean);
+  return on.length ? t("Auto: after {events}", { events: on.join(", ") }) : t("Auto: off");
 });
 
 // ---- per-group facts and "best" markers ----
@@ -121,9 +122,9 @@ function decorate(group) {
   const longest = Math.max(...rows.map((r) => r.f.seconds));
   for (const r of rows) {
     r.tags = [];
-    if (bestStandsOut && r === top) r.tags.push("Best quality");
-    if (smallStandsOut && r === bySize[0]) r.tags.push("Smallest file");
-    if (longest - r.f.seconds > 3) r.tags.push("Shorter");
+    if (bestStandsOut && r === top) r.tags.push(t("Best quality"));
+    if (smallStandsOut && r === bySize[0]) r.tags.push(t("Smallest file"));
+    if (longest - r.f.seconds > 3) r.tags.push(t("Shorter"));
   }
   const identical = rows.length > 1 && rows.every((r) => r.f.quality === rows[0].f.quality && r.f.size === rows[0].f.size
     && r.f.codec === rows[0].f.codec && r.f.duration === rows[0].f.duration);
@@ -147,14 +148,14 @@ async function doKeep() {
   try {
     const r = await api("/api/library/issues/merge", { method: "POST", body: { keep_id: keep.id, merge_ids: others } });
     if (r.undeleted_files?.length) {
-      toast(`Kept 1, removed ${r.merged_count} — but ${r.undeleted_files.length} file(s) were in use and stayed on disk. `
-        + "Maintenance → Untracked files can delete them later.", { type: "error", timeout: 12000 });
+      toast(t("Kept 1, removed {n} — but {files} file(s) were in use and stayed on disk.", { n: r.merged_count, files: r.undeleted_files.length })
+        + " " + t("Maintenance → Untracked files can delete them later."), { type: "error", timeout: 12000 });
     } else {
-      toast(`Kept 1, removed ${r.merged_count}`, { type: "success" });
+      toast(t("Kept 1, removed {n}", { n: r.merged_count }), { type: "success" });
     }
     confirmKeep.value = null;
     load();
-  } catch (err) { toast(err.message || "Could not merge", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not merge"), { type: "error" }); }
   finally { busy.value = false; }
 }
 async function doRemove() {
@@ -163,18 +164,18 @@ async function doRemove() {
   releaseMedia(it.id);
   try {
     await api(`/api/library/${encodeURIComponent(it.id)}?delete_files=true`, { method: "DELETE" });
-    toast("Removed", { type: "success" });
+    toast(t("Removed"), { type: "success" });
     confirmRemove.value = null;
     load();
-  } catch (err) { toast(err.message || "Could not remove", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not remove"), { type: "error" }); }
   finally { busy.value = false; }
 }
 async function ignore(group) {
   try {
     await api("/api/library/issues/ignore", { method: "POST", body: { issue_type: "duplicate", item_ids: group.items.map((i) => i.id) } });
-    toast("Marked as not duplicates");
+    toast(t("Marked as not duplicates"));
     load();
-  } catch (err) { toast(err.message || "Could not save", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not save"), { type: "error" }); }
 }
 
 let reloadTimer = null;
@@ -192,8 +193,8 @@ watch(minMatch, load);
   <div class="dups">
     <header class="head">
       <div>
-        <h1>Duplicates</h1>
-        <p class="muted small">Videos the duplicate scan found to be the same clip. Pick the copy to keep, compare them playing, or mark a group as not duplicates.</p>
+        <h1>{{ $t("Duplicates") }}</h1>
+        <p class="muted small">{{ $t("Videos the duplicate scan found to be the same clip. Pick the copy to keep, compare them playing, or mark a group as not duplicates.") }}</p>
       </div>
     </header>
 
@@ -205,12 +206,12 @@ watch(minMatch, load);
         </div>
         <div class="bar-actions">
           <RouterLink v-if="canManage && autoText" class="btn btn-ghost btn-sm" :to="{ path: '/admin/server', query: { tab: 'duplicates' } }"
-                      title="When scans start on their own (Server Settings → Duplicate scan; the daily scan is on the Scheduler page)">{{ autoText }}</RouterLink>
-          <button v-if="canManage" class="btn btn-sm" :disabled="status?.running" @click="scanNow"><Icon name="search" />Scan now</button>
+                      :title="$t('When scans start on their own (Server Settings → Duplicate scan; the daily scan is on the Scheduler page)')">{{ autoText }}</RouterLink>
+          <button v-if="canManage" class="btn btn-sm" :disabled="status?.running" @click="scanNow"><Icon name="search" />{{ $t("Scan now") }}</button>
         </div>
       </div>
       <label class="threshold">
-        <span>Minimum match</span>
+        <span>{{ $t("Minimum match") }}</span>
         <input type="range" min="50" max="100" step="1" :value="minDraft ?? minMatch" @input="minDraft = Number($event.target.value)" @change="commitMin">
         <output>{{ minDraft ?? minMatch }}%</output>
       </label>
@@ -218,23 +219,23 @@ watch(minMatch, load);
 
     <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}</div>
     <div v-else-if="!groups" class="skeleton group-skel" />
-    <div v-else-if="!shown.length" class="empty"><div class="empty-icon">✅</div>No duplicates at {{ minMatch }}% or higher.</div>
+    <div v-else-if="!shown.length" class="empty"><div class="empty-icon">✅</div>{{ $t("No duplicates at {percent}% or higher.", { percent: minMatch }) }}</div>
 
     <template v-else>
-      <p class="muted small count">{{ shown.length }} {{ shown.length === 1 ? "group" : "groups" }}</p>
+      <p class="muted small count">{{ $tn("{n} group", "{n} groups", shown.length) }}</p>
       <section v-for="g in shown" :key="g.items.map((i) => i.id).join()" class="card group">
         <header class="group-head">
-          <strong>{{ g.items.length }} videos</strong>
-          <span class="match">{{ Math.round(g.top) }}% match</span>
+          <strong>{{ $tn("{n} video", "{n} videos", g.items.length) }}</strong>
+          <span class="match">{{ $t("{percent}% match", { percent: Math.round(g.top) }) }}</span>
           <span class="pairs muted small">
-            <span v-for="p in g.pairs" :key="p.item_id_a + p.item_id_b" class="pair" :title="p.audio_score != null ? `Audio similarity ${Math.round(p.audio_score * 100)}%` : ''">
+            <span v-for="p in g.pairs" :key="p.item_id_a + p.item_id_b" class="pair" :title="p.audio_score != null ? $t('Audio similarity {n}%', { n: Math.round(p.audio_score * 100) }) : ''">
               #{{ p.a }}↔#{{ p.b }} {{ Math.round(p.match_percentage) }}%
             </span>
           </span>
-          <span v-if="g.identical" class="same-specs" title="Same quality, codec, size and duration">Identical files</span>
+          <span v-if="g.identical" class="same-specs" :title="$t('Same quality, codec, size and duration')">{{ $t("Identical files") }}</span>
           <span class="spacer" />
-          <button class="btn btn-sm btn-compare" @click="comparing = g.items"><Icon name="play" />Compare</button>
-          <button v-if="canManage" class="btn btn-sm btn-notdup" title="These are different videos: stop showing this group" @click="ignore(g)">Not duplicates</button>
+          <button class="btn btn-sm btn-compare" @click="comparing = g.items"><Icon name="play" />{{ $t("Compare") }}</button>
+          <button v-if="canManage" class="btn btn-sm btn-notdup" :title="$t('These are different videos: stop showing this group')" @click="ignore(g)">{{ $t("Not duplicates") }}</button>
         </header>
         <div class="cols" :style="{ gridTemplateColumns: `repeat(${Math.min(g.rows.length, 4)}, minmax(0, 28rem))` }">
           <article v-for="r in g.rows" :key="r.it.id" class="col">
@@ -246,48 +247,47 @@ watch(minMatch, load);
             <router-link :to="{ name: 'video', params: { id: r.it.id } }" class="title">{{ itemUrlTitle(r.it) }}</router-link>
             <div class="creator text-creator">{{ r.it.creator }}</div>
             <dl class="facts">
-              <dt>Quality</dt><dd>{{ r.f.quality }}</dd>
-              <dt>Codec</dt><dd>{{ r.f.codec }}</dd>
-              <dt>Size</dt><dd>{{ r.f.size }}</dd>
-              <dt>Bitrate</dt><dd>{{ r.f.bitrate ? `${r.f.bitrate.toLocaleString()} kbit/s` : "—" }}</dd>
-              <dt>Duration</dt><dd>{{ r.f.duration }}</dd>
-              <dt>Rating</dt><dd>{{ r.it.ratings || "—" }}</dd>
-              <dt>Uploaded</dt><dd>{{ r.it.upload_date ? formatDate(r.it.upload_date) : "—" }}</dd>
-              <dt>Downloaded</dt><dd>{{ r.it.download_datetime ? formatDate(r.it.download_datetime) : "—" }}</dd>
-              <dt>On the site</dt><dd>{{ r.it.site_status === "removed" ? "💀 Gone" : r.it.site_status === "available" ? "Yes" : "—" }}</dd>
+              <dt>{{ $t("Quality") }}</dt><dd>{{ r.f.quality }}</dd>
+              <dt>{{ $t("Codec") }}</dt><dd>{{ r.f.codec }}</dd>
+              <dt>{{ $t("Size") }}</dt><dd>{{ r.f.size }}</dd>
+              <dt>{{ $t("Bitrate") }}</dt><dd>{{ r.f.bitrate ? $t("{bitrate} kbit/s", { bitrate: r.f.bitrate.toLocaleString(locale()) }) : "—" }}</dd>
+              <dt>{{ $t("Duration") }}</dt><dd>{{ r.f.duration }}</dd>
+              <dt>{{ $t("Rating") }}</dt><dd>{{ r.it.ratings || "—" }}</dd>
+              <dt>{{ $t("Uploaded") }}</dt><dd>{{ r.it.upload_date ? formatDate(r.it.upload_date) : "—" }}</dd>
+              <dt>{{ $t("Downloaded") }}</dt><dd>{{ r.it.download_datetime ? formatDate(r.it.download_datetime) : "—" }}</dd>
+              <dt>{{ $t("On the site") }}</dt><dd>{{ r.it.site_status === "removed" ? $t("💀 Gone") : r.it.site_status === "available" ? $t("Yes") : "—" }}</dd>
             </dl>
             <div class="col-actions">
-              <button v-if="canManage" class="btn btn-primary btn-sm" @click="confirmKeep = { group: g, keep: r.it }">Keep this one</button>
-              <a v-if="r.it.url && r.it.site !== 'local'" class="btn btn-sm" :href="r.it.url" target="_blank" rel="noopener noreferrer" title="Open this video's page on the site">
-                <Icon name="external" />View on {{ siteLabel(r.it) }}
+              <button v-if="canManage" class="btn btn-primary btn-sm" @click="confirmKeep = { group: g, keep: r.it }">{{ $t("Keep this one") }}</button>
+              <a v-if="r.it.url && r.it.site !== 'local'" class="btn btn-sm" :href="r.it.url" target="_blank" rel="noopener noreferrer" :title="$t('Open this video\'s page on the site')">
+                <Icon name="external" />{{ $t("View on {site}", { site: siteLabel(r.it) }) }}
               </a>
-              <button v-if="canManage" class="btn btn-ghost btn-sm btn-danger" @click="confirmRemove = r.it">Remove</button>
+              <button v-if="canManage" class="btn btn-ghost btn-sm btn-danger" @click="confirmRemove = r.it">{{ $t("Remove") }}</button>
             </div>
           </article>
         </div>
       </section>
     </template>
 
-    <ModalDialog v-if="confirmKeep" title="Keep this copy?" @close="confirmKeep = null">
-      <p>Keep <strong>{{ itemUrlTitle(confirmKeep.keep) }}</strong> and remove the other {{ confirmKeep.group.items.length - 1 }}:</p>
+    <ModalDialog v-if="confirmKeep" :title="$t('Keep this copy?')" @close="confirmKeep = null">
+      <Tx tag="p" msg="Keep {video} and remove the other {n}:" :params="{ n: confirmKeep.group.items.length - 1 }"><template #video><strong>{{ itemUrlTitle(confirmKeep.keep) }}</strong></template></Tx>
       <ul class="rm-list">
         <li v-for="o in confirmKeep.group.items.filter((i) => i.id !== confirmKeep.keep.id)" :key="o.id">
           {{ itemUrlTitle(o) }} <span class="muted">· {{ o.tech_resolution }} · {{ o.tech_filesize }}</span>
         </li>
       </ul>
-      <p class="muted small">Their files are deleted from disk. Each stays linked to the video you keep, so it won't be downloaded
-        again and the userscript reports it as a duplicate — until you remove the kept video, which removes these links too.</p>
+      <p class="muted small">{{ $t("Their files are deleted from disk. Each stays linked to the video you keep, so it won't be downloaded again and the userscript reports it as a duplicate — until you remove the kept video, which removes these links too.") }}</p>
       <template #footer>
-        <button class="btn" @click="confirmKeep = null">Cancel</button>
-        <button class="btn btn-primary" :disabled="busy" @click="doKeep">{{ busy ? "Working…" : "Keep and remove the others" }}</button>
+        <button class="btn" @click="confirmKeep = null">{{ $t("Cancel") }}</button>
+        <button class="btn btn-primary" :disabled="busy" @click="doKeep">{{ busy ? $t("Working…") : $t("Keep and remove the others") }}</button>
       </template>
     </ModalDialog>
 
-    <ModalDialog v-if="confirmRemove" title="Remove this video?" @close="confirmRemove = null">
-      <p>Remove <strong>{{ itemUrlTitle(confirmRemove) }}</strong> from the library and delete its files?</p>
+    <ModalDialog v-if="confirmRemove" :title="$t('Remove this video?')" @close="confirmRemove = null">
+      <p><Tx msg="Remove {b1} from the library and delete its files?"><template #b1><strong>{{ itemUrlTitle(confirmRemove) }}</strong></template></Tx></p>
       <template #footer>
-        <button class="btn" @click="confirmRemove = null">Cancel</button>
-        <button class="btn btn-danger" :disabled="busy" @click="doRemove">{{ busy ? "Removing…" : "Remove" }}</button>
+        <button class="btn" @click="confirmRemove = null">{{ $t("Cancel") }}</button>
+        <button class="btn btn-danger" :disabled="busy" @click="doRemove">{{ busy ? $t("Removing…") : $t("Remove") }}</button>
       </template>
     </ModalDialog>
 
@@ -310,7 +310,7 @@ watch(minMatch, load);
 .btn-notdup:hover { background: color-mix(in srgb, var(--warning) 22%, transparent); }
 .same-specs { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 0.25rem; background: var(--panel-hover); color: var(--text-2); }
 .status.running { color: var(--accent); font-weight: 600; }
-.bar-actions { display: flex; gap: 0.75rem; align-items: center; margin-left: auto; }
+.bar-actions { display: flex; gap: 0.75rem; align-items: center; margin-inline-start: auto; }
 .threshold { display: flex; align-items: center; gap: 0.625rem; font-size: 0.84rem; }
 .threshold input { width: 12rem; accent-color: var(--accent); }
 .threshold output { min-width: 2.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -324,7 +324,7 @@ watch(minMatch, load);
 .cols { display: grid; gap: 1rem; }
 .col { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; padding: 0.625rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2); }
 .col-top { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; min-height: 1.5rem; }
-.num { font-weight: 800; color: var(--accent); margin-right: 0.25rem; }
+.num { font-weight: 800; color: var(--accent); margin-inline-end: 0.25rem; }
 .tag { font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 0.25rem; background: var(--panel-hover); color: var(--text-2); }
 .tag.good { background: var(--success-soft); color: var(--success); }
 .tag.warn { background: var(--danger-soft); color: var(--danger); }
@@ -337,7 +337,7 @@ watch(minMatch, load);
 .facts dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .col-actions { display: flex; gap: 0.375rem; margin-top: auto; flex-wrap: wrap; }
 .group-skel { height: 20rem; border-radius: var(--radius-lg); }
-.rm-list { margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.875rem; }
+.rm-list { margin: 0.5rem 0; padding-inline-start: 1.25rem; font-size: 0.875rem; }
 @media (max-width: 56rem) {
   .dups { padding: 0.75rem 1rem 1.5rem; }
   .cols { grid-template-columns: 1fr !important; }

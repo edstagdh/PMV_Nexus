@@ -2,6 +2,7 @@
 // Management -> Users: roles, groups and each person's access (2.12.0).
 // Someone's permissions = their role + their groups + what's given to them
 // directly. Changes apply on their next click (no new sign-in).
+import { t } from "../../lib/i18n.js";
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, watch } from "vue";
 import Icon from "../Icon.vue";
@@ -20,14 +21,14 @@ const err = ref("");
 
 async function load() {
   try { data.value = await api("/api/access"); }
-  catch (e) { err.value = e.message || "Could not load roles and groups"; }
+  catch (e) { err.value = e.message || t("Could not load roles and groups"); }
 }
 load();
 watch(() => props.reloadKey, load);
 onLibraryChange((changed) => { if (changed?.includes("permissions")) load(); });
 
 const label = (key) => data.value?.catalog.find((p) => p.key === key)?.label || key;
-const summary = (list) => (list.includes("*") ? "Everything" : list.length ? list.filter((k) => k !== "library.manage").map(label).join(", ") + (list.includes("library.manage") ? (list.length > 1 ? ", " : "") + "managing the library" : "") : "Nothing");
+const summary = (list) => (list.includes("*") ? t("Everything") : list.length ? list.filter((k) => k !== "library.manage").map(label).join(", ") + (list.includes("library.manage") ? (list.length > 1 ? ", " : "") + t("managing the library") : "") : t("Nothing"));
 const userName = (id) => data.value?.users.find((u) => u.id === id)?.username || "?";
 const groupName = (id) => data.value?.groups.find((g) => g.id === id)?.name || "?";
 const roleOf = (name) => data.value?.roles.find((r) => r.name === name);
@@ -58,22 +59,22 @@ async function save() {
     } else {
       await api(`/api/users/${e.id}/access`, { method: "PUT", body: { role: e.role, groups: e.groups, permissions: e.permissions } });
     }
-    toast("Saved — applies on their next click", { type: "success" });
+    toast(t("Saved — applies on their next click"), { type: "success" });
     editing.value = null;
     await load();
     emit("changed");
-  } catch (x) { err.value = x.message || "Could not save"; }
+  } catch (x) { err.value = x.message || t("Could not save"); }
   finally { busy.value = false; }
 }
 async function removeRole(r) {
-  if (!(await askConfirm(`Delete the role “${r.name}”?`, { ok: "Delete", danger: true }))) return;
+  if (!(await askConfirm(t("Delete the role “{name}”?", { name: r.name }), { ok: t("Delete"), danger: true }))) return;
   try { await api(`/api/roles/${encodeURIComponent(r.name)}`, { method: "DELETE" }); await load(); }
-  catch (x) { toast(x.message || "Could not delete", { type: "error" }); }
+  catch (x) { toast(x.message || t("Could not delete"), { type: "error" }); }
 }
 async function removeGroup(g) {
-  if (!(await askConfirm(`Delete the group “${g.name}”? Its members lose what it gave them.`, { ok: "Delete", danger: true }))) return;
+  if (!(await askConfirm(t("Delete the group “{name}”? Its members lose what it gave them.", { name: g.name }), { ok: t("Delete"), danger: true }))) return;
   try { await api(`/api/groups/${g.id}`, { method: "DELETE" }); await load(); }
-  catch (x) { toast(x.message || "Could not delete", { type: "error" }); }
+  catch (x) { toast(x.message || t("Could not delete"), { type: "error" }); }
 }
 function toggleIn(list, id) { const i = list.indexOf(id); i >= 0 ? list.splice(i, 1) : list.push(id); }
 defineExpose({ editUser: (id) => { const u = data.value?.users.find((x) => x.id === id); if (u) editUser(u); }, roles: computed(() => data.value?.roles || []) });
@@ -83,71 +84,71 @@ defineExpose({ editUser: (id) => { const u = data.value?.users.find((x) => x.id 
   <p v-if="err && !editing" class="error-text">{{ err }}</p>
   <template v-if="data">
     <section class="card block">
-      <div class="head"><h2>Roles</h2><button class="btn btn-sm" @click="editRole(null)"><Icon name="plus" :size="15" />New role</button></div>
-      <p class="muted small">Everyone has one role. <strong>admin</strong> can do everything (there's exactly one admin); <strong>user</strong> is the default for new accounts.</p>
+      <div class="head"><h2>{{ $t("Roles") }}</h2><button class="btn btn-sm" @click="editRole(null)"><Icon name="plus" :size="15" />{{ $t("New role") }}</button></div>
+      <p class="muted small"><Tx msg="Everyone has one role. {b1} can do everything (there's exactly one admin); {b2} is the default for new accounts."><template #b1><strong>admin</strong></template><template #b2><strong>{{ $t("user") }}</strong></template></Tx></p>
       <ul class="rows">
         <li v-for="r in data.roles" :key="r.name">
-          <span class="nm">{{ r.name }}</span><span class="muted small">{{ r.users }} {{ r.users === 1 ? "person" : "people" }}</span>
+          <span class="nm">{{ r.name }}</span><span class="muted small">{{ $tn("{n} person", "{n} people", r.users) }}</span>
           <span class="sum small">{{ summary(r.permissions) }}</span>
           <span class="acts">
-            <button v-if="r.name !== 'admin'" class="btn btn-ghost btn-sm" @click="editRole(r)">Edit</button>
-            <button v-if="!r.builtin" class="btn btn-ghost btn-sm btn-danger" @click="removeRole(r)">Delete</button>
+            <button v-if="r.name !== 'admin'" class="btn btn-ghost btn-sm" @click="editRole(r)">{{ $t("Edit") }}</button>
+            <button v-if="!r.builtin" class="btn btn-ghost btn-sm btn-danger" @click="removeRole(r)">{{ $t("Delete") }}</button>
           </span>
         </li>
       </ul>
     </section>
 
     <section class="card block">
-      <div class="head"><h2>Groups</h2><button class="btn btn-sm" @click="editGroup(null)"><Icon name="plus" :size="15" />New group</button></div>
-      <p class="muted small">A group gives its permissions to everyone in it — e.g. <em>Info helpers</em> with Names, or <em>Moderators</em> with Edit details.</p>
-      <p v-if="!data.groups.length" class="muted small">No groups yet.</p>
+      <div class="head"><h2>{{ $t("Groups") }}</h2><button class="btn btn-sm" @click="editGroup(null)"><Icon name="plus" :size="15" />{{ $t("New group") }}</button></div>
+      <p class="muted small"><Tx msg="A group gives its permissions to everyone in it — e.g. {em1} with Names, or {em2} with Edit details."><template #em1><em>{{ $t("Info helpers") }}</em></template><template #em2><em>{{ $t("Moderators") }}</em></template></Tx></p>
+      <p v-if="!data.groups.length" class="muted small">{{ $t("No groups yet.") }}</p>
       <ul class="rows">
         <li v-for="g in data.groups" :key="g.id">
           <span class="nm">{{ g.name }}</span>
-          <span class="muted small">{{ g.members.length ? g.members.map(userName).join(", ") : "no members" }}</span>
+          <span class="muted small">{{ g.members.length ? g.members.map(userName).join(", ") : $t("no members") }}</span>
           <span class="sum small">{{ summary(g.permissions) }}</span>
           <span class="acts">
-            <button class="btn btn-ghost btn-sm" @click="editGroup(g)">Edit</button>
-            <button class="btn btn-ghost btn-sm btn-danger" @click="removeGroup(g)">Delete</button>
+            <button class="btn btn-ghost btn-sm" @click="editGroup(g)">{{ $t("Edit") }}</button>
+            <button class="btn btn-ghost btn-sm btn-danger" @click="removeGroup(g)">{{ $t("Delete") }}</button>
           </span>
         </li>
       </ul>
     </section>
   </template>
 
-  <ModalDialog v-if="editing" :title="editing.kind === 'role' ? (editing.isNew ? 'New role' : `Role: ${editing.name}`) : editing.kind === 'group' ? (editing.id ? `Group: ${editing.name}` : 'New group') : `Access: ${editing.username}`"
+  <ModalDialog v-if="editing" :title="editing.kind === 'role' ? (editing.isNew ? $t('New role') : `Role: ${editing.name}`) : editing.kind === 'group' ? (editing.id ? `Group: ${editing.name}` : $t('New group')) : `Access: ${editing.username}`"
                width="54rem" @close="editing = null">
     <div class="form">
       <template v-if="editing.kind === 'role'">
-        <label v-if="editing.isNew" class="field">Name<input v-model="editing.name" class="input" maxlength="40" placeholder="e.g. moderator"></label>
+        <label v-if="editing.isNew" class="field">{{ $t("Name") }}<input v-model="editing.name" class="input" maxlength="40" :placeholder="$t('e.g. moderator')"></label>
       </template>
       <template v-else-if="editing.kind === 'group'">
-        <label class="field">Name<input v-model="editing.name" class="input" maxlength="60" placeholder="e.g. Info helpers"></label>
-        <label class="field">Description<input v-model="editing.description" class="input" maxlength="300"></label>
-        <div class="field">Members
+        <label class="field">{{ $t("Name") }}<input v-model="editing.name" class="input" maxlength="60" :placeholder="$t('e.g. Info helpers')"></label>
+        <label class="field">{{ $t("Description") }}<input v-model="editing.description" class="input" maxlength="300"></label>
+        <div class="field">{{ $t("Members") }}
           <div class="chips"><label v-for="u in data.users.filter((x) => x.role !== 'admin')" :key="u.id" class="chip-check">
             <input type="checkbox" :checked="editing.members.includes(u.id)" @change="toggleIn(editing.members, u.id)">{{ u.username }}</label></div>
         </div>
       </template>
       <template v-else>
-        <label class="field">Role
+        <label class="field">{{ $t("Role") }}
           <select v-model="editing.role" class="select" :disabled="editing.role === 'admin'">
             <option v-for="r in data.roles.filter((x) => x.name !== 'admin' || editing.role === 'admin')" :key="r.name" :value="r.name">{{ r.name }}</option>
           </select></label>
-        <div class="field">Groups
+        <div class="field">{{ $t("Groups") }}
           <div class="chips"><label v-for="g in data.groups" :key="g.id" class="chip-check">
             <input type="checkbox" :checked="editing.groups.includes(g.id)" @change="toggleIn(editing.groups, g.id)">{{ g.name }}</label>
-            <span v-if="!data.groups.length" class="muted small">No groups yet</span></div>
+            <span v-if="!data.groups.length" class="muted small">{{ $t("No groups yet") }}</span></div>
         </div>
-        <p class="muted small">Ticked and greyed: already given by the role or a group. Tick more to give them to {{ editing.username }} only.</p>
+        <p class="muted small">{{ $t("Ticked and greyed: already given by the role or a group. Tick more to give them to {name} only.", { name: editing.username }) }}</p>
       </template>
       <PermissionPicker v-if="editing.kind !== 'user' || editing.role !== 'admin'" v-model="editing.permissions" :catalog="data.catalog" :inherited="inherited" />
-      <p v-else class="muted">The admin can do everything.</p>
+      <p v-else class="muted">{{ $t("The admin can do everything.") }}</p>
       <p v-if="err" class="error-text">{{ err }}</p>
     </div>
     <template #footer>
-      <button class="btn" @click="editing = null">Cancel</button>
-      <button class="btn btn-primary" :disabled="busy || (editing.kind !== 'user' && !editing.name.trim())" @click="save">{{ busy ? "Saving…" : "Save" }}</button>
+      <button class="btn" @click="editing = null">{{ $t("Cancel") }}</button>
+      <button class="btn btn-primary" :disabled="busy || (editing.kind !== 'user' && !editing.name.trim())" @click="save">{{ busy ? $t("Saving…") : $t("Save") }}</button>
     </template>
   </ModalDialog>
 </template>

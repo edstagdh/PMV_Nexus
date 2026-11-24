@@ -26,17 +26,17 @@ watch(() => q.value?.index, async () => {
     <header class="head">
       <div class="name">
         <RouterLink :to="{ name: 'playlist', params: { id: q.playlistId } }" class="title">{{ q.name }}</RouterLink>
-        <span class="muted small">{{ q.index + 1 }} / {{ q.order.length }}<template v-if="player.queueEnded"> · finished</template></span>
+        <span class="muted small">{{ q.index + 1 }} / {{ q.order.length }}<template v-if="player.queueEnded"> {{ $t("· finished") }}</template></span>
       </div>
-      <button class="btn btn-ghost btn-icon btn-sm" title="Stop playing this playlist" @click="clearQueue"><Icon name="x" :size="15" /></button>
+      <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Stop playing this playlist')" @click="clearQueue"><Icon name="x" :size="15" /></button>
     </header>
     <div class="controls">
-      <button class="btn btn-ghost btn-icon btn-sm" title="Previous" @click="queuePrev"><Icon name="skipPrev" :size="15" /></button>
-      <button class="btn btn-ghost btn-icon btn-sm" title="Next" :disabled="q.index >= q.order.length - 1 && !q.repeat" @click="queueNext()"><Icon name="skipNext" :size="15" /></button>
+      <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Previous')" @click="queuePrev"><Icon name="skipPrev" :size="15" /></button>
+      <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Next')" :disabled="q.index >= q.order.length - 1 && !q.repeat" @click="queueNext()"><Icon name="skipNext" :size="15" /></button>
       <span class="sep" />
-      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.shuffle }" :aria-pressed="q.shuffle" title="Shuffle" @click="toggleShuffle"><Icon name="shuffle" :size="15" />Shuffle</button>
-      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.repeat }" :aria-pressed="q.repeat" title="Start over after the last video" @click="toggleRepeat"><Icon name="repeat" :size="15" />Repeat</button>
-      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.autoplay }" :aria-pressed="q.autoplay" title="Play the next video when one ends" @click="toggleQueueAutoplay"><Icon name="play" :size="13" />Autoplay</button>
+      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.shuffle }" :aria-pressed="q.shuffle" :title="$t('Shuffle')" @click="toggleShuffle"><Icon name="shuffle" :size="15" />{{ $t("Shuffle") }}</button>
+      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.repeat }" :aria-pressed="q.repeat" :title="$t('Start over after the last video')" @click="toggleRepeat"><Icon name="repeat" :size="15" />{{ $t("Repeat") }}</button>
+      <button class="btn btn-ghost btn-sm toggle" :class="{ on: q.autoplay }" :aria-pressed="q.autoplay" :title="$t('Play the next video when one ends')" @click="toggleQueueAutoplay"><Icon name="play" :size="13" />{{ $t("Autoplay") }}</button>
     </div>
     <ol ref="list" class="list scroll-thin">
       <li v-for="r in rows" :key="r.item.id" class="row" :class="{ current: r.n === q.index }">
@@ -55,7 +55,7 @@ watch(() => q.value?.index, async () => {
 
 <style scoped>
 .queue { display: flex; flex-direction: column; overflow: hidden; }
-.head { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 0.75rem 0.25rem 0.875rem; }
+.head { display: flex; align-items: flex-start; gap: 0.5rem; padding-block: 0.75rem 0.25rem; padding-inline: 0.875rem 0.75rem; }
 .name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .title { font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .small { font-size: 0.75rem; }
@@ -65,7 +65,7 @@ watch(() => q.value?.index, async () => {
 .toggle.on { color: var(--accent); background: var(--accent-soft); }
 .list { list-style: none; margin: 0; padding: 0.25rem; max-height: 22rem; overflow-y: auto; }
 .row-btn { width: 100%; display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border: 0; border-radius: var(--radius-sm);
-  background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  background: none; color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .row-btn:hover { background: var(--panel-2); }
 .row.current .row-btn { background: var(--accent-soft); }
 .num { width: 1.25rem; text-align: center; font-size: 0.72rem; flex-shrink: 0; }

@@ -4,6 +4,7 @@
 // playlist) report it with setPageTitle(), tied to the path they're on so a
 // stale name never sticks after navigating away. App.vue applies it.
 import { reactive } from "vue";
+import { t } from "./i18n.js";
 
 export const APP_NAME = "PMV Nexus";
 export const pageTitle = reactive({ path: null, text: "" });
@@ -20,6 +21,7 @@ export function formatTitle(name) {
 
 /** meta.title may be a string or a function of the route (e.g. Help tabs). */
 export function routeTitle(route) {
-  const t = route.meta?.title;
-  return typeof t === "function" ? t(route) : t || "";
+  const title = route.meta?.title;
+  // Fixed names are marked N_() in router.js and translated here; functions translate their own (3.7.0).
+  return typeof title === "function" ? title(route) : title ? t(title) : "";
 }

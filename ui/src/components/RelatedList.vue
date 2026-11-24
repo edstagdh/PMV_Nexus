@@ -29,8 +29,8 @@ defineProps({ items: Array });
 <style scoped>
 .related { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .rel-row { position: relative; }
-.rel-row .rel-menu { position: absolute; top: 0.125rem; right: 0; }
-.rel-row .rel-body { padding-right: 1.75rem; }
+.rel-row .rel-menu { position: absolute; top: 0.125rem; inset-inline-end: 0; }
+.rel-row .rel-body { padding-inline-end: 1.75rem; }
 .rel { display: grid; grid-template-columns: 10.5rem 1fr; gap: 0.625rem; padding: 0.25rem; border-radius: var(--radius); color: inherit; }
 .rel:hover { background: var(--panel-2); text-decoration: none; }
 .rel-body { min-width: 0; display: flex; flex-direction: column; gap: 0.125rem; }

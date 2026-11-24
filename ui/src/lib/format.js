@@ -1,3 +1,4 @@
+import { t, locale } from "./i18n.js";
 export function parseDurationSeconds(text) {
   if (!text) return null;
   const parts = String(text).trim().split(":").map(Number);
@@ -39,7 +40,7 @@ export function shortResolution(res) {
 
 export function compactNumber(n) {
   if (n == null) return "";
-  return Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
+  return Intl.NumberFormat(locale(), { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 export function formatDate(iso) {
@@ -48,7 +49,7 @@ export function formatDate(iso) {
   // (which shows the previous day west of UTC).
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(locale());
 }
 
 export function thumbUrl(item) {
@@ -62,7 +63,7 @@ export function previewUrl(item) {
 }
 
 export function itemUrlTitle(item) {
-  return item?.title || item?.url || "Untitled";
+  return item?.title || item?.url || t("Untitled");
 }
 
 // Same labels as the classic interface.
@@ -91,12 +92,12 @@ export const ORIENTATION_GLYPH = { landscape: "🖥️", portrait: "📱", squar
 
 /** Short status for background work on an item (re-encode, repair), or null. */
 export function workStatus(item) {
-  if (item.reencode_status === "encoding") return { label: `Re-encoding ${Math.round(item.reencode_progress_percent || 0)}%`, kind: "busy" };
-  if (item.reencode_status === "queued") return { label: "Re-encode queued", kind: "queued" };
-  if (item.repair_status === "running") return { label: item.repair_progress_label || "Repairing…", kind: "busy" };
-  if (item.repair_status === "queued") return { label: "Repair queued", kind: "queued" };
-  if (item.reencode_status === "failed") return { label: "Re-encode failed", kind: "failed", detail: item.reencode_error };
-  if (item.repair_status === "failed") return { label: "Repair failed", kind: "failed", detail: item.repair_error };
+  if (item.reencode_status === "encoding") return { label: t("Re-encoding {percent}%", { percent: Math.round(item.reencode_progress_percent || 0) }), kind: "busy" };
+  if (item.reencode_status === "queued") return { label: t("Re-encode queued"), kind: "queued" };
+  if (item.repair_status === "running") return { label: item.repair_progress_label || t("Repairing…"), kind: "busy" };
+  if (item.repair_status === "queued") return { label: t("Repair queued"), kind: "queued" };
+  if (item.reencode_status === "failed") return { label: t("Re-encode failed"), kind: "failed", detail: item.reencode_error };
+  if (item.repair_status === "failed") return { label: t("Repair failed"), kind: "failed", detail: item.repair_error };
   return null;
 }
 
@@ -120,8 +121,8 @@ const SITE_LABELS = { "pmvhaven.com": "PMVHaven", "porntubeai.com": "PornTubeAI"
 export function siteLabel(item) {
   try {
     const host = new URL(item?.url || "").hostname.replace(/^www\./, "");
-    return SITE_LABELS[host] || host || "the site";
-  } catch { return "the site"; }
+    return SITE_LABELS[host] || host || t("the site");
+  } catch { return t("the site"); }
 }
 
 /** 1536 -> "1.5 KB". */
@@ -139,16 +140,16 @@ export function formatBytes(bytes) {
 export function formatDateTime(value) {
   if (value === null || value === undefined || value === "") return "—";
   const d = typeof value === "number" ? new Date(value * 1000) : new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" });
 }
 
 /** Seconds -> "3d 4h" / "5h 12m" / "8m". */
 export function formatUptime(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds) || 0));
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  if (d) return `${d}d ${h}h`;
-  if (h) return `${h}h ${m}m`;
-  return `${m}m`;
+  if (d) return t("{d}d {h}h", { d, h });
+  if (h) return t("{h}h {m}m", { h, m });
+  return t("{m}m", { m });
 }
 
 // Tags and performers as the app shows them (3.3.0, like backend/spellings.py): every word

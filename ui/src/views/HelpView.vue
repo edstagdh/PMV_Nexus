@@ -2,6 +2,7 @@
 // Help: the Guide and Changelog (the project's own docs/GUIDE.md and
 // CHANGELOG.md, served by /api/system/docs/<key>) and About (version,
 // updates, links, server details, license). Open to every signed-in user.
+import { t, locale } from "../lib/i18n.js";
 import { ref, computed, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icon from "../components/Icon.vue";
@@ -12,8 +13,8 @@ import { toast } from "../stores/toast.js";
 
 const route = useRoute();
 const router = useRouter();
-const TABS = [{ key: "guide", label: "Guide" }, { key: "changelog", label: "Changelog" }, { key: "terms", label: "Terms of use" }, { key: "about", label: "About" }];
-const tab = computed(() => (TABS.some((t) => t.key === route.params.tab) ? route.params.tab : "guide"));
+const TABS = [{ key: "guide", label: t("Guide") }, { key: "changelog", label: t("Changelog") }, { key: "terms", label: t("Terms of use") }, { key: "about", label: t("About") }];
+const tab = computed(() => (TABS.some((tb) => tb.key === route.params.tab) ? route.params.tab : "guide"));
 
 const docs = {};
 const html = ref("");
@@ -44,31 +45,32 @@ async function checkUpdate() {
   try {
     const update = await api("/api/system/check-update", { method: "POST" });
     info.value = { ...info.value, update };
-    toast(update.error ? `Check failed: ${update.error}` : update.update_available ? `Version ${update.latest} is available` : "You're up to date",
+    toast(update.error ? t("Check failed: {error}", { error: update.error }) : update.update_available ? t("Version {version} is available", { version: update.latest }) : t("You're up to date"),
       { type: update.error ? "error" : "success" });
   } catch (err) {
-    toast(err.message || "Could not check for updates", { type: "error" });
+    toast(err.message || t("Could not check for updates"), { type: "error" });
   } finally {
     checking.value = false;
   }
 }
 const updateLine = computed(() => {
   const u = info.value?.update;
-  if (!u) return "Not checked yet.";
-  if (u.error) return `Last check failed: ${u.error}`;
-  if (u.update_available) return `Version ${u.latest} is available.`;
-  if (u.checked_at) return `Up to date (checked ${new Date(u.checked_at * 1000).toLocaleString()}).`;
-  return "Not checked yet.";
+  if (!u) return t("Not checked yet.");
+  if (u.error) return t("Last check failed: {error}", { error: u.error });
+  if (u.update_available) return t("Version {version} is available.", { version: u.latest });
+  if (u.checked_at) return t("Up to date (checked {time}).", { time: new Date(u.checked_at * 1000).toLocaleString(locale()) });
+  return t("Not checked yet.");
 });
 const issueUrl = computed(() => {
   const i = info.value || {};
+  // The issue goes to the project on GitHub, so it's written in English whatever the app's language.
   const body = [
     "### What happened?", "", "### Steps to reproduce", "1. ", "2. ", "",
     "### What did you expect to happen?", "",
     "### Logs / screenshots", "<!-- Relevant lines from Admin → Logs or data/logs, or screenshots. Remove anything private. -->", "",
     "### Environment",
-    `- App version: ${i.version || "unknown"}`, `- OS: ${i.platform || "unknown"}`, `- Python: ${i.python || "unknown"}`,
-    `- FFmpeg: ${i.ffmpeg || "not found"}`, `- Browser: ${navigator.userAgent}`, `- Role: ${session.user?.role || "unknown"}`,
+    `- App version: ${i.version || "unknown"}`, `- OS: ${i.platform || "unknown"}`, `- Python: ${i.python || "unknown"}`,  // i18n-ignore
+    `- FFmpeg: ${i.ffmpeg || "not found"}`, `- Browser: ${navigator.userAgent}`, `- Role: ${session.user?.role || "unknown"}`,  // i18n-ignore
   ].join("\n");
   const base = i.new_issue_url || "https://github.com/edstagdh/PMV_Nexus/issues/new";
   return `${base}?${new URLSearchParams({ labels: "bug", title: "[Bug] ", body })}`;
@@ -89,7 +91,7 @@ async function load() {
       if (route.hash) document.getElementById(route.hash.slice(1))?.scrollIntoView();
     }
   } catch (err) {
-    error.value = err.message || "Could not load this page";
+    error.value = err.message || t("Could not load this page");
   } finally {
     loading.value = false;
   }
@@ -113,7 +115,7 @@ function onArticleClick(e) {
 <template>
   <div class="help">
     <header class="head">
-      <h1>Help</h1>
+      <h1>{{ $t("Help") }}</h1>
       <nav class="tabs" role="tablist">
         <router-link v-for="t in TABS" :key="t.key" :to="{ name: 'help', params: { tab: t.key } }" role="tab" class="tab"
                      :class="{ active: tab === t.key }" :aria-selected="tab === t.key">{{ t.label }}</router-link>
@@ -129,41 +131,41 @@ function onArticleClick(e) {
           <div class="logo">▶</div>
           <div>
             <h2>PMV Nexus</h2>
-            <p class="version">Version {{ info.version || "?" }}</p>
-            <p class="muted">A self-hosted library manager for PMVs: download, organize, re-encode and de-duplicate videos from one web app. Works with PMVHaven and its sister sites. An independent project, not affiliated with any of them — see Terms of use.</p>
+            <p class="version">{{ $t("Version {version}", { version: info.version || "?" }) }}</p>
+            <p class="muted">{{ $t("A self-hosted library manager for PMVs: download, organize, re-encode and de-duplicate videos from one web app. Works with PMVHaven and its sister sites. An independent project, not affiliated with any of them — see Terms of use.") }}</p>
           </div>
         </div>
         <dl class="card facts">
-          <dt>Updates</dt>
+          <dt>{{ $t("Updates") }}</dt>
           <dd>
             {{ updateLine }}
-            <a v-if="info.update?.update_available && info.releases_url" :href="info.releases_url" target="_blank" rel="noopener noreferrer">See releases</a>
-            <button class="btn btn-sm" :disabled="checking" @click="checkUpdate">{{ checking ? "Checking…" : "Check now" }}</button>
+            <a v-if="info.update?.update_available && info.releases_url" :href="info.releases_url" target="_blank" rel="noopener noreferrer">{{ $t("See releases") }}</a>
+            <button class="btn btn-sm" :disabled="checking" @click="checkUpdate">{{ checking ? $t("Checking…") : $t("Check now") }}</button>
           </dd>
-          <dt>License</dt><dd>{{ info.license || "MIT" }}</dd>
-          <dt>Source code</dt><dd><a :href="info.repo_url" target="_blank" rel="noopener noreferrer">{{ info.repo_url }}</a></dd>
-          <dt>Report a bug</dt><dd><a :href="issueUrl" target="_blank" rel="noopener noreferrer">Open a prefilled GitHub issue</a></dd>
-          <dt>Server</dt><dd>Python {{ info.python || "?" }} · {{ info.platform || "?" }}</dd>
-          <dt>FFmpeg</dt><dd>{{ info.ffmpeg || "not found" }}</dd>
+          <dt>{{ $t("License") }}</dt><dd>{{ info.license || "MIT" }}</dd>
+          <dt>{{ $t("Source code") }}</dt><dd><a :href="info.repo_url" target="_blank" rel="noopener noreferrer">{{ info.repo_url }}</a></dd>
+          <dt>{{ $t("Report a bug") }}</dt><dd><a :href="issueUrl" target="_blank" rel="noopener noreferrer">{{ $t("Open a prefilled GitHub issue") }}</a></dd>
+          <dt>{{ $t("Server") }}</dt><dd>{{ `Python ${info.python || "?"} · ${info.platform || "?"}` }}</dd>  <!-- i18n-ignore -->
+          <dt>FFmpeg</dt><dd>{{ info.ffmpeg || $t("not found") }}</dd>
         </dl>
         <div class="card credits">
-          <h3>Credits</h3>
+          <h3>{{ $t("Credits") }}</h3>
           <ul>
-            <li>Duplicate detection follows the approach of <a href="https://github.com/0x90d/videoduplicatefinder" target="_blank" rel="noopener noreferrer">VideoDuplicateFinder</a> (re-implemented, no code copied).</li>
-            <li>Video playback by <a href="https://videojs.org" target="_blank" rel="noopener noreferrer">Video.js</a>; media processing by <a href="https://ffmpeg.org" target="_blank" rel="noopener noreferrer">FFmpeg</a> and <a href="https://mediaarea.net/en/MediaInfo" target="_blank" rel="noopener noreferrer">MediaInfo</a>.</li>
-            <li>Built with FastAPI, SQLite, OpenCV/NumPy, Vue and Vite.</li>
+            <li>{{ $t("Duplicate detection follows the approach of") }} <a href="https://github.com/0x90d/videoduplicatefinder" target="_blank" rel="noopener noreferrer">{{ $t("VideoDuplicateFinder") }}</a> {{ $t("(re-implemented, no code copied).") }}</li>
+            <li><Tx msg="Video playback by {link1}; media processing by {link2} and {link3}."><template #link1><a href="https://videojs.org" target="_blank" rel="noopener noreferrer">{{ $t("Video.js") }}</a></template><template #link2><a href="https://ffmpeg.org" target="_blank" rel="noopener noreferrer">FFmpeg</a></template><template #link3><a href="https://mediaarea.net/en/MediaInfo" target="_blank" rel="noopener noreferrer">{{ $t("MediaInfo") }}</a></template></Tx></li>
+            <li>{{ $t("Built with FastAPI, SQLite, OpenCV/NumPy, Vue and Vite.") }}</li>
           </ul>
           <details>
-            <summary>License text</summary>
-            <pre>{{ license || "LICENSE file not found." }}</pre>
+            <summary>{{ $t("License text") }}</summary>
+            <pre>{{ license || $t("LICENSE file not found.") }}</pre>
           </details>
         </div>
       </template>
     </section>
 
     <div v-else class="doc-layout">
-      <nav v-if="toc.length > 2" class="toc" aria-label="Contents">
-        <div class="toc-title">Contents</div>
+      <nav v-if="toc.length > 2" class="toc" :aria-label="$t('Contents')">
+        <div class="toc-title">{{ $t("Contents") }}</div>
         <a v-for="h in toc" :key="h.id" :href="`#${h.id}`" :class="{ sub: h.level === 'H3' }" @click.prevent="jump(h.id)">{{ h.text }}</a>
       </nav>
       <div v-if="loading && !html" class="skeleton doc-skel" />
@@ -187,7 +189,7 @@ function onArticleClick(e) {
 .toc-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.375rem; }
 .toc a { color: var(--text-2); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); }
 .toc a:hover { background: var(--panel-2); color: var(--text); text-decoration: none; }
-.toc a.sub { padding-left: 1.25rem; font-size: 0.76rem; color: var(--text-dim); }
+.toc a.sub { padding-inline-start: 1.25rem; font-size: 0.76rem; color: var(--text-dim); }
 .markdown { padding: 1.25rem 1.75rem; line-height: 1.6; font-size: 0.9rem; overflow-wrap: anywhere; }
 .markdown :deep(h1) { font-size: 1.5rem; margin: 0 0 0.75rem; }
 .markdown :deep(h2) { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); scroll-margin-top: 1rem; }
@@ -195,16 +197,16 @@ function onArticleClick(e) {
 .markdown :deep(p) { margin: 0.5rem 0; color: var(--text-2); }
 .markdown :deep(img.doc-shot) { display: block; max-width: 100%; height: auto; margin: 0.75rem 0; border-radius: var(--radius); border: 1px solid var(--border); }
 .markdown :deep(li) { color: var(--text-2); margin: 0.2rem 0; }
-.markdown :deep(ul), .markdown :deep(ol) { padding-left: 1.4rem; margin: 0.4rem 0; }
+.markdown :deep(ul), .markdown :deep(ol) { padding-inline-start: 1.4rem; margin: 0.4rem 0; }
 .markdown :deep(strong) { color: var(--text); }
 .markdown :deep(code) { font-family: var(--mono); font-size: 0.82em; background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.25rem; padding: 0.05rem 0.3rem; }
 .markdown :deep(pre) { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; overflow-x: auto; }
 .markdown :deep(pre code) { border: 0; background: none; padding: 0; }
-.markdown :deep(blockquote) { margin: 0.75rem 0; padding: 0.25rem 1rem; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.markdown :deep(blockquote) { margin: 0.75rem 0; padding: 0.25rem 1rem; border-inline-start: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .markdown :deep(hr) { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 .markdown :deep(.md-table-wrap) { overflow-x: auto; margin: 0.75rem 0; }
 .markdown :deep(table) { border-collapse: collapse; font-size: 0.84rem; }
-.markdown :deep(th), .markdown :deep(td) { border: 1px solid var(--border); padding: 0.375rem 0.625rem; text-align: left; vertical-align: top; }
+.markdown :deep(th), .markdown :deep(td) { border: 1px solid var(--border); padding: 0.375rem 0.625rem; text-align: start; vertical-align: top; }
 .markdown :deep(th) { background: var(--panel-2); }
 .about { display: flex; flex-direction: column; gap: 1rem; }
 .hero { display: flex; gap: 1.25rem; align-items: center; padding: 1.25rem; }
@@ -217,7 +219,7 @@ function onArticleClick(e) {
 .facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; overflow-wrap: anywhere; }
 .credits { padding: 1rem 1.25rem; font-size: 0.875rem; }
 .credits h3 { font-size: 0.95rem; }
-.credits ul { padding-left: 1.2rem; color: var(--text-2); }
+.credits ul { padding-inline-start: 1.2rem; color: var(--text-2); }
 .credits pre { white-space: pre-wrap; font: 0.78rem/1.5 var(--mono); background: var(--bg); padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); }
 .credits summary { cursor: pointer; font-weight: 600; }
 .about-skel { height: 20rem; border-radius: var(--radius-lg); }

@@ -19,6 +19,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ..i18n import L
 from .. import gemini
 from ..config import get_settings, save_overrides
 from ..library_manager import library_manager
@@ -57,7 +58,7 @@ class KeyTest(BaseModel):
 async def scan_video(video_id: str, payload: Optional[ScanRequest] = None, user: AuthContext = Depends(_songs)):
     method = payload.method if payload else None
     if method and method != "shazam" and not get_settings().gemini_api_key:
-        raise HTTPException(status_code=400, detail="Gemini needs its API key first (Server Settings → Credentials → Google Gemini)")
+        raise HTTPException(status_code=400, detail=L('Gemini needs its API key first (Server Settings → Credentials → Google Gemini)'))
     try:
         return library_manager.start_song_scan(video_id, user.username, method)
     except ValueError as exc:
@@ -70,7 +71,7 @@ def video_songs(video_id: str, user: AuthContext = Depends(_songs)):
         return {**library_manager.song_status(video_id), "method": get_settings().songs.method,
                 "gemini": bool(get_settings().gemini_api_key)}
     except KeyError:
-        raise HTTPException(status_code=404, detail="Video not found") from None
+        raise HTTPException(status_code=404, detail=L('Video not found')) from None
 
 
 @router.get("/api/songs")
@@ -90,7 +91,7 @@ def methods(user: AuthContext = Depends(_songs)):
 @router.post("/api/songs/scan-now")
 async def scan_now(user: AuthContext = Depends(_songs)):
     if library_manager._songs_lock().locked():
-        raise HTTPException(status_code=409, detail="Songs are already being looked for — see Tasks")
+        raise HTTPException(status_code=409, detail=L('Songs are already being looked for — see Tasks'))
     asyncio.get_running_loop().create_task(_run_job_quietly())
     return {"ok": True}
 
@@ -107,7 +108,7 @@ async def add(suggestion_id: int, payload: AddSong, user: AuthContext = Depends(
     try:
         return await library_manager.add_song_suggestion(suggestion_id, user.username, payload.label)
     except KeyError:
-        raise HTTPException(status_code=404, detail="That suggestion was already handled") from None
+        raise HTTPException(status_code=404, detail=L('That suggestion was already handled')) from None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -117,7 +118,7 @@ def dismiss(suggestion_id: int, user: AuthContext = Depends(_songs)):
     try:
         return library_manager.dismiss_song_suggestion(suggestion_id, user.username)
     except KeyError:
-        raise HTTPException(status_code=404, detail="That suggestion was already handled") from None
+        raise HTTPException(status_code=404, detail=L('That suggestion was already handled')) from None
 
 
 @router.post("/api/settings/songs")
@@ -130,5 +131,5 @@ def save_settings(payload: SongsSettings, user: AuthContext = Depends(require_pe
 async def test_gemini(payload: KeyTest, user: AuthContext = Depends(require_permission("settings.manage"))):
     key = (payload.api_key or "").strip() or get_settings().gemini_api_key
     if not key:
-        return {"ok": False, "message": "No API key saved yet"}
+        return {"ok": False, "message": L('No API key saved yet')}
     return await gemini.test_key(key)

@@ -7,6 +7,7 @@
 // the jobs that finished in the last day. Queue positions:
 // downloads run one at a time in the order they were added; re-encode and
 // repair order come from the server (summary.*_queue_order).
+import { t } from "../lib/i18n.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../components/Icon.vue";
 import VideoThumb from "../components/VideoThumb.vue";
@@ -30,13 +31,13 @@ let reloadTimer = null;
 
 async function load() {
   try {
-    const [t, s, j] = await Promise.all([api("/api/library/tasks"), api("/api/library/summary"), api("/api/library/activity")]);
-    items.value = t.items;
+    const [tasks, s, j] = await Promise.all([api("/api/library/tasks"), api("/api/library/summary"), api("/api/library/activity")]);
+    items.value = tasks.items;
     summary.value = s;
     jobs.value = j;
     error.value = "";
   } catch (err) {
-    error.value = err.message || "Could not load tasks";
+    error.value = err.message || t("Could not load tasks");
   }
   // Progress isn't always pushed live, so poll while something is running.
   clearTimeout(pollTimer);
@@ -70,9 +71,9 @@ const pendingOrder = computed(() => summary.value.download_queue_order
   || all.value.filter((i) => i.status === "pending").sort((a, b) => a.created_at - b.created_at).map((i) => i.id));
 function position(it) {
   const at = (list, label) => { const i = list.indexOf(it.id); return i === -1 ? null : { label, n: i + 1, of: list.length }; };
-  if (it.status === "pending") return at(pendingOrder.value, "Download queue");
-  if (it.reencode_status === "queued") return at(summary.value.reencode_queue_order || [], "Re-encode queue");
-  if (it.repair_status === "queued") return at(summary.value.repair_queue_order || [], "Repair queue");
+  if (it.status === "pending") return at(pendingOrder.value, t("Download queue"));
+  if (it.reencode_status === "queued") return at(summary.value.reencode_queue_order || [], t("Re-encode queue"));
+  if (it.repair_status === "queued") return at(summary.value.repair_queue_order || [], t("Repair queue"));
   return null;
 }
 function eta(seconds) {
@@ -83,32 +84,32 @@ function eta(seconds) {
 // { text, percent, detail } describing what's happening to an item.
 function state(it) {
   if (it.status === "downloading") {
-    return { text: "Downloading", percent: it.progress_percent, detail: [it.speed, it.progress_label].filter(Boolean).join(" · ") };
+    return { text: t("Downloading"), percent: it.progress_percent, detail: [it.speed, it.progress_label].filter(Boolean).join(" · ") };
   }
-  if (it.status === "fetching") return { text: "Fetching details from PMVHaven…" };
+  if (it.status === "fetching") return { text: t("Fetching details from PMVHaven…") };
   if (it.status === "pending") {
-    return summary.value?.disk?.low ? { text: "Waiting for disk space", detail: "Downloads are stopped until there's more free space" } : { text: "Waiting to download" };
+    return summary.value?.disk?.low ? { text: t("Waiting for disk space"), detail: t("Downloads are stopped until there's more free space") } : { text: t("Waiting to download") };
   }
-  if (it.status === "failed") return { text: "Download failed", detail: it.error, failed: true };
+  if (it.status === "failed") return { text: t("Download failed"), detail: it.error, failed: true };
   if (it.reencode_status === "encoding") {
-    return { text: "Re-encoding", percent: it.reencode_progress_percent, detail: it.reencode_eta_seconds != null ? `ETA ${eta(it.reencode_eta_seconds)}` : "" };
+    return { text: t("Re-encoding"), percent: it.reencode_progress_percent, detail: it.reencode_eta_seconds != null ? t("ETA {time}", { time: eta(it.reencode_eta_seconds) }) : "" };
   }
-  if (it.reencode_status === "queued") return { text: "Waiting to re-encode" };
-  if (it.reencode_status === "failed") return { text: "Re-encode failed", detail: it.reencode_error, failed: true };
-  if (it.repair_status === "running") return { text: "Repairing", detail: it.repair_progress_label || "Working…" };
-  if (it.repair_status === "queued") return { text: "Waiting to repair" };
-  if (it.repair_status === "failed") return { text: "Repair failed", detail: it.repair_error, failed: true };
+  if (it.reencode_status === "queued") return { text: t("Waiting to re-encode") };
+  if (it.reencode_status === "failed") return { text: t("Re-encode failed"), detail: it.reencode_error, failed: true };
+  if (it.repair_status === "running") return { text: t("Repairing"), detail: it.repair_progress_label || t("Working…") };
+  if (it.repair_status === "queued") return { text: t("Waiting to repair") };
+  if (it.repair_status === "failed") return { text: t("Repair failed"), detail: it.repair_error, failed: true };
   return { text: it.status };
 }
 
 async function act(it, key, run) {
   busy.value = new Set([...busy.value, it.id + key]);
   try { await run(); await load(); }
-  catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
   finally { const b = new Set(busy.value); b.delete(it.id + key); busy.value = b; }
 }
 const isBusy = (it, key) => busy.value.has(it.id + key);
-const retry = (it) => act(it, "retry", () => api(`/api/library/${encodeURIComponent(it.id)}/retry`, { method: "POST" }).then(() => toast("Queued again")));
+const retry = (it) => act(it, "retry", () => api(`/api/library/${encodeURIComponent(it.id)}/retry`, { method: "POST" }).then(() => toast(t("Queued again"))));
 const cancelReencode = (it) => act(it, "reenc", () => api(`/api/library/${encodeURIComponent(it.id)}/reencode/cancel`, { method: "POST" }));
 const cancelRepair = (it) => act(it, "repair", () => api(`/api/library/${encodeURIComponent(it.id)}/repair/cancel`, { method: "POST" }));
 const move = (it, direction) => act(it, direction, () => api(`/api/library/${encodeURIComponent(it.id)}/reencode/move`, { method: "POST", body: { direction } }));
@@ -116,9 +117,9 @@ const moveDownload = (it, direction) => act(it, direction, () => api(`/api/libra
 const reencodeOrder = computed(() => summary.value.reencode_queue_order || []);
 
 const sections = computed(() => [
-  { key: "running", title: "Running now", list: running.value },
-  { key: "waiting", title: "Waiting", list: waiting.value },
-  { key: "failed", title: "Failed", list: failed.value },
+  { key: "running", title: t("Running now"), list: running.value },
+  { key: "waiting", title: t("Waiting"), list: waiting.value },
+  { key: "failed", title: t("Failed"), list: failed.value },
 ].filter((s) => s.list.length));
 
 const stopLive = onLibraryChange(() => { clearTimeout(reloadTimer); reloadTimer = setTimeout(load, 300); });
@@ -129,19 +130,18 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
 <template>
   <div class="tasks">
     <header class="head">
-      <h1>Tasks</h1>
-      <p class="muted small">Everything the app is working on or waiting to do — jobs like scans, syncs, backups and performer matching,
-        and each video's download, re-encode, repair or upload. Updates live.</p>
+      <h1>{{ $t("Tasks") }}</h1>
+      <p class="muted small">{{ $t("Everything the app is working on or waiting to do — jobs like scans, syncs, backups and performer matching, and each video's download, re-encode, repair or upload. Updates live.") }}</p>
     </header>
 
-    <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}<button class="btn" @click="load">Try again</button></div>
+    <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}<button class="btn" @click="load">{{ $t("Try again") }}</button></div>
     <div v-else-if="!items" class="skeleton list-skel" />
     <template v-else>
     <section v-if="jobs?.running?.length" class="section">
-      <h2>Jobs running now <span class="count">{{ jobs.running.length }}</span></h2>
+      <h2>{{ $t("Jobs running now") }} <span class="count">{{ jobs.running.length }}</span></h2>
       <JobList :data="jobs" part="running" @changed="load" />
     </section>
-    <div v-if="!sections.length && !jobs?.running?.length" class="empty"><div class="empty-icon">✅</div>Nothing running — no jobs, downloads, re-encodes, repairs or uploads.</div>
+    <div v-if="!sections.length && !jobs?.running?.length" class="empty"><div class="empty-icon">✅</div>{{ $t("Nothing running — no jobs, downloads, re-encodes, repairs or uploads.") }}</div>
     <section v-for="s in sections" :key="s.key" class="section">
       <h2>{{ s.title }} <span class="count">{{ s.list.length }}</span></h2>
       <ul class="card list">
@@ -159,8 +159,8 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
               <span v-if="it.tech_resolution">{{ it.tech_resolution }}</span>
             </div>
             <div class="state" :class="{ bad: state(it).failed }">
-              <span v-if="s.key === 'running'" class="pill run">Running</span>
-              <span v-else-if="position(it)" class="pill pos">#{{ position(it).n }} of {{ position(it).of }} · {{ position(it).label }}</span>
+              <span v-if="s.key === 'running'" class="pill run">{{ $t("Running") }}</span>
+              <span v-else-if="position(it)" class="pill pos">{{ $t("#{n} of {total} · {queue}", { n: position(it).n, total: position(it).of, queue: position(it).label }) }}</span>
               <strong>{{ state(it).text }}</strong>
               <span v-if="state(it).percent != null" class="pct">{{ Math.round(state(it).percent) }}%</span>
               <span v-if="state(it).detail" class="detail">{{ state(it).detail }}</span>
@@ -171,32 +171,32 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
           </div>
           <div v-if="canManage" class="actions">
             <!-- Queue position: wide buttons with clear arrows and a word each. -->
-            <div v-if="it.status === 'pending' && pendingOrder.length > 1" class="qgroup" role="group" aria-label="Download queue position">
-              <button class="qbtn" title="Download next" :disabled="pendingOrder[0] === it.id || isBusy(it, 'top')" @click="moveDownload(it, 'top')"><Icon name="to-top" :size="20" /><span>First</span></button>
-              <button class="qbtn" title="Move up in the download queue" :disabled="pendingOrder[0] === it.id || isBusy(it, 'up')" @click="moveDownload(it, 'up')"><Icon name="arrow-up" :size="20" /><span>Up</span></button>
-              <button class="qbtn" title="Move down in the download queue" :disabled="pendingOrder.at(-1) === it.id || isBusy(it, 'down')" @click="moveDownload(it, 'down')"><Icon name="arrow-down" :size="20" /><span>Down</span></button>
-              <button class="qbtn" title="Download last" :disabled="pendingOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="moveDownload(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>Last</span></button>
+            <div v-if="it.status === 'pending' && pendingOrder.length > 1" class="qgroup" role="group" :aria-label="$t('Download queue position')">
+              <button class="qbtn" :title="$t('Download next')" :disabled="pendingOrder[0] === it.id || isBusy(it, 'top')" @click="moveDownload(it, 'top')"><Icon name="to-top" :size="20" /><span>{{ $t("First") }}</span></button>
+              <button class="qbtn" :title="$t('Move up in the download queue')" :disabled="pendingOrder[0] === it.id || isBusy(it, 'up')" @click="moveDownload(it, 'up')"><Icon name="arrow-up" :size="20" /><span>{{ $t("Up") }}</span></button>
+              <button class="qbtn" :title="$t('Move down in the download queue')" :disabled="pendingOrder.at(-1) === it.id || isBusy(it, 'down')" @click="moveDownload(it, 'down')"><Icon name="arrow-down" :size="20" /><span>{{ $t("Down") }}</span></button>
+              <button class="qbtn" :title="$t('Download last')" :disabled="pendingOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="moveDownload(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>{{ $t("Last") }}</span></button>
             </div>
-            <div v-if="it.reencode_status === 'queued'" class="qgroup" role="group" aria-label="Re-encode queue position">
-              <button class="qbtn" title="Re-encode next (right after the one encoding now)" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'top')" @click="move(it, 'top')"><Icon name="to-top" :size="20" /><span>First</span></button>
-              <button class="qbtn" title="Move up in the re-encode queue" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'up')" @click="move(it, 'up')"><Icon name="arrow-up" :size="20" /><span>Up</span></button>
-              <button class="qbtn" title="Move down in the re-encode queue" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'down')" @click="move(it, 'down')"><Icon name="arrow-down" :size="20" /><span>Down</span></button>
-              <button class="qbtn" title="Re-encode last" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="move(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>Last</span></button>
+            <div v-if="it.reencode_status === 'queued'" class="qgroup" role="group" :aria-label="$t('Re-encode queue position')">
+              <button class="qbtn" :title="$t('Re-encode next (right after the one encoding now)')" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'top')" @click="move(it, 'top')"><Icon name="to-top" :size="20" /><span>{{ $t("First") }}</span></button>
+              <button class="qbtn" :title="$t('Move up in the re-encode queue')" :disabled="reencodeOrder[0] === it.id || isBusy(it, 'up')" @click="move(it, 'up')"><Icon name="arrow-up" :size="20" /><span>{{ $t("Up") }}</span></button>
+              <button class="qbtn" :title="$t('Move down in the re-encode queue')" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'down')" @click="move(it, 'down')"><Icon name="arrow-down" :size="20" /><span>{{ $t("Down") }}</span></button>
+              <button class="qbtn" :title="$t('Re-encode last')" :disabled="reencodeOrder.at(-1) === it.id || isBusy(it, 'bottom')" @click="move(it, 'bottom')"><Icon name="to-bottom" :size="20" /><span>{{ $t("Last") }}</span></button>
             </div>
-            <button v-if="it.status === 'failed'" class="btn btn-sm btn-primary" :disabled="isBusy(it, 'retry')" @click="retry(it)"><Icon name="repeat" />Retry</button>
-            <button v-if="it.reencode_status === 'queued' || it.reencode_status === 'encoding'" class="btn btn-sm" :disabled="isBusy(it, 'reenc')" @click="cancelReencode(it)">Cancel re-encode</button>
-            <button v-if="it.repair_status === 'queued' || it.repair_status === 'running'" class="btn btn-sm" :disabled="isBusy(it, 'repair')" @click="cancelRepair(it)">Cancel repair</button>
-            <button v-if="it.status !== 'done'" class="btn btn-ghost btn-sm btn-danger" title="Stop and remove this video from the library" @click="openDialog('remove', it)"><Icon name="trash" />Remove</button>
+            <button v-if="it.status === 'failed'" class="btn btn-sm btn-primary" :disabled="isBusy(it, 'retry')" @click="retry(it)"><Icon name="repeat" />{{ $t("Retry") }}</button>
+            <button v-if="it.reencode_status === 'queued' || it.reencode_status === 'encoding'" class="btn btn-sm" :disabled="isBusy(it, 'reenc')" @click="cancelReencode(it)">{{ $t("Cancel re-encode") }}</button>
+            <button v-if="it.repair_status === 'queued' || it.repair_status === 'running'" class="btn btn-sm" :disabled="isBusy(it, 'repair')" @click="cancelRepair(it)">{{ $t("Cancel repair") }}</button>
+            <button v-if="it.status !== 'done'" class="btn btn-ghost btn-sm btn-danger" :title="$t('Stop and remove this video from the library')" @click="openDialog('remove', it)"><Icon name="trash" />{{ $t("Remove") }}</button>
           </div>
         </li>
       </ul>
     </section>
     <section v-if="jobs?.upcoming?.length || jobs?.auto_duplicate_scan" class="section">
-      <h2>Coming up</h2>
+      <h2>{{ $t("Coming up") }}</h2>
       <JobList :data="jobs" part="upcoming" />
     </section>
     <section v-if="jobs?.finished?.length" class="section">
-      <h2>Finished in the last day <span class="count">{{ jobs.finished.length }}</span></h2>
+      <h2>{{ $t("Finished in the last day") }} <span class="count">{{ jobs.finished.length }}</span></h2>
       <JobList :data="jobs" part="finished" />
     </section>
     </template>
@@ -238,9 +238,9 @@ a.title:hover { color: var(--accent); text-decoration: none; }
 }
 .qgroup { display: inline-flex; border: 1px solid var(--border-strong, var(--border)); border-radius: var(--radius); overflow: hidden; }
 .qbtn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; min-width: 3.25rem;
-  height: 2.75rem; padding: 0 0.5rem; border: 0; border-left: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+  height: 2.75rem; padding: 0 0.5rem; border: 0; border-inline-start: 1px solid var(--border); background: var(--panel-2); color: var(--text);
   font: inherit; font-size: 0.68rem; font-weight: 650; cursor: pointer; }
-.qbtn:first-child { border-left: 0; }
+.qbtn:first-child { border-inline-start: 0; }
 .qbtn:hover:not(:disabled) { background: var(--panel-hover); color: var(--accent); }
 .qbtn:disabled { opacity: 0.35; cursor: default; }
 .qbtn :deep(svg) { stroke-width: 2.4; }

@@ -18,6 +18,7 @@ Upgrading from .env: on the first start, any credential still found in the
 environment / .env is imported once; after that .env is never read again.
 """
 from __future__ import annotations
+from .i18n import L
 
 import os
 import secrets as pysecrets
@@ -40,40 +41,35 @@ _ENV_IMPORTED = "__env_imported"
 # "toggle" ("1" / "0"; a toggle that's on hides the rest of its group).
 # `revealable`: secret the admin may view/copy (needed to paste elsewhere).
 FIELDS: dict[str, dict] = {
-    "pmvhaven_api_key": {"group": "pmvhaven_api", "label": "API key", "kind": "secret", "env": "PMVHAVEN_API_KEY"},
-    "app_api_key": {"group": "external_api", "label": "API key", "kind": "secret", "env": "APP_API_KEY",
+    "pmvhaven_api_key": {"group": "pmvhaven_api", "label": L('API key'), "kind": "secret", "env": "PMVHAVEN_API_KEY"},
+    "app_api_key": {"group": "external_api", "label": L('API key'), "kind": "secret", "env": "APP_API_KEY",
                     "revealable": True, "generate": True},
-    "tpdb_api_key": {"group": "tpdb", "label": "API key", "kind": "secret"},
-    "virustotal_api_key": {"group": "virustotal", "label": "API key", "kind": "secret"},
-    "gemini_api_key": {"group": "gemini", "label": "API key", "kind": "secret", "env": "GEMINI_API_KEY"},
-    "proxy_url": {"group": "proxy", "label": "Address", "kind": "text"},
-    "proxy_username": {"group": "proxy", "label": "Username", "kind": "text"},
-    "proxy_password": {"group": "proxy", "label": "Password", "kind": "secret"},
+    "tpdb_api_key": {"group": "tpdb", "label": L('API key'), "kind": "secret"},
+    "virustotal_api_key": {"group": "virustotal", "label": L('API key'), "kind": "secret"},
+    "gemini_api_key": {"group": "gemini", "label": L('API key'), "kind": "secret", "env": "GEMINI_API_KEY"},
+    "proxy_url": {"group": "proxy", "label": L('Address'), "kind": "text"},
+    "proxy_username": {"group": "proxy", "label": L('Username'), "kind": "text"},
+    "proxy_password": {"group": "proxy", "label": L('Password'), "kind": "secret"},
     # Internal: signs login cookies. Generated automatically, never shown.
-    "app_secret_key": {"group": "internal", "label": "Session signing key", "kind": "secret",
+    "app_secret_key": {"group": "internal", "label": L('Session signing key'), "kind": "secret",
                        "env": "APP_SECRET_KEY", "internal": True},
     # Protects new backups (2.25.0). Set on the Backups page, not under Credentials.
-    "backup_password": {"group": "internal", "label": "Backup password", "kind": "secret", "internal": True},
+    "backup_password": {"group": "internal", "label": L('Backup password'), "kind": "secret", "internal": True},
 }
 
 GROUPS = [
-    ("pmvhaven_api", "PMVHaven API",
-     "API key from https://pmvhaven.com/api-keys (format pmvh_...). Used to sync videos with the site; "
-     "the same key works on porntubeai.com and hmvhaven.com."),
-    ("external_api", "External API (userscript)",
-     "Key the companion userscript sends in the X-API-Key header. Leave empty to disable the external API."),
-    ("virustotal", "VirusTotal",
-     "Free API key from https://www.virustotal.com (sign in → API key). Used to look up each uploaded file's fingerprint "
-     "(SHA-256) — only the fingerprint is sent, never the file. Server Settings → Uploads → Fingerprint check."),
-    ("gemini", "Google Gemini (optional AI)",
-     "Optional, free-tier API key from https://aistudio.google.com/apikey. Only used by features you turn on: "
-     "Management → Songs → “Ask Gemini (AI)” sends 20-second sound clips of the spots Shazam didn't recognise. "
-     "Free-tier requests may be used by Google to improve its products."),
-    ("tpdb", "ThePornDB",
-     "API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases)."),
-    ("proxy", "Proxy",
-     "e.g. socks5://192.168.1.10:1080 or http://proxy.example:8080; username/password only if it needs them. "
-     "Where it's used, and a speed test: Server Settings → Proxy."),
+    ("pmvhaven_api", L('PMVHaven API'),
+     L('API key from https://pmvhaven.com/api-keys (format pmvh_...). Used to sync videos with the site; the same key works on porntubeai.com and hmvhaven.com.')),
+    ("external_api", L('External API (userscript)'),
+     L('Key the companion userscript sends in the X-API-Key header. Leave empty to disable the external API.')),
+    ("virustotal", L('VirusTotal'),
+     L("Free API key from https://www.virustotal.com (sign in → API key). Used to look up each uploaded file's fingerprint (SHA-256) — only the fingerprint is sent, never the file. Server Settings → Uploads → Fingerprint check.")),
+    ("gemini", L('Google Gemini (optional AI)'),
+     L("Optional, free-tier API key from https://aistudio.google.com/apikey. Only used by features you turn on: Management → Songs → “Ask Gemini (AI)” sends 20-second sound clips of the spots Shazam didn't recognise. Free-tier requests may be used by Google to improve its products.")),
+    ("tpdb", L('ThePornDB'),
+     L('API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases).')),
+    ("proxy", L('Proxy'),
+     L("e.g. socks5://192.168.1.10:1080 or http://proxy.example:8080; username/password only if it needs them. Where it's used, and a speed test: Server Settings → Proxy.")),
 ]
 
 
@@ -120,7 +116,7 @@ def write(updates: dict[str, Optional[str]]) -> None:
     """Empty string or None deletes the credential."""
     unknown = set(updates) - set(FIELDS) - {_ENV_IMPORTED}
     if unknown:
-        raise ValueError(f"Unknown credential(s): {', '.join(sorted(unknown))}")
+        raise ValueError(L('Unknown credentials: {names}', names=', '.join(sorted(unknown))))
     f = _fernet()
     now = time.time()
     with _connect() as conn:

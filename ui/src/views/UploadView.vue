@@ -8,6 +8,7 @@
 //     with the codec picked here (ConvertStep), unless Server Settings say to
 //     do that automatically. Only then is it added to the library;
 //  3. choose the thumbnail (ThumbnailStep) and 4. the preview clips (PreviewStep).
+import { t } from "../lib/i18n.js";
 import { askConfirm } from "../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../components/Icon.vue";
@@ -49,13 +50,13 @@ function choose(f) {
   const ext = (f.name.match(/\.[^.]+$/)?.[0] || "").toLowerCase();
   if (!EXTENSIONS.includes(ext)) {
     file.value = null;
-    error.value = `“${f.name}” can't be uploaded: only ${EXTENSIONS.join(", ")} video files are allowed.`;
+    error.value = t("“{name}” can't be uploaded: only {formats} video files are allowed.", { name: f.name, formats: EXTENSIONS.join(", ") });
     toast(error.value, { type: "error", timeout: 6000 });
     return;
   }
   if (!f.size) {
     file.value = null;
-    error.value = `“${f.name}” is empty.`;
+    error.value = t("“{name}” is empty.", { name: f.name });
     return;
   }
   file.value = f;
@@ -69,7 +70,7 @@ const eta = computed(() => {
   const { loaded, total, speed } = progress.value;
   if (!speed) return "";
   const s = Math.round((total - loaded) / speed);
-  return s > 90 ? `${Math.round(s / 60)} min left` : `${s}s left`;
+  return s > 90 ? t("{n} min left", { n: Math.round(s / 60) }) : t("{n} s left", { n: s });
 });
 const canSend = computed(() => file.value && form.value.title.trim() && state.value !== "uploading");
 
@@ -82,7 +83,7 @@ async function upload() {
       method: "POST",
       body: { ...form.value, upload_date: form.value.upload_date || null, filename: f.name, size: f.size },
     }));
-  } catch (err) { error.value = err.message || "The upload couldn't start"; return; }
+  } catch (err) { error.value = err.message || t("The upload couldn't start"); return; }
 
   state.value = "uploading";
   progress.value = { loaded: 0, total: f.size, speed: 0 };
@@ -101,12 +102,12 @@ async function upload() {
       onStatus(data);
     } else {
       state.value = "failed";
-      error.value = data?.detail || `The upload failed (${xhr.status})`;
+      error.value = data?.detail || t("The upload failed ({status})", { status: xhr.status });
     }
     xhr = null;
   };
-  xhr.onerror = () => { state.value = "failed"; error.value = "The connection was lost during the upload"; xhr = null; };
-  xhr.onabort = () => { state.value = "idle"; error.value = "Upload cancelled"; xhr = null; api(`/api/library/local/${uploadId}`, { method: "DELETE" }).catch(() => {}); };
+  xhr.onerror = () => { state.value = "failed"; error.value = t("The connection was lost during the upload"); xhr = null; };
+  xhr.onabort = () => { state.value = "idle"; error.value = t("Upload cancelled"); xhr = null; api(`/api/library/local/${uploadId}`, { method: "DELETE" }).catch(() => {}); };
   xhr.send(f);
 }
 // ---- after the file arrived: follow the server's check / conversion ----
@@ -124,38 +125,38 @@ async function onStatus(s) {
   } else if (s.state === "done") {
     result.value = s.item;
     checks.value = s.checks || [];
-    toast(`“${s.item.title}” is in the library`, { type: "success" });
+    toast(t("“{title}” is in the library", { title: s.item.title }), { type: "success" });
     try { plan.value = await api(`/api/library/${encodeURIComponent(s.item.id)}/preview-plan`); } catch { plan.value = { duration: 0, timestamps: [] }; }
     try { result.value = await api(`/api/library/${encodeURIComponent(s.item.id)}/item`); } catch { /* keep what we have */ }
     state.value = "thumbnail";
   } else {
     state.value = "failed";
-    error.value = s.message || "The upload failed";
+    error.value = s.message || t("The upload failed");
   }
 }
 async function refresh() {
   try { onStatus(await api(`/api/library/local/${uploadId}`)); }
-  catch (err) { state.value = "failed"; error.value = err.message || "Lost track of the upload"; }
+  catch (err) { state.value = "failed"; error.value = err.message || t("Lost track of the upload"); }
 }
 const busy = ref(false);
 async function convert(choice) {
   busy.value = true;
   try { onStatus(await api(`/api/library/local/${uploadId}/convert`, { method: "POST", body: choice })); }
-  catch (err) { toast(err.message || "Could not start the conversion", { type: "error" }); }
+  catch (err) { toast(err.message || t("Could not start the conversion"), { type: "error" }); }
   finally { busy.value = false; }
 }
 async function cancelProcessing() {
-  if (!(await askConfirm("Cancel this upload? The uploaded file is deleted.", { ok: "Yes, cancel", danger: true }))) return;
+  if (!(await askConfirm(t("Cancel this upload? The uploaded file is deleted."), { ok: t("Yes, cancel"), danger: true }))) return;
   clearTimeout(poll);
   try { await api(`/api/library/local/${uploadId}`, { method: "DELETE" }); } catch { /* gone already */ }
   state.value = "idle";
   status.value = null;
-  error.value = "Upload cancelled";
+  error.value = t("Upload cancelled");
 }
 const stepLabel = computed(() => ({
-  queued: "Waiting in line…", checking: "Checking the file…", scanning: "Scanning for viruses…", remuxing: "Re-packing into MP4…",
-  converting: "Converting…", finishing: "Making the thumbnail and preview…",
-}[status.value?.state] || "Working…"));
+  queued: t("Waiting in line…"), checking: t("Checking the file…"), scanning: t("Scanning for viruses…"), remuxing: t("Re-packing into MP4…"),
+  converting: t("Converting…"), finishing: t("Making the thumbnail and preview…"),
+}[status.value?.state] || t("Working…")));
 
 function cancel() { xhr?.abort(); }
 function another() {
@@ -173,9 +174,8 @@ onBeforeUnmount(() => { window.removeEventListener("beforeunload", beforeUnload)
   <div class="page">
     <header class="page-head">
       <div>
-        <h1>Upload</h1>
-        <p>Add a video from this computer to the library. A file browsers can't play is re-packed into MP4, or converted if it has to be;
-          then you choose its thumbnail and preview clip. Uploaded videos aren't linked to PMVHaven, so they're never synced with it.</p>
+        <h1>{{ $t("Upload") }}</h1>
+        <p>{{ $t("Add a video from this computer to the library. A file browsers can't play is re-packed into MP4, or converted if it has to be; then you choose its thumbnail and preview clip. Uploaded videos aren't linked to PMVHaven, so they're never synced with it.") }}</p>
       </div>
     </header>
 
@@ -185,12 +185,11 @@ onBeforeUnmount(() => { window.removeEventListener("beforeunload", beforeUnload)
       <div class="progress-box">
         <div class="bar" :class="{ indeterminate: status?.progress == null }"><div :style="{ width: `${status?.progress ?? 30}%` }" /></div>
       </div>
-      <p class="muted small">You can leave this page: the work carries on and the video appears in the library when it's ready
-        (the thumbnail and preview steps are then skipped — use the video's ⋮ menu for the thumbnail).</p>
+      <p class="muted small">{{ $t("You can leave this page: the work carries on and the video appears in the library when it's ready (the thumbnail and preview steps are then skipped — use the video's ⋮ menu for the thumbnail).") }}</p>
       <ul v-if="status?.checks?.length" class="checks"><li v-for="c in status.checks" :key="c.name" :class="c.ok ? 'ok-text' : 'muted'">{{ c.ok ? "✓" : "–" }} {{ c.name }}: {{ c.result }}</li></ul>
-      <p v-if="status?.state === 'queued'" class="muted small">Uploads are checked one at a time, in the order they arrived.</p>
+      <p v-if="status?.state === 'queued'" class="muted small">{{ $t("Uploads are checked one at a time, in the order they arrived.") }}</p>
       <div v-if="['queued', 'converting', 'checking', 'scanning', 'remuxing'].includes(status?.state)" class="form-actions">
-        <button class="btn btn-sm" @click="cancelProcessing">Cancel</button></div>
+        <button class="btn btn-sm" @click="cancelProcessing">{{ $t("Cancel") }}</button></div>
     </section>
 
     <ConvertStep v-else-if="state === 'convert'" :status="status" :busy="busy" @convert="convert" @cancel="cancelProcessing" />
@@ -202,11 +201,11 @@ onBeforeUnmount(() => { window.removeEventListener("beforeunload", beforeUnload)
                  @update="result = $event" @back="state = 'thumbnail'" @finish="state = 'done'" />
 
     <section v-else-if="state === 'done' && result" class="card panel done">
-      <h2>✅ “{{ result.title }}” is in the library</h2>
+      <h2>✅ {{ $t("“{title}” is in the library", { title: result.title }) }}</h2>
       <ul v-if="checks.length" class="checks"><li v-for="c in checks" :key="c.name" :class="c.ok ? 'ok-text' : 'muted'">{{ c.ok ? "✓" : "–" }} {{ c.name }}: {{ c.result }}</li></ul>
       <div class="form-actions">
-        <RouterLink :to="{ name: 'video', params: { id: result.id } }" class="btn btn-primary btn-sm"><Icon name="play" />Open it</RouterLink>
-        <button class="btn btn-sm" @click="another">Upload another</button>
+        <RouterLink :to="{ name: 'video', params: { id: result.id } }" class="btn btn-primary btn-sm"><Icon name="play" />{{ $t("Open it") }}</RouterLink>
+        <button class="btn btn-sm" @click="another">{{ $t("Upload another") }}</button>
       </div>
     </section>
 
@@ -214,41 +213,41 @@ onBeforeUnmount(() => { window.removeEventListener("beforeunload", beforeUnload)
       <label class="drop" :class="{ over: dragOver, has: file }" @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="onDrop">
         <input type="file" :accept="ACCEPT" class="sr-only" :disabled="state === 'uploading'" @change="choose($event.target.files[0])">
         <Icon name="upload" :size="28" class="drop-icon" />
-        <span v-if="file"><strong>{{ file.name }}</strong> · {{ formatBytes(file.size) }}<br><span class="muted">Click or drop to pick another file</span></span>
-        <span v-else><strong>Choose a video file</strong> or drop it here<br><span class="muted">Only {{ EXTENSIONS.map((e) => e.slice(1)).join(", ") }}</span></span>
+        <span v-if="file"><strong>{{ file.name }}</strong> · {{ formatBytes(file.size) }}<br><span class="muted">{{ $t("Click or drop to pick another file") }}</span></span>
+        <span v-else><strong>{{ $t("Choose a video file") }}</strong> {{ $t("or drop it here") }}<br><span class="muted">{{ $t("Only {formats}", { formats: EXTENSIONS.map((e) => e.slice(1)).join(", ") }) }}</span></span>
       </label>
 
       <div class="form-row">
-        <label class="label" for="up-title">Title</label>
+        <label class="label" for="up-title">{{ $t("Title") }}</label>
         <input id="up-title" v-model="form.title" class="input" maxlength="300" required>
       </div>
       <div class="form-row">
-        <label class="label" for="up-creator">Creator<small>Also the folder it's saved in.</small></label>
-        <input id="up-creator" v-model="form.creator" class="input" list="up-creators" placeholder="Unknown" maxlength="120">
+        <label class="label" for="up-creator">{{ $t("Creator") }}<small>{{ $t("Also the folder it's saved in.") }}</small></label>
+        <input id="up-creator" v-model="form.creator" class="input" list="up-creators" :placeholder="$t('Unknown')" maxlength="120">
         <datalist id="up-creators"><option v-for="c in creators" :key="c" :value="c" /></datalist>
       </div>
       <div class="form-row">
-        <label class="label" for="up-date">Upload date<small>Optional — when it was published.</small></label>
+        <label class="label" for="up-date">{{ $t("Upload date") }}<small>{{ $t("Optional — when it was published.") }}</small></label>
         <input id="up-date" v-model="form.upload_date" class="input date" type="date">
       </div>
       <div class="form-row top">
-        <label class="label" for="up-desc">Description</label>
+        <label class="label" for="up-desc">{{ $t("Description") }}</label>
         <textarea id="up-desc" v-model="form.description" class="input area" rows="3" maxlength="10000" />
       </div>
-      <div class="form-row"><span class="label">Performers</span><TagInput keep-open show-all v-model="form.performers" field="performers" chip-class="chip-performer" placeholder="Type a name…" /></div>
-      <div class="form-row"><span class="label">Tags</span><TagInput keep-open show-all v-model="form.tags" field="tags" chip-class="chip-tag" placeholder="Type a tag…" /></div>
-      <div class="form-row"><span class="label">Music</span><TagInput keep-open show-all v-model="form.music" field="music" chip-class="chip-music" placeholder="Song — Artist" /></div>
-      <div class="form-row"><span class="label">Content flags</span><TagInput keep-open show-all v-model="form.flags" field="flags" placeholder="e.g. Explicit content" /></div>
+      <div class="form-row"><span class="label">{{ $t("Performers") }}</span><TagInput keep-open show-all v-model="form.performers" field="performers" chip-class="chip-performer" :placeholder="$t('Type a name…')" /></div>
+      <div class="form-row"><span class="label">{{ $t("Tags") }}</span><TagInput keep-open show-all v-model="form.tags" field="tags" chip-class="chip-tag" :placeholder="$t('Type a tag…')" /></div>
+      <div class="form-row"><span class="label">{{ $t("Music") }}</span><TagInput keep-open show-all v-model="form.music" field="music" chip-class="chip-music" :placeholder="$t('Song — Artist')" /></div>
+      <div class="form-row"><span class="label">{{ $t("Content flags") }}</span><TagInput keep-open show-all v-model="form.flags" field="flags" :placeholder="$t('e.g. Explicit content')" /></div>
 
       <div v-if="state === 'uploading'" class="progress-box">
         <div class="bar"><div :style="{ width: `${percent}%` }" /></div>
-        <span class="muted small">{{ percent }}% · {{ formatBytes(progress.loaded) }} of {{ formatBytes(progress.total) }}
+        <span class="muted small">{{ percent }}% · {{ $t("{done} of {total}", { done: formatBytes(progress.loaded), total: formatBytes(progress.total) }) }}
           <template v-if="progress.speed"> · {{ formatBytes(progress.speed) }}/s · {{ eta }}</template></span>
       </div>
       <p v-if="error" class="error-text">{{ error }}</p>
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit" :disabled="!canSend">{{ state === "uploading" ? "Uploading…" : "Upload" }}</button>
-        <button v-if="state === 'uploading'" class="btn" type="button" @click="cancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" :disabled="!canSend">{{ state === "uploading" ? $t("Uploading…") : $t("Upload") }}</button>
+        <button v-if="state === 'uploading'" class="btn" type="button" @click="cancel">{{ $t("Cancel") }}</button>
       </div>
     </form>
   </div>

@@ -2,6 +2,7 @@
 // Server Settings -> Credentials: every account and key the app uses,
 // grouped as the server describes them (GET /api/credentials). Secrets are
 // never sent back to the browser: an empty secret box keeps the saved value.
+import { t } from "../../lib/i18n.js";
 import { askConfirm } from "../../stores/confirm.js";
 import { ref, onMounted } from "vue";
 import { api } from "../../lib/api.js";
@@ -23,7 +24,7 @@ async function load() {
     values.value = v;
     error.value = "";
   } catch (err) {
-    error.value = err.message || "Could not load credentials";
+    error.value = err.message || t("Could not load credentials");
   }
 }
 onMounted(load);
@@ -45,42 +46,42 @@ function changes(group) {
 }
 async function save(group) {
   const vals = changes(group);
-  if (!Object.keys(vals).length) { toast("Nothing changed"); return; }
+  if (!Object.keys(vals).length) { toast(t("Nothing changed")); return; }
   busy.value = group.key;
   try {
     await api("/api/credentials", { method: "PUT", body: { values: vals } });
-    toast("Saved", { type: "success" });
+    toast(t("Saved"), { type: "success" });
     await load();
-  } catch (err) { toast(err.message || "Could not save", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not save"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 async function clear(field) {
-  if (!(await askConfirm(`Remove the saved ${field.label}?`, { ok: "Remove", danger: true }))) return;
+  if (!(await askConfirm(t("Remove the saved {name}?", { name: field.label }), { ok: t("Remove"), danger: true }))) return;
   try {
     await api("/api/credentials", { method: "PUT", body: { values: { [field.name]: "" } } });
-    toast("Removed");
+    toast(t("Removed"));
     revealed.value = { ...revealed.value, [field.name]: "" };
     await load();
-  } catch (err) { toast(err.message || "Could not remove", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not remove"), { type: "error" }); }
 }
 async function reveal(field) {
   if (revealed.value[field.name]) { revealed.value = { ...revealed.value, [field.name]: "" }; return; }
   try {
     const { value } = await api(`/api/credentials/${field.name}/reveal`);
     revealed.value = { ...revealed.value, [field.name]: value || "" };
-  } catch (err) { toast(err.message || "Could not show it", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not show it"), { type: "error" }); }
 }
 async function generate(field) {
-  if (!(await askConfirm("Generate a new key? Anything using the current key (e.g. the userscript) must be updated.", { ok: "Generate" }))) return;
+  if (!(await askConfirm(t("Generate a new key? Anything using the current key (e.g. the userscript) must be updated."), { ok: t("Generate") }))) return;
   try {
     const { value } = await api(`/api/credentials/${field.name}/generate`, { method: "POST" });
     await load();
     revealed.value = { ...revealed.value, [field.name]: value };
-    toast("New key generated — copy it now", { type: "success" });
-  } catch (err) { toast(err.message || "Could not generate a key", { type: "error" }); }
+    toast(t("New key generated — copy it now"), { type: "success" });
+  } catch (err) { toast(err.message || t("Could not generate a key"), { type: "error" }); }
 }
 async function copy(text) {
-  toast(await copyText(text) ? "Copied" : "Copy it by hand (the browser blocked copying)");  // works over plain http too (3.5.0)
+  toast(await copyText(text) ? t("Copied") : t("Copy it by hand (the browser blocked copying)"));  // works over plain http too (3.5.0)
 }
 // Groups with a "Test key" button: the field typed in, and the test endpoint.
 const KEY_TESTS = {
@@ -89,11 +90,11 @@ const KEY_TESTS = {
   gemini: { field: "gemini_api_key", path: "gemini" },
 };
 async function test(group) {
-  results.value = { ...results.value, [group.key]: { message: "Testing…" } };
+  results.value = { ...results.value, [group.key]: { message: t("Testing…") } };
   try {
-    const t = KEY_TESTS[group.key];
-    const typed = (values.value[t.field] || "").trim();
-    const r = await api(`/api/credentials/test/${t.path}`, { method: "POST", body: { api_key: typed || null } });
+    const kt = KEY_TESTS[group.key];
+    const typed = (values.value[kt.field] || "").trim();
+    const r = await api(`/api/credentials/test/${kt.path}`, { method: "POST", body: { api_key: typed || null } });
     results.value = { ...results.value, [group.key]: r };
   } catch (err) {
     results.value = { ...results.value, [group.key]: { ok: false, message: err.message } };
@@ -114,35 +115,35 @@ async function test(group) {
         <span v-if="f.kind === 'toggle'" class="label">{{ f.label }}</span>
         <label v-if="f.kind === 'toggle'" class="switch">
           <input :id="`cred-${f.name}`" type="checkbox" :checked="values[f.name] === '1'" @change="values[f.name] = $event.target.checked ? '1' : '0'">
-          {{ values[f.name] === "1" ? "Yes — same email and password as PMVHaven" : "No — this site has its own account" }}
+          {{ values[f.name] === "1" ? $t("Yes — same email and password as PMVHaven") : $t("No — this site has its own account") }}
         </label>
         <label v-if="f.kind !== 'toggle'" class="label" :for="`cred-${f.name}`">
           <span>{{ f.label }}
-            <span v-if="f.kind === 'secret'" class="pill" :class="f.is_set ? 'pill-ok' : ''">{{ f.is_set ? "Saved" : "Not set" }}</span>
+            <span v-if="f.kind === 'secret'" class="pill" :class="f.is_set ? 'pill-ok' : ''">{{ f.is_set ? $t("Saved") : $t("Not set") }}</span>
           </span>
         </label>
         <div v-if="f.kind !== 'toggle'" class="field-col">
           <div class="inline-input">
             <input :id="`cred-${f.name}`" v-model="values[f.name]" class="input" :type="f.kind === 'secret' ? 'password' : 'text'"
                    :inputmode="f.kind === 'number' ? 'numeric' : undefined" autocomplete="new-password"
-                   :placeholder="f.kind === 'secret' ? (f.is_set ? 'Saved — type to replace' : 'Not set') : ''">
-            <button v-if="f.revealable && f.is_set" class="btn btn-ghost btn-sm" @click="reveal(f)">{{ revealed[f.name] ? "Hide" : "Show" }}</button>
-            <button v-if="f.generate" class="btn btn-ghost btn-sm" @click="generate(f)">Generate</button>
-            <button v-if="f.is_set" class="btn btn-ghost btn-sm btn-danger" @click="clear(f)">Clear</button>
+                   :placeholder="f.kind === 'secret' ? (f.is_set ? $t('Saved — type to replace') : $t('Not set')) : ''">
+            <button v-if="f.revealable && f.is_set" class="btn btn-ghost btn-sm" @click="reveal(f)">{{ revealed[f.name] ? $t("Hide") : $t("Show") }}</button>
+            <button v-if="f.generate" class="btn btn-ghost btn-sm" @click="generate(f)">{{ $t("Generate") }}</button>
+            <button v-if="f.is_set" class="btn btn-ghost btn-sm btn-danger" @click="clear(f)">{{ $t("Clear") }}</button>
           </div>
           <div v-if="revealed[f.name]" class="revealed">
             <code class="mono">{{ revealed[f.name] }}</code>
-            <button class="btn btn-ghost btn-sm" @click="copy(revealed[f.name])">Copy</button>
+            <button class="btn btn-ghost btn-sm" @click="copy(revealed[f.name])">{{ $t("Copy") }}</button>
           </div>
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary btn-sm" :disabled="busy === g.key" @click="save(g)">{{ busy === g.key ? "Saving…" : "Save" }}</button>
-        <button v-if="KEY_TESTS[g.key]" class="btn btn-sm" @click="test(g)">Test key</button>
+        <button class="btn btn-primary btn-sm" :disabled="busy === g.key" @click="save(g)">{{ busy === g.key ? $t("Saving…") : $t("Save") }}</button>
+        <button v-if="KEY_TESTS[g.key]" class="btn btn-sm" @click="test(g)">{{ $t("Test key") }}</button>
         <span v-if="results[g.key]" :class="results[g.key].ok ? 'ok-text' : results[g.key].ok === false ? 'error-text' : 'help-text'">{{ results[g.key].message }}</span>
       </div>
     </section>
-    <p class="help-text">Stored encrypted in <code class="mono">{{ data.storage }}</code>. Keep the <code class="mono">data</code> folder private.</p>
+    <p class="help-text"><Tx msg="Stored encrypted in {code1}. Keep the {code2} folder private."><template #code1><code class="mono">{{ data.storage }}</code></template><template #code2><code class="mono">data</code></template></Tx></p>
   </template>
 </template>
 

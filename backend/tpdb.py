@@ -15,6 +15,7 @@ from typing import Optional
 import httpx
 from loguru import logger
 
+from .i18n import L
 from . import images
 from .config import get_settings
 
@@ -42,7 +43,7 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
     global _last
     key = get_settings().tpdb_api_key
     if not key:
-        raise TPDBError("No ThePornDB API key (Server Settings → Credentials → ThePornDB)")
+        raise TPDBError(L('No ThePornDB API key (Server Settings → Credentials → ThePornDB)'))
     global _gap
     headers = {"Authorization": f"Bearer {key}", "Accept": "application/json",
                "User-Agent": "PMV-Nexus"}
@@ -57,7 +58,7 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
                                          follow_redirects=True) as client:
                 r = await client.get(path, params=params)
         except httpx.HTTPError as exc:
-            raise TPDBError(f"ThePornDB didn't answer: {exc or exc.__class__.__name__}") from exc
+            raise TPDBError(L("ThePornDB didn't answer: {error}", error=exc or exc.__class__.__name__)) from exc
         if r.status_code != 429 or attempt == RETRIES_429:
             break
         # Too many requests: slow down for good (until restart) and wait as long as it asks.
@@ -72,13 +73,13 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
             await asyncio.sleep(pause)
             _last = time.monotonic()
     if r.status_code in (401, 403):
-        raise TPDBError("ThePornDB refused the API key (check it in Server Settings → Credentials)")
+        raise TPDBError(L('ThePornDB refused the API key (check it in Server Settings → Credentials)'))
     if r.status_code == 404:
-        raise TPDBError("Not found on ThePornDB")
+        raise TPDBError(L('Not found on ThePornDB'))
     if r.status_code == 429:
-        raise TPDBError("ThePornDB says too many requests — try again in a while")
+        raise TPDBError(L('ThePornDB says too many requests — try again in a while'))
     if r.status_code >= 400:
-        raise TPDBError(f"ThePornDB error {r.status_code}: {r.text[:200]}")
+        raise TPDBError(L('ThePornDB error {status}: {answer}', status=r.status_code, answer=r.text[:200]))
     return r.json()
 
 
@@ -111,7 +112,7 @@ async def performer(tpdb_id: str) -> dict:
     data = await _get(f"/performers/{tpdb_id}")
     p = data.get("data")
     if not isinstance(p, dict) or not p.get("id"):
-        raise TPDBError("ThePornDB returned no profile")
+        raise TPDBError(L('ThePornDB returned no profile'))
     return p
 
 

@@ -39,6 +39,7 @@ from typing import AsyncIterator, Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import media_tools, stats_store, upload_safety
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
@@ -99,7 +100,7 @@ class LocalUploadMixin:
     def _owned(self, upload_id: str, user) -> dict:
         up = self._uploads.get(upload_id)
         if not up or (user is not None and up.get("user_id") != user.id and not user.has_permission("*")):
-            raise UploadError("This upload expired or doesn't exist -- start it again", 404)
+            raise UploadError(L("This upload expired or doesn't exist -- start it again"), 404)
         return up
 
     def _reserved_bytes(self) -> int:
@@ -119,37 +120,36 @@ class LocalUploadMixin:
         cfg = self.settings.upload
         title = (details.get("title") or "").strip()[:300]
         if not title:
-            raise UploadError("Give the video a title")
+            raise UploadError(L('Give the video a title'))
         filename = (details.get("filename") or "").strip()
         ext = Path(filename).suffix.lower()
         if ext not in VIDEO_EXTENSIONS:
-            raise UploadError(f"Only these video files can be uploaded: {', '.join(sorted(VIDEO_EXTENSIONS))}", 415)
+            raise UploadError(L('Only these video files can be uploaded: {formats}', formats=', '.join(sorted(VIDEO_EXTENSIONS))), 415)
         size = int(details.get("size") or 0)
         if size <= 0:
-            raise UploadError("The file is empty")
+            raise UploadError(L('The file is empty'))
         if size > cfg.max_size_gb * 1024 ** 3:
-            raise UploadError(f"The file is bigger than the {cfg.max_size_gb} GB limit (Server Settings → Uploads)", 413)
+            raise UploadError(L('The file is bigger than the {gb} GB limit (Server Settings → Uploads)', gb=cfg.max_size_gb), 413)
         if cfg.virus_scan == "required" and not upload_safety.scanner():
-            raise UploadError("Uploads need a virus scanner on the server (Microsoft Defender or ClamAV), and none was "
-                              "found — see Server Settings → Uploads", 503)
+            raise UploadError(L('Uploads need a virus scanner on the server (Microsoft Defender or ClamAV), and none was found — see Server Settings → Uploads'), 503)
         if self._disk.get("low"):
-            raise UploadError("The server is low on disk space — uploads wait until there's room again", 507)
+            raise UploadError(L("The server is low on disk space — uploads wait until there's room again"), 507)
         mine = [u for u in self._uploads.values() if u.get("user_id") == user_id and u.get("state") not in ("done", "failed")]
         if len(mine) >= cfg.max_waiting:
-            raise UploadError(f"You already have {len(mine)} unfinished uploads — wait for them first", 429)
+            raise UploadError(L('You already have {count} unfinished uploads — wait for them first', count=len(mine)), 429)
         upload_date = (details.get("upload_date") or "").strip() or None
         if upload_date:
             try:
                 datetime.strptime(upload_date, "%Y-%m-%d")
             except ValueError as exc:
-                raise UploadError("Upload date must look like 2024-05-31") from exc
+                raise UploadError(L('Upload date must look like 2024-05-31')) from exc
         creator = (details.get("creator") or "").strip()[:200] or "Unknown"
         incoming = self._incoming_dir()
         free = shutil.disk_usage(incoming).free
         # Room for this file twice (the original and its re-written copy) plus
         # everything else still being uploaded or processed.
         if free < size * 2 + SPACE_MARGIN + self._reserved_bytes():
-            raise UploadError(f"Not enough free space for this upload ({free // 2**20:,} MB free)", 507)
+            raise UploadError(L('Not enough free space for this upload ({mb} MB free)', mb=format(free // 2**20, ',')), 507)
 
         now = time.time()
         for key in [k for k, v in self._uploads.items()
@@ -170,7 +170,7 @@ class LocalUploadMixin:
         """Stores the file, then puts the upload in line (see _upload_worker_loop)."""
         up = self._owned(upload_id, user)
         if up["receiving"] or up.get("staged") or up.get("state") != "waiting_file":
-            raise UploadError("This file is already being uploaded", 409)
+            raise UploadError(L('This file is already being uploaded'), 409)
         up["receiving"] = True
         up["state"] = "receiving"
         item_id = secrets.token_hex(12)  # 24 hex characters, like the site's ids
@@ -184,10 +184,10 @@ class LocalUploadMixin:
                         continue
                     written += len(chunk)
                     if written > up["size"]:
-                        raise UploadError("More data arrived than the file's size — upload refused", 413)
+                        raise UploadError(L("More data arrived than the file's size — upload refused"), 413)
                     await asyncio.to_thread(fh.write, chunk)
             if written != up["size"]:
-                raise UploadError(f"The upload was cut off ({written:,} of {up['size']:,} bytes) -- try again")
+                raise UploadError(L('The upload was cut off ({written} of {size} bytes) -- try again', written=format(written, ','), size=format(up['size'], ',')))
         except BaseException:
             staged.unlink(missing_ok=True)
             up.update(receiving=False, state="waiting_file")
@@ -254,7 +254,7 @@ class LocalUploadMixin:
             state = up.get("state")
             if state not in labels:
                 continue
-            out.append({"id": f"upload:{upload_id}", "kind": "upload", "title": f"Upload: {up.get('title') or 'video'}",
+            out.append({"id": f"upload:{upload_id}", "kind": "upload", "title": L('Upload: {title}', title=up.get('title') or L('video')),
                         "source": "manual", "job_id": None,
                         "status": "waiting" if state in ("needs_conversion", "queued") else "running",
                         "stage": labels[state], "detail": up.get("message"), "summary": None,
@@ -296,9 +296,9 @@ class LocalUploadMixin:
                 return
             if verdict == "infected":
                 logger.warning("Upload '{}' from {} refused: {}", up["title"], up["user"], detail)
-                raise UploadError(f"The virus scan refused this file: {detail}. It was deleted.")
+                raise UploadError(L('The virus scan refused this file: {detail}. It was deleted.', detail=detail))
             if verdict != "clean" and mode == "required":
-                raise UploadError(f"The file couldn't be virus-scanned ({detail}), so it wasn't accepted.")
+                raise UploadError(L("The file couldn't be virus-scanned ({detail}), so it wasn't accepted.", detail=detail))
             up["scan"] = detail if verdict == "clean" else None
             up.setdefault("checks", []).append({"name": "Virus scan", "ok": verdict == "clean",
                                                 "result": detail if verdict != "none" else "skipped -- no antivirus on the server"})
@@ -314,9 +314,9 @@ class LocalUploadMixin:
                 return
             if verdict == "malicious":
                 logger.warning("Upload '{}' from {} refused: {}", up["title"], up["user"], detail)
-                raise UploadError(f"Refused: {detail}. It was deleted.")
+                raise UploadError(L('Refused: {detail}. It was deleted.', detail=detail))
             if verdict == "error" and hash_mode == "required":
-                raise UploadError(f"The fingerprint couldn't be checked ({detail}), so it wasn't accepted.")
+                raise UploadError(L("The fingerprint couldn't be checked ({detail}), so it wasn't accepted.", detail=detail))
             up["hash_check"] = detail
             up.setdefault("checks", []).append({"name": "VirusTotal fingerprint", "ok": verdict in ("clean", "unknown"), "result": detail})
         up.update(state="checking", message="Checking what's inside…")
@@ -324,9 +324,9 @@ class LocalUploadMixin:
         if upload_id not in self._uploads:
             return
         if not info or not info.get("video"):
-            raise UploadError("FFmpeg can't find a video in this file")
+            raise UploadError(L("FFmpeg can't find a video in this file"))
         if info.get("format") not in upload_safety.ALLOWED_FORMATS:
-            raise UploadError(f"This isn't a supported video file (it's {info.get('format') or 'unknown'})")
+            raise UploadError(L("This isn't a supported video file (it's {format})", format=info.get('format') or L('unknown')))
         up["probe"] = info
         video_ok = media_tools.browser_video_ok(info)
         if video_ok:
@@ -362,20 +362,20 @@ class LocalUploadMixin:
         """The uploader's choice for a file that has to be re-encoded: back in line (at the end)."""
         up = self._owned(upload_id, user)
         if up.get("state") != "needs_conversion":
-            raise UploadError("This upload isn't waiting for a conversion", 409)
+            raise UploadError(L("This upload isn't waiting for a conversion"), 409)
         if codec not in media_tools.UPLOAD_ENCODERS:
-            raise UploadError("Unknown codec")
+            raise UploadError(L('Unknown codec'))
         encoders = await asyncio.to_thread(media_tools.available_encoders)
         if encoders and media_tools.UPLOAD_ENCODERS[codec] not in encoders:
-            raise UploadError(f"Your FFmpeg has no {media_tools.UPLOAD_ENCODERS[codec]} encoder -- pick another codec")
+            raise UploadError(L('Your FFmpeg has no {encoder} encoder -- pick another codec', encoder=media_tools.UPLOAD_ENCODERS[codec]))
         hi = 63 if codec == "av1" else 51
         if not 0 <= crf <= hi:
-            raise UploadError(f"Quality (CRF) must be 0-{hi}")
+            raise UploadError(L('Quality (CRF) must be 0-{hi}', hi=hi))
         if codec == "av1":
             if not str(preset).isdigit() or not 0 <= int(preset) <= 13:
-                raise UploadError("AV1 preset must be 0-13")
+                raise UploadError(L('AV1 preset must be 0-13'))
         elif preset not in ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"):
-            raise UploadError("Unknown preset")
+            raise UploadError(L('Unknown preset'))
         up["convert"] = (codec, crf, str(preset))
         self._enqueue_upload(upload_id)
         return self.local_upload_status(upload_id)
@@ -418,7 +418,7 @@ class LocalUploadMixin:
             logger.exception("Upload '{}' failed", up.get("title"))
         self._remove_upload_files(up)
         up.update(state="failed", message=str(exc) or "The upload failed", progress=None)
-        notify("upload", "error", f"Upload failed: “{up.get('title') or 'video'}”", body=up["message"][:300],
+        notify("upload", "error", L('Upload failed: “{title}”', title=up.get('title') or L('video')), body=up["message"][:300],
                link="/upload", user_id=up.get("user_id"))
 
     @staticmethod
@@ -466,7 +466,7 @@ class LocalUploadMixin:
         up.update(state="done", progress=100, message=f"Added to the library ({how}).", item=item.model_dump())
         self.request_storyboard(item.id)  # seekbar previews (2.21.0)
         self.request_frames(item.id)  # video frames under the player (3.2.0)
-        notify("upload", "success", f"Uploaded {title_of(item)}", link=video_link(item), user_id=item.added_by)
+        notify("upload", "success", L('Uploaded {title}', title=title_of(item)), link=video_link(item), user_id=item.added_by)
         try:
             stats_store.bump("upload_bytes", final.stat().st_size)
         except OSError:

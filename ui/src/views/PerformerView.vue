@@ -1,8 +1,9 @@
 <script setup>
-// A performer's profile (/performer/<any of her names>): photo, details and
-// bio from ThePornDB, the names she has in the library (aliases), her videos
-// and similar performers you have. For the admin: pick or change her
+// A performer's profile (/performer/<any of their names>): photo, details and
+// bio from ThePornDB, the names they have in the library (aliases), their videos
+// and similar performers you have. For the admin: pick or change the
 // ThePornDB profile, split a wrongly merged name off, refresh.
+import { t } from "../lib/i18n.js";
 import { askConfirm } from "../stores/confirm.js";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
@@ -27,7 +28,7 @@ const error = ref("");
 const changing = ref(false);
 const busy = ref("");
 const showBio = ref(false);
-const showPhotos = ref(false); // "Your photos" panel (2.16.0); always shown once she has some
+const showPhotos = ref(false); // t("Your photos") panel (2.16.0); always shown once there are some
 const canManage = computed(() => hasPermission("performers.manage"));
 
 async function load() {
@@ -37,7 +38,7 @@ async function load() {
     const names = prof.value.names.map((n) => n.name);
     const r = await api(`/api/library?${qs({ statuses: "done", performers: names.length ? names : [props.name], page_size: 60, sort_key: "download_datetime", sort_dir: "desc" })}`);
     videos.value = r;
-  } catch (err) { error.value = err.message || "Could not load this performer"; }
+  } catch (err) { error.value = err.message || t("Could not load this performer"); }
 }
 watch(() => props.name, () => { prof.value = null; videos.value = null; changing.value = false; load(); }, { immediate: true });
 watch(prof, (p) => setPageTitle(`/performer/${props.name}`, p?.name || props.name));
@@ -45,57 +46,57 @@ const stop = onLibraryChange((changed) => { if (!changed || changed.some((c) => 
 onBeforeUnmount(stop);
 
 const p = computed(() => prof.value?.performer);
-// Whose photos: her ThePornDB profile, or -- not on ThePornDB (2.17.0) -- the
+// Whose photos: the ThePornDB profile, or -- not on ThePornDB (2.17.0) -- the
 // name's own (photos added by hand, placeholder gender).
 const owner = computed(() => p.value || prof.value?.local || null);
 async function setGender(gender) {
   busy.value = "gender";
   try { await api("/api/performers/gender", { method: "POST", body: { name: props.name, gender } }); await load(); loadBadges(true); }
-  catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+  catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 const LABELS = {
-  gender: "Gender", birthday: "Born", deathday: "Died", birthplace: "Birthplace", nationality: "Nationality",
-  ethnicity: "Ethnicity", astrology: "Star sign", height: "Height", weight: "Weight", measurements: "Measurements",
-  cupsize: "Cup size", fake_boobs: "Enhanced", hair_colour: "Hair", eye_colour: "Eyes", tattoos: "Tattoos",
-  piercings: "Piercings",
+  gender: t("Gender"), birthday: t("Born"), deathday: t("Died"), birthplace: t("Birthplace"), nationality: t("Nationality"),
+  ethnicity: t("Ethnicity"), astrology: t("Star sign"), height: t("Height"), weight: t("Weight"), measurements: t("Measurements"),
+  cupsize: t("Cup size"), fake_boobs: t("Enhanced"), hair_colour: t("Hair"), eye_colour: t("Eyes"), tattoos: t("Tattoos"),
+  piercings: t("Piercings"),
 };
 const facts = computed(() => {
   const e = p.value?.extras || {};
   const out = [];
-  if (p.value?.age != null) out.push(["Age", `${p.value.age}${e.deathday ? " (at death)" : ""}`]);
+  if (p.value?.age != null) out.push([t("Age"), e.deathday ? t("{age} (at death)", { age: p.value.age }) : String(p.value.age)]);
   for (const [k, label] of Object.entries(LABELS)) {
     const v = e[k];
     if (v === null || v === undefined || v === "") continue;
-    out.push([label, typeof v === "boolean" ? (v ? "Yes" : "No") : v]);
+    out.push([label, typeof v === "boolean" ? (v ? t("Yes") : t("No")) : v]);
   }
-  if (e.career_start_year) out.push(["Active", `${e.career_start_year}–${e.career_end_year || "now"}`]);
+  if (e.career_start_year) out.push([t("Active"), e.career_end_year ? `${e.career_start_year}–${e.career_end_year}` : t("{from} – now", { from: e.career_start_year })]);
   return out;
 });
 const otherNames = computed(() => (prof.value?.names || []).filter((n) => !n.main));
-// 3.5.0: favourite performer -- all her names in the library count.
+// 3.5.0: favourite performer -- all their names in the library count.
 const allNames = computed(() => [...new Set([props.name, prof.value?.name, ...(prof.value?.names || []).map((n) => n.name)].filter(Boolean))]);
 const favorite = computed(() => allNames.value.some((n) => isFavorite(n)));
 const longBio = computed(() => (p.value?.bio || "").length > 420);
 
 function inLibrary() { router.push({ name: "library", query: { performer: prof.value.names.map((n) => n.name) } }); }
 async function split(n) {
-  if (!(await askConfirm(`“${n.name}” isn't ${p.value.name}? It stops being shown as her, won't be merged into her again, and is looked up on its own.`, { ok: "Not her" }))) return;
+  if (!(await askConfirm(t("“{name}” isn't {performer}? It stops being shown as {performer}, won't be merged into that profile again, and is looked up on its own.", { name: n.name, performer: p.value.name }), { ok: t("Someone else") }))) return;
   busy.value = n.name;
-  try { await api("/api/performers/split", { method: "POST", body: { name: n.name } }); toast(`“${n.name}” split off`); await load(); }
-  catch (err) { toast(err.message || "Could not split", { type: "error" }); }
+  try { await api("/api/performers/split", { method: "POST", body: { name: n.name } }); toast(t("“{name}” split off", { name: n.name })); await load(); }
+  catch (err) { toast(err.message || t("Could not split"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 async function refresh() {
   busy.value = "refresh";
-  try { await api(`/api/performers/${p.value.id}/refresh`, { method: "POST" }); toast("Profile refreshed", { type: "success" }); await load(); }
-  catch (err) { toast(err.message || "Could not refresh", { type: "error" }); }
+  try { await api(`/api/performers/${p.value.id}/refresh`, { method: "POST" }); toast(t("Profile refreshed"), { type: "success" }); await load(); }
+  catch (err) { toast(err.message || t("Could not refresh"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 const STATUS_TEXT = {
-  review: "Several people on ThePornDB could be her — pick the right one.",
-  none: "Not found on ThePornDB.", skipped: "Left without a ThePornDB profile.",
-  unchecked: "Not looked up on ThePornDB yet.", unknown: "No videos with this performer.",
+  review: t("Several people on ThePornDB could be this performer — pick the right one."),
+  none: t("Not found on ThePornDB."), skipped: t("Left without a ThePornDB profile."),
+  unchecked: t("Not looked up on ThePornDB yet."), unknown: t("No videos with this performer."),
 };
 </script>
 
@@ -106,31 +107,31 @@ const STATUS_TEXT = {
     <template v-else>
       <header class="head card">
         <PhotoSlideshow :photos="owner?.photos?.length ? owner.photos : owner?.photo ? [owner.photo] : []" :alt="prof.name"
-                        :gender="owner?.gender || 'female'" />
+                        :gender="owner?.gender || 'unknown'" />
         <div class="head-text">
           <h1>{{ prof.name }}<span v-if="p?.disambiguation" class="muted dis"> ({{ p.disambiguation }})</span></h1>
-          <p v-if="p?.aliases?.length" class="muted small">Also known as {{ p.aliases.join(", ") }}</p>
-          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured"> Add a ThePornDB API key in Server Settings → Credentials to see profiles.</template></p>
+          <p v-if="p?.aliases?.length" class="muted small">{{ $t("Also known as {names}", { names: p.aliases.join(", ") }) }}</p>
+          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured"> {{ $t("Add a ThePornDB API key in Server Settings → Credentials to see profiles.") }}</template></p>
           <dl v-if="facts.length" class="facts">
             <div v-for="[k, v] in facts" :key="k" class="fact"><dt>{{ k }}</dt><dd>{{ v }}</dd></div>
           </dl>
           <div class="actions">
-            <button class="btn btn-sm btn-primary" @click="inLibrary"><Icon name="library" :size="15" />Her videos in the library</button>
+            <button class="btn btn-sm btn-primary" @click="inLibrary"><Icon name="library" :size="15" />{{ $t("Videos in the library") }}</button>
             <button class="btn btn-sm fav-btn" :class="{ on: favorite }" :aria-pressed="favorite"
-                    :title="favorite ? 'Remove from your favourite performers' : 'Add to your favourite performers (♥ on her badges; Library → sort Favourite performers)'"
-                    @click="setFavorite(allNames, !favorite, prof.name)"><Icon name="heart" :size="14" />{{ favorite ? "Favourite" : "Add to favourites" }}</button>
+                    :title="favorite ? $t('Remove from your favourite performers') : $t('Add to your favourite performers (♥ on their badges; Library → sort Favourite performers)')"
+                    @click="setFavorite(allNames, !favorite, prof.name)"><Icon name="heart" :size="14" />{{ favorite ? $t("Favourite") : $t("Add to favourites") }}</button>
             <a v-if="p?.url" :href="p.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />ThePornDB</a>
             <a v-for="(url, site) in p?.links || {}" :key="site" :href="url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">{{ site }}</a>
             <button v-if="canManage && owner && !owner.custom_photos?.length" class="btn btn-ghost btn-sm" @click="showPhotos = !showPhotos">
-              <Icon name="plus" :size="14" />Add your photo</button>
-            <span v-if="canManage && !p && prof.local" class="gender" role="group" aria-label="Gender">
-              <span class="muted small" title="Her badge colour, and the placeholder picture when she has no photo">Gender</span>
+              <Icon name="plus" :size="14" />{{ $t("Add your photo") }}</button>
+            <span v-if="canManage && !p && prof.local" class="gender" role="group" :aria-label="$t('Gender')">
+              <span class="muted small" :title="$t('Badge colour, and the placeholder picture without a photo')">{{ $t("Gender") }}</span>
               <button v-for="g in ['female', 'male', 'trans']" :key="g" class="btn btn-sm" :class="{ 'btn-primary': prof.local.gender === g }"
-                      :disabled="busy === 'gender'" @click="setGender(g)">{{ { female: "Female", male: "Male", trans: "Trans" }[g] }}</button>
+                      :disabled="busy === 'gender'" @click="setGender(g)">{{ { female: $t("Female"), male: $t("Male"), trans: $t("Trans") }[g] }}</button>
             </span>
             <template v-if="canManage && prof.configured">
-              <button v-if="p" class="btn btn-ghost btn-sm" :disabled="busy === 'refresh'" @click="refresh">{{ busy === "refresh" ? "Refreshing…" : "Refresh" }}</button>
-              <button class="btn btn-ghost btn-sm" @click="changing = !changing">{{ p ? "Wrong person?" : "Find her on ThePornDB" }}</button>
+              <button v-if="p" class="btn btn-ghost btn-sm" :disabled="busy === 'refresh'" @click="refresh">{{ busy === "refresh" ? $t("Refreshing…") : $t("Refresh") }}</button>
+              <button class="btn btn-ghost btn-sm" @click="changing = !changing">{{ p ? $t("Wrong person?") : $t("Find on ThePornDB") }}</button>
             </template>
           </div>
         </div>
@@ -139,30 +140,30 @@ const STATUS_TEXT = {
       <PerformerPhotos v-if="canManage && owner && (showPhotos || owner.custom_photos?.length)" :performer="owner" @changed="load" />
 
       <section v-if="canManage && prof.configured && (changing || (!p && prof.status === 'review'))" class="card panel">
-        <h3 class="sub">{{ p ? `Pick the right profile for “${props.name}”` : "Which one is she?" }}</h3>
+        <h3 class="sub">{{ p ? $t("Pick the right profile for “{name}”", { name: props.name }) : $t("Which profile is it?") }}</h3>
         <PerformerPicker :name="props.name" :candidates="prof.candidates" @done="changing = false; load()" />
       </section>
 
       <section v-if="p?.bio" class="card panel">
-        <h3 class="sub">Bio</h3>
+        <h3 class="sub">{{ $t("Bio") }}</h3>
         <p class="bio" :class="{ clamp: longBio && !showBio }">{{ p.bio }}</p>
-        <button v-if="longBio" class="btn btn-ghost btn-sm more" @click="showBio = !showBio">{{ showBio ? "Show less" : "Show more" }}</button>
+        <button v-if="longBio" class="btn btn-ghost btn-sm more" @click="showBio = !showBio">{{ showBio ? $t("Show less") : $t("Show more") }}</button>
       </section>
 
       <section v-if="otherNames.length" class="card panel">
-        <h3 class="sub">Names in your library</h3>
-        <p class="muted small">{{ prof.merge_aliases ? "These names are shown as" : "These names belong to" }} {{ prof.name }}<template v-if="!prof.merge_aliases"> (merging aliases is off in Server Settings → Performers, so they keep their own names)</template>.
-          If one is someone else, split it off.</p>
+        <h3 class="sub">{{ $t("Names in your library") }}</h3>
+        <p class="muted small">{{ prof.merge_aliases ? $t("These names are shown as {name}. If one is someone else, split it off.", { name: prof.name })
+          : $t("These names belong to {name} (merging aliases is off in Server Settings → Performers, so they keep their own names). If one is someone else, split it off.", { name: prof.name }) }}</p>
         <ul class="names">
           <li v-for="n in prof.names" :key="n.name">
-            <span>{{ n.name }}</span><span class="muted small">{{ n.videos }} {{ n.videos === 1 ? "video" : "videos" }}{{ n.main ? " · main name" : n.source === "manual" ? " · linked by hand" : "" }}</span>
-            <button v-if="canManage && !n.main" class="btn btn-ghost btn-sm" :disabled="busy === n.name" @click="split(n)">Not her — split off</button>
+            <span>{{ n.name }}</span><span class="muted small">{{ $tn("{n} video", "{n} videos", n.videos) }}{{ n.main ? " · " + $t("main name") : n.source === "manual" ? " · " + $t("linked by hand") : "" }}</span>
+            <button v-if="canManage && !n.main" class="btn btn-ghost btn-sm" :disabled="busy === n.name" @click="split(n)">{{ $t("Someone else — split off") }}</button>
           </li>
         </ul>
       </section>
 
       <section v-if="prof.similar.length" class="card panel">
-        <h3 class="sub">Similar performers you have</h3>
+        <h3 class="sub">{{ $t("Similar performers you have") }}</h3>
         <div class="similar">
           <RouterLink v-for="s in prof.similar" :key="s.name" :to="{ name: 'performer', params: { name: s.name } }" class="sim">
             <img v-if="s.photo" :src="s.photo" alt="" loading="lazy" @error="s.photo = null"><span v-else class="small-ph"><PerformerPlaceholder :gender="s.gender" /></span>
@@ -172,10 +173,10 @@ const STATUS_TEXT = {
       </section>
 
       <section class="vids">
-        <h3 class="sub">Videos ({{ videos?.total ?? "…" }})</h3>
+        <h3 class="sub">{{ $t("Videos ({n})", { n: videos?.total ?? "…" }) }}</h3>
         <div v-if="videos?.items?.length" class="grid"><VideoCard v-for="v in videos.items" :key="v.id" :item="v" /></div>
-        <p v-else-if="videos" class="muted">No downloaded videos with her yet.</p>
-        <button v-if="videos && videos.total > videos.items.length" class="btn btn-sm" @click="inLibrary">All {{ videos.total }} in the library</button>
+        <p v-else-if="videos" class="muted">{{ $t("No downloaded videos with this performer yet.") }}</p>
+        <button v-if="videos && videos.total > videos.items.length" class="btn btn-sm" @click="inLibrary">{{ $t("All {n} in the library", { n: videos.total }) }}</button>
       </section>
     </template>
   </div>
@@ -204,7 +205,7 @@ const STATUS_TEXT = {
 .sim { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; width: 6rem; text-align: center; font-size: 0.8rem; color: var(--text); text-decoration: none; }
 .sim img, .small-ph { width: 4.5rem; height: 4.5rem; border-radius: 50%; object-fit: cover; }
 .small-ph { display: block; overflow: hidden; }
-.gender { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.25rem; }
+.gender { display: inline-flex; align-items: center; gap: 0.3rem; margin-inline-start: 0.25rem; }
 .vids { display: flex; flex-direction: column; gap: 0.75rem; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr)); gap: 1.375rem 1rem; }
 @media (max-width: 40rem) {

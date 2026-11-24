@@ -6,6 +6,7 @@
 import { reactive } from "vue";
 import { api } from "../lib/api.js";
 import { toast } from "./toast.js";
+import { tn } from "../lib/i18n.js";
 import { session } from "./session.js";
 import { onLibraryChange } from "./live.js";
 
@@ -43,7 +44,8 @@ async function fetchNew() {
   const fresh = r.items.filter(wantsToast).reverse(); // oldest first
   if (fresh.length > MAX_TOASTS_AT_ONCE) {
     const bad = fresh.filter((n) => n.level === "error").length;
-    toast(`${fresh.length} updates${bad ? ` (${bad} failed)` : ""} — see the notifications`, { type: bad ? "error" : "info", timeout: 6000 });
+    toast(bad ? tn("{n} update ({failed} failed) — see the notifications", "{n} updates ({failed} failed) — see the notifications", fresh.length, { failed: bad })
+      : tn("{n} update — see the notifications", "{n} updates — see the notifications", fresh.length), { type: bad ? "error" : "info", timeout: 6000 });
   } else {
     for (const n of fresh) {
       toast(n.title, { type: TYPE[n.level] || "info", body: n.body, link: n.link, timeout: n.level === "error" || n.level === "warning" ? 8000 : 5000 });

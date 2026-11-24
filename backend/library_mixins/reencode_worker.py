@@ -8,6 +8,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..i18n import L
 from .. import media_tools, open_files, stats_store
 from ..config import HEVC_PRESETS
 from ..models import LibraryItem
@@ -25,17 +26,17 @@ def reencode_options(codec: str, options: Optional[dict]) -> dict:
     crf, preset = out.get("crf"), out.get("preset")
     if codec == "av1":
         if crf is not None and not 1 <= crf <= 63:
-            raise ValueError("AV1 quality (CRF) is 1-63")
+            raise ValueError(L('AV1 quality (CRF) is 1-63'))
         if preset is not None:
             if not str(preset).isdigit() or not 0 <= int(preset) <= 13:
-                raise ValueError("AV1 speed preset is 0-13")
+                raise ValueError(L('AV1 speed preset is 0-13'))
             out["preset"] = str(int(preset))
     else:
         name = CODEC_LABELS.get(codec, "HEVC")
         if crf is not None and not 0 <= crf <= 51:
-            raise ValueError(f"{name} quality (CRF) is 0-51")
+            raise ValueError(L('{name} quality (CRF) is 0-51', name=name))
         if preset is not None and preset not in HEVC_PRESETS:
-            raise ValueError(f"Unknown {name} preset '{preset}'")
+            raise ValueError(L("Unknown {name} preset '{preset}'", name=name, preset=preset))
     return out
 
 
@@ -51,17 +52,17 @@ class ReencodeWorkerMixin:
         Re-encode window only): the same codec is allowed when the re-encode
         downscales the video to 1080p (e.g. an 8K HEVC video -> 1080p HEVC)."""
         if not self.settings.features.reencode:
-            raise ValueError("Re-encoding is switched off (Server Settings → Re-encode)")
+            raise ValueError(L('Re-encoding is switched off (Server Settings → Re-encode)'))
         target = codec or self.settings.reencode.codec
         if target not in media_tools.REENCODE_ENCODERS:
-            raise ValueError(f"Unknown codec '{target}'")
+            raise ValueError(L("Unknown codec '{target}'", target=target))
         options = reencode_options(target, options)
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if item.status != "done" or not item.video_path:
-                raise ValueError("Only completed downloads can be re-encoded")
+                raise ValueError(L('Only completed downloads can be re-encoded'))
             if item.reencode_status in ("queued", "encoding"):
                 return item
             video_path = item.video_path
@@ -72,21 +73,20 @@ class ReencodeWorkerMixin:
         # probing. Also cheaper: no reason to hold the lock during it.
         source = await asyncio.to_thread(media_tools.video_codec, video_path)
         if source == target:
-            why = ""
+            codec = CODEC_LABELS[target]
+            problem = None if same_codec else L('This file is already {codec} -- re-encoding it again would only reduce quality', codec=codec)
             if same_codec:
                 info = await asyncio.to_thread(media_tools.probe_streams, video_path)
                 if not media_tools.above_1080p(info.get("width"), info.get("height")):
-                    why = " (it's 1080p or smaller, so there's nothing to downscale)"
+                    problem = L("This file is already {codec} -- re-encoding it again would only reduce quality (it's 1080p or smaller, so there's nothing to downscale)", codec=codec)
                 elif not options.get("downscale", self.settings.reencode.downscale):
-                    why = " (turn on \"Downscale to 1080p\" to keep the codec and only make it smaller)"
-            if not same_codec or why:
-                raise ValueError(
-                    f"This file is already {CODEC_LABELS[target]} -- re-encoding it again would only reduce quality{why}")
+                    problem = L("This file is already {codec} -- re-encoding it again would only reduce quality (turn on “Downscale to 1080p” to keep the codec and only make it smaller)", codec=codec)
+            if problem:
+                raise ValueError(problem)
         encoders = await asyncio.to_thread(media_tools.available_encoders)
         if encoders and media_tools.REENCODE_ENCODERS[target] not in encoders:
             raise ValueError(
-                f"Your FFmpeg has no {CODEC_LABELS[target]} encoder ({media_tools.REENCODE_ENCODERS[target]}) -- "
-                "install a full FFmpeg build or pick another codec"
+                L('Your FFmpeg has no {codec} encoder ({encoder}) -- install a full FFmpeg build or pick another codec', codec=CODEC_LABELS[target], encoder=media_tools.REENCODE_ENCODERS[target])
             )
 
         async with self._lock:
@@ -94,7 +94,7 @@ class ReencodeWorkerMixin:
             # have been removed) while we were probing the file above.
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
             if item.reencode_status in ("queued", "encoding"):
                 return item
 
@@ -149,7 +149,7 @@ class ReencodeWorkerMixin:
                     item.reencode_error = str(exc)
                     item.touch()
                     self.db.save_item(item)
-                notify("reencode", "error", f"Re-encode failed: {title_of(item)}", body=str(exc)[:300],
+                notify("reencode", "error", L('Re-encode failed: {title}', title=title_of(item)), body=str(exc)[:300],
                        link=video_link(item), user_id=item.added_by)
 
     async def _reencode_item(self, item: LibraryItem) -> None:
@@ -272,8 +272,8 @@ class ReencodeWorkerMixin:
                 else:
                     item.reencode_attempts = (item.reencode_attempts or 0) + 1
                     item.reencode_status = "failed"
-                    notify("reencode", "error", f"Re-encode failed: {title_of(item)}",
-                           body="FFmpeg couldn't re-encode it; the original is kept.", link=video_link(item),
+                    notify("reencode", "error", L('Re-encode failed: {title}', title=title_of(item)),
+                           body=L("FFmpeg couldn't re-encode it; the original is kept."), link=video_link(item),
                            user_id=item.added_by)
                     item.reencode_error = (
                         "FFmpeg re-encode failed even after corruption-tolerant recovery attempts -- "
@@ -321,7 +321,7 @@ class ReencodeWorkerMixin:
         except Exception as exc:
             if backup_video and backup_video.exists() and not video_path.exists():
                 backup_video.rename(video_path)
-            raise RuntimeError(f"Could not replace video file: {exc}") from exc
+            raise RuntimeError(L('Could not replace video file: {error}', error=exc)) from exc
 
         # Refresh technical details in the metadata JSON for the new file.
         # "video_details" is the same key name regardless of whether the
@@ -387,7 +387,7 @@ class ReencodeWorkerMixin:
             item.reencode_attempts = 0
             item.touch()
             self.db.save_item(item)
-        notify("reencode", "success", f"Re-encoded {title_of(item)}", link=video_link(item), user_id=item.added_by)
+        notify("reencode", "success", L('Re-encoded {title}', title=title_of(item)), link=video_link(item), user_id=item.added_by)
 
         logger.info(
             "Re-encode complete for '{}' [{}] -> {}{}",
@@ -401,7 +401,7 @@ class ReencodeWorkerMixin:
         async with self._lock:
             item = self._items.get(video_id)
             if not item:
-                raise ValueError("Not found")
+                raise ValueError(L('Not found'))
 
             if item.reencode_status == "queued":
                 if video_id in self._reencode_queue:
@@ -419,4 +419,4 @@ class ReencodeWorkerMixin:
                 proc.terminate()
             return item
 
-        raise ValueError("This item is not currently queued or encoding")
+        raise ValueError(L('This item is not currently queued or encoding'))

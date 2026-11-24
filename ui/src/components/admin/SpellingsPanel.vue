@@ -4,11 +4,12 @@
 // one spelling for each (the most used; on a tie the newest); here you can
 // pick which one instead. Videos keep what their source wrote -- only what's
 // shown, filtered and suggested changes (see backend/spellings.py).
+import { t } from "../../lib/i18n.js";
 import { ref, watch } from "vue";
 import { api, qs } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
-const FIELDS = [{ key: "tags", label: "Tags" }, { key: "performers", label: "Performers" }, { key: "music", label: "Music" }];
+const FIELDS = [{ key: "tags", label: t("Tags") }, { key: "performers", label: t("Performers") }, { key: "music", label: t("Music") }];
 const field = ref("tags");
 const groups = ref(null);
 const busy = ref("");
@@ -17,7 +18,7 @@ const error = ref("");
 async function load() {
   groups.value = null;
   try { groups.value = (await api(`/api/library/spellings?${qs({ field: field.value })}`)).groups; error.value = ""; }
-  catch (err) { error.value = err.message || "Could not load the spellings"; }
+  catch (err) { error.value = err.message || t("Could not load the spellings"); }
 }
 watch(field, load, { immediate: true });
 
@@ -25,9 +26,9 @@ async function choose(g, spelling) {
   busy.value = g.key;
   try {
     await api("/api/library/spellings", { method: "POST", body: { field: field.value, value: g.key, spelling } });
-    toast(spelling ? `“${spelling}” it is` : "Back to automatic", { type: "success" });
+    toast(spelling ? t("“{spelling}” it is", { spelling }) : t("Back to automatic"), { type: "success" });
     await load();
-  } catch (err) { toast(err.message || "Could not save", { type: "error" }); }
+  } catch (err) { toast(err.message || t("Could not save"), { type: "error" }); }
   finally { busy.value = ""; }
 }
 </script>
@@ -36,10 +37,8 @@ async function choose(g, spelling) {
   <section class="card block">
     <div class="block-head">
       <div>
-        <h2>Spellings</h2>
-        <p class="muted small">Values written in more than one way count as one: everywhere the app shows the spelling most videos use
-          (on a tie, the newest), so it follows your library as new videos arrive. Pick a spelling to always use that one instead.
-          Your videos keep what PMVHaven wrote; only what's shown, filtered and suggested changes.</p>
+        <h2>{{ $t("Spellings") }}</h2>
+        <p class="muted small">{{ $t("Values written in more than one way count as one: everywhere the app shows the spelling most videos use (on a tie, the newest), so it follows your library as new videos arrive. Pick a spelling to always use that one instead. Your videos keep what PMVHaven wrote; only what's shown, filtered and suggested changes.") }}</p>
       </div>
       <div class="seg">
         <button v-for="f in FIELDS" :key="f.key" type="button" class="btn btn-sm" :class="{ 'btn-primary': field === f.key }" @click="field = f.key">{{ f.label }}</button>
@@ -47,14 +46,14 @@ async function choose(g, spelling) {
     </div>
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!groups" class="skeleton" style="height: 4rem; border-radius: var(--radius)" />
-    <p v-else-if="!groups.length" class="muted small">Every {{ FIELDS.find((f) => f.key === field).label.toLowerCase().replace(/s$/, "") }} is written one way only.</p>
+    <p v-else-if="!groups.length" class="muted small">{{ { tags: $t("Every tag is written one way only."), performers: $t("Every performer is written one way only."), music: $t("Every song is written one way only.") }[field] }}</p>
     <ul v-else class="groups">
       <li v-for="g in groups" :key="g.key">
-        <span class="total muted">{{ g.total }} {{ g.total === 1 ? "video" : "videos" }}</span>
-        <div class="variants" role="radiogroup" :aria-label="`Spelling of ${g.chosen}`">
+        <span class="total muted">{{ $tn("{n} video", "{n} videos", g.total) }}</span>
+        <div class="variants" role="radiogroup" :aria-label="$t('Spelling of {chosen}', { chosen: g.chosen })">
           <label class="choice" :class="{ on: !g.pinned }">
             <input type="radio" :name="g.key" :checked="!g.pinned" :disabled="busy === g.key" @change="choose(g, null)">
-            Automatic<span class="muted"> ({{ g.pinned ? "most used" : g.chosen }})</span>
+            {{ $t("Automatic") }}<span class="muted"> ({{ g.pinned ? $t("most used") : g.chosen }})</span>
           </label>
           <label v-for="v in g.variants" :key="v.value" class="choice" :class="{ on: g.pinned && g.chosen === v.value }">
             <input type="radio" :name="g.key" :checked="g.pinned && g.chosen === v.value" :disabled="busy === g.key" @change="choose(g, v.value)">

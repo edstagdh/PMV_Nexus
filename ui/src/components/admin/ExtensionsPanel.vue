@@ -9,15 +9,14 @@ import { ext } from "../../stores/extensions.js";
 <template>
   <div class="xp">
     <section class="card panel">
-      <h2>Installed extensions</h2>
-      <p class="help-text">Add-ons from the <code>extensions</code> folder in the app folder. Removing one's folder (with the app
-        stopped) removes it.</p>
+      <h2>{{ $t("Installed extensions") }}</h2>
+      <p class="help-text"><Tx msg="Add-ons from the {code1} folder in the app folder. Removing one's folder (with the app stopped) removes it."><template #code1><code>extensions</code></template></Tx></p>
       <ul class="list">
         <li v-for="e in ext.extensions" :key="e.name">
           <strong>{{ e.name }}</strong><span v-if="e.version" class="muted ver">{{ e.version }}</span>
-          <span class="pill" :class="e.ok ? 'pill-ok' : 'pill-bad'">{{ e.ok ? "Loaded" : "Failed" }}</span>
+          <span class="pill" :class="e.ok ? 'pill-ok' : 'pill-bad'">{{ e.ok ? $t("Loaded") : $t("Failed") }}</span>
           <div v-if="e.description" class="muted small">{{ e.description }}</div>
-          <div v-if="e.error" class="error-text small">{{ e.error }} — details in the log.</div>
+          <div v-if="e.error" class="error-text small">{{ $t("{error} — details in the log.", { error: e.error }) }}</div>
         </li>
       </ul>
     </section>
@@ -31,7 +30,7 @@ import { ext } from "../../stores/extensions.js";
 <style scoped>
 .xp { display: flex; flex-direction: column; gap: 1rem; }
 .list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
-.ver { margin-left: 0.4rem; }
-.pill { margin-left: 0.5rem; }
+.ver { margin-inline-start: 0.4rem; }
+.pill { margin-inline-start: 0.5rem; }
 .small { font-size: 0.8rem; }
 </style>

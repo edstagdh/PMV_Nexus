@@ -3,6 +3,7 @@
 // element ("stage") is created here and then moved by hand into the video
 // page's slot or into the floating mini-player's dock -- both are plain
 // elements Vue doesn't render children into, so moving it never confuses Vue.
+import { t } from "../lib/i18n.js";
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import Icon from "./Icon.vue";
 import VideoPlayer from "./VideoPlayer.vue";
@@ -65,7 +66,7 @@ function startOver() {
   if (id) {
     setWatch(id, null);
     fetch(`/api/library/${encodeURIComponent(id)}/position`, { method: "DELETE", credentials: "same-origin",
-      headers: { "X-Requested-With": "XMLHttpRequest" } }).catch(() => {});
+      headers: { "X-Requested-With": t("XMLHttpRequest") } }).catch(() => {});
   }
 }
 watch(() => player.item?.id, () => { continued.value = null; });
@@ -129,40 +130,40 @@ onBeforeUnmount(() => { window.removeEventListener("resize", clamp); window.remo
                    @ready="onReady" @playing="onPlaying" @ended="onVideoEnded" @autoplayed="player.autoplay = false"
                    @resumed="onResumed" @timeupdate="savePlayerState" />
       <div v-if="continued && player.mode === 'page'" class="continued" role="status">
-        <span>Continued at {{ formatDuration(continued.at) }}</span>
-        <button type="button" @click="startOver">Start over</button>
+        <span>{{ $t("Continued at {time}", { time: formatDuration(continued.at) }) }}</span>
+        <button type="button" @click="startOver">{{ $t("Start over") }}</button>
       </div>
     </div>
   </div>
 
   <div ref="box" class="mini card" :class="{ open: player.mode === 'mini', moved: pos.x !== null }" :style="boxStyle"
-       role="region" aria-label="Mini player">
+       role="region" :aria-label="$t('Mini player')">
     <div ref="dock" class="mini-dock" />
-    <div v-if="player.mode === 'mini'" class="mini-bar" title="Drag to move" @pointerdown="startDrag" @dblclick.self="resetPos">
-      <button class="mini-title" :title="`Open the video page: ${title} (drag to move)`" @click="onTitleClick">
+    <div v-if="player.mode === 'mini'" class="mini-bar" :title="$t('Drag to move')" @pointerdown="startDrag" @dblclick.self="resetPos">
+      <button class="mini-title" :title="$t('Open the video page: {title} (drag to move)', { title: title })" @click="onTitleClick">
         <span class="t">{{ title }}</span>
         <span v-if="queue" class="q muted">{{ queue.name }} · {{ queue.index + 1 }}/{{ queue.order.length }}</span>
         <span v-else-if="creatorText(player.item)" class="q muted">{{ creatorText(player.item) }}</span>
       </button>
       <template v-if="queue">
-        <button class="btn btn-ghost btn-icon btn-sm" title="Previous" @click="queuePrev"><Icon name="skipPrev" :size="15" /></button>
-        <button class="btn btn-ghost btn-icon btn-sm" title="Next" :disabled="queue.index >= queue.order.length - 1 && !queue.repeat" @click="queueNext()"><Icon name="skipNext" :size="15" /></button>
+        <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Previous')" @click="queuePrev"><Icon name="skipPrev" :size="15" /></button>
+        <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Next')" :disabled="queue.index >= queue.order.length - 1 && !queue.repeat" @click="queueNext()"><Icon name="skipNext" :size="15" /></button>
       </template>
-      <button class="btn btn-ghost btn-icon btn-sm" title="Open the video page" @click="expandPlayer"><Icon name="expand" :size="15" /></button>
-      <button class="btn btn-ghost btn-icon btn-sm" title="Close the player" @click="closePlayer"><Icon name="x" :size="16" /></button>
+      <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Open the video page')" @click="expandPlayer"><Icon name="expand" :size="15" /></button>
+      <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Close the player')" @click="closePlayer"><Icon name="x" :size="16" /></button>
     </div>
   </div>
 </template>
 
 <style scoped>
 .player-stage { position: relative; }
-.continued { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 5; display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.35rem 0.4rem 0.35rem 0.75rem; border-radius: 999px; background: rgb(0 0 0 / 0.7); color: #fff; font-size: 0.8rem;
+.continued { position: absolute; top: 0.6rem; inset-inline-start: 0.6rem; z-index: 5; display: flex; align-items: center; gap: 0.6rem;
+  padding-block: 0.35rem 0.35rem; padding-inline: 0.75rem 0.4rem; border-radius: 999px; background: rgb(0 0 0 / 0.7); color: #fff; font-size: 0.8rem;
   backdrop-filter: blur(6px); animation: fade 0.2s ease; }
 .continued button { border: 0; border-radius: 999px; padding: 0.25rem 0.65rem; background: var(--accent); color: #fff; font: inherit;
   font-weight: 600; cursor: pointer; }
 .player-stash { display: none; }
-.mini { display: none; position: fixed; right: 1rem; bottom: 1rem; z-index: 90; width: min(24rem, calc(100vw - 2rem));
+.mini { display: none; position: fixed; inset-inline-end: 1rem; bottom: 1rem; z-index: 90; width: min(24rem, calc(100vw - 2rem));
   overflow: hidden; box-shadow: var(--shadow); border-color: var(--border-strong); }
 .mini.open { display: flex; flex-direction: column; }
 .mini-dock :deep(.player) { border-radius: 0; }
@@ -170,18 +171,18 @@ onBeforeUnmount(() => { window.removeEventListener("resize", clamp); window.remo
 .mini-dock :deep(.skin) { max-height: 40vh; --media-scale-unit: 0.75rem; --media-border-radius: 0; }
 .mini-bar { cursor: grab; touch-action: none; user-select: none; }
 .mini-bar:active { cursor: grabbing; }
-.mini-bar { display: flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.375rem 0.375rem 0.75rem; }
+.mini-bar { display: flex; align-items: center; gap: 0.25rem; padding-block: 0.375rem 0.375rem; padding-inline: 0.75rem 0.375rem; }
 .mini-title { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; border: 0; background: none; padding: 0;
-  color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .mini-title .t { width: 100%; font-size: 0.84rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-title .q { width: 100%; font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 56.25rem) {
-  .mini { right: 0.5rem; bottom: 0.5rem; width: min(20rem, calc(100vw - 1rem)); }
+  .mini { inset-inline-end: 0.5rem; bottom: 0.5rem; width: min(20rem, calc(100vw - 1rem)); }
 }
 /* Phones held upright: about half the screen's width, so it hides less of the page. */
 @media (max-width: 40rem) and (orientation: portrait) {
   .mini { width: 46vw; }
-  .mini-bar { padding: 0.25rem 0.25rem 0.25rem 0.5rem; gap: 0; }
+  .mini-bar { padding-block: 0.25rem 0.25rem; padding-inline: 0.5rem 0.25rem; gap: 0; }
   .mini-title .q { display: none; }
   .mini-bar .btn-icon { width: 1.75rem; height: 1.75rem; }
 }

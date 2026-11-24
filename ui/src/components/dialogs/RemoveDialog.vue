@@ -1,4 +1,5 @@
 <script setup>
+import { t, tn } from "../../lib/i18n.js";
 import { ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import ModalDialog from "../ModalDialog.vue";
@@ -23,25 +24,25 @@ async function confirmRemove() {
   releaseMedia(id); // an open stream keeps the file locked on Windows
   try {
     const result = await api(`/api/library/${encodeURIComponent(id)}?delete_files=${hasFiles && deleteFiles.value}`, { method: "DELETE" });
-    toast(deleteFiles.value && hasFiles ? `Removed and deleted ${result?.deleted_files ?? 0} file(s)` : "Removed from the library", { type: "success" });
+    toast(deleteFiles.value && hasFiles ? tn("Removed and deleted {n} file", "Removed and deleted {n} files", result?.deleted_files ?? 0) : t("Removed from the library"), { type: "success" });
     emit("close");
   } catch (err) {
-    toast(err.message || "Could not remove it", { type: "error" });
+    toast(err.message || t("Could not remove it"), { type: "error" });
     busy.value = false;
   }
 }
 </script>
 
 <template>
-  <ModalDialog title="Remove video" @close="emit('close')">
+  <ModalDialog :title="$t('Remove video')" @close="emit('close')">
     <p class="msg">
-      {{ hasFiles ? `Remove "${item.title || item.url}" from the library?` : `Cancel "${item.title || item.url}" and remove it from the queue?` }}
+      {{ hasFiles ? $t("Remove “{title}” from the library?", { title: item.title || item.url }) : $t("Cancel “{title}” and remove it from the queue?", { title: item.title || item.url }) }}
     </p>
-    <p v-if="!hasFiles" class="muted note">Its thumbnail, preview clip and details file are deleted too.</p>
-    <label v-if="hasFiles" class="switch"><input v-model="deleteFiles" type="checkbox">Also delete the video and its files from disk</label>
+    <p v-if="!hasFiles" class="muted note">{{ $t("Its thumbnail, preview clip and details file are deleted too.") }}</p>
+    <label v-if="hasFiles" class="switch"><input v-model="deleteFiles" type="checkbox">{{ $t("Also delete the video and its files from disk") }}</label>
     <template #footer>
-      <button class="btn" @click="emit('close')">Keep it</button>
-      <button class="btn btn-primary danger-btn" :disabled="busy" @click="confirmRemove">{{ deleteFiles ? "Remove and delete files" : "Remove" }}</button>
+      <button class="btn" @click="emit('close')">{{ $t("Keep it") }}</button>
+      <button class="btn btn-primary danger-btn" :disabled="busy" @click="confirmRemove">{{ deleteFiles ? $t("Remove and delete files") : $t("Remove") }}</button>
     </template>
   </ModalDialog>
 </template>

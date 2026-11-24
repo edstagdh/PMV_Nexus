@@ -3,6 +3,7 @@
 // one of several frames spread over the video, any frame you pick with the
 // slider, or your own image. Frames come from the server (GET .../frame), so
 // this works for codecs the browser can't decode too.
+import { t } from "../../lib/i18n.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import Icon from "../Icon.vue";
 import { api } from "../../lib/api.js";
@@ -12,7 +13,7 @@ import { toast } from "../../stores/toast.js";
 const props = defineProps({ item: Object, duration: Number });
 const emit = defineEmits(["update", "next"]);
 const id = computed(() => encodeURIComponent(props.item.id));
-const frameUrl = (t, w = 480) => `/api/library/${id.value}/frame?t=${t.toFixed(2)}&w=${w}`;
+const frameUrl = (sec, w = 480) => `/api/library/${id.value}/frame?t=${sec.toFixed(2)}&w=${w}`;
 
 const COUNT = 8;
 const candidates = computed(() => {
@@ -39,13 +40,13 @@ async function useFrame(t) {
     const it = await api(`/api/library/${id.value}/thumbnail`, { method: "POST", body: { source: "frame", seconds: t } });
     chosen.value = t;
     emit("update", it);
-    toast("Thumbnail set", { type: "success" });
-  } catch (err) { toast(err.message || "Could not set the thumbnail", { type: "error" }); }
+    toast(t("Thumbnail set"), { type: "success" });
+  } catch (err) { toast(err.message || t("Could not set the thumbnail"), { type: "error" }); }
   finally { busy.value = false; }
 }
 async function useImage(file) {
   if (!file) return;
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast("Pick a JPEG, PNG or WebP image", { type: "error" }); return; }
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast(t("Pick a JPEG, PNG or WebP image"), { type: "error" }); return; }
   busy.value = true;
   try {
     const r = await fetch(`/api/library/${id.value}/thumbnail/image`, {
@@ -55,8 +56,8 @@ async function useImage(file) {
     if (!r.ok) throw new Error(data.detail || `Upload failed (${r.status})`);
     chosen.value = "image";
     emit("update", data);
-    toast("Thumbnail set", { type: "success" });
-  } catch (err) { toast(err.message || "Could not use that image", { type: "error" }); }
+    toast(t("Thumbnail set"), { type: "success" });
+  } catch (err) { toast(err.message || t("Could not use that image"), { type: "error" }); }
   finally { busy.value = false; }
 }
 </script>
@@ -64,44 +65,44 @@ async function useImage(file) {
 <template>
   <section class="card panel">
     <div class="head">
-      <h2>Thumbnail</h2>
-      <span class="muted small">Step 1 of 2</span>
+      <h2>{{ $t("Thumbnail") }}</h2>
+      <span class="muted small">{{ $t("Step 1 of 2") }}</span>
     </div>
     <div class="current">
       <figure>
-        <figcaption class="muted small">Current</figcaption>
-        <img v-if="thumbUrl(item)" :src="thumbUrl(item)" alt="Current thumbnail">
-        <div v-else class="empty-thumb muted small">Being made…</div>
+        <figcaption class="muted small">{{ $t("Current") }}</figcaption>
+        <img v-if="thumbUrl(item)" :src="thumbUrl(item)" :alt="$t('Current thumbnail')">
+        <div v-else class="empty-thumb muted small">{{ $t("Being made…") }}</div>
       </figure>
       <div class="current-text">
-        <p class="help-text">Click a frame to use it, pick any moment with the slider, or upload your own picture.</p>
+        <p class="help-text">{{ $t("Click a frame to use it, pick any moment with the slider, or upload your own picture.") }}</p>
         <label class="btn btn-sm" :class="{ disabled: busy }">
-          <Icon name="image" :size="15" />Upload an image…
+          <Icon name="image" :size="15" />{{ $t("Upload an image…") }}
           <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" :disabled="busy" @change="useImage($event.target.files[0]); $event.target.value = ''">
         </label>
       </div>
     </div>
 
-    <h3>Frames from the video</h3>
+    <h3>{{ $t("Frames from the video") }}</h3>
     <div class="tiles">
-      <button v-for="t in candidates" :key="t" class="tile" :class="{ on: chosen === t }" :disabled="busy" :title="`Use the frame at ${fmt(t)}`" @click="useFrame(t)">
-        <img :src="frameUrl(t, 360)" loading="lazy" :alt="`Frame at ${fmt(t)}`"><span>{{ fmt(t) }}</span>
+      <button v-for="t in candidates" :key="t" class="tile" :class="{ on: chosen === t }" :disabled="busy" :title="$t('Use the frame at {time}', { time: fmt(t) })" @click="useFrame(t)">
+        <img :src="frameUrl(t, 360)" loading="lazy" :alt="$t('Frame at {time}', { time: fmt(t) })"><span>{{ fmt(t) }}</span>
       </button>
     </div>
 
-    <h3>Any frame</h3>
+    <h3>{{ $t("Any frame") }}</h3>
     <div class="scrub">
-      <img :src="frameUrl(scrubShown, 640)" class="scrub-img" alt="The frame at the slider's position">
+      <img :src="frameUrl(scrubShown, 640)" class="scrub-img" :alt="$t('The frame at the slider\'s position')">
       <div class="scrub-row">
-        <input type="range" min="0" :max="Math.max(0, (duration || 0) - 0.1)" step="0.1" :value="scrub" aria-label="Position in the video"
+        <input type="range" min="0" :max="Math.max(0, (duration || 0) - 0.1)" step="0.1" :value="scrub" :aria-label="$t('Position in the video')"
                @input="onScrub($event.target.value)">
         <span class="pos">{{ fmt(scrub) }}</span>
-        <button class="btn btn-sm btn-primary" :disabled="busy" @click="useFrame(scrub)">Use this frame</button>
+        <button class="btn btn-sm btn-primary" :disabled="busy" @click="useFrame(scrub)">{{ $t("Use this frame") }}</button>
       </div>
     </div>
 
     <div class="form-actions">
-      <button class="btn btn-primary" @click="emit('next')">Next: preview clip<Icon name="chevron" :size="14" class="next-icon" /></button>
+      <button class="btn btn-primary" @click="emit('next')">{{ $t("Next: preview clip") }}<Icon name="chevron" :size="14" class="next-icon" /></button>
     </div>
   </section>
 </template>
@@ -123,7 +124,7 @@ h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .tile:hover { border-color: var(--border-strong); }
 .tile.on { border-color: var(--accent); }
 .tile img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; }
-.tile span { position: absolute; right: 0.25rem; bottom: 0.25rem; padding: 0 0.3rem; border-radius: 0.25rem; background: rgb(0 0 0 / 0.7); color: #fff; font-size: 0.7rem; }
+.tile span { position: absolute; inset-inline-end: 0.25rem; bottom: 0.25rem; padding: 0 0.3rem; border-radius: 0.25rem; background: rgb(0 0 0 / 0.7); color: #fff; font-size: 0.7rem; }
 .scrub { display: flex; flex-direction: column; gap: 0.5rem; }
 .scrub-img { width: 100%; max-width: 32rem; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: var(--radius); }
 .scrub-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }

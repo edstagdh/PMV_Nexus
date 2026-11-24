@@ -4,6 +4,7 @@
 // (kept inside the video and clear of its neighbours), ▶ plays that clip, and
 // "Play all" plays them in a row -- at low volume, with its own slider.
 // "Make the preview" builds the clip from these times.
+import { t } from "../../lib/i18n.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../Icon.vue";
 import { api } from "../../lib/api.js";
@@ -29,19 +30,19 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(
 const lo = (i) => (i === 0 ? 0 : times.value[i - 1] + clip.value);
 const hi = (i) => (i === times.value.length - 1 ? Math.max(0, duration.value - clip.value) : times.value[i + 1] - clip.value);
 function setTime(i, v) {
-  const t = Math.min(Math.max(Number(v), lo(i)), Math.max(lo(i), hi(i)));
-  times.value[i] = Math.round(t * 10) / 10;
+  const at = Math.min(Math.max(Number(v), lo(i)), Math.max(lo(i), hi(i)));
+  times.value[i] = Math.round(at * 10) / 10;
   if (playing.value === i) playClip(i);
 }
 function addClip() {
   // Into the biggest gap.
-  const edges = [0, ...times.value.flatMap((t) => [t, t + clip.value]), duration.value];
+  const edges = [0, ...times.value.flatMap((at) => [at, at + clip.value]), duration.value];
   let best = null;
   for (let k = 0; k < edges.length; k += 2) {
     const gap = edges[k + 1] - edges[k];
     if (gap >= clip.value * 3 && (!best || gap > best.gap)) best = { gap, at: edges[k] + (gap - clip.value) / 2 };
   }
-  if (!best) { toast("No room for another clip", { type: "error" }); return; }
+  if (!best) { toast(t("No room for another clip"), { type: "error" }); return; }
   times.value = [...times.value, Math.round(best.at * 10) / 10].sort((a, b) => a - b);
 }
 function removeClip(i) { if (times.value.length > 1) times.value = times.value.filter((_, j) => j !== i); }
@@ -72,8 +73,8 @@ async function make() {
     const it = await api(`/api/library/${id.value}/preview`, { method: "POST", body: { timestamps: times.value, clip_seconds: clip.value } });
     made.value = true;
     emit("update", it);
-    toast("Preview made", { type: "success" });
-  } catch (err) { toast(err.message || "Could not make the preview", { type: "error" }); }
+    toast(t("Preview made"), { type: "success" });
+  } catch (err) { toast(err.message || t("Could not make the preview"), { type: "error" }); }
   finally { busy.value = false; }
 }
 onMounted(() => { if (video.value) video.value.volume = volume.value; });
@@ -83,23 +84,22 @@ onBeforeUnmount(() => { const v = video.value; if (v) { v.pause(); v.removeAttri
 <template>
   <section class="card panel">
     <div class="head">
-      <h2>Preview clip</h2>
-      <span class="muted small">Step 2 of 2</span>
+      <h2>{{ $t("Preview clip") }}</h2>
+      <span class="muted small">{{ $t("Step 2 of 2") }}</span>
     </div>
-    <p class="help-text">The preview that plays when you hover a video is made of {{ times.length }} clips of {{ clip }} seconds.
-      Move them to the best moments, play them to check, then make the preview.</p>
-    <p v-if="!duration" class="error-text">The video's length couldn't be read, so the clips can't be placed.</p>
+    <p class="help-text">{{ $t("The preview that plays when you hover a video is made of {n} clips of {seconds} seconds. Move them to the best moments, play them to check, then make the preview.", { n: times.length, seconds: clip }) }}</p>
+    <p v-if="!duration" class="error-text">{{ $t("The video's length couldn't be read, so the clips can't be placed.") }}</p>
     <template v-else>
       <div class="stage">
         <video ref="video" :src="`/api/library/${id}/stream`" :data-item-id="item.id" preload="metadata" playsinline @timeupdate="onTime" />
-        <div class="vol" title="Volume while checking the clips">
+        <div class="vol" :title="$t('Volume while checking the clips')">
           <Icon name="volume" :size="16" />
-          <input type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" @input="setVolume($event.target.value)">
+          <input type="range" min="0" max="1" step="0.01" :value="volume" :aria-label="$t('Volume')" @input="setVolume($event.target.value)">
           <output>{{ Math.round(volume * 100) }}%</output>
         </div>
       </div>
 
-      <div class="timeline" aria-hidden="true">
+      <div class="timeline" dir="ltr" aria-hidden="true">
         <span v-for="(t, i) in times" :key="i" class="mark" :class="{ on: playing === i }"
               :style="{ left: `${(t / duration) * 100}%`, width: `${Math.max(0.6, (clip / duration) * 100)}%` }" />
       </div>
@@ -107,30 +107,30 @@ onBeforeUnmount(() => { const v = video.value; if (v) { v.pause(); v.removeAttri
       <ol class="clips">
         <li v-for="(t, i) in times" :key="i" :class="{ on: playing === i }">
           <span class="n">{{ i + 1 }}</span>
-          <button class="btn btn-icon btn-sm" :title="playing === i ? 'Stop' : `Play clip ${i + 1}`" @click="playing === i ? stop() : playClip(i)">
+          <button class="btn btn-icon btn-sm" :title="playing === i ? $t('Stop') : $t('Play clip {n}', { n: i + 1 })" @click="playing === i ? stop() : playClip(i)">
             <Icon :name="playing === i ? 'pause' : 'play'" :size="15" />
           </button>
-          <input type="range" min="0" :max="Math.max(0, duration - clip)" step="0.1" :value="t" :aria-label="`Start of clip ${i + 1}`"
+          <input type="range" min="0" :max="Math.max(0, duration - clip)" step="0.1" :value="t" :aria-label="$t('Start of clip {n}', { n: i + 1 })"
                  @input="setTime(i, $event.target.value)">
           <span class="pos">{{ fmt(t) }}</span>
-          <button class="btn btn-ghost btn-icon btn-sm" title="Remove this clip" :disabled="times.length <= 1" @click="removeClip(i)"><Icon name="x" :size="14" /></button>
+          <button class="btn btn-ghost btn-icon btn-sm" :title="$t('Remove this clip')" :disabled="times.length <= 1" @click="removeClip(i)"><Icon name="x" :size="14" /></button>
         </li>
       </ol>
       <div class="row-actions">
-        <button class="btn btn-sm" @click="playAll && playing >= 0 ? stop() : playClip(0, true)"><Icon :name="playAll && playing >= 0 ? 'pause' : 'play'" :size="14" />{{ playAll && playing >= 0 ? "Stop" : "Play all clips" }}</button>
-        <button class="btn btn-sm btn-ghost" :disabled="times.length >= 10" @click="addClip"><Icon name="plus" :size="14" />Add a clip</button>
+        <button class="btn btn-sm" @click="playAll && playing >= 0 ? stop() : playClip(0, true)"><Icon :name="playAll && playing >= 0 ? 'pause' : 'play'" :size="14" />{{ playAll && playing >= 0 ? $t("Stop") : $t("Play all clips") }}</button>
+        <button class="btn btn-sm btn-ghost" :disabled="times.length >= 10" @click="addClip"><Icon name="plus" :size="14" />{{ $t("Add a clip") }}</button>
       </div>
 
       <div v-if="made && previewUrl(item)" class="result">
-        <span class="muted small">The new preview:</span>
+        <span class="muted small">{{ $t("The new preview:") }}</span>
         <video :src="previewUrl(item)" autoplay loop muted playsinline class="result-video" />
       </div>
     </template>
 
     <div class="form-actions">
-      <button class="btn" @click="emit('back')">Back</button>
-      <button class="btn" :class="made ? '' : 'btn-primary'" :disabled="busy || !duration" @click="make">{{ busy ? "Making…" : made ? "Make it again" : "Make the preview" }}</button>
-      <button class="btn" :class="made ? 'btn-primary' : 'btn-ghost'" :disabled="busy" @click="emit('finish')">{{ made ? "Done" : "Keep the automatic preview" }}</button>
+      <button class="btn" @click="emit('back')">{{ $t("Back") }}</button>
+      <button class="btn" :class="made ? '' : 'btn-primary'" :disabled="busy || !duration" @click="make">{{ busy ? $t("Making…") : made ? $t("Make it again") : $t("Make the preview") }}</button>
+      <button class="btn" :class="made ? 'btn-primary' : 'btn-ghost'" :disabled="busy" @click="emit('finish')">{{ made ? $t("Done") : $t("Keep the automatic preview") }}</button>
     </div>
   </section>
 </template>
@@ -141,10 +141,10 @@ h2 { font-size: 1.05rem; margin: 0; }
 .small { font-size: 0.8rem; }
 .stage { position: relative; max-width: 40rem; }
 .stage video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius); }
-.vol { position: absolute; right: 0.5rem; bottom: 0.5rem; display: flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.5rem;
+.vol { position: absolute; inset-inline-end: 0.5rem; bottom: 0.5rem; display: flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.5rem;
   border-radius: 999px; background: rgb(0 0 0 / 0.6); color: #fff; font-size: 0.75rem; }
 .vol input { width: 6rem; }
-.vol output { min-width: 2.25rem; text-align: right; font-variant-numeric: tabular-nums; }
+.vol output { min-width: 2.25rem; text-align: end; font-variant-numeric: tabular-nums; }
 .timeline { position: relative; height: 0.5rem; border-radius: 1rem; background: var(--panel-2); max-width: 40rem; }
 .mark { position: absolute; top: 0; bottom: 0; border-radius: 1rem; background: var(--text-dim); }
 .mark.on { background: var(--accent); }

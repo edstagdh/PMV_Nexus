@@ -15,6 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Optional
 
+from ..i18n import L
 from ..video_meta import VideoMetadata  # noqa: F401 -- re-exported: what details() returns
 
 ProgressCallback = Optional[Callable[[int, Optional[int]], None]]
@@ -31,18 +32,18 @@ class Source:
 
     def item_id(self, url: str) -> str:
         """The library id for this link (ValueError if it has none)."""
-        raise ValueError(f"{self.label or self.key} can't read a video id from {url}")
+        raise ValueError(L("{site} can't read a video id from {url}", site=self.label or self.key, url=url))
 
     async def details(self, item, need_file: bool = True) -> tuple[VideoMetadata, Optional[dict]]:
         """(details, raw data to save next to the video or None). need_file: the result
         must include the file's link (meta.video_url). Raises RuntimeError with a message
         for the user when it can't."""
-        raise RuntimeError(f"{self.label or self.key} can't fetch video details")
+        raise RuntimeError(L("{site} can't fetch video details", site=self.label or self.key))
 
     async def download(self, url: str, dest: Path, progress: ProgressCallback = None,
                        headers: Optional[dict] = None) -> None:
         """Saves `url` (one of the links details() returned) to `dest`."""
-        raise RuntimeError(f"{self.label or self.key} can't download files")
+        raise RuntimeError(L("{site} can't download files", site=self.label or self.key))
 
 
 _registered: dict[str, Source] = {}
@@ -50,7 +51,7 @@ _registered: dict[str, Source] = {}
 
 def register(source: Source) -> None:
     if not source.key:
-        raise ValueError("A source needs a key")
+        raise ValueError(L('A source needs a key'))
     _registered[source.key] = source
 
 
@@ -68,7 +69,7 @@ def all_sources() -> dict[str, Source]:
 def get(key: str) -> Source:
     found = all_sources().get(key)
     if found is None:
-        raise RuntimeError(f"This video's source ({key}) isn't available -- its extension may be missing")
+        raise RuntimeError(L("This video's source ({key}) isn't available -- its extension may be missing", key=key))
     return found
 
 

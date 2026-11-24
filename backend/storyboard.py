@@ -28,6 +28,7 @@ from typing import Optional
 
 from loguru import logger
 
+from .i18n import L
 from . import media_tools
 
 FOLDER = ".storyboards"
@@ -68,7 +69,7 @@ def make(video_path: str, folder: Path, stop=None) -> dict:
     info = media_tools.probe_streams(video_path)
     duration = float(info.get("duration") or 0)
     if duration <= 0:
-        raise ValueError("Couldn't read the video's length")
+        raise ValueError(L("Couldn't read the video's length"))
     interval = interval_for(duration)
     w, h = frame_size(int(info.get("width") or 0), int(info.get("height") or 0))
     gap = _keyframe_gap(video_path, duration)
@@ -77,7 +78,7 @@ def make(video_path: str, folder: Path, stop=None) -> dict:
         return _run(video_path, folder, duration, interval, w, h, fast, stop)
     except _NoFrames:
         if not fast:
-            raise ValueError("FFmpeg made no frames")
+            raise ValueError(L('FFmpeg made no frames'))
         return _run(video_path, folder, duration, interval, w, h, False, stop)
 
 
@@ -119,12 +120,12 @@ def _run(video_path: str, folder: Path, duration: float, interval: int, w: int, 
                 raise InterruptedError
             if time.monotonic() - started > TIMEOUT:
                 proc.kill()
-                raise ValueError("Making the seekbar previews took too long")
+                raise ValueError(L('Making the seekbar previews took too long'))
             time.sleep(0.25)
         err = proc.stderr.read().decode(errors="replace")[-1500:] if proc.stderr else ""
         sheets = len(list(work.glob("*.webp")))
         if proc.returncode != 0:
-            raise ValueError(f"FFmpeg couldn't make the seekbar previews: {err.strip() or proc.returncode}")
+            raise ValueError(L("FFmpeg couldn't make the seekbar previews: {error}", error=err.strip() or proc.returncode))
         if not sheets:
             raise _NoFrames
         frames = min(math.ceil(duration / interval), sheets * COLS * ROWS)

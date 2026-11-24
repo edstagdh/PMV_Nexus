@@ -1,6 +1,7 @@
 """A video's details as a source returns them (VideoMetadata), and the video id in
 a PMVHaven-platform link. Parsed from the sites' API by pmv_details.py."""
 from __future__ import annotations
+from .i18n import L
 
 import re
 from dataclasses import dataclass, field
@@ -77,5 +78,5 @@ class VideoMetadata:
 def extract_video_id(url: str) -> str:
     m = ID_RE.search(url)
     if not m:
-        raise ValueError(f"Could not find a video id in url: {url}")
+        raise ValueError(L('Could not find a video id in url: {url}', url=url))
     return m.group(1)

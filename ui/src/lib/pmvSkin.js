@@ -18,6 +18,7 @@
 // Packaged skins can't be changed from outside, so this subclasses the skin
 // with an edited copy of its template (see the Video.js "Customize skins"
 // guide); the skin's own styles are kept and a small stylesheet is added.
+import { t } from "./i18n.js";
 import "@videojs/html/video/player";
 import "@videojs/html/video/skin";
 
@@ -82,11 +83,22 @@ const EXTRA_CSS = `
   border-radius: 50%; background: rgb(0 0 0 / 0.45); backdrop-filter: blur(6px);
   display: none; transition: opacity 0.2s;
 }
-.pmv-center-play .media-button-icon { width: 45%; height: 45%; }
-/* Touch screens only, and only while the controls are showing (or before the video started). */
+.pmv-center-play .media-button-icon, .pmv-center-side .media-button-icon { width: 45%; height: 45%; }
+/* Loop (left) and Next video (right) beside it (3.7.0), in the same style; Next only while a playlist plays. */
+.pmv-center-side {
+  position: absolute; left: 50%; top: 50%; z-index: 25; padding: 0;
+  width: calc(var(--media-spacing, 0.25rem) * 12); height: calc(var(--media-spacing, 0.25rem) * 12);
+  border-radius: 50%; background: rgb(0 0 0 / 0.45); backdrop-filter: blur(6px);
+  display: none; transition: opacity 0.2s;
+}
+.pmv-center-loop { translate: calc(-50% - var(--media-spacing, 0.25rem) * 17) -50%; }
+.pmv-center-next { translate: calc(-50% + var(--media-spacing, 0.25rem) * 17) -50%; }
+/* Touch screens only, and only while the controls are showing (or before the video started).
+   There Loop and Next live in the middle instead of the control bar. */
 @media (pointer: coarse) {
-  .pmv-center-play { display: grid; place-items: center; }
-  media-controls:not([data-visible]) .pmv-center-play { opacity: 0; pointer-events: none; }
+  .pmv-center-play, .pmv-center-side { display: grid; place-items: center; }
+  .pmv-center-side[hidden], :is(.video-controls-primary, .video-controls-secondary) :is(.pmv-loop, .pmv-next) { display: none; }
+  media-controls:not([data-visible]) :is(.pmv-center-play, .pmv-center-side) { opacity: 0; pointer-events: none; }
 }
 /* The small floating player: fewer buttons and a smaller centre button. */
 /* Volume (3.2.0): a taller slider (was 72 px for 0-100 %) in 1 % steps, with the value shown above it. */
@@ -95,7 +107,8 @@ const EXTRA_CSS = `
 .pmv-vol-value { display: block; text-align: center; font-size: 0.7rem; font-weight: 600; line-height: 1; padding: 0.35rem 0 0.25rem;
   font-variant-numeric: tabular-nums; color: var(--media-popover-foreground, #fff); white-space: nowrap; }
 :host([compact]) .media-volume-popover .media-volume-slider { height: 6rem; }
-:host([compact]) .pmv-download, :host([compact]) .pmv-search, :host([compact]) .pmv-loop, :host([compact]) .pmv-ab, :host([compact]) .pmv-next { display: none; }
+:host([compact]) .pmv-download, :host([compact]) .pmv-search, :host([compact]) .pmv-loop, :host([compact]) .pmv-ab, :host([compact]) .pmv-next,
+:host([compact]) .pmv-center-side { display: none; }
 :host([compact]) .pmv-center-play { width: calc(var(--media-spacing, 0.25rem) * 10); height: calc(var(--media-spacing, 0.25rem) * 10); }
 `;
 
@@ -109,20 +122,20 @@ function buildTemplate(base) {
     btn.remove();
   });
   // Show the video's total length after the seek bar (2.18.0), not the time left; clicking still toggles.
-  root.querySelectorAll('media-time[type="remaining"]').forEach((t) => t.setAttribute("type", "duration"));
+  root.querySelectorAll('media-time[type="remaining"]').forEach((el) => el.setAttribute("type", "duration"));
   const secondary = root.querySelector(".video-controls-secondary");
   secondary?.insertAdjacentHTML("afterbegin",
     `<button type="button" class="media-button pmv-ab" aria-pressed="false" hidden><span>A-B</span></button>`
-    + `<button type="button" class="media-button pmv-loop" aria-pressed="false" title="Loop" aria-label="Loop">${LOOP_ICON}</button>`);
+    + `<button type="button" class="media-button pmv-loop" aria-pressed="false" title="Loop" aria-label="Loop">${LOOP_ICON}</button>`);  // i18n-ignore: translated in localize()
   // Next video (playlists): right after the play button.
   root.querySelector(".video-controls-primary media-play-button")?.insertAdjacentHTML("afterend",
-    `<button type="button" class="media-button pmv-next" title="Next video" aria-label="Next video" hidden>${NEXT_ICON}</button>`);
+    `<button type="button" class="media-button pmv-next" title="Next video" aria-label="Next video" hidden>${NEXT_ICON}</button>`);  // i18n-ignore: translated in localize()
   // 720p (converted while watching) as the first entry of the ⚙ menu, above Speed.
   root.querySelector("media-menu > media-menu-content")?.insertAdjacentHTML("afterbegin",
     `<media-menu-item class="media-menu-trigger-item pmv-quality" role="menuitemcheckbox" aria-checked="false" hidden>${HD_ICON}`
     + `<span>720p</span><span class="media-menu-hint"><span class="media-menu-hint-label">Off</span></span></media-menu-item>`
     // Download the video (2.22.0: moved here from the control bar), under 720p.
-    + `<media-menu-item class="media-menu-trigger-item pmv-download" role="menuitem" title="Download the video">${DOWNLOAD_ICON}<span>Download</span></media-menu-item>`
+    + `<media-menu-item class="media-menu-trigger-item pmv-download" role="menuitem" title="Download the video">${DOWNLOAD_ICON}<span>Download</span></media-menu-item>`  // i18n-ignore: translated in localize()
     // Search this frame (3.2.0, lib/frameSearch.js): reverse image search of what's on screen.
     + `<media-menu-item class="media-menu-trigger-item pmv-search" role="menuitem">${SEARCH_ICON}<span>Search frame</span>`
     + `<span class="media-menu-hint"><span class="media-menu-hint-label"></span></span></media-menu-item>`);
@@ -134,11 +147,13 @@ function buildTemplate(base) {
   root.querySelector(".video-status-indicators")?.insertAdjacentHTML("beforeend",
     `<div class="pmv-swipe" hidden aria-live="polite"><span class="pmv-swipe-label"></span><span class="pmv-swipe-bar"><i></i></span></div>`);
   root.querySelector("media-controls")?.insertAdjacentHTML("beforeend",
-    `<media-play-button class="media-button media-play-button pmv-center-play">
+    `<button type="button" class="media-button pmv-loop pmv-center-side pmv-center-loop" aria-pressed="false">${LOOP_ICON}</button>`
+    + `<media-play-button class="media-button media-play-button pmv-center-play">
        <media-icon name="restart" class="media-button-icon media-play-button-restart-icon"></media-icon>
        <media-icon name="play" class="media-button-icon media-play-button-play-icon"></media-icon>
        <media-icon name="pause" class="media-button-icon media-play-button-pause-icon"></media-icon>
-     </media-play-button>`);
+     </media-play-button>`
+    + `<button type="button" class="media-button pmv-next pmv-center-side pmv-center-next" hidden>${NEXT_ICON}</button>`);
   return template;
 }
 
@@ -153,6 +168,18 @@ if (!customElements.get("pmv-video-skin")) {
       super();
       if (!sheet) { sheet = new CSSStyleSheet(); sheet.replaceSync(EXTRA_CSS); }
       this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sheet];
+      this.localize();
+    }
+
+    /** Our own buttons in the page's language (3.7.0); the template is made before a language loads. */
+    localize() {
+      const set = (sel, fn) => { const el = this.shadowRoot.querySelector(sel); if (el) fn(el); };
+      this.shadowRoot.querySelectorAll(".pmv-loop").forEach((el) => { el.title = t("Loop"); el.setAttribute("aria-label", t("Loop")); });
+      this.shadowRoot.querySelectorAll(".pmv-next").forEach((el) => { el.title = t("Next video"); el.setAttribute("aria-label", t("Next video")); });
+      set(".pmv-quality .media-menu-hint-label", (el) => { el.textContent = t("Off"); });
+      set(".pmv-download", (el) => { el.title = t("Download the video"); });
+      set(".pmv-download span", (el) => { el.textContent = t("Download"); });
+      set(".pmv-search > span:not(.media-menu-hint)", (el) => { el.textContent = t("Search frame"); });
     }
 
     part(selector) { return this.shadowRoot.querySelector(selector); }

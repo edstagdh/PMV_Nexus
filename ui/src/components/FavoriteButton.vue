@@ -1,6 +1,7 @@
 <script setup>
 // ♥ on the video page: adds the video to / removes it from your built-in
 // Favorites playlist (GET/POST /api/playlists/favorites).
+import { t } from "../lib/i18n.js";
 import { ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import { api, qs } from "../lib/api.js";
@@ -22,16 +23,16 @@ async function toggle() {
   try {
     on.value = (await api("/api/playlists/favorites", { method: "POST", body: { item_id: props.itemId, on: !on.value } })).favorite;
     setFavoriteLocal(props.itemId, on.value);   // the ♥ badge on thumbnails
-    toast(on.value ? "Added to Favorites" : "Removed from Favorites");
-  } catch (err) { toast(err.message || "That didn't work", { type: "error" }); }
+    toast(on.value ? t("Added to Favorites") : t("Removed from Favorites"));
+  } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
   finally { busy.value = false; }
 }
 </script>
 
 <template>
   <button class="btn btn-sm fav" :class="{ on }" :disabled="busy" :aria-pressed="on"
-          :title="on ? 'In your Favorites — click to remove' : 'Add to Favorites'" @click="toggle">
-    <Icon name="heart" :size="15" />{{ on ? "Favorite" : "Add to Favorites" }}
+          :title="on ? $t('In your Favorites — click to remove') : $t('Add to Favorites')" @click="toggle">
+    <Icon name="heart" :size="15" />{{ on ? $t("Favorite") : $t("Add to Favorites") }}
   </button>
 </template>
 

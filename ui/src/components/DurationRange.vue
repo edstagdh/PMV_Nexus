@@ -2,6 +2,7 @@
 // Library -> Filters -> Duration (3.5.0): one slider with two handles (shortest and longest)
 // that snap to POINTS, and exact m:ss boxes for any length in between. Emits "change"
 // {min, max} in seconds (null = no limit) when a handle is let go or a box is changed.
+import { t } from "../lib/i18n.js";
 import { ref, computed, watch } from "vue";
 
 // Every minute to 10 (where most PMVs are), then wider steps; the last point is "no limit".
@@ -29,11 +30,11 @@ function fmt(secs) {
 }
 /** "5", "5:30", "1:02:00", "90s" -> seconds; "" -> null; NaN when it can't be read. */
 function parse(text) {
-  const t = String(text || "").trim().toLowerCase();
-  if (!t) return null;
-  if (/^\d+(\.\d+)?s$/.test(t)) return Math.round(parseFloat(t));
-  if (/^\d+(\.\d+)?$/.test(t)) return Math.round(parseFloat(t) * 60);  // a plain number = minutes
-  const parts = t.split(":");
+  const txt = String(text || "").trim().toLowerCase();
+  if (!txt) return null;
+  if (/^\d+(\.\d+)?s$/.test(txt)) return Math.round(parseFloat(txt));
+  if (/^\d+(\.\d+)?$/.test(txt)) return Math.round(parseFloat(txt) * 60);  // a plain number = minutes
+  const parts = txt.split(":");
   if (parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return NaN;
   return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
 }
@@ -41,7 +42,8 @@ function parse(text) {
 // While a handle moves, the boxes show where it is; the filter changes when it's let go.
 const shownMin = computed(() => (lo.value === nearest(props.min, 0) && props.min != null ? props.min : POINTS[lo.value] || null));
 const shownMax = computed(() => (hi.value === nearest(props.max, LAST) && props.max != null ? props.max : POINTS[hi.value]));
-const label = (i) => (POINTS[i] == null ? "no limit" : POINTS[i] < 60 ? "0" : fmt(POINTS[i]).replace(/:00$/, "") + (POINTS[i] < 3600 ? " min" : " h"));
+const label = (i) => (POINTS[i] == null ? t("no limit") : POINTS[i] < 60 ? "0"
+  : POINTS[i] < 3600 ? t("{n} min", { n: fmt(POINTS[i]).replace(/:00$/, "") }) : t("{n} h", { n: fmt(POINTS[i]).replace(/:00$/, "") }));
 
 function moveLo(v) { lo.value = Math.min(Number(v), hi.value); }
 function moveHi(v) { hi.value = Math.max(Number(v), lo.value); }
@@ -57,8 +59,8 @@ const minText = ref(""), maxText = ref(""), bad = ref("");
 watch([shownMin, shownMax], () => { minText.value = fmt(shownMin.value); maxText.value = fmt(shownMax.value); bad.value = ""; }, { immediate: true });
 function typed() {
   const a = parse(minText.value), b = parse(maxText.value);
-  if (Number.isNaN(a) || Number.isNaN(b)) { bad.value = "Write a length like 3, 3:30 or 1:05:00"; return; }
-  if (a != null && b != null && a > b) { bad.value = "The shortest is longer than the longest"; return; }
+  if (Number.isNaN(a) || Number.isNaN(b)) { bad.value = t("Write a length like 3, 3:30 or 1:05:00"); return; }
+  if (a != null && b != null && a > b) { bad.value = t("The shortest is longer than the longest"); return; }
   bad.value = "";
   emit("change", { min: a || null, max: b });
 }
@@ -66,22 +68,22 @@ const fill = computed(() => ({ left: `${(lo.value / LAST) * 100}%`, right: `${10
 </script>
 
 <template>
-  <div class="drange">
+  <div class="drange" dir="ltr">
     <div class="track" aria-hidden="true"><span class="fill" :style="fill" /></div>
-    <input class="thumb" type="range" min="0" :max="LAST" step="1" :value="lo" aria-label="Shortest"
+    <input class="thumb" type="range" min="0" :max="LAST" step="1" :value="lo" :aria-label="$t('Shortest')"
            :aria-valuetext="label(lo)" @input="moveLo($event.target.value)" @change="commit">
-    <input class="thumb" type="range" min="0" :max="LAST" step="1" :value="hi" aria-label="Longest"
+    <input class="thumb" type="range" min="0" :max="LAST" step="1" :value="hi" :aria-label="$t('Longest')"
            :aria-valuetext="label(hi)" @input="moveHi($event.target.value)" @change="commit">
     <div class="ticks" aria-hidden="true">
       <span v-for="(p, i) in POINTS" :key="i" :style="{ left: `${(i / LAST) * 100}%` }"
             :class="{ major: [0, 5, 10, 13, 15, 17, LAST].includes(i) }">{{ [0, 5, 10, 13, 15, 17, LAST].includes(i) ? (p == null ? "∞" : p >= 3600 ? "1h" : p / 60) : "" }}</span>
     </div>
     <div class="exact">
-      <input v-model="minText" class="input" inputmode="numeric" placeholder="0:00" aria-label="Shortest (minutes:seconds)"
-             title="Shortest: minutes or minutes:seconds (e.g. 3 or 3:30)" @change="typed" @keydown.enter="typed">
-      <span class="muted">to</span>
-      <input v-model="maxText" class="input" inputmode="numeric" placeholder="no limit" aria-label="Longest (minutes:seconds)"
-             title="Longest: minutes or minutes:seconds; empty = no limit" @change="typed" @keydown.enter="typed">
+      <input v-model="minText" class="input" inputmode="numeric" placeholder="0:00" :aria-label="$t('Shortest (minutes:seconds)')"
+             :title="$t('Shortest: minutes or minutes:seconds (e.g. 3 or 3:30)')" @change="typed" @keydown.enter="typed">
+      <span class="muted">{{ $t("to") }}</span>
+      <input v-model="maxText" class="input" inputmode="numeric" :placeholder="$t('no limit')" :aria-label="$t('Longest (minutes:seconds)')"
+             :title="$t('Longest: minutes or minutes:seconds; empty = no limit')" @change="typed" @keydown.enter="typed">
     </div>
     <p v-if="bad" class="err small">{{ bad }}</p>
   </div>

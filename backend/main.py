@@ -12,12 +12,17 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
+from .i18n import L
 from .library_manager import library_manager
 from .logging_setup import setup_logging
 from .security import AuthContext, ensure_bootstrap_admin, get_current_user, require_permission
 from .app_info import APP_VERSION
 from .hardening import SecurityMiddleware
 from .routers import health, auth, me, users, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, performers, notifications, songs, bulk, now_playing, extensions as extensions_routes
+from .routers import i18n as i18n_routes
+from . import i18n
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import extensions
 from .action_log import ActionLogMiddleware
 
@@ -81,7 +86,17 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    # 3.7.0: texts written as L("...") come out in the browser's language (backend/i18n.py).
+    default_response_class=i18n.TranslatingJSONResponse,
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _translated_http_error(request: Request, exc: StarletteHTTPException):
+    """Error messages in the browser's language (3.7.0); everything else as FastAPI does it."""
+    if isinstance(exc.detail, str):
+        exc.detail = i18n.tr(exc.detail)
+    return await http_exception_handler(request, exc)
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 setup_logging()
@@ -114,9 +129,12 @@ app.include_router(songs.router)
 app.include_router(bulk.router)
 app.include_router(now_playing.router)
 app.include_router(extensions_routes.router)
+app.include_router(i18n_routes.router)
 # Optional add-ons in extensions/ (2.30.0): loaded once; their own routes join the app here.
 extensions.load_all(app)
 
+# The browser's language for this request (X-Language), for L("...") texts (3.7.0).
+app.add_middleware(i18n.LanguageMiddleware)
 # Every change made through the API is recorded in Admin -> Logs.
 app.add_middleware(ActionLogMiddleware)
 # Security headers, cross-site request refusal, body size cap (backend/hardening.py).
@@ -235,7 +253,7 @@ _INDEX_HTML_HEADERS = {"Cache-Control": "no-cache"}
 def _index_response():
     index_file = FRONTEND_DIR / "index.html"
     if not index_file.is_file():
-        raise HTTPException(status_code=404, detail="The interface has not been built (see ui/README.md)")
+        raise HTTPException(status_code=404, detail=L('The interface has not been built (see ui/README.md)'))
     return FileResponse(str(index_file), headers=_INDEX_HTML_HEADERS)
 
 
@@ -257,7 +275,7 @@ def spa_fallback(full_path: str, request: Request):
     Old classic addresses (/admin/download, ...) are redirected by the Vue
     router."""
     if full_path.startswith("api/") or full_path.startswith("assets/"):
-        raise HTTPException(status_code=404, detail="Not Found")
+        raise HTTPException(status_code=404, detail=L('Not Found'))
     if full_path == "next" or full_path.startswith("next/"):
         target = "/" + full_path[len("next"):].lstrip("/")
         if request.url.query:

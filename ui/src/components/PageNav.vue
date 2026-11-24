@@ -17,13 +17,13 @@ const pages = computed(() => {
 </script>
 
 <template>
-  <nav v-if="totalPages > 1" class="pager" aria-label="Pages">
-    <button class="btn btn-sm btn-icon" :disabled="page <= 1" aria-label="Previous page" @click="emit('go', page - 1)"><Icon name="left" /></button>
+  <nav v-if="totalPages > 1" class="pager" :aria-label="$t('Pages')">
+    <button class="btn btn-sm btn-icon" :disabled="page <= 1" :aria-label="$t('Previous page')" @click="emit('go', page - 1)"><Icon name="left" /></button>
     <template v-for="p in pages" :key="p">
       <span v-if="typeof p === 'string'" class="gap">…</span>
       <button v-else class="btn btn-sm" :class="{ active: p === page }" :aria-current="p === page ? 'page' : null" @click="emit('go', p)">{{ p }}</button>
     </template>
-    <button class="btn btn-sm btn-icon" :disabled="page >= totalPages" aria-label="Next page" @click="emit('go', page + 1)"><Icon name="right" /></button>
+    <button class="btn btn-sm btn-icon" :disabled="page >= totalPages" :aria-label="$t('Next page')" @click="emit('go', page + 1)"><Icon name="right" /></button>
   </nav>
 </template>
 

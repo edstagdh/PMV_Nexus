@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.responses import Response, StreamingResponse
 
+from ..i18n import L
 from ..open_files import stream_chunks
 
 # Used by library.py's stream/preview routes to parse an incoming HTTP
@@ -37,7 +38,7 @@ def safe_folder_name(name: str) -> str:
     if nothing usable is left after cleaning."""
     cleaned = FOLDER_NAME_RE.sub("", name).strip().strip(".")
     if not cleaned:
-        raise ValueError("Not a valid folder name")
+        raise ValueError(L('Not a valid folder name'))
     return cleaned
 
 

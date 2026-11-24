@@ -1,4 +1,5 @@
 <script setup>
+import { tn } from "../lib/i18n.js";
 import { ref, computed } from "vue";
 import ModalDialog from "./ModalDialog.vue";
 import { api } from "../lib/api.js";
@@ -25,27 +26,27 @@ async function submit() {
     }
   }
   busy.value = false;
-  if (added) toast(`Added ${added} video${added === 1 ? "" : "s"} — see Tasks for progress`, { type: "success" });
+  if (added) toast(tn("Added {n} video — see Tasks for progress", "Added {n} videos — see Tasks for progress", added), { type: "success" });
   if (added === urls.value.length) emit("close");
 }
 </script>
 
 <template>
-  <ModalDialog title="Add videos" @close="emit('close')">
+  <ModalDialog :title="$t('Add videos')" @close="emit('close')">
     <label class="field">
-      <span>Video page URLs (one per line)</span>
+      <span>{{ $t("Video page URLs (one per line)") }}</span>
       <textarea v-model="text" class="input textarea" rows="5" autofocus
-                placeholder="https://pmvhaven.com/video/..." @keydown.ctrl.enter="submit" />
+                :placeholder="$t('https://pmvhaven.com/video/...')" @keydown.ctrl.enter="submit" />
     </label>
     <ul v-if="results.length" class="results">
       <li v-for="r in results" :key="r.url" :class="r.ok ? 'ok' : 'bad'">
-        {{ r.ok ? "Added" : "Failed" }} — <span class="muted">{{ r.url }}</span><span v-if="r.message">: {{ r.message }}</span>
+        {{ r.ok ? $t("Added") : $t("Failed") }} — <span class="muted">{{ r.url }}</span><span v-if="r.message">: {{ r.message }}</span>
       </li>
     </ul>
     <template #footer>
-      <button class="btn" @click="emit('close')">Cancel</button>
+      <button class="btn" @click="emit('close')">{{ $t("Cancel") }}</button>
       <button class="btn btn-primary" :disabled="!urls.length || busy" @click="submit">
-        {{ busy ? "Adding…" : urls.length > 1 ? `Add ${urls.length} videos` : "Add video" }}
+        {{ busy ? $t("Adding…") : urls.length > 1 ? $t("Add {n} videos", { n: urls.length }) : $t("Add video") }}
       </button>
     </template>
   </ModalDialog>

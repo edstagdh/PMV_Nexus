@@ -17,6 +17,7 @@ The key goes in the x-goog-api-key header, never in a URL, so it can't end up in
 Adapted from the Gemini provider of the Incident Bridge project (same author).
 """
 from __future__ import annotations
+from .i18n import L
 
 import re
 import time
@@ -167,7 +168,7 @@ async def generate(key: str, parts: list[dict], *, system: str = "", config: Opt
                 raise _refusal(resp)
             return _answer_text(resp.json()), model
     logger.info("Gemini: no model could answer ({})", "; ".join(tried))
-    raise GeminiBusy("Gemini's free models are busy or out of today's quota — try again later")
+    raise GeminiBusy(L("Gemini's free models are busy or out of today's quota — try again later"))
 
 
 def _answer_text(reply: dict) -> str:
@@ -185,6 +186,6 @@ async def test_key(key: str) -> dict:
     except GeminiError as exc:
         return {"ok": False, "message": str(exc)}
     except (httpx.HTTPError, ValueError) as exc:
-        return {"ok": False, "message": f"Gemini didn't answer ({exc.__class__.__name__})"}
+        return {"ok": False, "message": L("Gemini didn't answer ({name})", name=exc.__class__.__name__)}
     use = refresh_model_list(names, FREE_TIER_MODELS)
-    return {"ok": True, "message": f"Key works. Models to use, best first: {', '.join(use[:4])}"}
+    return {"ok": True, "message": L('Key works. Models to use, best first: {models}', models=', '.join(use[:4]))}
