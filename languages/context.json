@@ -428,11 +428,11 @@
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
- "age {from}–{to}": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "Age {from}–{to}": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "age {from}–{to}": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "Aliases": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -1251,11 +1251,11 @@
  "Cores": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "could not add it": [
-  "ui/src/components/PerformerPhotos.vue"
- ],
  "Could not add it": [
   "ui/src/views/PlaylistView.vue"
+ ],
+ "could not add it": [
+  "ui/src/components/PerformerPhotos.vue"
  ],
  "Could not change the folder": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -1699,12 +1699,12 @@
  "database {size}": [
   "ui/src/views/admin/StatsView.vue"
  ],
- "date acquired": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "Date acquired": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue"
+ ],
+ "date acquired": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "Date and time": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -1951,11 +1951,11 @@
  "Downloading {percent}% · {speed}": [
   "ui/src/views/VideoView.vue"
  ],
- "downloads": [
-  "ui/src/views/admin/DuplicatesView.vue"
- ],
  "Downloads": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "downloads": [
+  "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Downloads also run through the proxy, at the same time as the direct ones — e.g. one direct and one through the proxy, twice as many at once. Pages and details still load directly.": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -2329,11 +2329,11 @@
  "Favourite": [
   "ui/src/views/PerformerView.vue"
  ],
- "favourite performers": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "Favourite performers": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "favourite performers": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "Favourite performers (theirs first or last)": [
   "ui/src/views/SettingsView.vue"
@@ -2412,12 +2412,12 @@
  "File missing on disk": [
   "backend/routers/library.py"
  ],
- "file size": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "File size": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue"
+ ],
+ "file size": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "Files in the download and cache folders that no video in the library points to — for example a removed duplicate whose file was in use at the time, or something copied there by hand. Nothing is deleted until you choose.": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -3556,9 +3556,6 @@
  "Moving videos to the new download folder": [
   "backend/library_mixins/item_extras.py"
  ],
- "music": [
-  "ui/src/components/admin/SiteSyncPanel.vue"
- ],
  "Music": [
   "ui/src/components/admin/SpellingsPanel.vue",
   "ui/src/components/dialogs/BulkEditDialog.vue",
@@ -3567,6 +3564,9 @@
   "ui/src/views/UploadView.vue",
   "ui/src/views/VideoView.vue",
   "ui/src/views/admin/NamesView.vue"
+ ],
+ "music": [
+  "ui/src/components/admin/SiteSyncPanel.vue"
  ],
  "Music credits": [
   "ui/src/components/SearchHelp.vue"
@@ -3801,11 +3801,11 @@
  "No metadata available": [
   "backend/routers/library.py"
  ],
- "no music": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "No music": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "no music": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "No new songs to suggest.": [
   "ui/src/components/dialogs/SongsDialog.vue"
@@ -3816,11 +3816,11 @@
  "No other playlist matches — create it below.": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
  ],
- "no performers": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "No performers": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "no performers": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "No photo": [
   "backend/routers/performers.py",
@@ -3982,8 +3982,8 @@
  "not enough: it needs about {needed}": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "not found": [
-  "ui/src/views/HelpView.vue"
+ "Not Found": [
+  "backend/main.py"
  ],
  "Not found": [
   "backend/library_mixins/item_extras.py",
@@ -3992,8 +3992,8 @@
   "backend/routers/library.py",
   "backend/routers/system.py"
  ],
- "Not Found": [
-  "backend/main.py"
+ "not found": [
+  "ui/src/views/HelpView.vue"
  ],
  "Not found on the site ({n})": [
   "ui/src/components/admin/SiteSyncPanel.vue"
@@ -4019,11 +4019,11 @@
  "Not password-protected — set a backup password below.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "not recorded": [
-  "ui/src/views/admin/LogsView.vue"
- ],
  "Not recorded": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "not recorded": [
+  "ui/src/views/admin/LogsView.vue"
  ],
  "Not set": [
   "ui/src/components/admin/CredentialsPanel.vue",
@@ -4951,11 +4951,11 @@
  "Re-encoded {title}": [
   "backend/library_mixins/reencode_worker.py"
  ],
- "re-encodes": [
-  "ui/src/views/admin/DuplicatesView.vue"
- ],
  "Re-encodes": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "re-encodes": [
+  "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Re-encodes and repairs finished / failed": [
   "ui/src/views/SettingsView.vue"
@@ -5265,11 +5265,11 @@
  "Repairing…": [
   "ui/src/lib/format.js"
  ],
- "repairs": [
-  "ui/src/views/admin/DuplicatesView.vue"
- ],
  "Repairs": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "repairs": [
+  "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Repairs that fixed something": [
   "ui/src/views/admin/StatsView.vue"
@@ -5320,12 +5320,12 @@
  "Reset to defaults": [
   "ui/src/views/SettingsView.vue"
  ],
- "resolution": [
-  "ui/src/lib/libraryQuery.js"
- ],
  "Resolution": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue"
+ ],
+ "resolution": [
+  "ui/src/lib/libraryQuery.js"
  ],
  "Resolutions": [
   "ui/src/views/admin/StatsView.vue"
@@ -7154,12 +7154,12 @@
  "Upload cancelled": [
   "ui/src/views/UploadView.vue"
  ],
+ "Upload date": [
+  "ui/src/views/UploadView.vue"
+ ],
  "upload date": [
   "ui/src/components/admin/SiteSyncPanel.vue",
   "ui/src/lib/libraryQuery.js"
- ],
- "Upload date": [
-  "ui/src/views/UploadView.vue"
  ],
  "Upload date must look like 2024-05-31": [
   "backend/library_mixins/local_upload.py"
@@ -7273,12 +7273,12 @@
  "Used when no sort is chosen on the page.": [
   "ui/src/views/SettingsView.vue"
  ],
- "user": [
-  "ui/src/components/admin/AccessPanel.vue"
- ],
  "User": [
   "ui/src/views/admin/LogsView.vue",
   "ui/src/views/admin/UsersView.vue"
+ ],
+ "user": [
+  "ui/src/components/admin/AccessPanel.vue"
  ],
  "User actions (no system entries)": [
   "ui/src/views/admin/LogsView.vue"
@@ -7309,11 +7309,11 @@
  "Values written in more than one way count as one: everywhere the app shows the spelling most videos use (on a tie, the newest), so it follows your library as new videos arrive. Pick a spelling to always use that one instead. Your videos keep what PMVHaven wrote; only what's shown, filtered and suggested changes.": [
   "ui/src/components/admin/SpellingsPanel.vue"
  ],
- "version {version}": [
-  "ui/src/components/LanguageSettings.vue"
- ],
  "Version {version}": [
   "ui/src/views/HelpView.vue"
+ ],
+ "version {version}": [
+  "ui/src/components/LanguageSettings.vue"
  ],
  "Version {version} is available": [
   "ui/src/views/HelpView.vue"
@@ -7321,13 +7321,13 @@
  "Version {version} is available.": [
   "ui/src/views/HelpView.vue"
  ],
- "video": [
-  "backend/library_mixins/local_upload.py",
-  "ui/src/components/dialogs/SongsDialog.vue"
- ],
  "Video": [
   "ui/src/router.js",
   "ui/src/views/VideoView.vue"
+ ],
+ "video": [
+  "backend/library_mixins/local_upload.py",
+  "ui/src/components/dialogs/SongsDialog.vue"
  ],
  "Video frames": [
   "backend/backup.py",

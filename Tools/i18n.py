@@ -55,8 +55,14 @@ def _pick(m: re.Match, first: int) -> str:
     return _js_unescape(m.group(first) if m.group(first) is not None else m.group(first + 1))
 
 
+def _by_path(p: Path) -> str:
+    """Sort key for files: the same order on every system (Windows compares paths without
+    case, Linux with it -- the generated files must not depend on which one ran it)."""
+    return p.relative_to(ROOT).as_posix()
+
+
 def _ui_files():
-    return sorted(p for p in UI_SRC.rglob("*") if p.suffix in (".vue", ".js") and "node_modules" not in p.parts)
+    return sorted((p for p in UI_SRC.rglob("*") if p.suffix in (".vue", ".js") and "node_modules" not in p.parts), key=_by_path)
 
 
 def extract() -> tuple[dict, dict, list[str]]:
@@ -92,7 +98,7 @@ def extract() -> tuple[dict, dict, list[str]]:
             else:
                 add(attrs["msg"], attrs["msg"], rel)
 
-    for path in sorted(BACKEND.rglob("*.py")):
+    for path in sorted(BACKEND.rglob("*.py"), key=_by_path):
         rel = path.relative_to(ROOT).as_posix()
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -108,8 +114,9 @@ def extract() -> tuple[dict, dict, list[str]]:
                         add(arg.value, arg.value, rel)
                     else:
                         problems.append(f"{rel}:{node.lineno}: L() needs the English text written out (no f-string or variable)")
-    ordered = dict(sorted(messages.items(), key=lambda kv: kv[0].casefold()))
-    return ordered, {k: sorted(v) for k, v in sorted(where.items(), key=lambda kv: kv[0].casefold())}, problems
+    # casefold first, then the text itself: texts that differ only in case keep one order everywhere
+    ordered = dict(sorted(messages.items(), key=lambda kv: (kv[0].casefold(), kv[0])))
+    return ordered, {k: sorted(v) for k, v in sorted(where.items(), key=lambda kv: (kv[0].casefold(), kv[0]))}, problems
 
 
 def _app_version() -> str:
@@ -375,7 +382,7 @@ def find_untranslated() -> list[str]:
 # ---- manifest + checks --------------------------------------------------------------------
 
 def _language_files():
-    return sorted(p for p in LANG.glob("*.json") if p.name not in GENERATED)
+    return sorted((p for p in LANG.glob("*.json") if p.name not in GENERATED), key=_by_path)
 
 
 def build_manifest() -> tuple[dict, list[str]]:
