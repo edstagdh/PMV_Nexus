@@ -774,13 +774,20 @@ scheduled backups: one that wouldn't fit fails at once and says why), and it sto
 unfinished file, if the disk fills up while it's being written. Pictures and videos are stored as they are (they're
 compressed already), so a backup with the videos is about as big as the videos.
 
+**Where it goes:** **Save to** shows the folder this backup goes to — the backups folder unless you **Choose a
+folder…** (e.g. a bigger or external drive; not inside the videos or thumbnails folders). The free space and the
+check are that folder's. The page remembers your choice; **Back to the backups folder** undoes it. Backups saved to
+other folders are listed too (with their folder), and can be downloaded, tested, restored and deleted like the
+others; they're skipped while their drive isn't there, and only the backups folder keeps just the newest
+`backup.keep`. Scheduled backups always go to the backups folder.
+
 **Split into parts:** **Split big backups into parts** (same panel) writes any backup bigger than the size you set
-as numbered parts — `name.zip.001`, `name.zip.002`, … — of at most that size: 3.9 GB (the buttons: one Telegram
-file) up to 115 GB (one 128 GB flash drive). It applies to scheduled backups too. The list shows such a backup once,
-with its number of parts; **Download** offers each part, and Test, Restore and Delete take all of them. Keep the parts
-together in one folder: 7-Zip opens the whole backup from the `.001` part, and Setup restores it when you choose the
-`.001` file. (Joining them gives the plain zip: `copy /b name.zip.0* name.zip` on Windows, `cat name.zip.0* > name.zip`
-elsewhere.) A flash drive formatted FAT32 can't hold files over 4 GB — use exFAT or NTFS for bigger parts.
+as numbered parts — `name.zip.001`, `name.zip.002`, … — of at most that size: 1.9 to 50 GB. It applies to scheduled
+backups too. The list shows such a backup once, with its number of parts; **Download** offers each part, and Test,
+Restore and Delete take all of them. Keep the parts together in one folder: 7-Zip opens the whole backup from the
+`.001` part, and Setup restores it when you choose the `.001` file. (Joining them gives the plain zip:
+`copy /b name.zip.0* name.zip` on Windows, `cat name.zip.0* > name.zip` elsewhere.) A drive formatted FAT32 can't
+hold files over 4 GB — use exFAT or NTFS for bigger parts.
 
 A weekly backup is a built-in System job on the Scheduler page; only the newest 10 backups are kept
 (`backup.keep` in `config.yaml`).

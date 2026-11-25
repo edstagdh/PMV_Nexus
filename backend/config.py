@@ -343,14 +343,14 @@ class BackupConfig(BaseModel):
     keep: int = Field(10, ge=1, le=500)
     include_cache: bool = False
     # (3.7.0) Split backups bigger than this into parts of at most this many GB (GiB):
-    # 0 = one file; else 3.9 (a Telegram file) .. 115 (fits a 128 GB flash drive).
+    # 0 = one file; else 1.9 .. 50 (backend/backup.py SPLIT_MIN_GB / SPLIT_MAX_GB).
     split_gb: float = 0
 
     @field_validator("split_gb")
     @classmethod
     def _split_range(cls, v: float) -> float:
-        if v and not 3.9 <= v <= 115:
-            raise ValueError("split_gb is 0 (no split) or 3.9 to 115")
+        if v and not 1.9 <= v <= 50:
+            raise ValueError("split_gb is 0 (no split) or 1.9 to 50")
         return round(float(v), 1)
 
     def split_bytes(self) -> Optional[int]:

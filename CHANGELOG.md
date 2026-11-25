@@ -31,10 +31,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   estimated size of the backup and the free space where backups go (updated every few seconds), and lists exactly
   what will go in before it starts. A backup that wouldn't fit isn't started (scheduled ones too), and one that runs
   out of space while being written stops and removes its unfinished file.
-- **Split backups:** a backup bigger than a size you choose (3.9 GB, one Telegram file, to 115 GB, one 128 GB flash
-  drive) is written as numbered parts — `name.zip.001`, `.002`, … — one normal zip cut into pieces, which 7-Zip
-  opens from the first part. The app lists, downloads (part by part), tests, restores and deletes the parts together;
-  Setup restores one when you pick its `.001` file. Scheduled backups use it too.
+- **Split backups:** a backup bigger than a size you choose (1.9 to 50 GB) is written as numbered parts —
+  `name.zip.001`, `.002`, … — one normal zip cut into pieces, which 7-Zip opens from the first part. The app lists,
+  downloads (part by part), tests, restores and deletes the parts together; Setup restores one when you pick its
+  `.001` file. Scheduled backups use it too.
+- **Choose where a backup goes:** a backup made on the Backups page can be saved to any folder (e.g. a bigger or
+  external drive) — the free space shown is that folder's. Folders used this way are remembered: their backups are
+  listed (with their folder), tested, restored and deleted like the others, and skipped while the drive isn't there.
+  Only the backups folder keeps just the newest ones.
 - **Uninstall asks what else to delete**, one tick each with its size and folder: the library database and settings,
   the thumbnails/previews/frames, the backups, and the videos (asked again). Only files the app made are deleted.
 

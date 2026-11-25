@@ -28,10 +28,11 @@ class BackupRequest(BaseModel):
     include_cache: bool = False
     include_secrets: bool = False
     confirm_videos: bool = False       # the videos only after the page asked a second time
+    dir: str | None = None             # (3.7.0) another folder for this backup; None: the backups folder
 
 
 class BackupSettings(BaseModel):
-    split_gb: float = 0  # (3.7.0) 0 = one file, else 3.9..115 (checked by BackupConfig)
+    split_gb: float = 0  # (3.7.0) 0 = one file, else 1.9..50 (checked by BackupConfig)
 
 
 class BackupPassword(BaseModel):
@@ -207,23 +208,32 @@ def list_backups(user: AuthContext = Depends(require_permission("settings.manage
         "dir": str(settings.backup_dir),
         "keep": settings.backup.keep,
         "split_gb": settings.backup.split_gb,
+        "locations": [str(d) for d in backup.backup_dirs(settings)],
         "pending_restore": backup.get_pending_restore(),
         "password_set": bool(backup.saved_password()),
     }
 
 
+def _destination(folder: str | None):
+    try:
+        return backup.check_destination(get_settings(), folder)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/api/backups/plan")
-async def backup_plan(include: str = "", user: AuthContext = Depends(require_permission("settings.manage"))):
+async def backup_plan(include: str = "", dir: str = "", user: AuthContext = Depends(require_permission("settings.manage"))):
     """What a backup would hold (3.7.0): every part with its files and size, the estimated
-    size and the free space where backups go. `include`: comma-separated backup.PARTS keys."""
+    size and the free space where it goes (`dir`, else the backups folder).
+    `include`: comma-separated backup.PARTS keys."""
     parts = [k for k in include.split(",") if k]
-    return await asyncio.to_thread(backup.plan_backup, get_settings(), parts)
+    return await asyncio.to_thread(backup.plan_backup, get_settings(), parts, None, _destination(dir))
 
 
 @router.get("/api/backups/space")
-def backup_space(user: AuthContext = Depends(require_permission("settings.manage"))):
-    """Free space where backups go, asked every few seconds while the page shows it (3.7.0)."""
-    return backup.free_space(get_settings())
+def backup_space(dir: str = "", user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Free space where a backup goes (`dir`, else the backups folder), asked every few seconds (3.7.0)."""
+    return backup.free_space(get_settings(), _destination(dir))
 
 
 @router.post("/api/backups")
@@ -232,12 +242,13 @@ async def create_backup(payload: BackupRequest, user: AuthContext = Depends(requ
     parts = backup.parts_from(payload.include, payload.include_cache, payload.include_secrets)
     if "videos" in parts and not payload.confirm_videos:
         raise HTTPException(status_code=400, detail=L("Including the videos has to be confirmed"))
-    plan = await asyncio.to_thread(backup.plan_backup, get_settings(), parts)
+    dest = _destination(payload.dir)
+    plan = await asyncio.to_thread(backup.plan_backup, get_settings(), parts, None, dest)
     problem = backup.space_problem(plan)
     if problem:
         raise HTTPException(status_code=507, detail=problem)
     try:
-        library_manager.start_backup(sorted(parts))
+        library_manager.start_backup(sorted(parts), dest=str(dest))
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"started": True, "plan": plan}
@@ -250,7 +261,7 @@ def save_backup_settings(payload: BackupSettings, user: AuthContext = Depends(re
     try:
         value = BackupConfig(split_gb=payload.split_gb).split_gb
     except ValueError:
-        raise HTTPException(status_code=400, detail=L("Parts can be 3.9 to 115 GB (or 0: one file)"))
+        raise HTTPException(status_code=400, detail=L("Parts can be 1.9 to 50 GB (or 0: one file)"))
     save_overrides(backup={"split_gb": value})
     return {"split_gb": value}
 

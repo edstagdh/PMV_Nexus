@@ -124,12 +124,18 @@ class Plan:
                     self.dirs["cache"].add(p.parent)
             self.dirs["cache"].add(self.cache_dir)
 
-        # backups: the app's backup files only
-        if self.backup_dir.is_dir():
-            for p in self.backup_dir.iterdir():
-                if p.is_file() and BACKUP_NAME.match(p.name):
-                    self.files["backups"].add(p)
-            self.dirs["backups"].add(self.backup_dir)
+        # backups: the app's backup files only -- in the backups folder and the other folders
+        # backups were saved to (3.7.0, data/backup_locations.json)
+        try:
+            others = [Path(x) for x in json.loads((ROOT / "data" / "backup_locations.json").read_text(encoding="utf-8"))]
+        except (OSError, ValueError, TypeError):
+            others = []
+        for folder in [self.backup_dir, *others]:
+            if folder.is_dir():
+                for p in folder.iterdir():
+                    if p.is_file() and BACKUP_NAME.match(p.name):
+                        self.files["backups"].add(p)
+                self.dirs["backups"].add(folder)
 
         # library: everything in the app's data folder that isn't one of the other kinds' folders,
         # the database (wherever it is), logs, sign-ins, config.yaml

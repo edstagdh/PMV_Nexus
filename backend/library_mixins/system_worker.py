@@ -100,7 +100,7 @@ class SystemWorkerMixin:
         return result
 
     async def run_backup(self, include_cache: bool | None = None, include_secrets: bool = False,
-                         trigger: str = "scheduled", include: list[str] | None = None) -> dict:
+                         trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None) -> dict:
         """A backup, then its restore test. `include` (3.7.0): backup.PARTS keys; without it
         the older switches (a scheduled backup: Server Settings' include_cache). Tasks shows
         each step (the files it's adding) and the whole job (by bytes, the test included)."""
@@ -130,12 +130,12 @@ class SystemWorkerMixin:
             state.update(stage=stage, done=done, total=total, step=steps, steps=steps, percent=overall())
 
         if "videos" in parts:
-            state["video_bytes"] = sum(p["bytes"] for p in (await asyncio.to_thread(backup.plan_backup, settings, parts))["parts"]
+            state["video_bytes"] = sum(p["bytes"] for p in (await asyncio.to_thread(backup.plan_backup, settings, parts, None, dest))["parts"]
                                        if p["key"] == "videos")
         async with activity.track("backup", L('Creating a backup'), progress=lambda: dict(state)) as act:
             summary = await asyncio.to_thread(
                 backup.create_backup, settings, include=sorted(parts), trigger=trigger,
-                progress=on_create, password=backup.saved_password(),
+                progress=on_create, password=backup.saved_password(), dest=dest,
             )
             act.summary = f"{summary['name']} ({summary['size_bytes'] / 1048576:.1f} MB)"
             logger.info("Backup created: {} ({} bytes)", summary["name"], summary["size_bytes"])
@@ -148,7 +148,7 @@ class SystemWorkerMixin:
             self._report_backup_test(summary["name"], test)
         return summary
 
-    def start_backup(self, include: list[str], trigger: str = "manual") -> None:
+    def start_backup(self, include: list[str], trigger: str = "manual", dest: str | None = None) -> None:
         """The Backups page's "Create backup now" (3.7.0): runs in the background (a backup of the
         whole library can take hours), followed on Tasks; its notification says how it went."""
         task = getattr(self, "_backup_task", None)
@@ -157,7 +157,7 @@ class SystemWorkerMixin:
 
         async def run():
             try:
-                await self.run_backup(include=include, trigger=trigger)
+                await self.run_backup(include=include, trigger=trigger, dest=dest)
             except Exception as exc:  # noqa: BLE001 -- the activity's notification reports it
                 logger.warning("Backup failed: {}", exc)
 

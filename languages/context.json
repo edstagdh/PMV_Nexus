@@ -50,9 +50,6 @@
  "0–51. Lower = better and bigger. The video was already compressed, so keep it low (18–22) to lose nothing more you can see; default 20.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "128 GB flash drive (115 GB)": [
-  "ui/src/views/admin/BackupsView.vue"
- ],
  "13 — fastest": [
   "ui/src/lib/reencodeOptions.js"
  ],
@@ -101,7 +98,7 @@
  "A backup always holds the library database and your settings (config.yaml and the changes made in the app). For regular backups, add a “Backup database + settings” job on the {link1} page.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "A backup bigger than this is written as numbered parts (name.zip.001, .002, …) of at most this size: 3.9 to 115 GB. 7-Zip opens them from the .001 part; this app restores them together. Scheduled backups too.": [
+ "A backup bigger than this is written as numbered parts (name.zip.001, .002, …) of at most this size: 1.9 to 50 GB. 7-Zip opens them from the .001 part; this app restores them together. Scheduled backups too.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "A backup is already being made -- see Tasks": [
@@ -682,6 +679,9 @@
  "Back to Google Lens + Yandex": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Back to the backups folder": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Back to the library": [
   "ui/src/App.vue",
   "ui/src/views/NotFoundView.vue"
@@ -731,6 +731,9 @@
  ],
  "Backups": [
   "ui/src/lib/portalTabs.js",
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Backups saved to another folder are listed and can be tested and restored like the others; only the backups folder keeps just the newest ones.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Badge colour, and the placeholder picture without a photo": [
@@ -1029,6 +1032,15 @@
  ],
  "Choose a folder": [
   "ui/src/components/admin/FolderPicker.vue"
+ ],
+ "Choose a folder outside the videos and thumbnails folders": [
+  "backend/backup.py"
+ ],
+ "Choose a folder…": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Choose a full folder path for the backup": [
+  "backend/backup.py"
  ],
  "Choose a password different from your current one.": [
   "backend/routers/me.py"
@@ -2826,6 +2838,9 @@
  "In your playlists": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
  ],
+ "in {folder}": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "in {time}": [
   "ui/src/components/JobList.vue"
  ],
@@ -3979,7 +3994,7 @@
  "Not enough free space to convert its audio ({mb} free, {needed} needed)": [
   "backend/library_mixins/audio_fix.py"
  ],
- "not enough: it needs about {needed}": [
+ "not enough: it needs about {needed}. Choose a folder on a bigger drive, or leave something out.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Not Found": [
@@ -4413,7 +4428,7 @@
  "Part {n} ({size})": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "Parts can be 3.9 to 115 GB (or 0: one file)": [
+ "Parts can be 1.9 to 50 GB (or 0: one file)": [
   "backend/routers/system.py",
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -5495,6 +5510,9 @@
  "Save password": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Save to": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Save today's totals and disk space now (also done daily by the Scheduler)": [
   "ui/src/views/admin/StatsView.vue"
  ],
@@ -6327,9 +6345,6 @@
  ],
  "Technical Details": [
   "ui/src/views/VideoView.vue"
- ],
- "Telegram (3.9 GB)": [
-  "ui/src/views/admin/BackupsView.vue"
  ],
  "Terms of use": [
   "ui/src/views/HelpView.vue"
@@ -7539,6 +7554,9 @@
  ],
  "Where the videos are saved.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Where this backup goes": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "Which profile is it?": [
   "ui/src/views/PerformerView.vue"

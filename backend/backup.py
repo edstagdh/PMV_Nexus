@@ -34,6 +34,11 @@ Split backups (3.7.0): with backup.split_gb set (3.9-115 GB), a backup bigger th
 written as numbered parts -- name.zip.001, name.zip.002, ... (backend/split_file.py): one
 normal zip cut into pieces, which 7-Zip opens from the .001 part. The app lists, tests,
 restores and deletes the parts together under the backup's name (name.zip).
+
+Where (3.7.0): a backup made on the Backups page can go to another folder than the backups
+folder (e.g. a bigger or external drive). Such folders are remembered (data/backup_locations.json)
+and their backups listed, tested, restored and deleted like the others; only the backups
+folder's own are pruned to backup.keep. A folder that isn't there (a drive unplugged) is skipped.
 """
 from __future__ import annotations
 from .i18n import L
@@ -98,7 +103,56 @@ def set_password(password: Optional[str]) -> None:
     secrets_store.write({"backup_password": password})
 
 
-SPLIT_MIN_GB, SPLIT_MAX_GB = 3.9, 115.0  # Telegram's largest file .. a 128 GB flash drive
+SPLIT_MIN_GB, SPLIT_MAX_GB = 1.9, 50.0
+LOCATIONS_FILE = ROOT_DIR / "data" / "backup_locations.json"
+
+
+def _known_locations() -> list[str]:
+    try:
+        data = json.loads(LOCATIONS_FILE.read_text(encoding="utf-8"))
+        return [str(x) for x in data if isinstance(x, str)]
+    except (OSError, ValueError):
+        return []
+
+
+def remember_location(settings, folder: Path) -> None:
+    folder = Path(folder).resolve()
+    if folder == settings.backup_dir.resolve():
+        return
+    known = _known_locations()
+    if str(folder) not in known:
+        LOCATIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        LOCATIONS_FILE.write_text(json.dumps(known + [str(folder)], indent=2), encoding="utf-8")
+
+
+def backup_dirs(settings) -> list[Path]:
+    """The backups folder first, then the other folders backups were saved to that are there now."""
+    out = [settings.backup_dir]
+    for raw in _known_locations():
+        p = Path(raw)
+        try:
+            if p.is_dir() and p.resolve() not in {d.resolve() for d in out}:
+                out.append(p)
+        except OSError:  # e.g. a network drive that doesn't answer
+            continue
+    return out
+
+
+def check_destination(settings, folder: str | Path | None) -> Path:
+    """Where a new backup goes: the backups folder, or another folder chosen on the page.
+    ValueError for a place a backup mustn't go (relative, or inside the videos / cache folders,
+    whose files a later backup would then pick up again)."""
+    if not folder:
+        return settings.backup_dir
+    path = Path(str(folder))
+    if not path.is_absolute():
+        raise ValueError(L("Choose a full folder path for the backup"))
+    path = path.resolve()
+    for other in (settings.cache_dir, settings.output_dir):
+        other = Path(other).resolve()
+        if path == other or other in path.parents:
+            raise ValueError(L("Choose a folder outside the videos and thumbnails folders"))
+    return path
 
 
 def files_of(path: Path) -> list[Path]:
@@ -274,9 +328,9 @@ def _bytes(files) -> int:
     return total
 
 
-def free_space(settings) -> dict:
+def free_space(settings, folder: Optional[Path] = None) -> dict:
     """Free space where backups are written (live: the Backups page asks every few seconds)."""
-    folder = settings.backup_dir
+    folder = Path(folder) if folder else settings.backup_dir
     probe = folder
     while not probe.exists() and probe.parent != probe:
         probe = probe.parent
@@ -287,7 +341,7 @@ def free_space(settings) -> dict:
         return {"dir": str(folder), "free_bytes": None, "total_bytes": None}
 
 
-def plan_backup(settings, include=(), collected: Optional[dict] = None) -> dict:
+def plan_backup(settings, include=(), collected: Optional[dict] = None, dest: Optional[Path] = None) -> dict:
     """What a backup with `include` would hold: every part with its files and size (the ones
     not asked for too, so the page can offer them), the estimated zip size, and whether it fits.
     BLOCKING (walks the cache folder) -- run in a worker thread."""
@@ -302,7 +356,7 @@ def plan_backup(settings, include=(), collected: Optional[dict] = None) -> dict:
     chosen = sum(p["bytes"] for p in parts if p["included"])
     # the database shrinks to about a third in a zip; pictures and videos stay their size
     estimate = db_size // 3 + always + chosen
-    space = free_space(settings)
+    space = free_space(settings, dest)
     needed = estimate + SPACE_MARGIN
     return {
         "always": {"database_bytes": db_size, "files": len(collected["always"]) + 1, "bytes": always + db_size,
@@ -328,7 +382,8 @@ def space_problem(plan: dict) -> Optional[str]:
 
 
 def create_backup(settings, *, include=None, include_cache: bool = False, include_secrets: bool = False,
-                  trigger: str, progress: Optional[Callable[..., None]] = None, password: Optional[str] = None) -> dict:
+                  trigger: str, progress: Optional[Callable[..., None]] = None, password: Optional[str] = None,
+                  dest: Optional[Path] = None) -> dict:
     """BLOCKING -- run in a worker thread. Returns the new backup's summary.
     `include`: PARTS keys (3.7.0); without it the older include_cache / include_secrets.
     progress(stage, done, total, step=, steps=, bytes_done=, bytes_total=) reports what it's
@@ -343,12 +398,12 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
     parts = parts_from(include, include_cache, include_secrets)
     progress(L("Checking what goes in and the free space"))
     collected = _collect(settings)
-    plan = plan_backup(settings, parts, collected)
+    dest_dir = check_destination(settings, dest)
+    plan = plan_backup(settings, parts, collected, dest_dir)
     problem = space_problem(plan)
     if problem:
         raise NotEnoughSpace(problem)
 
-    dest_dir = settings.backup_dir
     dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"pmvnexus_backup_{stamp}.zip"
@@ -449,7 +504,10 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
         for part in parts_of(partial):
             part.unlink(missing_ok=True)
         raise
-    prune_backups(settings)
+    if dest_dir.resolve() == settings.backup_dir.resolve():
+        prune_backups(settings)  # only the backups folder's own are pruned
+    else:
+        remember_location(settings, dest_dir)
     return _summary(target, manifest)
 
 
@@ -476,23 +534,34 @@ def _summary(path: Path, manifest: Optional[dict] = None) -> dict:
     return info
 
 
-def list_backups(settings) -> list[dict]:
+def _backups_in(folder: Path) -> set[Path]:
     names = set()
-    for p in settings.backup_dir.iterdir():
-        if p.is_file():
-            base = base_of(p)  # the parts of a split backup count once, by name.zip
-            if BACKUP_NAME_RE.match(base.name) and (base == p or p.name.endswith(".001")):
-                names.add(base)
-    return sorted((_summary(p) for p in names), key=lambda b: b["created_at"], reverse=True)
+    try:
+        for p in folder.iterdir():
+            if p.is_file():
+                base = base_of(p)  # the parts of a split backup count once, by name.zip
+                if BACKUP_NAME_RE.match(base.name) and (base == p or p.name.endswith(".001")):
+                    names.add(base)
+    except OSError:
+        pass
+    return names
+
+
+def list_backups(settings, only_default: bool = False) -> list[dict]:
+    out = []
+    for i, folder in enumerate(backup_dirs(settings)[:1] if only_default else backup_dirs(settings)):
+        for p in _backups_in(folder):
+            out.append({**_summary(p), "dir": str(folder), "default": i == 0})
+    return sorted(out, key=lambda b: b["created_at"], reverse=True)
 
 
 def resolve_backup(settings, name: str) -> Path:
     if not BACKUP_NAME_RE.match(name or ""):
         raise ValueError(L('Invalid backup name'))
-    path = settings.backup_dir / name
-    if not exists(path):
-        raise FileNotFoundError(name)
-    return path
+    for folder in backup_dirs(settings):
+        if exists(folder / name):
+            return folder / name
+    raise FileNotFoundError(name)
 
 
 def delete_backup(settings, name: str) -> None:
@@ -501,7 +570,7 @@ def delete_backup(settings, name: str) -> None:
 
 
 def prune_backups(settings) -> int:
-    backups = list_backups(settings)
+    backups = list_backups(settings, only_default=True)
     removed = 0
     for b in backups[settings.backup.keep:]:
         try:

@@ -8,6 +8,7 @@ import { t, N_, formatNumber } from "../../lib/i18n.js";
 import { askConfirm, askPassword } from "../../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../../components/Icon.vue";
+import FolderPicker from "../../components/admin/FolderPicker.vue";
 import { api } from "../../lib/api.js";
 import { formatBytes, formatDateTime } from "../../lib/format.js";
 import { toast } from "../../stores/toast.js";
@@ -28,14 +29,13 @@ async function load() {
   } catch (err) { error.value = err.message || t("Could not load the backups"); }
 }
 // (3.7.0) A backup bigger than this is written as parts (name.zip.001, .002, ...): 0 = one file.
-const SPLIT_MIN = 3.9, SPLIT_MAX = 115;
-const SPLIT_PRESETS = [{ gb: 3.9, label: N_("Telegram (3.9 GB)") }, { gb: 115, label: N_("128 GB flash drive (115 GB)") }];
+const SPLIT_MIN = 1.9, SPLIT_MAX = 50;
 const splitGb = ref(null);
 const splitText = ref("");
 const splitError = ref("");
 async function saveSplit(gb) {
   splitError.value = "";
-  if (gb && !(gb >= SPLIT_MIN && gb <= SPLIT_MAX)) { splitError.value = t("Parts can be 3.9 to 115 GB (or 0: one file)"); return; }
+  if (gb && !(gb >= SPLIT_MIN && gb <= SPLIT_MAX)) { splitError.value = t("Parts can be 1.9 to 50 GB (or 0: one file)"); return; }
   try {
     const r = await api("/api/backups/settings", { method: "POST", body: { split_gb: gb } });
     splitGb.value = r.split_gb; splitText.value = r.split_gb ? String(r.split_gb) : "";
@@ -43,13 +43,31 @@ async function saveSplit(gb) {
 }
 function setSplitOn(on) { if (on) saveSplit(Number(splitText.value) || SPLIT_MIN); else saveSplit(0); }
 const partsCount = computed(() => (splitGb.value ? Math.max(1, Math.ceil(estimate.value / (splitGb.value * 1024 ** 3))) : 1));
+// (3.7.0) Where this backup goes: the backups folder, or another one (a bigger or external
+// drive). The server remembers folders backups were saved to and lists their backups too.
+const DEST_KEY = "pmv-backup-dest";
+const dest = ref((() => { try { return localStorage.getItem(DEST_KEY) || ""; } catch { return ""; } })());
+const picking = ref(false);
+const destError = ref("");
+function setDest(folder) {
+  dest.value = folder || "";
+  try { if (dest.value) localStorage.setItem(DEST_KEY, dest.value); else localStorage.removeItem(DEST_KEY); } catch { /* ignore */ }
+  picking.value = false;
+  loadPlan();
+}
 async function loadPlan() {
-  try { plan.value = await api("/api/backups/plan"); space.value = { free_bytes: plan.value.free_bytes, dir: plan.value.dir }; }
-  catch { plan.value = null; }
+  destError.value = "";
+  try {
+    plan.value = await api(`/api/backups/plan?${new URLSearchParams({ dir: dest.value })}`);
+    space.value = { free_bytes: plan.value.free_bytes, dir: plan.value.dir };
+  } catch (err) {
+    if (dest.value && err.status === 400) { destError.value = err.message; setDest(""); return; }
+    plan.value = null;
+  }
 }
 async function loadSpace() {
   if (document.hidden) return;
-  try { space.value = await api("/api/backups/space"); } catch { /* keep the last */ }
+  try { space.value = await api(`/api/backups/space?${new URLSearchParams({ dir: dest.value })}`); } catch { /* keep the last */ }
 }
 let timer = null, stop = null;
 onMounted(() => {
@@ -95,7 +113,7 @@ async function create() {
     { n: formatNumber(videos.files), size: formatBytes(videos.bytes) }), { title: t("Back up the videos too?"), ok: t("Include the videos"), danger: true }))) return;
   creating.value = true;
   try {
-    await api("/api/backups", { method: "POST", body: { include: [...chosen.value], confirm_videos: !!videos } });
+    await api("/api/backups", { method: "POST", body: { include: [...chosen.value], confirm_videos: !!videos, dir: dest.value || null } });
     toast(t("Backup started — follow it on Tasks; a notification says how it went"), { type: "success", timeout: 7000, link: "/tasks" });
   } catch (err) { toast(err.message || t("The backup failed"), { type: "error", timeout: 9000 }); }
   finally { creating.value = false; loadPlan(); }
@@ -192,18 +210,24 @@ const pendingName = (p) => p.name || fileName(p.zip);
         </label>
       </div>
       <div v-else class="skeleton" style="height: 6rem" />
+      <div class="dest">
+        <span class="muted">{{ $t("Save to") }}</span>
+        <code class="mono">{{ space?.dir || plan?.dir || data?.dir }}</code>
+        <button class="btn btn-sm" @click="picking = true"><Icon name="disk" />{{ $t("Choose a folder…") }}</button>
+        <button v-if="dest" class="btn btn-ghost btn-sm" @click="setDest('')">{{ $t("Back to the backups folder") }}</button>
+      </div>
+      <p v-if="destError" class="error-text small">{{ destError }}</p>
       <p v-if="plan && space" class="space" :class="enough ? 'muted' : 'error-text'">
         {{ $t("About {size} · {free} free in {folder}", { size: formatBytes(estimate), free: space.free_bytes == null ? "?" : formatBytes(space.free_bytes), folder: space.dir }) }}
-        <template v-if="!enough"> — {{ $t("not enough: it needs about {needed}", { needed: formatBytes(needed) }) }}</template>
+        <template v-if="!enough"> — {{ $t("not enough: it needs about {needed}. Choose a folder on a bigger drive, or leave something out.", { needed: formatBytes(needed) }) }}</template>
       </p>
+      <p v-if="dest" class="help-text">{{ $t("Backups saved to another folder are listed and can be tested and restored like the others; only the backups folder keeps just the newest ones.") }}</p>
+      <FolderPicker v-if="picking" :start="dest || data?.dir" :title="$t('Where this backup goes')" @close="picking = false" @pick="setDest" />
       <div v-if="splitGb !== null" class="split">
         <label class="switch"><input type="checkbox" :checked="!!splitGb" @change="setSplitOn($event.target.checked)">{{ $t("Split big backups into parts") }}</label>
-        <template v-if="splitGb">
-          <span class="inline-input"><input v-model="splitText" class="input input-num" type="number" :min="SPLIT_MIN" :max="SPLIT_MAX" step="0.1"
-            :aria-label="$t('Largest part, in GB')" @change="saveSplit(Number(splitText))"> GB</span>
-          <button v-for="p in SPLIT_PRESETS" :key="p.gb" class="btn btn-ghost btn-sm" :class="{ on: splitGb === p.gb }" @click="saveSplit(p.gb)">{{ $t(p.label) }}</button>
-        </template>
-        <p class="help-text">{{ $t("A backup bigger than this is written as numbered parts (name.zip.001, .002, …) of at most this size: 3.9 to 115 GB. 7-Zip opens them from the .001 part; this app restores them together. Scheduled backups too.") }}
+        <span v-if="splitGb" class="inline-input"><input v-model="splitText" class="input input-num" type="number" :min="SPLIT_MIN" :max="SPLIT_MAX" step="0.1"
+          :aria-label="$t('Largest part, in GB')" @change="saveSplit(Number(splitText))"> GB</span>
+        <p class="help-text">{{ $t("A backup bigger than this is written as numbered parts (name.zip.001, .002, …) of at most this size: 1.9 to 50 GB. 7-Zip opens them from the .001 part; this app restores them together. Scheduled backups too.") }}
           <template v-if="splitGb && partsCount > 1"> {{ $t("This one: about {n} parts.", { n: formatNumber(partsCount) }) }}</template></p>
         <p v-if="splitError" class="error-text small">{{ splitError }}</p>
       </div>
@@ -258,6 +282,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
               <td>
                 <div>{{ contents(b) }}<span v-if="b.encrypted" class="lock" :title="$t('Protected with a password (AES-256)')"> 🔒</span></div>
                 <div class="muted small mono">{{ b.name }}</div>
+                <div v-if="!b.default" class="muted small">{{ $t("in {folder}", { folder: b.dir }) }}</div>
                 <span v-if="!b.valid" class="pill pill-bad">{{ $t("Unreadable") }}</span>
                 <div v-if="b.test" class="small" :class="b.test.ok ? 'ok-text' : 'error-text'">
                   {{ b.test.ok ? $t("✓ Restore test passed") : $t("✗ Restore test failed: {checks}", { checks: b.test.failed.join(", ") }) }}
@@ -296,7 +321,8 @@ const pendingName = (p) => p.name || fileName(p.zip);
 .space { margin: 0.75rem 0 0; font-size: 0.85rem; }
 .split { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-top: 1rem; }
 .split .help-text { flex-basis: 100%; margin: 0; }
-.split .btn.on { border-color: var(--accent); color: var(--accent); }
+.dest { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 1rem; }
+.dest code { overflow-wrap: anywhere; }
 .parts { display: inline-block; position: relative; }
 .parts summary { list-style: none; }
 .parts summary::-webkit-details-marker { display: none; }
