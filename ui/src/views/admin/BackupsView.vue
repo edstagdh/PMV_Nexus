@@ -74,7 +74,10 @@ async function loadOffsite(live = false) {
   try {
     offsite.value = await api(`/api/backups/offsite?${new URLSearchParams({ live: live ? "1" : "0" })}`);
     offsiteError.value = offsite.value.filester?.error || "";
-    if (live && !offsiteError.value) toast(t("Filester answered: the key works"), { type: "success" });
+    if (live && !offsiteError.value) {
+      const who = offsite.value.filester.account?.username;
+      toast(who ? t("Connected to Filester as {name}", { name: who }) : t("Connected to Filester"), { type: "success" });
+    }
   } catch (err) { offsiteError.value = err.message || t("That didn't work"); }
   finally { checking.value = false; }
 }
@@ -92,6 +95,14 @@ onMounted(() => {
 });
 onBeforeUnmount(() => { clearInterval(timer); stop?.(); });
 
+// 3.8.0: "Also upload to Filester" -- never with the credentials or the videos (as a job's upload)
+const uploadToo = ref(false);
+const NOT_UPLOADED = ["secrets", "videos"];
+const canUpload = computed(() => !!offsite.value?.filester?.configured && !!data.value?.password_set);
+function setUpload(on) {
+  uploadToo.value = on;
+  if (on) chosen.value = new Set([...chosen.value].filter((k) => !NOT_UPLOADED.includes(k)));
+}
 function toggle(key, on) {
   const next = new Set(chosen.value);
   if (on) next.add(key); else next.delete(key);
@@ -121,6 +132,8 @@ async function create() {
       { size: formatBytes(a.database_bytes), n: formatNumber(a.files - 1) }),
     ...partsChosen.value.map((p) => "• " + t("{part}: {n} files, {size}", { part: p.label, n: formatNumber(p.files), size: formatBytes(p.bytes) })),
     "", t("About {size} in all; {free} free in {folder}.", { size: formatBytes(estimate.value), free: formatBytes(space.value?.free_bytes ?? 0), folder: space.value?.dir || plan.value.dir })];
+  if (uploadToo.value) lines.push(t("Then also uploaded to your private Filester folder (encrypted, in parts of up to {gb} GB).",
+    { gb: offsite.value.filester.max_part_gb }));
   if (partsCount.value > 1) lines.push(t("Written as about {n} parts of at most {gb} GB each.", { n: formatNumber(partsCount.value), gb: splitGb.value }));
   if (!(await askConfirm(lines.join("\n"), { title: t("Create the backup?"), ok: t("Create backup") }))) return;
   const videos = partsChosen.value.find((p) => p.key === "videos");
@@ -128,7 +141,7 @@ async function create() {
     { n: formatNumber(videos.files), size: formatBytes(videos.bytes) }), { title: t("Back up the videos too?"), ok: t("Include the videos"), danger: true }))) return;
   creating.value = true;
   try {
-    await api("/api/backups", { method: "POST", body: { include: [...chosen.value], confirm_videos: !!videos, dir: dest.value || null } });
+    await api("/api/backups", { method: "POST", body: { include: [...chosen.value], confirm_videos: !!videos, dir: dest.value || null, upload: uploadToo.value } });
     toast(t("Backup started — follow it on Tasks; a notification says how it went"), { type: "success", timeout: 7000, link: "/tasks" });
   } catch (err) { toast(err.message || t("The backup failed"), { type: "error", timeout: 9000 }); }
   finally { creating.value = false; loadPlan(); }
@@ -209,7 +222,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
     <header class="page-head">
       <div>
         <h1>{{ $t("Backups") }}</h1>
-        <p><Tx msg="A backup always holds the library database and your settings (config.yaml and the changes made in the app). For regular backups, add a “Backup database + settings” job on the {link1} page."><template #link1><RouterLink to="/admin/scheduler">{{ $t("Scheduler") }}</RouterLink></template></Tx></p>
+        <p><Tx msg="A backup always holds the library database and your settings (config.yaml and the changes made in the app). Regular backups are Backup jobs on the {link1} page (a daily and a weekly one are built in)."><template #link1><RouterLink to="/admin/scheduler">{{ $t("Scheduler") }}</RouterLink></template></Tx></p>
       </div>
     </header>
 
@@ -219,7 +232,8 @@ const pendingName = (p) => p.name || fileName(p.zip);
         { size: formatBytes(plan.always.database_bytes), n: formatNumber(plan.always.files - 1) }) }}</p>
       <div v-if="plan" class="toggles">
         <label v-for="p in plan.parts" :key="p.key" class="switch part" :class="{ big: p.key === 'videos' }">
-          <input type="checkbox" :checked="chosen.has(p.key)" :disabled="!p.files" @change="toggle(p.key, $event.target.checked)">
+          <input type="checkbox" :checked="chosen.has(p.key)" :disabled="!p.files || (uploadToo && NOT_UPLOADED.includes(p.key))"
+            :title="uploadToo && NOT_UPLOADED.includes(p.key) ? $t('Never uploaded to Filester') : ''" @change="toggle(p.key, $event.target.checked)">
           <span><strong>{{ p.label }}</strong>
             <span class="muted"> · {{ p.files ? $tn("{n} file", "{n} files", p.files) + " · " + formatBytes(p.bytes) : $t("nothing yet") }} · {{ $t(PART_HELP[p.key]) }}</span></span>
         </label>
@@ -247,6 +261,12 @@ const pendingName = (p) => p.name || fileName(p.zip);
         <p v-if="splitError" class="error-text small">{{ splitError }}</p>
       </div>
       <p v-if="data" class="help-text">{{ data.password_set ? $t("🔒 Protected with the backup password (below).") : $t("Not password-protected — set a backup password below.") }}</p>
+      <div v-if="offsite" class="upload-too">
+        <label class="switch"><input type="checkbox" :checked="uploadToo" :disabled="!canUpload" @change="setUpload($event.target.checked)">{{ $t("Also upload to Filester (a private folder)") }}</label>
+        <p class="help-text">{{ !offsite.filester.configured ? $t("Needs the Filester API key: Admin → Credentials → Filester.")
+          : !data?.password_set ? $t("Needs a backup password (below): only encrypted backups are uploaded.")
+          : $t("Encrypted, never with the credentials or the videos, in parts of up to {gb} GB.", { gb: offsite.filester.max_part_gb }) }}</p>
+      </div>
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="creating || !plan || !enough" @click="create"><Icon name="download" />{{ creating ? $t("Starting…") : $t("Create backup now") }}</button></div>
     </section>
 
@@ -287,8 +307,8 @@ const pendingName = (p) => p.name || fileName(p.zip);
         <h3>{{ $t("Filester") }}</h3>
         <p v-if="!offsite.filester.configured" class="error-text small">{{ $t("No API key: add it under Admin → Credentials → Filester.") }}</p>
         <p v-if="uploadJobs.length && !data?.password_set" class="error-text small">{{ $t("Set a backup password above: without it nothing is uploaded.") }}</p>
-        <p v-if="offsite.filester.account" class="small">
-          {{ $t("{used} of {limit} used on Filester", { used: formatBytes(Number(offsite.filester.account.storage_used) || 0), limit: formatBytes(Number(offsite.filester.account.storage_limit) || 0) }) }}</p>
+        <p v-if="offsite.filester.account" class="ok-text small">
+          {{ offsite.filester.account.username ? $t("Connected as {name}.", { name: offsite.filester.account.username }) : $t("Connected.") }}</p>
         <p v-if="offsiteError" class="error-text small">{{ offsiteError }}</p>
         <div class="form-actions">
           <button class="btn btn-sm" :disabled="!offsite.filester.configured || checking" @click="loadOffsite(true)">{{ checking ? $t("Checking…") : $t("Check Filester") }}</button>
@@ -367,6 +387,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
 </template>
 
 <style scoped>
+.upload-too { margin-top: 0.5rem; }
 .offsite-jobs { margin: 0; padding-inline-start: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.86rem; }
 .offsite-jobs .pill { margin-inline-start: 0.4rem; }
 .table-scroll { overflow-x: auto; }

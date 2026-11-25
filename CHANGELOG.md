@@ -16,14 +16,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   - **Filester** (API key under **Admin → Credentials → Filester**): a private folder “PMV Nexus backups” is made
     and used. What may leave the computer is enforced on saving the job and again before every upload: only
     encrypted backups (a backup password must be set), never the credentials (**Secrets**) or the videos, and in
-    parts of at most 9 GB (Filester takes files up to 10 GB). Before uploading, the free space on the account is
-    checked; the job's own oldest upload that would be removed anyway goes first if that makes room, otherwise
-    nothing is uploaded and nothing deleted. Every upload's size is checked; a failed one leaves no parts behind.
-    Only uploads this app made (recorded in `data/cloud_backups.json`) are ever deleted there.
+    parts of at most 9 GB (Filester takes files up to 10 GB). Every upload's size is checked; a failed one
+    leaves no parts behind. Only uploads this app made (recorded in `data/cloud_backups.json`) are ever deleted
+    there, beyond the job's **Keep**.
+  - **Create backup now** can upload too (**Also upload to Filester**, same rules).
   - Copies and the upload happen only after the backup passed its restore test. If one fails, the job's run is
     *failed* with the reason, and a notification says so; the backup and the other copies stay.
   - **Backups → Copies elsewhere** lists each job's copy folders and upload, the backups on Filester, and
-    **Check Filester** (the key, the space used there).
+    **Check Filester** (says whether it connected, and as whom).
 - **Daily backup**, a new built-in Scheduler job: the database and settings every day at 02:30, keeping 7.
   **Weekly backup** on a new install also takes the thumbnails, previews and details files, video frames and seekbar
   previews, keeping 4.

@@ -124,7 +124,7 @@ class SystemWorkerMixin:
 
     async def run_backup(self, include_cache: bool | None = None, include_secrets: bool = False,
                          trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None,
-                         job_id: str | None = None, job_config: dict | None = None) -> dict:
+                         job_id: str | None = None, job_config: dict | None = None, upload: bool = False) -> dict:
         """A backup, then its restore test. `include` (3.7.0): backup.PARTS keys; without it
         the older switches (a scheduled backup: Server Settings' include_cache). Tasks shows
         each step (the files it's adding) and the whole job (by bytes, the test included).
@@ -137,6 +137,8 @@ class SystemWorkerMixin:
             include = cfg["include"]
         cache = settings.backup.include_cache if include_cache is None else include_cache
         parts = backup.parts_from(include, cache, include_secrets)
+        if upload and not cfg:   # the Backups page's "Also upload to Filester" (job_id None: manual)
+            cfg = backup_jobs.manual_upload(settings, parts)
         if cfg and cfg["upload"] and not backup.saved_password():
             raise RuntimeError(L("Set a backup password on the Backups page first: a backup is only uploaded encrypted."))
         copies = len(cfg["copy_to"]) + (1 if cfg["upload"] else 0) if cfg else 0
@@ -231,7 +233,8 @@ class SystemWorkerMixin:
             phase["copy"][0] = base
         return problems
 
-    def start_backup(self, include: list[str], trigger: str = "manual", dest: str | None = None) -> None:
+    def start_backup(self, include: list[str], trigger: str = "manual", dest: str | None = None,
+                     upload: bool = False) -> None:
         """The Backups page's "Create backup now" (3.7.0): runs in the background (a backup of the
         whole library can take hours), followed on Tasks; its notification says how it went."""
         task = getattr(self, "_backup_task", None)
@@ -240,7 +243,7 @@ class SystemWorkerMixin:
 
         async def run():
             try:
-                await self.run_backup(include=include, trigger=trigger, dest=dest)
+                await self.run_backup(include=include, trigger=trigger, dest=dest, upload=upload)
             except Exception as exc:  # noqa: BLE001 -- the activity's notification reports it
                 logger.warning("Backup failed: {}", exc)
 

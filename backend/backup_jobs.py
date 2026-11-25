@@ -98,3 +98,15 @@ def normalize(job_config: dict, settings=None, check_ready: bool = True) -> dict
 def part_bytes(cfg: dict) -> Optional[int]:
     """The job's part size in bytes, or None for Server Settings' size."""
     return int(cfg["split_gb"] * 1024 ** 3) if cfg.get("split_gb") else None
+
+
+def manual_upload(settings, parts) -> dict:
+    """A backup made on the Backups page that's also uploaded to Filester (3.8.0): checked like a
+    job's upload (no credentials or videos, a password, the key), in parts of at most 9 GB
+    (the Backups page's split size when smaller). Its uploads keep backup.keep. ValueError."""
+    from .cloud_filester import MAX_PART_GB
+    configured = settings.backup.split_gb or MAX_PART_GB
+    cfg = normalize({"include": sorted(parts), "keep": settings.backup.keep, "upload": "filester",
+                     "split_gb": min(configured, MAX_PART_GB) if configured >= backup.SPLIT_MIN_GB else MAX_PART_GB},
+                    settings)
+    return cfg

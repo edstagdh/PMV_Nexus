@@ -812,12 +812,15 @@ you change it). Add more with **Add job → Backup**. Each backup job has its ow
   the API key from **Admin → Credentials → Filester**. Only what may leave the computer goes: the backup must be
   encrypted (a **Backup password** must be set), the credentials (**Secrets**) and the videos can't be ticked, and
   the backup is made in parts of at most 9 GB (Filester takes files up to 10 GB; set **Part size** 1.9–9).
-  Filester's free account holds 10 GB and deletes files nobody downloads for 45 days: before uploading, the job
-  checks the free space there and, if needed, first removes its own oldest upload that would go anyway; if it
-  still doesn't fit, nothing is uploaded and you're told. Only uploads this app made (recorded in
+  Filester's storage per account isn't limited; its API docs say files nobody downloads for 45 days are deleted.
+  The job removes its own uploads beyond its **Keep** after a new one is up. Only uploads this app made (recorded in
   `data/cloud_backups.json`) are ever deleted there. To restore one, download its file(s) from Filester and choose
   the `.zip` (or `.zip.001`) in Setup, or put them in the backups folder.
 - **Part size** — 0 uses **Split big backups into parts** below; or 1.9–50 GB (1.9–9 with the upload).
+
+**Create backup now** can upload too: tick **Also upload to Filester** (it needs the key and a backup password; the
+credentials and the videos can't be ticked then). The backup is written in parts of at most 9 GB (the split size
+above when that's smaller), and the Filester copies of hand-made backups keep `backup.keep` (10).
 
 A copy or upload is only made after the backup passed its restore test. When one fails, the job's run shows
 *failed* with what went wrong, and a notification says so — the backup itself and the other copies are kept.

@@ -98,7 +98,7 @@
  "90 days": [
   "ui/src/views/admin/StatsView.vue"
  ],
- "A backup always holds the library database and your settings (config.yaml and the changes made in the app). For regular backups, add a “Backup database + settings” job on the {link1} page.": [
+ "A backup always holds the library database and your settings (config.yaml and the changes made in the app). Regular backups are Backup jobs on the {link1} page (a daily and a weekly one are built in).": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "A backup bigger than this is written as numbered parts (name.zip.001, .002, …) of at most this size: 1.9 to 50 GB. 7-Zip opens them from the .001 part; this app restores them together. Scheduled backups too.": [
@@ -510,6 +510,9 @@
  ],
  "Also the player's shortcut:": [
   "ui/src/components/PanicKeysSetting.vue"
+ ],
+ "Also upload to Filester (a private folder)": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "Also: {names}": [
   "ui/src/components/PerformerPicker.vue"
@@ -1205,6 +1208,18 @@
  ],
  "Confirm password": [
   "ui/src/views/AuthView.vue"
+ ],
+ "Connected as {name}.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Connected to Filester": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Connected to Filester as {name}": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Connected.": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "Console (the server window)": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -2222,6 +2237,9 @@
   "ui/src/components/upload/ConvertStep.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Encrypted, never with the credentials or the videos, in parts of up to {gb} GB.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Ended ({reason})": [
   "backend/transcode.py"
  ],
@@ -2515,9 +2533,6 @@
   "backend/secrets_store.py"
  ],
  "Filester (private folder)": [
-  "ui/src/views/admin/BackupsView.vue"
- ],
- "Filester answered: the key works": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Filester can't be reached: {error}": [
@@ -3764,6 +3779,9 @@
  "natural": [
   "ui/src/lib/libraryQuery.js"
  ],
+ "Needs a backup password (below): only encrypted backups are uploaded.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Needs a free VirusTotal API key in Credentials.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -3776,6 +3794,9 @@
  "needs plural forms with “other”": [
   "backend/i18n.py"
  ],
+ "Needs the Filester API key: Admin → Credentials → Filester.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "needs {version}": [
   "ui/src/views/admin/ToolsView.vue"
  ],
@@ -3786,6 +3807,7 @@
   "ui/src/views/admin/UsersView.vue"
  ],
  "Never uploaded to Filester": [
+  "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "New backup": [
@@ -4352,7 +4374,7 @@
  "Only downloaded videos have frames": [
   "backend/routers/library.py"
  ],
- "Only encrypted with the backup password, never with the credentials or the videos, in parts Filester takes (up to {max} GB each). Filester keeps 10 GB per account and deletes files nobody downloads for 45 days.": [
+ "Only encrypted with the backup password, never with the credentials or the videos, in parts Filester takes (up to {max} GB each). Filester deletes files nobody downloads for 45 days.": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Only English so far.": [
@@ -6629,9 +6651,6 @@
  "The app detected {keys}:": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
- "The backup doesn't fit on Filester: it needs {need} MB, {free} MB are free there. Keep fewer backups there, or leave parts out of this job.": [
-  "backend/cloud_filester.py"
- ],
  "The backup failed": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -6903,6 +6922,9 @@
  ],
  "Theme": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Then also uploaded to your private Filester folder (encrypted, in parts of up to {gb} GB).": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "ThePornDB": [
   "backend/secrets_store.py"
@@ -8307,9 +8329,6 @@
  ],
  "{uploads} uploads · {reencodes} re-encodes": [
   "ui/src/views/admin/StatsView.vue"
- ],
- "{used} of {limit} used on Filester": [
-  "ui/src/views/admin/BackupsView.vue"
  ],
  "{used} of {total} cores. Too few for a big video and the player waits (it needs about one core for 720p on a modern CPU).": [
   "ui/src/views/admin/ServerSettingsView.vue"

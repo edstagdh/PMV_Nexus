@@ -9,11 +9,9 @@ What may be uploaded -- checked here again before every upload, whatever the job
   - every file at most MAX_PART_BYTES (Filester takes files up to 10 GB), so a bigger backup is
     made in parts (the job's part size is 1.9 to 9 GB).
 
-Filester's limits (its API docs, November 2026): 10 GB storage per account, 10 GB per file,
-1,000 requests an hour, and files nobody downloads for 45 days are deleted. Before uploading,
-the account's free space is checked; the job's oldest uploads that would be removed anyway
-afterwards (beyond its "keep") go first when that makes room. If it still doesn't fit, nothing
-is uploaded and nothing deleted.
+Filester's limits: 10 GB per file and 1,000 requests an hour; its API docs also say files
+nobody downloads for 45 days are deleted. Account storage isn't limited (the account page says
+"out of ∞" -- the 10 GB per account in the API docs is out of date), so it isn't checked.
 
 Only what this app uploaded is ever deleted there: the uploads are recorded in
 data/cloud_backups.json (file ids per backup and job), and pruning goes by that record --
@@ -257,26 +255,6 @@ def upload_backup(settings, name: str, job: str, keep: int,
     with Filester(key, transport) as fs:
         folder = _ensure_folder(fs, entry)
         save_state(state)
-        mine = sorted((u for u in entry["uploads"] if u.get("job") == job), key=lambda u: u.get("uploaded_at", 0))
-        removable = mine[:max(0, len(mine) + 1 - keep)]   # would go after this upload anyway
-        acct = fs.account()
-        try:
-            free = int(acct.get("storage_limit")) - int(acct.get("storage_used"))
-        except (TypeError, ValueError):
-            free = None
-        if free is not None and free < total:
-            drop, freed = [], 0
-            for u in removable:
-                if free + freed >= total:
-                    break
-                drop.append(u)
-                freed += int(u.get("size") or 0)
-            if free + freed < total:
-                raise CloudError(L("The backup doesn't fit on Filester: it needs {need} MB, {free} MB are free there. "
-                                   "Keep fewer backups there, or leave parts out of this job.",
-                                   need=total // 1048576, free=max(0, free + freed) // 1048576))
-            _remove(fs, entry, drop)
-            save_state(state)
         sent_before = 0
         uploaded: list[dict] = []
         try:
@@ -325,7 +303,8 @@ def _remove(fs: Filester, entry: dict, uploads: list[dict]) -> None:
 
 
 def status(live: bool = False, transport: Optional[httpx.BaseTransport] = None) -> dict:
-    """For the Backups page: whether a key is set, what was uploaded, and (live) the account's space."""
+    """For the Backups page: whether a key is set, what was uploaded, and (live) whether Filester
+    accepts the key -- with the account's name and how much it holds."""
     entry = load_state()[PROVIDER]
     out = {"configured": bool(api_key()), "folder_id": entry.get("folder_id"), "max_part_gb": MAX_PART_GB,
            "uploads": sorted(({"backup": u.get("backup"), "job": u.get("job"), "size": u.get("size"),
@@ -338,6 +317,5 @@ def status(live: bool = False, transport: Optional[httpx.BaseTransport] = None) 
             raise CloudError(L("No Filester API key -- add it under Admin → Credentials → Filester"))
         with Filester(key, transport) as fs:
             acct = fs.account()
-            out["account"] = {"username": acct.get("username"), "storage_used": acct.get("storage_used"),
-                              "storage_limit": acct.get("storage_limit")}
+            out["account"] = {"username": acct.get("username"), "storage_used": acct.get("storage_used")}
     return out

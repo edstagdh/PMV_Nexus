@@ -29,6 +29,7 @@ class BackupRequest(BaseModel):
     include_secrets: bool = False
     confirm_videos: bool = False       # the videos only after the page asked a second time
     dir: str | None = None             # (3.7.0) another folder for this backup; None: the backups folder
+    upload: bool = False               # (3.8.0) also upload it to Filester (backup_jobs.manual_upload)
 
 
 class BackupSettings(BaseModel):
@@ -262,13 +263,19 @@ async def create_backup(payload: BackupRequest, user: AuthContext = Depends(requ
     parts = backup.parts_from(payload.include, payload.include_cache, payload.include_secrets)
     if "videos" in parts and not payload.confirm_videos:
         raise HTTPException(status_code=400, detail=L("Including the videos has to be confirmed"))
+    if payload.upload:   # 3.8.0: also to Filester -- same rules as a job's upload
+        from .. import backup_jobs
+        try:
+            backup_jobs.manual_upload(get_settings(), parts)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     dest = _destination(payload.dir)
     plan = await asyncio.to_thread(backup.plan_backup, get_settings(), parts, None, dest)
     problem = backup.space_problem(plan)
     if problem:
         raise HTTPException(status_code=507, detail=problem)
     try:
-        library_manager.start_backup(sorted(parts), dest=str(dest))
+        library_manager.start_backup(sorted(parts), dest=str(dest), upload=payload.upload)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"started": True, "plan": plan}
