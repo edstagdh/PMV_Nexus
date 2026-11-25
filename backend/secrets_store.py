@@ -47,6 +47,8 @@ FIELDS: dict[str, dict] = {
     "tpdb_api_key": {"group": "tpdb", "label": L('API key'), "kind": "secret"},
     "virustotal_api_key": {"group": "virustotal", "label": L('API key'), "kind": "secret"},
     "gemini_api_key": {"group": "gemini", "label": L('API key'), "kind": "secret", "env": "GEMINI_API_KEY"},
+    # 3.8.0: off-site backups (backend/cloud_filester.py)
+    "filester_api_key": {"group": "filester", "label": L('API key'), "kind": "secret"},
     "proxy_url": {"group": "proxy", "label": L('Address'), "kind": "text"},
     "proxy_username": {"group": "proxy", "label": L('Username'), "kind": "text"},
     "proxy_password": {"group": "proxy", "label": L('Password'), "kind": "secret"},
@@ -68,6 +70,8 @@ GROUPS = [
      L("Optional, free-tier API key from https://aistudio.google.com/apikey. Only used by features you turn on: Management → Songs → “Ask Gemini (AI)” sends 20-second sound clips of the spots Shazam didn't recognise. Free-tier requests may be used by Google to improve its products.")),
     ("tpdb", L('ThePornDB'),
      L('API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases).')),
+    ("filester", L('Filester (off-site backups)'),
+     L("API key from https://filester.me → Account settings. Only used to upload encrypted backups (never the credentials or the videos) to a private folder there: Scheduler → a backup job → Upload to Filester. Regenerating the key on Filester makes this one stop working.")),
     ("proxy", L('Proxy'),
      L("e.g. socks5://192.168.1.10:1080 or http://proxy.example:8080; username/password only if it needs them. Where it's used, and a speed test: Server Settings → Proxy.")),
 ]

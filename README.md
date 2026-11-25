@@ -148,7 +148,9 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   [languages/TRANSLATING.md](languages/TRANSLATING.md).
 - **Stats:** live CPU, memory, network and disks; library growth; watching and failures over time.
 - **Logs:** every action and change, searchable and exportable. Passwords and keys are never logged.
-- **Backups:** scheduled or by hand, optionally password-protected (AES-256), tested and restorable from the app.
+- **Backups:** scheduled (daily and weekly built in) or by hand, optionally password-protected (AES-256), tested and
+  restorable from the app; a backup job can also copy each backup to other folders (an external drive, a NAS) and
+  upload it, encrypted and without credentials, to a private [Filester](https://filester.me) folder.
   Credentials are stored encrypted.
 - **Windows installer** (runs from the tray or as a Windows service), or `install.sh` on Linux / macOS.
   **Update check** built in.

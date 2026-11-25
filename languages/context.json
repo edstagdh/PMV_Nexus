@@ -32,6 +32,9 @@
  "0 — slowest, smallest": [
   "ui/src/lib/reencodeOptions.js"
  ],
+ "0: as set on the Backups page; or {min} to {max} GB.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "0–20, before it's marked failed": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -104,6 +107,12 @@
  "A backup is already being made -- see Tasks": [
   "backend/library_mixins/system_worker.py"
  ],
+ "A copy folder must be another folder than the backups folder": [
+  "backend/backup.py"
+ ],
+ "A copy folder needs its full path (e.g. E:\\PMV backups): {folder}": [
+  "backend/backup_jobs.py"
+ ],
  "A file with that name already exists": [
   "backend/library_mixins/item_extras.py"
  ],
@@ -133,6 +142,9 @@
  ],
  "A sample every": [
   "ui/src/views/admin/SongsView.vue"
+ ],
+ "A scheduled backup job can copy each backup to other folders (an external drive, a network share) and upload it to Filester — so one failing or wiped disk doesn't take the backups with it. Set it in each backup job: Admin → Scheduler → Edit.": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "A self-hosted library manager for PMVs: download, organize, re-encode and de-duplicate videos from one web app. Works with PMVHaven and its sister sites. An independent project, not affiliated with any of them — see Terms of use.": [
   "ui/src/views/HelpView.vue"
@@ -242,6 +254,9 @@
  "Add a flag…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
+ "Add a folder": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Add a performer…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
@@ -277,6 +292,12 @@
  ],
  "Add photo": [
   "ui/src/components/PerformerPhotos.vue"
+ ],
+ "Add the Filester API key under Admin → Credentials first.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Add the Filester API key under Admin → Credentials → Filester first.": [
+  "backend/backup_jobs.py"
  ],
  "Add the ThePornDB API key in Server Settings → Credentials first": [
   "backend/routers/performers.py"
@@ -475,6 +496,9 @@
  "Already next in line": [
   "backend/library_mixins/core.py"
  ],
+ "Also copy each backup to": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Also delete the video and its files from disk": [
   "ui/src/components/dialogs/RemoveDialog.vue"
  ],
@@ -542,6 +566,9 @@
  "API key auth is not configured on the server": [
   "backend/security.py"
  ],
+ "API key from https://filester.me → Account settings. Only used to upload encrypted backups (never the credentials or the videos) to a private folder there: Scheduler → a backup job → Upload to Filester. Regenerating the key on Filester makes this one stop working.": [
+  "backend/secrets_store.py"
+ ],
  "API key from https://pmvhaven.com/api-keys (format pmvh_...). Used to sync videos with the site; the same key works on porntubeai.com and hmvhaven.com.": [
   "backend/secrets_store.py"
  ],
@@ -599,6 +626,9 @@
  ],
  "At most": [
   "ui/src/views/admin/SongsView.vue"
+ ],
+ "At most {n} copy folders": [
+  "backend/backup_jobs.py"
  ],
  "At once": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -701,7 +731,7 @@
  "Background of the \"removed from PMVHaven\" badge.": [
   "ui/src/views/SettingsView.vue"
  ],
- "Backup database + settings": [
+ "Backup": [
   "backend/library_mixins/scheduler_worker.py"
  ],
  "Backup deleted": [
@@ -729,12 +759,24 @@
  "Backup {name} failed its restore test": [
   "backend/library_mixins/system_worker.py"
  ],
+ "Backup {name} was made, but not every copy of it": [
+  "backend/library_mixins/system_worker.py"
+ ],
  "Backups": [
   "ui/src/lib/portalTabs.js",
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Backups saved to another folder are listed and can be tested and restored like the others; only the backups folder keeps just the newest ones.": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Backups uploaded to Filester never include the credentials: untick “{part}”.": [
+  "backend/backup_jobs.py"
+ ],
+ "Backups with the videos aren't uploaded": [
+  "backend/cloud_filester.py"
+ ],
+ "Backups with the videos can't be uploaded to Filester: untick “{part}”.": [
+  "backend/backup_jobs.py"
  ],
  "Badge colour, and the placeholder picture without a photo": [
   "ui/src/views/PerformerView.vue"
@@ -977,6 +1019,9 @@
  "Check failed: {error}": [
   "ui/src/views/HelpView.vue"
  ],
+ "Check Filester": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Check for app updates": [
   "backend/library_mixins/scheduler_worker.py"
  ],
@@ -1019,6 +1064,7 @@
  ],
  "Checking…": [
   "ui/src/views/HelpView.vue",
+  "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/ToolsView.vue"
  ],
  "Checks every video's thumbnail, preview clip and metadata, re-fetches anything missing or empty from PMVHaven (or makes it locally with ffmpeg when the site's copy is broken), refreshes tags, rating and description, and re-reads the technical details. The video file itself is never touched. One video can be repaired from its ⋮ menu instead.": [
@@ -1231,13 +1277,25 @@
   "ui/src/components/NotificationBell.vue",
   "ui/src/components/admin/CredentialsPanel.vue"
  ],
+ "copied to {n} more folders": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Copies elsewhere": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Copy": [
   "ui/src/components/NotificationBell.vue",
   "ui/src/components/admin/CredentialsPanel.vue",
   "ui/src/views/admin/LogsView.vue"
  ],
+ "Copy each backup to": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Copy error details": [
   "ui/src/views/admin/LogsView.vue"
+ ],
+ "Copy folders must be a list": [
+  "backend/backup_jobs.py"
  ],
  "Copy it by hand (the browser blocked copying)": [
   "ui/src/components/admin/CredentialsPanel.vue"
@@ -1259,6 +1317,9 @@
  ],
  "Copying the database": [
   "backend/backup.py"
+ ],
+ "Copying to {folder}": [
+  "backend/library_mixins/system_worker.py"
  ],
  "Cores": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -1693,6 +1754,9 @@
  "Daily at {time}": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "Daily backup": [
+  "backend/library_mixins/system_worker.py"
+ ],
  "Daily duplicate scan": [
   "backend/library_mixins/system_worker.py"
  ],
@@ -1708,8 +1772,14 @@
  "database + settings": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Database and settings": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "database {size}": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "Database, settings + {parts}": [
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "Date acquired": [
   "ui/src/views/LibraryView.vue",
@@ -1857,6 +1927,7 @@
   "ui/src/components/admin/ProxyPanel.vue"
  ],
  "Disabled": [
+  "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/SchedulerView.vue",
   "ui/src/views/admin/UsersView.vue"
  ],
@@ -2437,6 +2508,39 @@
  "Files read at the same time": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Filester": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Filester (off-site backups)": [
+  "backend/secrets_store.py"
+ ],
+ "Filester (private folder)": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Filester answered: the key works": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Filester can't be reached: {error}": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester didn't say which file it stored": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester didn't say which folder it made": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester refused the API key -- check it under Admin → Credentials → Filester": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester stored {file} with the wrong size ({stored} of {size} bytes)": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester: the old backups couldn't be deleted (HTTP {code})": [
+  "backend/cloud_filester.py"
+ ],
+ "Filester: {message}": [
+  "backend/cloud_filester.py"
+ ],
  "Filled automatically by this filter:": [
   "ui/src/views/PlaylistView.vue"
  ],
@@ -2792,6 +2896,9 @@
  "How": [
   "ui/src/components/songs/SongMethodPicker.vue"
  ],
+ "How many of this job's backups stay — in the backups folder, in each copy folder and on Filester. Older ones of this job are deleted; nothing else is.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "How many to show (0 hides the column). Ranked by shared performers (strongest), the same creator, then shared tags.": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -2952,6 +3059,9 @@
  "Its thumbnail, preview clip and details file are deleted too.": [
   "ui/src/components/dialogs/RemoveDialog.vue"
  ],
+ "Job": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Job created": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -2976,11 +3086,17 @@
  "Jump to {time}": [
   "ui/src/components/VideoFrames.vue"
  ],
+ "Keep": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Keep a detailed log of each run": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Keep and remove the others": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Keep is a number from 1 to 500": [
+  "backend/backup_jobs.py"
  ],
  "Keep it": [
   "ui/src/components/dialogs/RemoveDialog.vue"
@@ -3012,6 +3128,10 @@
  ],
  "Keeps this filter instead of a fixed list: new videos that match show up in it by themselves.": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
+ ],
+ "keeps {n}": [
+  "ui/src/views/admin/BackupsView.vue",
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "Kept 1, removed {n}": [
   "ui/src/views/admin/DuplicatesView.vue"
@@ -3665,6 +3785,9 @@
  "Never": [
   "ui/src/views/admin/UsersView.vue"
  ],
+ "Never uploaded to Filester": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "New backup": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -3767,6 +3890,12 @@
   "backend/routers/credentials.py",
   "backend/routers/songs.py"
  ],
+ "No API key: add it under Admin → Credentials → Filester.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "No backup job copies or uploads its backups yet.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "No backups yet.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -3787,6 +3916,9 @@
  ],
  "No entries match these filters.": [
   "ui/src/views/admin/LogsView.vue"
+ ],
+ "No Filester API key -- add it under Admin → Credentials → Filester": [
+  "backend/cloud_filester.py"
  ],
  "No filters on": [
   "ui/src/components/FilterPanel.vue"
@@ -3990,6 +4122,9 @@
  ],
  "Not enough free space for this upload ({mb} MB free)": [
   "backend/library_mixins/local_upload.py"
+ ],
+ "Not enough free space in {folder}: the backup needs {need} MB, {free} MB are free": [
+  "backend/backup.py"
  ],
  "Not enough free space to convert its audio ({mb} free, {needed} needed)": [
   "backend/library_mixins/audio_fix.py"
@@ -4217,6 +4352,9 @@
  "Only downloaded videos have frames": [
   "backend/routers/library.py"
  ],
+ "Only encrypted with the backup password, never with the credentials or the videos, in parts Filester takes (up to {max} GB each). Filester keeps 10 GB per account and deletes files nobody downloads for 45 days.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Only English so far.": [
   "ui/src/components/LanguageSettings.vue"
  ],
@@ -4231,6 +4369,9 @@
  ],
  "Only one admin account is allowed at a time": [
   "backend/routers/users.py"
+ ],
+ "Only password-protected backups are uploaded. Set a backup password on the Backups page.": [
+  "backend/cloud_filester.py"
  ],
  "Only pressing {keys} all at once sets it off.": [
   "ui/src/components/PanicKeysSetting.vue"
@@ -4391,6 +4532,9 @@
  "Other": [
   "ui/src/views/VideoView.vue"
  ],
+ "Other folders, e.g. an external drive or a network share. Each copy is checked byte for byte; a folder that can't be reached is reported, the others still get their copy.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Other way": [
   "ui/src/views/admin/NamesView.vue"
  ],
@@ -4424,6 +4568,9 @@
  ],
  "Parent folder does not exist": [
   "backend/routers/settings.py"
+ ],
+ "Part size (GB)": [
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "Part {n} ({size})": [
   "ui/src/views/admin/BackupsView.vue"
@@ -5097,7 +5244,8 @@
   "ui/src/views/SettingsView.vue",
   "ui/src/views/TasksView.vue",
   "ui/src/views/admin/BackupsView.vue",
-  "ui/src/views/admin/DuplicatesView.vue"
+  "ui/src/views/admin/DuplicatesView.vue",
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "Remove and delete files": [
   "ui/src/components/dialogs/RemoveDialog.vue"
@@ -5787,6 +5935,16 @@
  "Session signing key": [
   "backend/secrets_store.py"
  ],
+ "Set a backup password above: without it nothing is uploaded.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Set a backup password on the Backups page first.": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Set a backup password on the Backups page first: a backup is only uploaded encrypted.": [
+  "backend/backup_jobs.py",
+  "backend/library_mixins/system_worker.py"
+ ],
  "Set a password": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -6471,8 +6629,14 @@
  "The app detected {keys}:": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
+ "The backup doesn't fit on Filester: it needs {need} MB, {free} MB are free there. Keep fewer backups there, or leave parts out of this job.": [
+  "backend/cloud_filester.py"
+ ],
  "The backup failed": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "The backup was made, but: {problems}": [
+  "backend/library_mixins/system_worker.py"
  ],
  "The browser blocked copying": [
   "ui/src/components/NotificationBell.vue"
@@ -6504,8 +6668,14 @@
  "The converted stream stopped": [
   "ui/src/lib/livePlayback.js"
  ],
+ "The copy in {folder} doesn't match the backup (the disk may be failing)": [
+  "backend/backup.py"
+ ],
  "the database ({size}) and your settings, installed languages, own performer photos and playlist covers ({n} files)": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "The database and settings always; tick what else.": [
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "The disk the backups go to is almost full -- the backup was stopped": [
   "backend/backup.py"
@@ -6527,6 +6697,9 @@
  ],
  "The file is empty": [
   "backend/library_mixins/local_upload.py"
+ ],
+ "The Filester folder “{name}” is public. Make it private there (or delete it, and a private one is made).": [
+  "backend/cloud_filester.py"
  ],
  "The fingerprint couldn't be checked ({detail}), so it wasn't accepted.": [
   "backend/library_mixins/local_upload.py"
@@ -6580,6 +6753,12 @@
  ],
  "The new preview:": [
   "ui/src/components/upload/PreviewStep.vue"
+ ],
+ "The part size is 0 (Server Settings' size) or {min} to {max} GB": [
+  "backend/backup_jobs.py"
+ ],
+ "The part size is a number of GB": [
+  "backend/backup_jobs.py"
  ],
  "The passwords do not match": [
   "ui/src/views/AuthView.vue"
@@ -6788,6 +6967,9 @@
  "This backup has no manifest and cannot be restored automatically": [
   "backend/backup.py"
  ],
+ "This backup has the credentials in it -- those are never uploaded": [
+  "backend/cloud_filester.py"
+ ],
  "This backup will hold:": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -6964,6 +7146,9 @@
  "to listen to": [
   "ui/src/views/admin/SongsView.vue"
  ],
+ "To restore one, download its file(s) from your Filester account and choose them in Setup (or put them in the backups folder). Filester deletes files nobody downloads for 45 days.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "too long": [
   "backend/i18n.py"
  ],
@@ -7050,6 +7235,9 @@
  "Unknown action": [
   "backend/routers/bulk.py"
  ],
+ "Unknown backup part": [
+  "backend/backup_jobs.py"
+ ],
  "Unknown codec": [
   "backend/library_mixins/local_upload.py"
  ],
@@ -7092,6 +7280,9 @@
  ],
  "Unknown schedule kind: {kind}": [
   "backend/library_mixins/scheduler_worker.py"
+ ],
+ "Unknown upload service": [
+  "backend/backup_jobs.py"
  ],
  "Unknown weekday: {day}": [
   "backend/library_mixins/scheduler_worker.py"
@@ -7185,6 +7376,9 @@
  "Upload failed: “{title}”": [
   "backend/library_mixins/local_upload.py"
  ],
+ "Upload to Filester (a private folder)": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "Upload videos": [
   "backend/permissions.py"
  ],
@@ -7196,13 +7390,20 @@
  ],
  "Uploaded": [
   "ui/src/components/VideoTable.vue",
+  "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Uploaded backup": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "uploaded by": [
   "ui/src/views/VideoView.vue"
  ],
  "Uploaded by {item}": [
   "ui/src/components/VideoTable.vue"
+ ],
+ "uploaded to Filester": [
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "Uploaded to PMVHaven": [
   "ui/src/views/LibraryView.vue",
@@ -7216,6 +7417,9 @@
  ],
  "Uploader": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Uploading to Filester": [
+  "backend/library_mixins/system_worker.py"
  ],
  "Uploading…": [
   "ui/src/views/UploadView.vue"
@@ -7527,6 +7731,9 @@
  "What each person may do comes from their role, the groups they're in, and anything given to them directly ({b1}). The admin can do everything.": [
   "ui/src/views/admin/UsersView.vue"
  ],
+ "What goes in": [
+  "ui/src/views/admin/SchedulerView.vue"
+ ],
  "What happened": [
   "ui/src/views/admin/LogsView.vue"
  ],
@@ -7585,6 +7792,9 @@
  ],
  "With the server's settings:": [
   "ui/src/components/dialogs/BulkActionDialog.vue"
+ ],
+ "With the upload to Filester, the part size is {min} to {max} GB (Filester takes files up to 10 GB).": [
+  "backend/backup_jobs.py"
  ],
  "With {remember}, the same misspelling is shown fixed on videos added later too.": [
   "ui/src/views/admin/NamesView.vue"
@@ -7783,8 +7993,17 @@
  "{feature} switched on": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "{file} is already there": [
+  "backend/backup.py"
+ ],
+ "{file} is bigger than Filester takes ({max} GB per file); the job's part size must be {max} GB or less": [
+  "backend/cloud_filester.py"
+ ],
  "{file}: {problem}": [
   "ui/src/components/PerformerPhotos.vue"
+ ],
+ "{folder} can't be reached": [
+  "backend/backup.py"
  ],
  "{from} – now": [
   "ui/src/views/PerformerView.vue"
@@ -7826,6 +8045,9 @@
  ],
  "{min} to {max} characters": [
   "backend/security.py"
+ ],
+ "{min} to {max} GB with the upload.": [
+  "ui/src/views/admin/SchedulerView.vue"
  ],
  "{min}–{max}, lower = better and bigger; {help}. Server: {value}": [
   "ui/src/components/ReencodeOptions.vue"
@@ -8085,6 +8307,9 @@
  ],
  "{uploads} uploads · {reencodes} re-encodes": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "{used} of {limit} used on Filester": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "{used} of {total} cores. Too few for a big video and the player waits (it needs about one core for 720p on a modern CPU).": [
   "ui/src/views/admin/ServerSettingsView.vue"

@@ -549,8 +549,8 @@ your account, and the first tab is the one that opens when you come to the page.
 | Names | Every tag, performer and music name: rename, merge misspellings, likely typos, remembered fixes, upper/lower case spellings |
 | Songs | Songs heard in videos, waiting to be added to their Music; find songs in videos without music; settings |
 | Maintenance | Sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames, untracked files |
-| Scheduler | Run jobs on a schedule (every day, every week, every few hours, **one time** at a date and time — it switches itself off after it ran — or cron) or immediately, with run history and live progress. Four **System** jobs are built in — Weekly backup, Check for updates (daily), Daily duplicate scan and Match & refresh performers (daily); they can be changed or disabled, not deleted |
-| Backups | Back up and restore the database and settings |
+| Scheduler | Run jobs on a schedule (every day, every week, every few hours, **one time** at a date and time — it switches itself off after it ran — or cron) or immediately, with run history and live progress. **System** jobs are built in — Daily backup, Weekly backup, Check for updates (daily), Daily duplicate scan, Match & refresh performers (daily) and Daily stats snapshot; they can be changed or disabled, not deleted. Backup jobs have their own options: parts, how many to keep, copy folders, upload to Filester |
+| Backups | Back up and restore the database and settings; **Copies elsewhere** shows where backup jobs copy and upload theirs |
 | Stats | Live CPU / memory (this app and the whole computer) / network / disks with % free; library growth, activity, failures and watching over 7 days … all; the library's make-up |
 | Logs | Everything the app does and every change made by a user |
 | Tools | Status of FFmpeg, Python packages and other requirements |
@@ -786,7 +786,7 @@ folder…** (e.g. a bigger or external drive; not inside the videos or thumbnail
 check are that folder's. The page remembers your choice; **Back to the backups folder** undoes it. Backups saved to
 other folders are listed too (with their folder), and can be downloaded, tested, restored and deleted like the
 others; they're skipped while their drive isn't there, and only the backups folder keeps just the newest
-`backup.keep`. Scheduled backups always go to the backups folder.
+`backup.keep`. Scheduled backups go to the backups folder (and, 3.8.0, to their job's copy folders).
 
 **Split into parts:** **Split big backups into parts** (same panel) writes any backup bigger than the size you set
 as numbered parts — `name.zip.001`, `name.zip.002`, … — of at most that size: 1.9 to 50 GB. It applies to scheduled
@@ -796,8 +796,31 @@ Restore and Delete take all of them. Keep the parts together in one folder: 7-Zi
 `copy /b name.zip.0* name.zip` on Windows, `cat name.zip.0* > name.zip` elsewhere.) A drive formatted FAT32 can't
 hold files over 4 GB — use exFAT or NTFS for bigger parts.
 
-A weekly backup is a built-in System job on the Scheduler page; only the newest 10 backups are kept
-(`backup.keep` in `config.yaml`).
+**Scheduled backups and copies elsewhere (3.8.0).** Two backup jobs are built in on the Scheduler page: **Daily
+backup** (the database and settings, keeps 7) and **Weekly backup** (also thumbnails, previews and details files,
+video frames and seekbar previews, keeps 4 — an install from before 3.8.0 keeps what its weekly backup did until
+you change it). Add more with **Add job → Backup**. Each backup job has its own options (**Edit**):
+- **What goes in** — the same parts as on this page.
+- **Keep** — how many of *this job's* backups stay, in the backups folder, in each copy folder and on Filester.
+  Older ones of the job are deleted; backups made here by hand (and before 3.8.0) keep `backup.keep` (10).
+- **Also copy each backup to** — up to 5 other folders: an external drive, a second disk, a network share. Every
+  copy is read back and checked byte for byte against the backup before it gets its name. A folder that can't be
+  reached (a drive that isn't plugged in) is reported; the other copies are still made. Copy folders are listed
+  under **Copies elsewhere** below and their backups in the list, ready to test or restore. In a copy folder only
+  the job's own backups are ever deleted — nothing else in it.
+- **Upload to Filester** — also to a private folder (“PMV Nexus backups”) on [Filester](https://filester.me), with
+  the API key from **Admin → Credentials → Filester**. Only what may leave the computer goes: the backup must be
+  encrypted (a **Backup password** must be set), the credentials (**Secrets**) and the videos can't be ticked, and
+  the backup is made in parts of at most 9 GB (Filester takes files up to 10 GB; set **Part size** 1.9–9).
+  Filester's free account holds 10 GB and deletes files nobody downloads for 45 days: before uploading, the job
+  checks the free space there and, if needed, first removes its own oldest upload that would go anyway; if it
+  still doesn't fit, nothing is uploaded and you're told. Only uploads this app made (recorded in
+  `data/cloud_backups.json`) are ever deleted there. To restore one, download its file(s) from Filester and choose
+  the `.zip` (or `.zip.001`) in Setup, or put them in the backups folder.
+- **Part size** — 0 uses **Split big backups into parts** below; or 1.9–50 GB (1.9–9 with the upload).
+
+A copy or upload is only made after the backup passed its restore test. When one fails, the job's run shows
+*failed* with what went wrong, and a notification says so — the backup itself and the other copies are kept.
 
 **Backup password:** with a password set under **Backup password** on the same page, every new backup (manual or
 scheduled) is an encrypted zip (AES-256) — marked 🔒 in the list. Nobody can open it without the password, the app

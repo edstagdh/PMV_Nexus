@@ -39,6 +39,13 @@ Where (3.7.0): a backup made on the Backups page can go to another folder than t
 folder (e.g. a bigger or external drive). Such folders are remembered (data/backup_locations.json)
 and their backups listed, tested, restored and deleted like the others; only the backups
 folder's own are pruned to backup.keep. A folder that isn't there (a drive unplugged) is skipped.
+
+Scheduled backup jobs (3.8.0, backend/backup_jobs.py): a backup made by a job records the job's
+id ("job" in its manifest and backup_info.json). Each job keeps its own number of backups
+(prune_backups(job=, keep=)); backups without a job (made on the Backups page, or before
+3.8.0) keep backup.keep. A job can copy each backup to other folders (copy_backup: every byte
+checked against the original) and keeps its own number there too (prune_copies -- only that
+job's backups, never anything else in the folder).
 """
 from __future__ import annotations
 from .i18n import L
@@ -383,13 +390,16 @@ def space_problem(plan: dict) -> Optional[str]:
 
 def create_backup(settings, *, include=None, include_cache: bool = False, include_secrets: bool = False,
                   trigger: str, progress: Optional[Callable[..., None]] = None, password: Optional[str] = None,
-                  dest: Optional[Path] = None) -> dict:
+                  dest: Optional[Path] = None, part_size: Optional[int] = None, job: Optional[str] = None,
+                  keep: Optional[int] = None) -> dict:
     """BLOCKING -- run in a worker thread. Returns the new backup's summary.
     `include`: PARTS keys (3.7.0); without it the older include_cache / include_secrets.
     progress(stage, done, total, step=, steps=, bytes_done=, bytes_total=) reports what it's
     doing (Tasks page: each step and the whole). With a password: an AES-256 encrypted zip
     (see the module docstring). NotEnoughSpace before anything is written when it wouldn't
-    fit, or while writing when the disk gets close to full (the partial file is removed)."""
+    fit, or while writing when the disk gets close to full (the partial file is removed).
+    3.8.0: `part_size` (bytes) instead of backup.split_gb; `job` (a scheduled job's id) is
+    recorded in the backup, and the backups folder keeps `keep` of that job's backups."""
     progress = progress or (lambda *a, **k: None)
     if password and pyzipper is None:
         raise RuntimeError(_NEEDS_PYZIPPER)
@@ -413,7 +423,7 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
         n += 1
     target = dest_dir / name
     partial = target.with_suffix(".zip.part")
-    split = settings.backup.split_bytes()  # None: one file
+    split = part_size or settings.backup.split_bytes()  # None: one file
     entries: list[dict] = []
     # the steps, in order: (stage text, files)
     steps: list[tuple[str, list]] = [(L("Copying the database"), []), (L("Adding the settings and own pictures"), collected["always"])]
@@ -481,6 +491,8 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
                     "include": sorted(parts), "include_cache": any(k in parts for k in CACHE_PARTS),
                     "include_secrets": "secrets" in parts, "include_videos": "videos" in parts, "entries": entries,
                 }
+                if job:
+                    manifest["job"] = job
                 zf.writestr(MANIFEST, json.dumps(manifest, indent=2))
         if password:  # what the Backups page shows, readable without the password
             info = {k: v for k, v in manifest.items() if k != "entries"}
@@ -505,7 +517,7 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
             part.unlink(missing_ok=True)
         raise
     if dest_dir.resolve() == settings.backup_dir.resolve():
-        prune_backups(settings)  # only the backups folder's own are pruned
+        prune_backups(settings, job=job, keep=keep)  # only the backups folder's own are pruned
     else:
         remember_location(settings, dest_dir)
     return _summary(target, manifest)
@@ -525,7 +537,8 @@ def _summary(path: Path, manifest: Optional[dict] = None) -> dict:
                     manifest = json.loads(zf.read(MANIFEST))
         except (KeyError, zipfile.BadZipFile, json.JSONDecodeError, OSError, RuntimeError, NotImplementedError):
             manifest = {}
-    info.update({k: manifest.get(k) for k in ("app_version", "trigger", "include_cache", "include_secrets", "include_videos", "include")})
+    info.update({k: manifest.get(k) for k in ("app_version", "trigger", "include_cache", "include_secrets", "include_videos", "include",
+                                                "job")})
     if manifest.get("created_at"):
         info["created_at"] = manifest["created_at"]
     info["encrypted"] = bool(manifest.get("encrypted"))
@@ -569,12 +582,102 @@ def delete_backup(settings, name: str) -> None:
         f.unlink()
 
 
-def prune_backups(settings) -> int:
-    backups = list_backups(settings, only_default=True)
+def prune_backups(settings, job: Optional[str] = None, keep: Optional[int] = None) -> int:
+    """The backups folder's oldest backups beyond `keep`: those of one scheduled job (3.8.0), or
+    without `job` those no job made (keeping backup.keep)."""
+    backups = [b for b in list_backups(settings, only_default=True) if (b.get("job") or None) == (job or None)]
     removed = 0
-    for b in backups[settings.backup.keep:]:
+    for b in backups[(keep or settings.backup.keep):]:
         try:
             for f in files_of(settings.backup_dir / b["name"]):
+                f.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+COPY_CHUNK = 8 * 1024 * 1024
+
+
+def check_copy_folder(settings, folder: str | Path) -> Path:
+    """A folder a scheduled job copies its backups to (3.8.0): a full path, not the backups folder
+    itself, not inside the videos / cache folders. ValueError otherwise."""
+    path = check_destination(settings, folder)
+    if path == Path(settings.backup_dir).resolve():
+        raise ValueError(L("A copy folder must be another folder than the backups folder"))
+    return path
+
+
+def copy_backup(settings, name: str, folder: Path, progress: Optional[Callable[[int, int], None]] = None) -> Path:
+    """BLOCKING. Copies a backup (all its parts) into `folder` (3.8.0) and checks every byte of the
+    copy against the original (SHA-256) before it gets its name; a copy that doesn't match is
+    removed. The folder is remembered, so the Backups page lists, tests and restores the copy.
+    progress(bytes done, bytes total) -- reading the copy back counts as the second half."""
+    import hashlib
+    source = resolve_backup(settings, name)
+    files = files_of(source)
+    total = sum(f.stat().st_size for f in files)
+    folder = Path(folder)
+    if not folder.is_dir():
+        if not folder.parent.exists():   # e.g. a drive that isn't plugged in
+            raise FileNotFoundError(L("{folder} can't be reached", folder=str(folder)))
+        folder.mkdir(parents=True, exist_ok=True)
+    try:
+        free = shutil.disk_usage(folder).free
+    except OSError:
+        free = None
+    if free is not None and free < total + SPACE_MARGIN:
+        raise NotEnoughSpace(L("Not enough free space in {folder}: the backup needs {need} MB, {free} MB are free",
+                               folder=str(folder), need=total // 1048576, free=free // 1048576))
+    done = 0
+    progress = progress or (lambda *_: None)
+    written: list[tuple[Path, Path]] = []
+    try:
+        for f in files:
+            tmp = folder / (f.name + ".copying")
+            final = folder / f.name
+            if final.exists():
+                raise FileExistsError(L("{file} is already there", file=str(final)))
+            h_src = hashlib.sha256()
+            with open(f, "rb") as src, open(tmp, "wb") as dst:
+                while chunk := src.read(COPY_CHUNK):
+                    dst.write(chunk)
+                    h_src.update(chunk)
+                    done += len(chunk)
+                    progress(done, total * 2)
+            written.append((tmp, final))
+            h_dst = hashlib.sha256()
+            with open(tmp, "rb") as back:
+                while chunk := back.read(COPY_CHUNK):
+                    h_dst.update(chunk)
+                    done += len(chunk)
+                    progress(done, total * 2)
+            if h_dst.digest() != h_src.digest():
+                raise OSError(L("The copy in {folder} doesn't match the backup (the disk may be failing)", folder=str(folder)))
+        for tmp, final in written:
+            tmp.replace(final)
+    except BaseException:
+        for tmp, _final in written:
+            tmp.unlink(missing_ok=True)
+        for f in files:
+            (folder / (f.name + ".copying")).unlink(missing_ok=True)
+        raise
+    remember_location(settings, folder)
+    return folder / source.name
+
+
+def prune_copies(folder: Path, job: str, keep: int) -> int:
+    """In a folder a job copies to: that job's oldest backups beyond `keep` (3.8.0). Only backups
+    whose own info names this job are counted or deleted -- nothing else in the folder."""
+    if not job:
+        return 0
+    mine = [b for b in (_summary(p) for p in _backups_in(Path(folder))) if b.get("job") == job]
+    mine.sort(key=lambda b: b["created_at"], reverse=True)
+    removed = 0
+    for b in mine[keep:]:
+        try:
+            for f in files_of(Path(folder) / b["name"]):
                 f.unlink()
             removed += 1
         except OSError:

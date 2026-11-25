@@ -65,15 +65,30 @@ async function loadPlan() {
     plan.value = null;
   }
 }
+// 3.8.0: where the scheduled backup jobs copy and upload their backups (GET /api/backups/offsite).
+const offsite = ref(null);
+const offsiteError = ref("");
+const checking = ref(false);
+async function loadOffsite(live = false) {
+  if (live) checking.value = true;
+  try {
+    offsite.value = await api(`/api/backups/offsite?${new URLSearchParams({ live: live ? "1" : "0" })}`);
+    offsiteError.value = offsite.value.filester?.error || "";
+    if (live && !offsiteError.value) toast(t("Filester answered: the key works"), { type: "success" });
+  } catch (err) { offsiteError.value = err.message || t("That didn't work"); }
+  finally { checking.value = false; }
+}
+const uploadJobs = computed(() => (offsite.value?.jobs || []).filter((j) => j.upload));
+const copyJobs = computed(() => (offsite.value?.jobs || []).filter((j) => j.copy_to.length || j.upload));
 async function loadSpace() {
   if (document.hidden) return;
   try { space.value = await api(`/api/backups/space?${new URLSearchParams({ dir: dest.value })}`); } catch { /* keep the last */ }
 }
 let timer = null, stop = null;
 onMounted(() => {
-  load().then(() => { splitText.value = splitGb.value ? String(splitGb.value) : ""; }); loadPlan();
+  load().then(() => { splitText.value = splitGb.value ? String(splitGb.value) : ""; }); loadPlan(); loadOffsite();
   timer = setInterval(loadSpace, 3000);
-  stop = onLibraryChange((c) => { if (!c || c.includes("activity")) load(); });  // a backup finished
+  stop = onLibraryChange((c) => { if (!c || c.includes("activity")) { load(); loadOffsite(); } });  // a backup finished
 });
 onBeforeUnmount(() => { clearInterval(timer); stop?.(); });
 
@@ -256,6 +271,43 @@ const pendingName = (p) => p.name || fileName(p.zip);
       </div>
     </section>
 
+    <section v-if="offsite" class="card panel">
+      <h2>{{ $t("Copies elsewhere") }}</h2>
+      <p class="help-text">{{ $t("A scheduled backup job can copy each backup to other folders (an external drive, a network share) and upload it to Filester — so one failing or wiped disk doesn't take the backups with it. Set it in each backup job: Admin → Scheduler → Edit.") }}</p>
+      <p v-if="!copyJobs.length" class="muted small">{{ $t("No backup job copies or uploads its backups yet.") }}</p>
+      <ul v-else class="offsite-jobs">
+        <li v-for="j in copyJobs" :key="j.id">
+          <strong>{{ j.name }}</strong><span v-if="!j.enabled" class="pill">{{ $t("Disabled") }}</span>
+          <span class="muted"> · {{ $t("keeps {n}", { n: j.keep }) }}</span>
+          <div v-for="c in j.copy_to" :key="c" class="mono small">→ {{ c }}</div>
+          <div v-if="j.upload" class="small">→ {{ $t("Filester (private folder)") }}</div>
+        </li>
+      </ul>
+      <template v-if="uploadJobs.length || offsite.filester.uploads.length || offsite.filester.configured">
+        <h3>{{ $t("Filester") }}</h3>
+        <p v-if="!offsite.filester.configured" class="error-text small">{{ $t("No API key: add it under Admin → Credentials → Filester.") }}</p>
+        <p v-if="uploadJobs.length && !data?.password_set" class="error-text small">{{ $t("Set a backup password above: without it nothing is uploaded.") }}</p>
+        <p v-if="offsite.filester.account" class="small">
+          {{ $t("{used} of {limit} used on Filester", { used: formatBytes(Number(offsite.filester.account.storage_used) || 0), limit: formatBytes(Number(offsite.filester.account.storage_limit) || 0) }) }}</p>
+        <p v-if="offsiteError" class="error-text small">{{ offsiteError }}</p>
+        <div class="form-actions">
+          <button class="btn btn-sm" :disabled="!offsite.filester.configured || checking" @click="loadOffsite(true)">{{ checking ? $t("Checking…") : $t("Check Filester") }}</button>
+        </div>
+        <div v-if="offsite.filester.uploads.length" class="table-scroll"><table class="data-table">
+          <thead><tr><th>{{ $t("Uploaded backup") }}</th><th>{{ $t("Job") }}</th><th>{{ $t("Size") }}</th><th>{{ $t("Uploaded") }}</th></tr></thead>
+          <tbody>
+            <tr v-for="u in offsite.filester.uploads" :key="u.backup + u.uploaded_at">
+              <td class="mono">{{ u.backup }}<span v-if="u.parts > 1" class="muted"> · {{ $tn("{n} part", "{n} parts", u.parts) }}</span></td>
+              <td>{{ u.job_name || "—" }}</td>
+              <td class="nowrap">{{ formatBytes(u.size || 0) }}</td>
+              <td class="nowrap">{{ formatDateTime(u.uploaded_at) }}</td>
+            </tr>
+          </tbody>
+        </table></div>
+        <p class="muted small">{{ $t("To restore one, download its file(s) from your Filester account and choose them in Setup (or put them in the backups folder). Filester deletes files nobody downloads for 45 days.") }}</p>
+      </template>
+    </section>
+
     <p v-if="error" class="error-text">{{ error }}</p>
     <div v-else-if="!data" class="skeleton" style="height: 8rem; border-radius: var(--radius-lg)" />
     <template v-else>
@@ -315,6 +367,10 @@ const pendingName = (p) => p.name || fileName(p.zip);
 </template>
 
 <style scoped>
+.offsite-jobs { margin: 0; padding-inline-start: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.86rem; }
+.offsite-jobs .pill { margin-inline-start: 0.4rem; }
+.table-scroll { overflow-x: auto; }
+h3 { margin: 0.5rem 0 0; font-size: 0.95rem; }
 .toggles { display: flex; flex-direction: column; gap: 0.625rem; }
 .part { align-items: flex-start; }
 .part.big strong { color: var(--warning); }

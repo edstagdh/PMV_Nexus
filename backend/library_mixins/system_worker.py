@@ -10,7 +10,7 @@ import time
 from loguru import logger
 
 from ..i18n import L
-from .. import backup
+from .. import backup, backup_jobs
 from ..notifications import notify
 from .. import activity
 from ..app_info import fetch_latest_version
@@ -20,9 +20,12 @@ UPDATE_STATE_KEY = "update_check"
 MANUAL_CHECK_MIN_INTERVAL = 60  # seconds; the button is visible to every user
 
 # Built-in Scheduler jobs. They always exist (re-created if missing), can
-# be edited and disabled, but not deleted. (key, job_type, name, schedule)
+# be edited and disabled, but not deleted. (key, job_type, name, schedule[, job_config])
 SYSTEM_JOBS = [
-    ("backup", "backup", L("Weekly backup"), {"kind": "weekly", "day": "sunday", "time": "04:00"}),
+    ("backup", "backup", L("Weekly backup"), {"kind": "weekly", "day": "sunday", "time": "04:00"},
+     backup_jobs.WEEKLY_DEFAULT),
+    # 3.8.0: the database and settings every day (copies elsewhere / Filester: the job's options)
+    ("backup_daily", "backup", L("Daily backup"), {"kind": "daily", "time": "02:30"}, backup_jobs.DAILY_DEFAULT),
     ("update_check", "update_check", L("Check for updates"), {"kind": "daily", "time": "09:00"}),
     ("duplicate_scan", "duplicate_scan", L("Daily duplicate scan"), {"kind": "daily", "time": "03:30"}),
     ("performer_sync", "performer_sync", L("Match & refresh performers"), {"kind": "daily", "time": "05:00"}),
@@ -44,7 +47,8 @@ class SystemWorkerMixin:
         switched off explicitly before; likewise performer matching."""
         rows = self.db.list_scheduled_jobs()
         have = {r.get("system_key") for r in rows}
-        for key, job_type, name, schedule in SYSTEM_JOBS:
+        self._show_backup_job_options(rows)
+        for key, job_type, name, schedule, *config in SYSTEM_JOBS:
             if key in have:
                 continue
             try:
@@ -59,11 +63,30 @@ class SystemWorkerMixin:
                     continue
                 enabled = not ((key == "duplicate_scan" and self._dup_auto_was_off())
                                or (key == "performer_sync" and self._perf_auto_was_off()))
-                job = self.create_scheduled_job(job_type, name, enabled, "simple", schedule, {})
+                job = self.create_scheduled_job(job_type, name, enabled, "simple", schedule, dict(config[0]) if config else {})
                 self.db.update_scheduled_job(job["id"], {"system_key": key})
                 logger.info("Scheduler: added system job '{}'", name)
             except Exception:  # noqa: BLE001
                 logger.exception("Could not create system scheduled job '{}'", name)
+
+    def _show_backup_job_options(self, rows: list[dict]) -> None:
+        """3.8.0: backup jobs from before have no options -- they did what Server Settings said
+        (include thumbnails, keep). Those settings are written into the job once, so the job does
+        the same as before and its options show (and can be changed) in the Scheduler."""
+        settings = get_settings()
+        for r in rows:
+            if r["job_type"] != "backup":
+                continue
+            try:
+                cfg = json.loads(r.get("job_config") or "{}")
+            except ValueError:
+                cfg = {}
+            if backup_jobs.is_configured(cfg):
+                continue
+            cfg = {"include": sorted(backup.CACHE_PARTS) if settings.backup.include_cache else [],
+                   "keep": settings.backup.keep, "copy_to": [], "upload": "", "split_gb": 0}
+            self.db.update_scheduled_job(r["id"], {"job_config": json.dumps(cfg)})
+            logger.info("Scheduler: backup job '{}' now shows its options", r.get("name"))
 
     def _schedule_fields(self, row: dict, schedule: dict) -> dict:
         from .scheduler_worker import _compute_next_run_at
@@ -100,22 +123,34 @@ class SystemWorkerMixin:
         return result
 
     async def run_backup(self, include_cache: bool | None = None, include_secrets: bool = False,
-                         trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None) -> dict:
+                         trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None,
+                         job_id: str | None = None, job_config: dict | None = None) -> dict:
         """A backup, then its restore test. `include` (3.7.0): backup.PARTS keys; without it
         the older switches (a scheduled backup: Server Settings' include_cache). Tasks shows
-        each step (the files it's adding) and the whole job (by bytes, the test included)."""
+        each step (the files it's adding) and the whole job (by bytes, the test included).
+        3.8.0, a scheduled job with options (backend/backup_jobs.py): its parts, its own keep and
+        part size; after the restore test passed, the copies to other folders and the upload to
+        Filester -- each one tried even when another fails; the job fails (and notifies) if any did."""
         settings = get_settings()
+        cfg = backup_jobs.normalize(job_config, check_ready=False) if backup_jobs.is_configured(job_config) else None
+        if cfg:
+            include = cfg["include"]
         cache = settings.backup.include_cache if include_cache is None else include_cache
         parts = backup.parts_from(include, cache, include_secrets)
+        if cfg and cfg["upload"] and not backup.saved_password():
+            raise RuntimeError(L("Set a backup password on the Backups page first: a backup is only uploaded encrypted."))
+        copies = len(cfg["copy_to"]) + (1 if cfg["upload"] else 0) if cfg else 0
         state: dict = {"stage": L('Starting')}
-        phase = {"create": [0, 0], "test": [0, 0]}  # [bytes done, bytes total]
+        phase = {"create": [0, 0], "test": [0, 0], "copy": [0, 0]}  # [bytes done, bytes total]
 
         def overall() -> float | None:
-            c, t = phase["create"], phase["test"]
+            c, t, k = phase["create"], phase["test"], phase["copy"]
             # before the test starts its total is known: everything but the videos is read back
             test_total = t[1] or max(0, c[1] - state.get("video_bytes", 0))
-            whole = c[1] + test_total
-            return None if not whole else min(100.0, (c[0] + t[0]) / whole * 100)
+            # copies: each read back once (2x), the upload once; known roughly before they start
+            copy_total = k[1] or c[1] * copies * 2
+            whole = c[1] + test_total + copy_total
+            return None if not whole else min(100.0, (c[0] + t[0] + k[0]) / whole * 100)
 
         def on_create(stage, done=None, total=None, step=None, steps=None, bytes_done=None, bytes_total=None):
             if bytes_total is not None:
@@ -136,6 +171,8 @@ class SystemWorkerMixin:
             summary = await asyncio.to_thread(
                 backup.create_backup, settings, include=sorted(parts), trigger=trigger,
                 progress=on_create, password=backup.saved_password(), dest=dest,
+                part_size=backup_jobs.part_bytes(cfg) if cfg else None, job=job_id if cfg else None,
+                keep=cfg["keep"] if cfg else None,
             )
             act.summary = f"{summary['name']} ({summary['size_bytes'] / 1048576:.1f} MB)"
             logger.info("Backup created: {} ({} bytes)", summary["name"], summary["size_bytes"])
@@ -144,9 +181,55 @@ class SystemWorkerMixin:
             test = await asyncio.to_thread(backup.verify_backup, settings, summary["name"], on_test)
             summary["test"] = test
             act.summary += " · restore test passed" if test["ok"] else " · RESTORE TEST FAILED"
+            problems: list[str] = []
+            if cfg and copies and test["ok"]:
+                problems = await self._backup_copies(settings, summary, cfg, job_id, state, phase, overall)
+                done = copies - len(problems)
+                act.summary += f" · copies {done}/{copies}"
         if not test["ok"]:
             self._report_backup_test(summary["name"], test)
+        elif problems:
+            text = "; ".join(problems)
+            logger.error("Backup {}: not every copy was made: {}", summary["name"], text)
+            notify("system", "error", L("Backup {name} was made, but not every copy of it", name=summary["name"]),
+                   body=text[:900], link="/admin/portal/backups")
+            raise RuntimeError(L("The backup was made, but: {problems}", problems=text))
         return summary
+
+    async def _backup_copies(self, settings, summary: dict, cfg: dict, job_id: str, state: dict, phase: dict,
+                             overall) -> list[str]:
+        """The job's copy folders, then Filester (3.8.0). Returns what went wrong, one line each."""
+        from .. import cloud_filester
+        name, size = summary["name"], summary["size_bytes"]
+        targets = [("copy", f) for f in cfg["copy_to"]] + ([("upload", cfg["upload"])] if cfg["upload"] else [])
+        phase["copy"] = [0, size * sum(2 if kind == "copy" else 1 for kind, _ in targets)]
+        problems: list[str] = []
+        base = 0
+        first = state.get("steps") or 0      # the backup's own steps and its test come first
+        for i, (kind, where) in enumerate(targets):
+            label = L("Copying to {folder}", folder=where) if kind == "copy" else L("Uploading to Filester")
+            state.update(stage=label, done=None, total=None, detail=None, step=first + i + 1, steps=first + len(targets),
+                         percent=overall())
+
+            def step(done: int, total: int, b=base, label=label) -> None:
+                phase["copy"][0] = b + done
+                state.update(stage=label, done=done // 1048576, total=max(1, total // 1048576),
+                             detail=f"{done / 1048576:,.0f} / {total / 1048576:,.0f} MB", percent=overall())
+
+            try:
+                if kind == "copy":
+                    folder = backup.check_copy_folder(settings, where)
+                    await asyncio.to_thread(backup.copy_backup, settings, name, folder, step)
+                    await asyncio.to_thread(backup.prune_copies, folder, job_id, cfg["keep"])
+                    logger.info("Backup {} copied to {}", name, folder)
+                else:
+                    await asyncio.to_thread(cloud_filester.upload_backup, settings, name, job_id, cfg["keep"], step)
+            except Exception as exc:  # noqa: BLE001 -- each place is tried; all problems are reported together
+                logger.warning("Backup {}: {} failed: {}", name, where, exc)
+                problems.append(f"{where}: {exc}")
+            base += size * (2 if kind == "copy" else 1)
+            phase["copy"][0] = base
+        return problems
 
     def start_backup(self, include: list[str], trigger: str = "manual", dest: str | None = None) -> None:
         """The Backups page's "Create backup now" (3.7.0): runs in the background (a backup of the

@@ -4,6 +4,40 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.8.0] - 2026-11-25
+
+### Added
+- **Backups in more than one place.** Each Scheduler backup job has its own options (**Edit**): what goes in, how
+  many of its backups to keep, up to 5 more folders each backup is copied to (an external drive, a NAS share), and
+  an upload to a private Filester folder. So a failing or wiped disk doesn't take the backups with it.
+  - **Copies** are read back and checked byte for byte before they get their name; a folder that can't be reached
+    is reported and the other copies are still made. The copy folders' backups are listed on the Backups page,
+    ready to test or restore. In a copy folder only the job's own backups are deleted when pruning.
+  - **Filester** (API key under **Admin → Credentials → Filester**): a private folder “PMV Nexus backups” is made
+    and used. What may leave the computer is enforced on saving the job and again before every upload: only
+    encrypted backups (a backup password must be set), never the credentials (**Secrets**) or the videos, and in
+    parts of at most 9 GB (Filester takes files up to 10 GB). Before uploading, the free space on the account is
+    checked; the job's own oldest upload that would be removed anyway goes first if that makes room, otherwise
+    nothing is uploaded and nothing deleted. Every upload's size is checked; a failed one leaves no parts behind.
+    Only uploads this app made (recorded in `data/cloud_backups.json`) are ever deleted there.
+  - Copies and the upload happen only after the backup passed its restore test. If one fails, the job's run is
+    *failed* with the reason, and a notification says so; the backup and the other copies stay.
+  - **Backups → Copies elsewhere** lists each job's copy folders and upload, the backups on Filester, and
+    **Check Filester** (the key, the space used there).
+- **Daily backup**, a new built-in Scheduler job: the database and settings every day at 02:30, keeping 7.
+  **Weekly backup** on a new install also takes the thumbnails, previews and details files, video frames and seekbar
+  previews, keeping 4.
+
+### Changed
+- **Each backup job keeps its own number of backups** (its **Keep**); backups made by hand on the Backups page, and
+  older ones, still keep `backup.keep` (10). Backup jobs from before 3.8.0 get their options written in once —
+  doing exactly what they did (Server Settings' "include thumbnails", keep 10) — so they show in the job dialog.
+- The Scheduler's job type is now just **Backup**; the job card says what each backup job takes, keeps and copies.
+
+### Fixed
+- Scheduler job dialog: the cron field showed under the simple schedule too.
+- Scheduler on a phone: a long job-type label made the page wider than the screen.
+
 ## [3.7.0] - 2026-11-25
 
 ### Added

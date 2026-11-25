@@ -214,6 +214,26 @@ def list_backups(user: AuthContext = Depends(require_permission("settings.manage
     }
 
 
+@router.get("/api/backups/offsite")
+async def backups_offsite(live: bool = False, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """Where scheduled backup jobs copy and upload their backups (3.8.0): each job's copy folders
+    and upload, what was uploaded to Filester, and (live) the Filester account's space."""
+    from .. import backup_jobs, cloud_filester
+    jobs = [j for j in library_manager.list_scheduled_jobs() if j.get("job_type") == "backup"]
+    out = {"jobs": [{"id": j["id"], "name": j.get("name"), "enabled": j.get("enabled"),
+                     "copy_to": (j.get("job_config") or {}).get("copy_to") or [],
+                     "upload": (j.get("job_config") or {}).get("upload") or "",
+                     "keep": (j.get("job_config") or {}).get("keep") or backup_jobs.DEFAULT_KEEP} for j in jobs]}
+    try:
+        out["filester"] = await asyncio.to_thread(cloud_filester.status, live)
+    except cloud_filester.CloudError as exc:
+        out["filester"] = {**await asyncio.to_thread(cloud_filester.status, False), "error": str(exc)}
+    names = {j["id"]: j.get("name") for j in jobs}
+    for u in out["filester"]["uploads"]:
+        u["job_name"] = names.get(u.get("job"))
+    return out
+
+
 def _destination(folder: str | None):
     try:
         return backup.check_destination(get_settings(), folder)

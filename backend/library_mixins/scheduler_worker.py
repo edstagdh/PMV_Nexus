@@ -100,11 +100,20 @@ JOB_REGISTRY: dict[str, dict] = {
         "category": "non_invasive",
     },
     "backup": {
-        "label": L('Backup database + settings'),
-        "method": "run_backup",  # see library_mixins/system_worker.py
+        "label": L('Backup'),
+        "method": "run_backup",  # see library_mixins/system_worker.py; options: backend/backup_jobs.py (3.8.0)
         "category": "non_invasive",
     },
 }
+
+
+def _checked_job_config(job_type: str, job_config: Optional[dict]) -> dict:
+    """A job's options as saved: a backup job's are checked (3.8.0; ValueError -> the dialog)."""
+    if job_type == "backup" and job_config:
+        from .. import backup_jobs
+        from ..config import get_settings
+        return backup_jobs.normalize(job_config, get_settings())
+    return job_config or {}
 
 
 def _parse_hhmm(time_str: str) -> tuple[int, int]:
@@ -226,11 +235,13 @@ class SchedulerWorkerMixin:
             if not registry_entry:
                 raise ValueError(L("Unknown job type: {type}", type=job_type))
             method = getattr(self, registry_entry["method"])
-            # Only duplicate_scan currently reads a job_config option
-            # (verbose_logging) -- every other registered job type's
-            # runner method takes no arguments at all.
+            # Job types with options (job_config): duplicate_scan (verbose_logging) and, 3.8.0,
+            # backup (parts, keep, copy folders, upload -- backend/backup_jobs.py). The other
+            # runner methods take no arguments.
             if job_type == "duplicate_scan":
                 result = await method(verbose=job_config.get("verbose_logging", False))
+            elif job_type == "backup":
+                result = await method(job_id=job_id, job_config=job_config)
             else:
                 result = await method()
             status = "cancelled" if act.stopped_by else "interrupted" if self._shutting_down else "success"
@@ -322,6 +333,7 @@ class SchedulerWorkerMixin:
     ) -> dict:
         if job_type not in JOB_REGISTRY:
             raise ValueError(L('Unknown job type: {type}', type=job_type))
+        job_config = _checked_job_config(job_type, job_config)
         next_run_at = _compute_next_run_at(schedule_mode, schedule_config) if enabled else None
         job_id = str(uuid.uuid4())
         now = time.time()
@@ -347,7 +359,7 @@ class SchedulerWorkerMixin:
         fields = dict(updates)
         fields["schedule_config"] = json.dumps(merged_config)
         if "job_config" in fields:
-            fields["job_config"] = json.dumps(fields["job_config"])
+            fields["job_config"] = json.dumps(_checked_job_config(existing["job_type"], fields["job_config"]))
         fields["updated_at"] = time.time()
         fields["next_run_at"] = _compute_next_run_at(merged_mode, merged_config) if merged_enabled else None
 

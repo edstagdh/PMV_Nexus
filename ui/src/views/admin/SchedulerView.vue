@@ -7,6 +7,7 @@ import { askConfirm } from "../../stores/confirm.js";
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import Icon from "../../components/Icon.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
+import FolderPicker from "../../components/admin/FolderPicker.vue";
 import { api } from "../../lib/api.js";
 import { formatDateTime } from "../../lib/format.js";
 import { toast } from "../../stores/toast.js";
@@ -145,11 +146,43 @@ function openDialog(job = null) {
     expression: c.expression || "0 3 * * *",
     at: c.at || tomorrowAt("03:00"),
     verbose: !!job?.job_config?.verbose_logging,
+    // a backup job's options (3.8.0, backend/backup_jobs.py)
+    b_include: [...(job?.job_config?.include || [])],
+    b_keep: job?.job_config?.keep ?? backupOpts.value?.default_keep ?? 7,
+    b_copy: [...(job?.job_config?.copy_to || [])],
+    b_upload: (job?.job_config?.upload || "") === "filester",
+    b_split: job?.job_config?.split_gb || 0,
   };
   formError.value = "";
   dialog.value = { job };
 }
 const nameTouched = ref(false);
+// 3.8.0: a backup job's options
+const backupOpts = computed(() => typeOf("backup")?.options || null);
+const picking = ref(false);
+const SECRET_PARTS = ["secrets", "videos"];   // never uploaded to Filester
+function partDisabled(key) { return form.value.b_upload && SECRET_PARTS.includes(key); }
+function toggleUpload(on) {
+  form.value.b_upload = on;
+  if (on) {
+    form.value.b_include = form.value.b_include.filter((k) => !SECRET_PARTS.includes(k));
+    if (!form.value.b_split || form.value.b_split > backupOpts.value.upload_max_part_gb) form.value.b_split = backupOpts.value.upload_max_part_gb;
+  }
+}
+function addCopyFolder(path) {
+  picking.value = false;
+  if (path && !form.value.b_copy.includes(path)) form.value.b_copy.push(path);
+}
+function backupText(job) {
+  const c = job.job_config || {};
+  if (!("include" in c)) return "";
+  const parts = (c.include || []).map((k) => backupOpts.value?.parts.find((p) => p.key === k)?.label || k);
+  const bits = [parts.length ? t("Database, settings + {parts}", { parts: parts.join(", ") }) : t("Database and settings"),
+    t("keeps {n}", { n: c.keep || 7 })];
+  if (c.copy_to?.length) bits.push(tn("copied to 1 more folder", "copied to {n} more folders", c.copy_to.length));
+  if (c.upload) bits.push(t("uploaded to Filester"));
+  return bits.join(" · ");
+}
 const defaultName = computed(() => typeOf(form.value.job_type)?.label || "");
 
 async function save() {
@@ -164,7 +197,10 @@ async function save() {
     enabled: f.enabled,
     schedule_mode: f.mode,
     schedule_config,
-    job_config: f.job_type === "duplicate_scan" ? { verbose_logging: f.verbose } : {},
+    job_config: f.job_type === "duplicate_scan" ? { verbose_logging: f.verbose }
+      : f.job_type === "backup" ? { include: f.b_include, keep: Math.round(Number(f.b_keep) || 7), copy_to: f.b_copy,
+        upload: f.b_upload ? "filester" : "", split_gb: Number(f.b_split) || 0 }
+      : {},
   };
   busy.value = true;
   formError.value = "";
@@ -222,6 +258,7 @@ async function save() {
       </div>
       <p class="meta">
         <span>{{ job.enabled ? describe(job) : job.schedule_config?.kind === "once" && job.last_run_at ? $t("Ran once (switch it on to run it again)") : $t("Disabled") }}</span>
+        <span v-if="job.job_type === 'backup' && backupText(job)">{{ backupText(job) }}</span>
         <span v-if="job.enabled && job.next_run_at">{{ $t("Next: {time}", { time: formatDateTime(job.next_run_at) }) }}</span>
         <span v-if="job.last_run_at">{{ $t("Last: {time}", { time: formatDateTime(job.last_run_at) }) }}
           <span class="pill" :class="STATUS_PILL[job.last_run_status]">{{ RUN_STATUS[job.last_run_status] || job.last_run_status }}</span></span>
@@ -287,11 +324,45 @@ async function save() {
           <label v-else class="inline">{{ $t("every") }} <input v-model.number="form.hours" class="input input-num" type="number" min="1" max="168" :aria-label="$t('Hours')"> {{ $t("hours") }}</label>
         </div>
         <small v-if="form.mode === 'simple' && form.kind === 'once'" class="muted">{{ $t("Runs once at this time (the server's clock) and then switches itself off. A time that has passed runs within a minute.") }}</small>
-        <div v-else class="field">
+        <div v-if="form.mode === 'advanced'" class="field">
           <input v-model="form.expression" class="input mono" placeholder="0 3 * * *" :aria-label="$t('Cron expression')" required>
           <small class="muted">{{ $t("minute hour day-of-month month day-of-week, server time — “0 3 * * *” is every day at 03:00, “0 */6 * * *” every 6 hours.") }}</small>
         </div>
         <label v-if="form.job_type === 'duplicate_scan'" class="switch"><input v-model="form.verbose" type="checkbox">{{ $t("Keep a detailed log of each run") }}</label>
+        <template v-if="form.job_type === 'backup' && backupOpts">
+          <div class="field">{{ $t("What goes in") }}
+            <small class="muted">{{ $t("The database and settings always; tick what else.") }}</small>
+            <label v-for="p in backupOpts.parts" :key="p.key" class="check" :class="{ dim: partDisabled(p.key) }"
+              :title="partDisabled(p.key) ? $t('Never uploaded to Filester') : ''">
+              <input v-model="form.b_include" type="checkbox" :value="p.key" :disabled="partDisabled(p.key)"> {{ p.label }}</label>
+          </div>
+          <label class="field">{{ $t("Keep") }}
+            <input v-model.number="form.b_keep" class="input input-num" type="number" min="1" max="500">
+            <small class="muted">{{ $t("How many of this job's backups stay — in the backups folder, in each copy folder and on Filester. Older ones of this job are deleted; nothing else is.") }}</small>
+          </label>
+          <div class="field">{{ $t("Also copy each backup to") }}
+            <small class="muted">{{ $t("Other folders, e.g. an external drive or a network share. Each copy is checked byte for byte; a folder that can't be reached is reported, the others still get their copy.") }}</small>
+            <div v-for="(c, i) in form.b_copy" :key="c" class="copy-row">
+              <span class="mono">{{ c }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" :aria-label="$t('Remove')" @click="form.b_copy.splice(i, 1)"><Icon name="x" :size="14" /></button>
+            </div>
+            <button v-if="form.b_copy.length < backupOpts.max_copy_folders" type="button" class="btn btn-sm copy-add" @click="picking = true">
+              <Icon name="plus" :size="14" />{{ $t("Add a folder") }}</button>
+          </div>
+          <div class="field">
+            <label class="switch"><input :checked="form.b_upload" type="checkbox" @change="toggleUpload($event.target.checked)">{{ $t("Upload to Filester (a private folder)") }}</label>
+            <small class="muted">{{ $t("Only encrypted with the backup password, never with the credentials or the videos, in parts Filester takes (up to {max} GB each). Filester keeps 10 GB per account and deletes files nobody downloads for 45 days.", { max: backupOpts.upload_max_part_gb }) }}</small>
+            <small v-if="form.b_upload && !backupOpts.password_set" class="error-text">{{ $t("Set a backup password on the Backups page first.") }}</small>
+            <small v-if="form.b_upload && !backupOpts.filester_key_set" class="error-text">{{ $t("Add the Filester API key under Admin → Credentials first.") }}</small>
+          </div>
+          <label class="field">{{ $t("Part size (GB)") }}
+            <input v-model.number="form.b_split" class="input input-num" type="number" step="0.1" min="0"
+              :max="form.b_upload ? backupOpts.upload_max_part_gb : backupOpts.split_max_gb">
+            <small class="muted">{{ form.b_upload
+              ? $t("{min} to {max} GB with the upload.", { min: backupOpts.split_min_gb, max: backupOpts.upload_max_part_gb })
+              : $t("0: as set on the Backups page; or {min} to {max} GB.", { min: backupOpts.split_min_gb, max: backupOpts.split_max_gb }) }}</small>
+          </label>
+        </template>
         <label class="switch"><input v-model="form.enabled" type="checkbox">{{ $t("Enabled") }}</label>
         <p v-if="formError" class="error-text">{{ formError }}</p>
       </form>
@@ -300,12 +371,14 @@ async function save() {
         <button class="btn btn-primary" type="submit" form="job-form" :disabled="busy">{{ busy ? $t("Saving…") : $t("Save") }}</button>
       </template>
     </ModalDialog>
+    <FolderPicker v-if="picking" :title="$t('Copy each backup to')" @close="picking = false" @pick="addCopyFolder" />
   </div>
 </template>
 
 <style scoped>
 .job { gap: 0.625rem; }
 .job-title { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.job-title .pill { white-space: normal; overflow-wrap: anywhere; }
 .meta { margin: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font-size: 0.82rem; color: var(--text-2); }
 .history { border-top: 1px solid var(--border); padding-top: 0.625rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .run { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.5rem 0.625rem; background: var(--panel-2); border-radius: var(--radius); }
@@ -328,4 +401,9 @@ async function save() {
 .live .bar div { height: 100%; background: var(--accent); transition: width 0.5s ease; }
 .live .small { font-size: 0.76rem; align-self: flex-start; }
 .live-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.check { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; }
+.check.dim { opacity: 0.5; }
+.copy-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; font-size: 0.82rem; overflow-wrap: anywhere; }
+.copy-add { align-self: flex-start; }
+
 </style>

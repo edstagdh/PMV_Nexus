@@ -24,10 +24,26 @@ router = APIRouter()
 
 @router.get("/api/scheduler/job-types")
 def list_job_types(user: AuthContext = Depends(require_permission("settings.manage"))):
-    return [
+    out = [
         {"job_type": key, "label": entry["label"], "category": entry.get("category", "invasive")}
         for key, entry in JOB_REGISTRY.items()
     ]
+    for t in out:
+        if t["job_type"] == "backup":
+            t["options"] = _backup_job_options()
+    return out
+
+
+def _backup_job_options() -> dict:
+    """What the job dialog offers for a backup job (3.8.0, backend/backup_jobs.py)."""
+    from .. import backup, backup_jobs, cloud_filester
+    return {
+        "parts": [{"key": k, "label": label} for k, label in backup.PARTS.items()],
+        "split_min_gb": backup.SPLIT_MIN_GB, "split_max_gb": backup.SPLIT_MAX_GB,
+        "upload_max_part_gb": cloud_filester.MAX_PART_GB, "max_copy_folders": backup_jobs.MAX_COPY_FOLDERS,
+        "password_set": bool(backup.saved_password()), "filester_key_set": bool(cloud_filester.api_key()),
+        "default_keep": backup_jobs.DEFAULT_KEEP,
+    }
 
 
 @router.get("/api/scheduler/jobs")
