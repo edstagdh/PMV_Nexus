@@ -117,6 +117,8 @@ Type: filesandordirs; Name: "{app}\runtime\ms-playwright"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.venv"
+; what an update keeps to undo itself, if a Setup was ended before it could remove it (3.7.0)
+Type: filesandordirs; Name: "{app}\.rollback"
 Type: filesandordirs; Name: "{app}\runtime"
 ; The app's code folders as a whole (2.33.4): Python leaves __pycache__ folders in every
 ; package (backend\sources, extensions...), which a hand-made list missed. More __pycache__
@@ -161,6 +163,31 @@ var
   StepCount: Integer;       { RunWithProgress: each step has its own "done" file (3.7.0) }
   LastExitCode: Integer;    { the last step's exit code, -1 when it couldn't be started }
   FolderKeys: array[0..5] of String;
+  { Cancel and undo (3.7.0): what this Setup run did, so Cancel can undo it (Rollback). }
+  UndoButton: TNewButton;   { Cancel while Setup's own steps run and on the pages after installing }
+  StepRunning: Boolean;     { a RunWithProgress step is running }
+  CancelRequested: Boolean; { Cancel was confirmed while a step ran: it's stopped, then Rollback }
+  RolledBack: Boolean;      { undone: nothing more to do but end }
+  Committed: Boolean;       { finished: nothing to undo any more }
+  RollbackProblems: String; { what couldn't be undone }
+  JournalStarted: Boolean;  { PrepareToInstall ran: from here on there's something to undo }
+  AppDirExisted: Boolean;   { the app folder was there before this run (else Rollback removes it) }
+  PreExisting: String;      { '|name|...|' -- what was at the top of the app folder before }
+  PreExistingOk: Boolean;
+  JCodeSaved: Boolean;      { the installed version's code is in .rollback\code }
+  JServiceSaved: Boolean;   { ... and its service files in .rollback\service }
+  ServiceDirExisted: Boolean;
+  JServiceStopped: Boolean; { the Windows service was stopped for the update }
+  JServiceRemoved: Boolean; { ... and removed (switched away from running as a service) }
+  JPythonInstalled: Boolean;{ Setup installed Python }
+  JVenvMoved: Boolean;      { the old .venv is in .rollback\venv; .venv is a new one }
+  JVenvCreated: Boolean;    { .venv was made by this run }
+  VenvNoUndo: Boolean;      { packages were changed in place: can't be undone }
+  JFfmpegMoved: Boolean;    { the old FFmpeg is in .rollback\ffmpeg }
+  JFfmpegCreated: Boolean;  { runtime\ffmpeg is new }
+  JServiceInstalled: Boolean;
+  JFirewall: Boolean;
+  NewFolders: TArrayOfString; { folders the set-up pages had Setup create (outside the app folder too) }
 
 { ---------------------------------------------------------------- helpers }
 
@@ -278,10 +305,373 @@ begin
   Result := Copy(T, P + 1, 150);
 end;
 
+{ ---------------------------------------------------------------- cancel and undo (3.7.0) }
+
+function RollbackDir: String;
+begin
+  Result := AppDir + '\.rollback';
+end;
+
+function UninstallKey: String;
+begin
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + '{' + '8C3E6A52-6F0B-4C7A-9D3E-2B51A7F0C4D1' + '}' + '_is1';
+end;
+
+{ '|name|name|' of what's at the top of Dir (lower case). Ok: it could be read. }
+function TopEntries(const Dir: String; var Ok: Boolean): String;
+var
+  F: TFindRec;
+begin
+  Result := '|';
+  Ok := False;
+  if FindFirst(Dir + '\*', F) then
+  try
+    Ok := True;
+    repeat
+      if (F.Name <> '.') and (F.Name <> '..') then
+        Result := Result + Lowercase(F.Name) + '|';
+    until not FindNext(F);
+  finally
+    FindClose(F);
+  end;
+end;
+
+procedure UndoProblem(const What: String);
+begin
+  Log('Undo: could not ' + What);
+  RollbackProblems := RollbackProblems + '- ' + What + #13#10;
+end;
+
+{ Deletes a folder (or file) this run created. }
+procedure RemoveCreated(const Path: String);
+begin
+  if DirExists(Path) then
+  begin
+    if not DelTree(Path, True, True, True) then
+      UndoProblem('delete ' + Path);
+  end
+  else if FileExists(Path) and not DeleteFile(Path) then
+    UndoProblem('delete ' + Path);
+end;
+
+{ Puts Saved back as Target (both on the app's drive: a rename). }
+procedure PutBack(const Saved, Target: String);
+begin
+  if not (DirExists(Saved) or FileExists(Saved)) then
+    Exit;
+  RemoveCreated(Target);
+  if not RenameFile(Saved, Target) then
+    UndoProblem('put back ' + Target + ' (the saved copy is ' + Saved + ')');
+end;
+
+{ The installed version's code, saved before the update replaces it (PrepareToInstall). }
+function SaveInstalledCode: Boolean;
+var
+  Dirs: array[0..7] of String;
+  I, Code: Integer;
+  Robocopy, Opt, RB: String;
+begin
+  Result := True;
+  RB := RollbackDir;
+  Robocopy := ExpandConstant('{sys}\robocopy.exe');
+  Opt := ' /E /XD __pycache__ /R:1 /W:1 /NFL /NDL /NJH /NJS /NP';
+  Dirs[0] := 'backend'; Dirs[1] := 'frontend'; Dirs[2] := 'Tools'; Dirs[3] := 'userscript';
+  Dirs[4] := 'docs'; Dirs[5] := 'languages'; Dirs[6] := 'extensions'; Dirs[7] := 'installer';
+  for I := 0 to 7 do
+    if DirExists(AppDir + '\' + Dirs[I]) then
+      if not Exec(Robocopy, '"' + AppDir + '\' + Dirs[I] + '" "' + RB + '\code\' + Dirs[I] + '"' + Opt, '',
+                  SW_HIDE, ewWaitUntilTerminated, Code) or (Code >= 8) then
+        Result := False;
+  { the files at the top (not config.yaml: an update doesn't change it) }
+  if not Exec(Robocopy, '"' + AppDir + '" "' + RB + '\code" *.py *.md *.txt *.bat *.sh *.exe *.dat VERSION LICENSE ' +
+              'config.example.yaml /XF config.yaml /R:1 /W:1 /NFL /NDL /NJH /NJS /NP', '',
+              SW_HIDE, ewWaitUntilTerminated, Code) or (Code >= 8) then
+    Result := False;
+  if DirExists(AppDir + '\runtime\service') then
+  begin
+    if not Exec(Robocopy, '"' + AppDir + '\runtime\service" "' + RB + '\service"' + Opt, '',
+                SW_HIDE, ewWaitUntilTerminated, Code) or (Code >= 8) then
+      Result := False
+    else
+      JServiceSaved := True;
+  end;
+end;
+
+{ The installed version's code back in place, and what the update added at the top removed. }
+procedure RestoreCode;
+var
+  F: TFindRec;
+  Names: TArrayOfString;
+  I, N: Integer;
+  Code: String;
+begin
+  Code := RollbackDir + '\code';
+  N := 0;
+  if FindFirst(Code + '\*', F) then
+  try
+    repeat
+      if (F.Name <> '.') and (F.Name <> '..') then
+      begin
+        SetArrayLength(Names, N + 1);
+        Names[N] := F.Name;
+        N := N + 1;
+      end;
+    until not FindNext(F);
+  finally
+    FindClose(F);
+  end;
+  for I := 0 to N - 1 do
+    PutBack(Code + '\' + Names[I], AppDir + '\' + Names[I]);
+end;
+
+{ What's at the top of the app folder now but wasn't before this run. }
+procedure RemoveNewTopEntries;
+var
+  F: TFindRec;
+  Names: TArrayOfString;
+  I, N: Integer;
+begin
+  if not PreExistingOk then
+    Exit;     { not known what was there: delete nothing }
+  N := 0;
+  if FindFirst(AppDir + '\*', F) then
+  try
+    repeat
+      if (F.Name <> '.') and (F.Name <> '..') and (Lowercase(F.Name) <> '.rollback') and
+         (Pos('|' + Lowercase(F.Name) + '|', PreExisting) = 0) then
+      begin
+        SetArrayLength(Names, N + 1);
+        Names[N] := F.Name;
+        N := N + 1;
+      end;
+    until not FindNext(F);
+  finally
+    FindClose(F);
+  end;
+  for I := 0 to N - 1 do
+    RemoveCreated(AppDir + '\' + Names[I]);
+end;
+
+{ The topmost folder of Path that doesn't exist yet ('' when Path exists, or only a drive is missing). }
+function TopNewFolder(const Path: String): String;
+var
+  P: String;
+begin
+  Result := '';
+  P := RemoveBackslashUnlessRoot(Trim(Path));
+  if (P = '') or DirExists(P) then
+    Exit;
+  while (ExtractFileDir(P) <> '') and (ExtractFileDir(P) <> P) and not DirExists(ExtractFileDir(P)) do
+    P := ExtractFileDir(P);
+  if (ExtractFileDir(P) = '') or (ExtractFileDir(P) = P) then
+    Exit;     { never a drive or share root }
+  Result := P;
+end;
+
+procedure NoteNewFolder(const Path: String);
+var
+  P: String;
+  I: Integer;
+begin
+  P := TopNewFolder(Path);
+  if P = '' then
+    Exit;
+  for I := 0 to GetArrayLength(NewFolders) - 1 do
+    if CompareText(NewFolders[I], P) = 0 then
+      Exit;
+  I := GetArrayLength(NewFolders);
+  SetArrayLength(NewFolders, I + 1);
+  NewFolders[I] := P;
+end;
+
+{ What Cancel would undo, for the question. }
+function UndoSummary: String;
+var
+  I: Integer;
+begin
+  Result := '';
+  if not AppDirExisted then
+    Result := Result + '- remove PMV Nexus from ' + AppDir + ' (Setup made that folder), with its shortcuts' + #13#10
+  else if JCodeSaved then
+  begin
+    Result := Result + '- put back the version of PMV Nexus that was installed';
+    if VenvNoUndo then
+      Result := Result + ' (the Python packages it changed stay changed)';
+    Result := Result + #13#10;
+  end
+  else
+    Result := Result + '- remove what it added to ' + AppDir + #13#10;
+  for I := 0 to GetArrayLength(NewFolders) - 1 do
+    Result := Result + '- delete the folder it created: ' + NewFolders[I] + #13#10;
+  if JServiceInstalled then
+    Result := Result + '- remove the Windows service it set up' + #13#10;
+  if JFirewall then
+    Result := Result + '- remove the firewall rule it added' + #13#10;
+  if JPythonInstalled then
+    Result := Result + '- uninstall the Python it installed' + #13#10;
+  if JServiceStopped or JServiceRemoved or AppWasRunning then
+    Result := Result + '- start PMV Nexus again, as it was' + #13#10;
+end;
+
+function ConfirmCancel: Boolean;
+begin
+  Result := MsgBox('Cancel the installation?' + #13#10#13#10 +
+    'Setup stops what it''s doing and undoes what it did so far:' + #13#10 + UndoSummary + #13#10 +
+    'Nothing else is changed.', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+end;
+
+{ Undoes this run, newest first. Only what this run did: a folder or file is deleted only when
+  this run created it; what an update replaced is put back from .rollback. }
+procedure Rollback;
+var
+  I, Code: Integer;
+  Service: String;
+begin
+  if RolledBack or not JournalStarted then
+    Exit;
+  RolledBack := True;
+  SetupFailed := True;
+  Log('Cancelled: undoing what Setup did');
+  Service := AppDir + '\runtime\service\PMVNexusService.exe';
+  { the set-up pages: firewall, service, a staged restore, the folders they created }
+  if JFirewall then
+    Exec('netsh', 'advfirewall firewall delete rule name="PMV Nexus"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if JServiceInstalled and FileExists(Service) then
+  begin
+    Exec(Service, 'stop', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Exec(Service, 'uninstall', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  end;
+  if not IsUpgrade and FileExists(VenvPython) and FileExists(AppDir + '\Tools\setup_core.py') then
+    Exec(VenvPython, '-m Tools.setup_core cancel-restore', AppDir, SW_HIDE, ewWaitUntilTerminated, Code);
+  for I := GetArrayLength(NewFolders) - 1 downto 0 do
+    RemoveCreated(NewFolders[I]);
+  { the app folder }
+  if not AppDirExisted then
+  begin
+    if (Length(AppDir) > 3) and DirExists(AppDir) and not DelTree(AppDir, True, True, True) then
+      UndoProblem('delete ' + AppDir);
+  end
+  else
+  begin
+    if JVenvMoved then
+      PutBack(RollbackDir + '\venv', AppDir + '\.venv')
+    else if JVenvCreated then
+      RemoveCreated(AppDir + '\.venv');
+    if JFfmpegMoved then
+      PutBack(RollbackDir + '\ffmpeg', AppDir + '\runtime\ffmpeg')
+    else if JFfmpegCreated then
+      RemoveCreated(AppDir + '\runtime\ffmpeg');
+    if JServiceSaved then
+      PutBack(RollbackDir + '\service', AppDir + '\runtime\service')
+    else if not ServiceDirExisted then
+      RemoveCreated(AppDir + '\runtime\service');
+    if JCodeSaved then
+    begin
+      RestoreCode;
+      { the launcher's copy in .venv (made by the update) from the launcher put back }
+      if not JVenvMoved and FileExists(AppDir + '\.venv\Scripts\PMVNexus.exe') then
+        FileCopy(AppDir + '\PMVNexus.exe', AppDir + '\.venv\Scripts\PMVNexus.exe', False);
+    end;
+    RemoveNewTopEntries;
+    DelTree(RollbackDir, True, True, True);
+  end;
+  if not IsUpgrade then
+  begin
+    DeleteFile(ExpandConstant('{autoprograms}\{#AppName}.lnk'));
+    DeleteFile(ExpandConstant('{autoprograms}\{#AppName} (console).lnk'));
+    DeleteFile(ExpandConstant('{autodesktop}\{#AppName}.lnk'));
+    DeleteFile(ExpandConstant('{userstartup}\{#AppName}.lnk'));
+    RegDeleteKeyIncludingSubkeys(HKA, UninstallKey);
+  end;
+  { what Setup stopped: started again }
+  if JServiceRemoved and FileExists(Service) then
+  begin
+    Exec(Service, 'install', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Exec(Service, 'start', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  end
+  else if JServiceStopped and FileExists(Service) then
+    Exec(Service, 'start', '', SW_HIDE, ewWaitUntilTerminated, Code)
+  else if AppWasRunning and FileExists(AppDir + '\PMVNexus.exe') then
+    ExecAsOriginalUser(AppDir + '\PMVNexus.exe', 'run.py --tray', AppDir, SW_HIDE, ewNoWait, Code);
+  { Python, last: nothing needs it any more }
+  if JPythonInstalled and FileExists(ExpandConstant('{tmp}\python-installer.exe')) then
+    if not Exec(ExpandConstant('{tmp}\python-installer.exe'), '/uninstall /passive', '', SW_SHOW, ewWaitUntilTerminated, Code)
+       or (Code <> 0) then
+      UndoProblem('uninstall the Python Setup installed (Settings -> Apps)');
+end;
+
+function RollbackText: String;
+begin
+  if RollbackProblems = '' then
+    Result := 'Setup was cancelled, and what it did was undone.'
+  else
+    Result := 'Setup was cancelled. Most of what it did was undone, but not these:' + #13#10 + RollbackProblems;
+end;
+
+procedure ReportRollback;
+begin
+  SuppressibleMsgBox(RollbackText, mbInformation, MB_OK, IDOK);
+end;
+
+{ Done (3.7.0): nothing to undo any more; the saved copies go. }
+procedure Commit;
+begin
+  if Committed or RolledBack then
+    Exit;
+  Committed := True;
+  if JournalStarted then
+    DelTree(RollbackDir, True, True, True);
+end;
+
+procedure ShowUndoButton(Visible: Boolean);
+begin
+  UndoButton.Visible := Visible and not RolledBack;
+  UndoButton.Enabled := UndoButton.Visible;
+  if UndoButton.Visible then
+  begin
+    WizardForm.CancelButton.Visible := False;
+    UndoButton.BringToFront;
+  end;
+end;
+
+{ Ends a step that's running: its cmd.exe (found by the step's own "done" file in its command
+  line) and everything it started. }
+procedure StopStep(const Done: String);
+var
+  Code: Integer;
+  Quoted: String;
+begin
+  Quoted := Done;
+  StringChangeEx(Quoted, '''', '''''', True);
+  Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | ' +
+    'Where-Object { ($_.Name -eq ''cmd.exe'') -and $_.CommandLine -and $_.CommandLine.Contains(''' + Quoted + ''') } | ' +
+    'ForEach-Object { & taskkill.exe /PID $_.ProcessId /T /F }"', '', SW_HIDE, ewWaitUntilTerminated, Code);
+end;
+
+{ Setup's Cancel button while its own steps run and on the pages after installing (3.7.0):
+  asks, then stops the running step (RunWithProgress undoes everything when it sees
+  CancelRequested) or, between steps, undoes everything and ends Setup. }
+procedure UndoClick(Sender: TObject);
+begin
+  if RolledBack or CancelRequested then
+    Exit;
+  if not ConfirmCancel then
+    Exit;
+  if StepRunning then
+    CancelRequested := True
+  else
+  begin
+    Rollback;
+    ReportRollback;
+    WizardForm.Close;
+  end;
+end;
+
 { Runs a program in the background -- its output appended to the install log -- while
   WorkPage (already shown) says Msg and keeps the window alive, with the progress file's text
   (or the log's last line) under it. Exec with "wait" froze the window until the program ended.
-  Returns the exit code, or -1 if it couldn't be started. }
+  Returns the exit code, or -1 if it couldn't be started; -2 when Cancel stopped it (3.7.0:
+  then everything is undone, RolledBack). }
 function RunWithProgress(const Msg, Exe, Params, Env, Progress: String): Integer;
 var
   Done, Line, Detail: String;
@@ -307,8 +697,9 @@ begin
   WorkPage.SetText(Msg, '');
   if not Exec(ExpandConstant('{cmd}'), Line, AppDir, SW_HIDE, ewNoWait, Code) then
     Exit;
+  StepRunning := True;
   Ticks := 0;
-  while not FileExists(Done) do
+  while not FileExists(Done) and not CancelRequested do
   begin
     WorkPage.Animate;
     Sleep(100);
@@ -322,6 +713,17 @@ begin
         Detail := LastLine(LogFile);
       WorkPage.SetText(Msg, Detail);
     end;
+  end;
+  StepRunning := False;
+  if CancelRequested then
+  begin
+    WorkPage.SetText('Cancelling: undoing what Setup did...', '');
+    if not FileExists(Done) then
+      StopStep(Done);
+    Rollback;
+    Result := -2;
+    LastExitCode := -2;
+    Exit;
   end;
   Sleep(200);   { let cmd finish writing it }
   if LoadStringFromFile(Done, S) then
@@ -449,6 +851,11 @@ end;
   the details saved to C:\Logs. }
 function CoreError(const Default: String): String;
 begin
+  if RolledBack then
+  begin
+    Result := '';           { cancelled: not an error }
+    Exit;
+  end;
   Result := GetIniString('result', 'error', '', IniFile);
   if Result <> '' then
     Exit;
@@ -557,6 +964,19 @@ begin
 
   DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), nil);
   WorkPage := CreateOutputMarqueeProgressPage('Please wait', 'This can take a while. The details go to data\logs\install.log (and to C:\Logs if something fails).');
+
+  { Cancel for Setup's own steps and the pages after installing (3.7.0): where Setup's own
+    Cancel button is gone (after the files are copied), in the same place. }
+  UndoButton := TNewButton.Create(WizardForm);
+  UndoButton.Parent := WizardForm;
+  UndoButton.Left := WizardForm.CancelButton.Left;
+  UndoButton.Top := WizardForm.CancelButton.Top;
+  UndoButton.Width := WizardForm.CancelButton.Width;
+  UndoButton.Height := WizardForm.CancelButton.Height;
+  UndoButton.Anchors := WizardForm.CancelButton.Anchors;
+  UndoButton.Caption := SetupMessage(msgButtonCancel);
+  UndoButton.OnClick := @UndoClick;
+  UndoButton.Visible := False;
 
   { These come after the installation (wpInfoAfter), on a first install only. }
   ModePage := CreateInputOptionPage(wpInfoAfter, 'Your library',
@@ -690,6 +1110,21 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  { the pages after installing (a new install): Cancel undoes it (3.7.0) }
+  ShowUndoButton(not IsUpgrade and ((CurPageID = wpInfoAfter) or (CurPageID = ModePage.ID) or
+    (CurPageID = BackupFilePage.ID) or (CurPageID = BackupPwPage.ID) or (CurPageID = FoldersPage.ID) or
+    (CurPageID = MoreFoldersPage.ID) or (CurPageID = AdminPage.ID) or (CurPageID = BrowserPage.ID) or
+    (CurPageID = PortPage.ID)));
+  if CurPageID = wpFinished then
+  begin
+    if RolledBack then
+    begin
+      WizardForm.FinishedHeadingLabel.Caption := 'Setup was cancelled';
+      WizardForm.FinishedLabel.Caption := RollbackText;
+    end
+    else
+      Commit;
+  end;
   if CurPageID = FoldersPage.ID then
   begin
     if BackupInfo <> '' then
@@ -697,6 +1132,31 @@ begin
     else
       FoldersPage.Description := 'Folders for the videos and their thumbnails & previews';
   end;
+end;
+
+{ Setup's own Cancel and the window's close button (3.7.0): once Setup has changed something,
+  the question says what Cancel undoes. While files are copied Setup removes its own files
+  itself; DeinitializeSetup undoes the rest. Elsewhere the whole run is undone here. }
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if RolledBack then
+  begin
+    Cancel := True;
+    Confirm := False;
+    Exit;
+  end;
+  if not JournalStarted then
+    Exit;                     { nothing changed yet: Setup's usual question }
+  Confirm := False;
+  if StepRunning then
+  begin
+    Cancel := False;
+    UndoClick(nil);
+    Exit;
+  end;
+  Cancel := ConfirmCancel;
+  if Cancel and (CurPageID <> wpInstalling) and (CurPageID <> wpPreparing) then
+    Rollback;
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -717,6 +1177,13 @@ begin
     else if (PageID = AdminPage.ID) then
       Result := ModePage.SelectedValueIndex = 1;   { a backup brings its own accounts }
   end;
+end;
+
+{ An error on a page -- not after Cancel undid everything (3.7.0): that says so itself. }
+procedure ErrorBox(const Text: String);
+begin
+  if not RolledBack then
+    MsgBox(Text, mbError, MB_OK);
 end;
 
 { setup_core admin: checks (CheckOnly) or creates the admin account. True when it worked. }
@@ -753,6 +1220,12 @@ begin
     SetIniString('tray', 'open_browser', '1', IniFile)
   else
     SetIniString('tray', 'open_browser', '0', IniFile);
+  { the folders that don't exist yet are created: Cancel deletes them again (3.7.0) }
+  for I := 0 to 5 do
+    if I < FolderKeysMain then
+      NoteNewFolder(FoldersPage.Values[I])
+    else
+      NoteNewFolder(MoreFoldersPage.Values[I - FolderKeysMain]);
   WorkPage.Show;
   try
     if ModePage.SelectedValueIndex = 1 then
@@ -769,6 +1242,7 @@ begin
     end;
     if Result and WizardIsTaskSelected('service') then
     begin
+      JServiceInstalled := True;
       RunLogged('Installing the Windows service...', ExpandConstant('{#ServiceExe}'), 'install', '');
       RunLogged('Starting the Windows service...', ExpandConstant('{#ServiceExe}'), 'start', '');
     end;
@@ -779,14 +1253,15 @@ begin
   begin
     Problem := CoreError('Unknown error');
     StringChangeEx(Problem, ' | ', #13#10, True);   { setup_core puts one problem per " | " }
-    MsgBox('These settings can''t be used yet:' + #13#10#13#10 + Problem + #13#10#13#10 +
-      'Go Back to change a folder, or change the port.', mbError, MB_OK);
+    ErrorBox('These settings can''t be used yet:' + #13#10#13#10 + Problem + #13#10#13#10 +
+      'Go Back to change a folder, or change the port.');
     Exit;
   end;
+  JFirewall := IsAdminInstallMode;
   FirewallRule(Port);
 end;
 
-function NextButtonClick(CurPageID: Integer): Boolean;
+function PageNext(CurPageID: Integer): Boolean;
 begin
   Result := True;
   if CurPageID = wpReady then
@@ -838,7 +1313,7 @@ begin
         WorkPage.Hide;
       end;
       if not Result then
-        MsgBox('The app''s settings can''t be read:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
+        ErrorBox('The app''s settings can''t be read:' + #13#10#13#10 + CoreError('Unknown error'));
     end;
   end
   else if CurPageID = BackupFilePage.ID then
@@ -854,7 +1329,7 @@ begin
       if GetIniString('result', 'password_needed', '0', IniFile) = '1' then
         NeedPassword := True
       else begin
-        MsgBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
+        ErrorBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'));
         Result := False;
       end;
     end;
@@ -869,10 +1344,10 @@ begin
     else if not OpenBackup(BackupPwPage.Values[0]) then
     begin
       if GetIniString('result', 'wrong_password', '0', IniFile) = '1' then
-        MsgBox('Wrong password - try again.' + #13#10#13#10 +
-          'It''s the password set on the Backups page of the install the backup came from (letters are case-sensitive).', mbError, MB_OK)
+        ErrorBox('Wrong password - try again.' + #13#10#13#10 +
+          'It''s the password set on the Backups page of the install the backup came from (letters are case-sensitive).')
       else
-        MsgBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
+        ErrorBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'));
       Result := False;
     end;
     BackupPwPage.Values[0] := '';
@@ -892,7 +1367,7 @@ begin
         WorkPage.Hide;
       end;
       if not Result then
-        MsgBox(CoreError('This account can''t be used.'), mbError, MB_OK);
+        ErrorBox(CoreError('This account can''t be used.'));
     end;
   end
   else if CurPageID = BrowserPage.ID then
@@ -904,6 +1379,17 @@ begin
   end
   else if CurPageID = PortPage.ID then
     Result := ApplySettings;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := PageNext(CurPageID);
+  if RolledBack and (CurPageID <> wpInstalling) then
+  begin                         { Cancel during one of the page's steps: everything was undone }
+    Result := False;
+    ReportRollback;
+    WizardForm.Close;
+  end;
 end;
 
 { An update while the app runs (tray, console window, or anything else from its folder):
@@ -951,23 +1437,49 @@ var
 begin
   Result := '';
   IsUpgrade := FileExists(AppDir + '\config.yaml');
+  { What's there before anything changes, so Cancel can undo this run (3.7.0). }
+  AppDirExisted := DirExists(AppDir);
+  PreExisting := '|';
+  PreExistingOk := not AppDirExisted;
+  if AppDirExisted then
+    PreExisting := TopEntries(AppDir, PreExistingOk);
+  ServiceDirExisted := DirExists(AppDir + '\runtime\service');
+  JCodeSaved := False;
+  JServiceSaved := False;
+  if DirExists(AppDir + '\backend') then
+  begin                       { an installed version: a copy of its code first (a few seconds) }
+    WizardForm.PreparingLabel.Caption := 'Saving a copy of the installed version, to put it back if the update is cancelled...';
+    DelTree(RollbackDir, True, True, True);   { left over from a Setup that was ended }
+    if not SaveInstalledCode then
+    begin
+      DelTree(RollbackDir, True, True, True);
+      Result := 'Setup couldn''t save a copy of the installed version first, so the update couldn''t be undone if it ' +
+        'went wrong. Nothing was changed. Check there''s free space on the drive, then run Setup again.';
+      Exit;
+    end;
+    JCodeSaved := True;
+  end;
+  JournalStarted := True;
   ServiceWasThere := FileExists(ExpandConstant('{#ServiceExe}'));
   if ServiceWasThere then
   begin
     ServiceCommand('stop');   { an update: files in use otherwise }
-    if not WizardIsTaskSelected('service') then
-    begin                     { switched away from running as a service }
-      ServiceCommand('uninstall');
-      DeleteFile(ExpandConstant('{#ServiceExe}'));
-      ServiceWasThere := False;
-    end;
+    JServiceStopped := True;
   end;
   Result := CloseRunningApp;
   if Result <> '' then
   begin
     if ServiceWasThere then
       ServiceCommand('start');  { not updating after all: leave it as it was }
+    JServiceStopped := False;
     Exit;
+  end;
+  if ServiceWasThere and not WizardIsTaskSelected('service') then
+  begin                       { switched away from running as a service }
+    ServiceCommand('uninstall');
+    DeleteFile(ExpandConstant('{#ServiceExe}'));
+    ServiceWasThere := False;
+    JServiceRemoved := True;  { Cancel installs it again from .rollback\service }
   end;
   if NeedPython then
   begin
@@ -976,7 +1488,9 @@ begin
       Params := '/passive InstallAllUsers=1 PrependPath=1 Include_launcher=1 Include_test=0 Include_doc=0';
     if not Exec(ExpandConstant('{tmp}\python-installer.exe'), Params, '', SW_SHOW, ewWaitUntilTerminated, Code) or (Code <> 0) then
       Result := 'Python couldn''t be installed (code ' + IntToStr(Code) + '). Install Python {#PythonVersion} from python.org, then run Setup again.'
-    else if not FindPython then
+    else
+      JPythonInstalled := True;
+    if (Result = '') and not FindPython then
       Result := 'Python was installed but Setup can''t find it. Run Setup again.';
     if Result <> '' then
       Result := Result + #13#10#13#10 + FailureLogNote(Result, False);
@@ -1008,7 +1522,18 @@ begin
   end;
 end;
 
-{ After the files are copied: .venv, packages, FFmpeg -- each step shown. }
+{ An update whose requirements.txt differs from the installed version's (3.7.0): its packages
+  go into a new .venv, so Cancel can put the old one back as it was. }
+function RequirementsChanged: Boolean;
+var
+  OldReq, NewReq: AnsiString;
+begin
+  Result := not (LoadStringFromFile(RollbackDir + '\code\requirements.txt', OldReq) and
+                 LoadStringFromFile(AppDir + '\requirements.txt', NewReq) and (OldReq = NewReq));
+end;
+
+{ After the files are copied: .venv, packages, FFmpeg -- each step shown, each can be
+  cancelled (3.7.0: Cancel stops the step and undoes the whole run, see Rollback). }
 procedure InstallAfterFiles;
 var
   Unzip, Tmp: String;
@@ -1016,28 +1541,54 @@ var
   Code: Integer;
 begin
   WorkPage.Show;
+  ShowUndoButton(True);
   try
     Ok := True;
-    if FileExists(VenvPython) and not VenvVersionOk and (PythonExe <> '') then
-    begin                       { made with a Python the app no longer supports: make it again }
-      Log('The .venv uses an unsupported Python: making it again with ' + PythonExe);
-      DelTree(AppDir + '\.venv', True, True, True);
+    if FileExists(VenvPython) and (PythonExe <> '') and (not VenvVersionOk or (JCodeSaved and RequirementsChanged)) then
+    begin                       { made with a Python the app no longer supports, or other packages: a new one }
+      Log('Making a new .venv with ' + PythonExe + '; the old one is kept until Setup is done');
+      ForceDirectories(RollbackDir);
+      if RenameFile(AppDir + '\.venv', RollbackDir + '\venv') then
+        JVenvMoved := True
+      else if not VenvVersionOk then
+      begin
+        DelTree(AppDir + '\.venv', True, True, True);
+        VenvNoUndo := True;
+      end
+      else
+        VenvNoUndo := True;     { in use: updated in place instead }
     end;
     if not FileExists(VenvPython) then
+    begin
+      JVenvCreated := True;
       Ok := RunLogged('Creating the Python environment (.venv)...', PythonExe, '-m venv "' + AppDir + '\.venv"', '');
+    end;
+    if RolledBack then Exit;
     if Ok then
     begin
       RunLogged('Updating pip...', VenvPython, '-m pip install --disable-pip-version-check --upgrade pip', '');
+      if RolledBack then Exit;
       Ok := RunLogged('Installing the Python packages (a few minutes the first time)...', VenvPython,
         '-m pip install --disable-pip-version-check -r "' + AppDir + '\requirements.txt"', '');
+      if RolledBack then Exit;
       if Ok and DirExists(AppDir + '\extensions') then   { a build with extensions (2.30.0) }
         Ok := RunLogged('Installing the extensions'' packages...', VenvPython, '-m Tools.install_extensions', '');
+      if RolledBack then Exit;
       { 3.7.0: the copy that runs Python itself (Task Manager shows PMV Nexus, not pythonw.exe) }
       if Ok and not FileCopy(AppDir + '\PMVNexus.exe', AppDir + '\.venv\Scripts\PMVNexus.exe', False) then
         Log('Could not copy PMVNexus.exe into .venv\Scripts: the app runs as pythonw.exe');
     end;
     if Ok and WizardIsTaskSelected('ffmpeg') then
     begin
+      { the FFmpeg that was there is kept aside until Setup is done (Cancel puts it back) }
+      if DirExists(AppDir + '\runtime\ffmpeg') then
+      begin
+        ForceDirectories(RollbackDir);
+        DelTree(RollbackDir + '\ffmpeg', True, True, True);
+        JFfmpegMoved := RenameFile(AppDir + '\runtime\ffmpeg', RollbackDir + '\ffmpeg');
+      end
+      else
+        JFfmpegCreated := True;
       Tmp := AppDir + '\runtime\ffmpeg-new';
       Unzip := '-NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference=''Stop''; ' +
         'Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ''' + Tmp + '''; ' +
@@ -1046,19 +1597,35 @@ begin
         'Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ''' + AppDir + '\runtime\ffmpeg''; ' +
         'Move-Item $d.FullName ''' + AppDir + '\runtime\ffmpeg''; Remove-Item -Recurse -Force ''' + Tmp + '''"';
       if not RunLogged('Unpacking FFmpeg...', 'powershell.exe', Unzip, '') then
+      begin
+        if RolledBack then Exit;
+        if JFfmpegMoved and not DirExists(AppDir + '\runtime\ffmpeg') and
+           RenameFile(RollbackDir + '\ffmpeg', AppDir + '\runtime\ffmpeg') then
+          JFfmpegMoved := False;   { the old one is back }
         MsgBox('FFmpeg couldn''t be unpacked. Install it yourself (e.g. winget install Gyan.FFmpeg).' + #13#10#13#10 +
           FailureLogNote('FFmpeg couldn''t be unpacked: ' + LastLine(LogFile), True), mbInformation, MB_OK);
+      end;
     end;
     if not Ok then
     begin
       SetupFailed := True;
-      MsgBox('The Python packages couldn''t be installed. ' +
-        FailureLogNote('The Python environment or its packages couldn''t be installed: ' + LastLine(LogFile), True) + #13#10#13#10 +
-        'Check the internet connection and run Setup again (it continues where it stopped).', mbCriticalError, MB_OK);
+      ShowUndoButton(False);
+      if SuppressibleMsgBox('The Python packages couldn''t be installed. ' +
+          FailureLogNote('The Python environment or its packages couldn''t be installed: ' + LastLine(LogFile), True) + #13#10#13#10 +
+          'Check the internet connection. Undo the installation now?' + #13#10 +
+          'Yes: Setup undoes what it did.' + #13#10 +
+          'No: it stays as it is; run Setup again later and it continues where it stopped.',
+          mbCriticalError, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
+      begin
+        WorkPage.SetText('Undoing what Setup did...', '');
+        Rollback;
+      end;
     end
     else
     begin
       CheckLaunchers;
+      if IsUpgrade then
+        ShowUndoButton(False);  { an update is done here: starting the app is all that's left }
       if IsUpgrade and ServiceWasThere then
         RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '')
       else if AppWasRunning and not WizardIsTaskSelected('service') then
@@ -1068,13 +1635,28 @@ begin
     end;
   finally
     WorkPage.Hide;
+    ShowUndoButton(False);
   end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
-    InstallAfterFiles;
+    InstallAfterFiles
+  else if CurStep = ssDone then
+    Commit;
+end;
+
+{ Setup ends without finishing (3.7.0): Cancel while files were copied (Setup removes its own
+  files itself), Cancel on the Preparing page, or an error -- the rest of this run is undone. }
+procedure DeinitializeSetup;
+begin
+  if JournalStarted and not Committed and not RolledBack then
+  begin
+    Rollback;
+    if not WizardSilent then
+      ReportRollback;
+  end;
 end;
 
 { Uninstalling while the app runs (2.33.3): asks, then closes it with the installed

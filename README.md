@@ -268,6 +268,11 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **First install:** a new library or **from a backup** (the backup's password if it has one), then the **videos and
   cache folders** (from a backup: where you copied the videos), other folders only if one from the backup can't be
   reached here, and the **port**. Done with Tools/setup_core.py — the same checks as `run.py --restore`.
+- **Cancel works at every step**, also while Setup installs Python's packages and on the pages after installing.
+  Setup asks first, listing what it will undo, then stops the step and undoes everything this run did: a new
+  install is removed (with its shortcuts, the folders it created, the service and firewall rule, and the Python it
+  installed); an update puts the previous version back (its code, Python environment and FFmpeg, kept aside until
+  the update is done) and starts it again if it was running. Nothing Setup didn't create is deleted.
 - **Updating:** run the newer Setup over it — it finds the install by itself (same folder, same options), so choose
   the same "only for me" / "all users" mode as the first time. `config.yaml`, `data`, `extensions` and the service
   setting are kept and the set-up pages skipped. If the app is running (tray, console window or service), Setup says

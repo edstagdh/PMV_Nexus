@@ -65,6 +65,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - The interface's styles use start / end instead of left / right throughout (no change in English).
 - **A failed Windows install leaves its details in `C:\Logs`** (made when it isn't there):
   `PMVNexus-install-<date>-<time>.log` with what failed, the install log and Setup's own log. Its message says where.
+- **Windows Setup: Cancel at every step, and it undoes what Setup did.** Cancel used to be gone once the files were
+  copied (while the Python environment and packages, FFmpeg and the settings were set up). Now there's a Cancel
+  button for those steps and on the pages after installing too. It asks first, listing what it will undo, stops the
+  running step, then undoes this run: a new install is removed again (app folder, shortcuts, Apps entry, folders the
+  set-up pages created, service, firewall rule, the Python Setup installed); an update puts the previous version
+  back — its code (copied before the update), its Python environment (a changed one is made new, the old one kept
+  aside until the update is done) and FFmpeg — and starts the app or service again. Only what this run created is
+  deleted. Setup ending with an error is undone the same way. When installing the packages fails, Setup asks whether
+  to undo the install or keep it to continue later.
 - **Antivirus hints (the app isn't code-signed):** when a failed install looks like an antivirus's doing (a program
   of ours removed, a step that couldn't start, "access is denied" and the like), Setup says so and what to do: check
   the quarantine, allow the PMV Nexus folder, run Setup again. After installing, Setup checks that `PMVNexus.exe` is
