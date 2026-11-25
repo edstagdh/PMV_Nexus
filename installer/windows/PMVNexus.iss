@@ -1136,8 +1136,10 @@ begin
 end;
 
 { What of your things to delete (3.7.0): Tools\uninstall_data.py lists them (before any file is
-  removed, while the app's Python is still there) and deletes only the app's own files -- never
-  anything else in a folder you chose. Returns e.g. 'library,cache'; '' = keep everything. }
+  removed, while the app's Python is still there) and deletes only the app's own files, each kind
+  only in the folder shown for it -- never anything else in a folder you chose, and never backups
+  in the other folders backups were saved to (an earlier 3.7.0 build did: fixed). Returns e.g.
+  'library,cache'; '' = keep everything. }
 function AskWhatToDelete(const Ini: String): String;
 var
   Form: TSetupForm;
@@ -1151,9 +1153,9 @@ begin
   Result := '';
   Kinds[0] := 'library'; Titles[0] := 'Library database and settings (videos list, playlists, users, credentials, logs)';
   Kinds[1] := 'cache';   Titles[1] := 'Thumbnails, previews, seekbar previews and frames';
-  Kinds[2] := 'backups'; Titles[2] := 'Backups';
+  Kinds[2] := 'backups'; Titles[2] := 'Backups in the backups folder (only that folder)';
   Kinds[3] := 'videos';  Titles[3] := 'Downloaded and uploaded videos';
-  Form := CreateCustomForm(460, 330, False, False);
+  Form := CreateCustomForm(460, 405, False, False);
   try
     Form.Caption := 'Uninstall PMV Nexus';
     Intro := TNewStaticText.Create(Form);
@@ -1173,17 +1175,19 @@ begin
       Infos[I] := TNewStaticText.Create(Form);
       Infos[I].Parent := Form;
       Infos[I].Left := ScaleX(30); Infos[I].Top := Top + ScaleY(18); Infos[I].Width := Form.ClientWidth - ScaleX(42);
-      Infos[I].AutoSize := False; Infos[I].Height := ScaleY(30); Infos[I].WordWrap := True;
+      Infos[I].AutoSize := False; Infos[I].Height := ScaleY(44); Infos[I].WordWrap := True;
       Infos[I].Font.Color := clGray;
       if StrToIntDef(GetIniString(Kinds[I], 'count', '0', Ini), 0) > 0 then
         Infos[I].Caption := GetIniString(Kinds[I], 'count', '0', Ini) + ' files, ' + GetIniString(Kinds[I], 'size', '', Ini) +
-          ' - ' + GetIniString(Kinds[I], 'path', '', Ini)
+          ' - only in ' + GetIniString(Kinds[I], 'path', '', Ini)
       else
       begin
         Infos[I].Caption := 'Nothing there';
         Boxes[I].Enabled := False;
       end;
-      Top := Top + ScaleY(54);
+      if GetIniString(Kinds[I], 'kept', '', Ini) <> '' then
+        Infos[I].Caption := Infos[I].Caption + '. Never deleted: ' + GetIniString(Kinds[I], 'kept', '', Ini);
+      Top := Top + ScaleY(66);
     end;
     Note := TNewStaticText.Create(Form);
     Note.Parent := Form;
@@ -1204,6 +1208,11 @@ begin
     KeepButton.ModalResult := mrCancel; KeepButton.Cancel := True;
     if Form.ShowModal <> mrOk then
       Exit;
+    if Boxes[2].Checked and (SuppressibleMsgBox('Delete ' + GetIniString('backups', 'count', '0', Ini) + ' backup files (' +
+        GetIniString('backups', 'size', '', Ini) + ') in' + #13#10 + GetIniString('backups', 'path', '', Ini) + #13#10 + 'for good?' + #13#10#13#10 +
+        'They don''t go to the Recycle Bin. Backups in other folders are not touched.',
+        mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) <> IDYES) then
+      Boxes[2].Checked := False;
     if Boxes[3].Checked and (SuppressibleMsgBox('Delete ' + GetIniString('videos', 'count', '0', Ini) + ' video files (' +
         GetIniString('videos', 'size', '', Ini) + ') for good?' + #13#10#13#10 +
         'They can''t be brought back, unless a backup made with "Include the videos" has them.',

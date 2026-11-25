@@ -40,7 +40,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   listed (with their folder), tested, restored and deleted like the others, and skipped while the drive isn't there.
   Only the backups folder keeps just the newest ones.
 - **Uninstall asks what else to delete**, one tick each with its size and folder: the library database and settings,
-  the thumbnails/previews/frames, the backups, and the videos (asked again). Only files the app made are deleted.
+  the thumbnails/previews/frames, the backups, and the videos (backups and videos asked again). Each is deleted only
+  in the folder shown for it, and only the files the app made.
 
 ### Changed
 - **Performers aren't assumed to be women any more.** Every text about a performer is gender-neutral ("Find on
@@ -72,6 +73,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   explain the SmartScreen warning and how to check a download against its `.sha256` file.
 
 ### Fixed
+- **Uninstall deleted backups outside the backups folder (data loss, earlier 3.7.0 builds only).** With **Backups**
+  ticked it also deleted the backups in every other folder backups had been saved to (Backups → Save to), while the
+  window showed only the backups folder. The library tick could also take backup files left in the `data` folder
+  and every file in a logs or sign-ins folder chosen outside it. Now each tick deletes only in the folder it shows;
+  backups in other folders are never deleted (listed as kept); backup files are only ever deleted by the Backups
+  tick and video files only by the Videos tick; a logs folder you chose loses only the app's log files, a sign-ins
+  folder you chose is kept; and deleting backups is confirmed once more, with the folder named.
 - **Windows Setup, "Start with an empty library" on a new PC:** it could stop at once with "The app's settings can't
   be read" and no reason. Each of Setup's steps waited for a file saying it was done, and the previous step's file
   could still be there (an antivirus still reading it), so Setup went on before the step had even run. Every step now

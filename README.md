@@ -276,8 +276,10 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   behind. Going back to an older version isn't supported (restore a backup instead).
 - **Uninstall** (Settings → Apps): removes the app, then asks what else to delete — ticked separately, each with
   its size and folder: the **library database and settings** (`data`, `config.yaml`), **thumbnails, previews and
-  frames**, **backups**, and the **videos** (asked again). Nothing ticked keeps everything for a later install. Only
-  files the app made are deleted: anything else in those folders stays.
+  frames**, **backups**, and the **videos** (backups and videos are asked again). Nothing ticked keeps everything for
+  a later install. Each one is deleted **only in the folder shown for it**, and only the files the app made: anything
+  else in those folders stays. Backups saved to other folders (Backups → Save to) are never deleted — the window lists
+  them as kept. Deleted files don't go to the Recycle Bin.
 - **In Task Manager** the running app is **PMV Nexus** (`PMVNexus.exe`, which runs Python inside it), not
   `pythonw.exe`; a Windows service still runs as `python.exe`.
 - **New library:** Setup also creates your **admin account** (username + password) — no setup code needed.
