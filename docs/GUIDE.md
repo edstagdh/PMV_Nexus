@@ -17,7 +17,8 @@ PMV Nexus downloads, organizes, re-encodes and de-duplicates videos from PMVHave
 everything (Python too, if the PC has none — it says so first), asks whether to start with a new library or from a
 backup, where the videos and cache go, and the port, and offers a Start-menu / desktop shortcut, starting with
 Windows, or running as a Windows service. **Linux / macOS:** `./install.sh` does the same in the console (and can
-set up a systemd user service).
+set up a systemd user service). If Setup fails, the details are in **`C:\Logs`** (`PMVNexus-install-<date>-<time>.log`) —
+attach that file when you report the problem.
 
 **Windows without Setup:** double-click **`install.bat`** in the app folder. It installs everything the app needs (into `.venv`)
 and asks for a **backup zip** to set up from (see *Backups → Scenario 3*) — or, for a new setup, where the

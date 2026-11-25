@@ -55,6 +55,8 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 CloseApplications=no
+; Setup's own log (3.7.0): copied to C:\Logs with the install log when the install fails.
+SetupLogging=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Desktop shortcut"; Flags: unchecked
@@ -132,6 +134,7 @@ Type: filesandordirs; Name: "{app}\__pycache__"
   would read it as one of its directives. Keep this file plain ASCII. }
 const
   FolderKeysMain = 2;   { output_dir, cache_dir on the first folders page }
+  FailureLogDir = 'C:\Logs';   { a failed install's details (3.7.0, SaveFailureLog) }
 
 var
   DownloadPage: TDownloadWizardPage;
@@ -155,6 +158,8 @@ var
   ServiceWasThere: Boolean;
   AppWasRunning: Boolean;   { closed by Setup for the update: started again afterwards (2.33.0) }
   BackupInfo: String;       { shown on the folders page once a backup was opened }
+  StepCount: Integer;       { RunWithProgress: each step has its own "done" file (3.7.0) }
+  LastExitCode: Integer;    { the last step's exit code, -1 when it couldn't be started }
   FolderKeys: array[0..5] of String;
 
 { ---------------------------------------------------------------- helpers }
@@ -284,7 +289,11 @@ var
   Code, Ticks: Integer;
 begin
   Result := -1;
-  Done := ExpandConstant('{tmp}\step-done.txt');
+  LastExitCode := -1;
+  { A new name per step (3.7.0): a previous step's file that couldn't be deleted yet (an
+    antivirus still reading it) ended the wait at once, before the program had even run. }
+  StepCount := StepCount + 1;
+  Done := ExpandConstant('{tmp}\step-done-' + IntToStr(StepCount) + '.txt');
   DeleteFile(Done);
   if Progress <> '' then
     DeleteFile(Progress);
@@ -317,6 +326,7 @@ begin
   Sleep(200);   { let cmd finish writing it }
   if LoadStringFromFile(Done, S) then
     Result := StrToIntDef(Trim(String(S)), -1);
+  LastExitCode := Result;
 end;
 
 function RunLogged(const Msg, Exe, Params, Env: String): Boolean;
@@ -331,6 +341,78 @@ begin
     Result := RunWithProgress(Msg, VenvPython, '-m Tools.setup_core ' + Args + ' --progress "' + ProgressFile + '"', '', ProgressFile) = 0
   else
     Result := RunWithProgress(Msg, VenvPython, '-m Tools.setup_core ' + Args, '', '') = 0;
+end;
+
+{ When the install fails (3.7.0): the details go to C:\Logs (made when it isn't there), where
+  they're easy to find and stay after Setup ends -- why it failed, the install log (every
+  program Setup ran and what it printed) and Setup's own log. Returns the file written, or
+  '' when C:\Logs can't be written to (then the install log is the place to look). }
+function SaveFailureLog(const Reason: String): String;
+var
+  Dest, Copied, SetupLog: String;
+  S: AnsiString;
+begin
+  Result := '';
+  if not ForceDirectories(FailureLogDir) then
+  begin
+    Log('Could not create ' + FailureLogDir);
+    Exit;
+  end;
+  Dest := FailureLogDir + '\PMVNexus-install-' + GetDateTimeString('yyyymmdd-hhnnss', #0, #0) + '.log';
+  SetupLog := ExpandConstant('{log}');
+  if not SaveStringToFile(Dest, 'PMV Nexus {#AppVersion} Setup failed, ' + GetDateTimeString('yyyy/mm/dd hh:nn:ss', '-', ':') + #13#10 +
+      'Install folder: ' + AppDir + #13#10 + 'Python: ' + PythonExe + #13#10#13#10 +
+      'What failed:' + #13#10 + Reason + #13#10#13#10 +
+      '===== Install log (' + LogFile + ') =====' + #13#10, False) then
+  begin
+    Log('Could not write ' + Dest);
+    Exit;
+  end;
+  if LoadStringFromFile(LogFile, S) then
+    SaveStringToFile(Dest, S, True)
+  else
+    SaveStringToFile(Dest, '(none yet: it fails before the files were copied)' + #13#10, True);
+  if SetupLog <> '' then
+  begin
+    { Setup still has its own log open: read a copy of it }
+    Copied := ExpandConstant('{tmp}\setup-log-copy.txt');
+    SaveStringToFile(Dest, #13#10 + '===== Setup''s own log (' + SetupLog + ') =====' + #13#10, True);
+    if FileCopy(SetupLog, Copied, False) and LoadStringFromFile(Copied, S) then
+      SaveStringToFile(Dest, S, True)
+    else
+      SaveStringToFile(Dest, '(could not be copied: see the file above)' + #13#10, True);
+  end;
+  Result := Dest;
+end;
+
+{ The message's last line: where the details are. }
+function FailureLogNote(const Reason: String): String;
+var
+  Saved: String;
+begin
+  Saved := SaveFailureLog(Reason);
+  if Saved <> '' then
+    Result := 'The details are in ' + Saved
+  else
+    Result := 'The details are in ' + LogFile;
+end;
+
+{ Why a setup_core step failed: its [result] error -- or, when it stopped without writing
+  one (Python itself failed), its exit code and the install log's last line (3.7.0), with
+  the details saved to C:\Logs. }
+function CoreError(const Default: String): String;
+begin
+  Result := GetIniString('result', 'error', '', IniFile);
+  if Result <> '' then
+    Exit;
+  if GetIniString('result', 'ok', '', IniFile) <> '' then
+    Result := Default
+  else
+  begin
+    Result := 'Setup''s helper stopped without an answer (exit code ' + IntToStr(LastExitCode) + '). ' +
+      'The last line of its log:' + #13#10 + LastLine(LogFile);
+    Result := Result + #13#10#13#10 + FailureLogNote(Result);
+  end;
 end;
 
 { Quick service commands where no wizard page can be shown (before files / uninstall). }
@@ -427,7 +509,7 @@ begin
   FolderKeys[4] := 'dir'; FolderKeys[5] := 'log_dir';
 
   DownloadPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), nil);
-  WorkPage := CreateOutputMarqueeProgressPage('Please wait', 'This can take a while. The details go to data\logs\install.log.');
+  WorkPage := CreateOutputMarqueeProgressPage('Please wait', 'This can take a while. The details go to data\logs\install.log (and to C:\Logs if something fails).');
 
   { These come after the installation (wpInfoAfter), on a first install only. }
   ModePage := CreateInputOptionPage(wpInfoAfter, 'Your library',
@@ -636,7 +718,7 @@ begin
       Result := AdminAccount('Creating your admin account...', False);
       if not Result then
         SetIniString('result', 'error', 'The admin account couldn''t be created: ' +
-          GetIniString('result', 'error', 'unknown error', IniFile), IniFile);
+          CoreError('unknown error'), IniFile);
     end;
     if Result and WizardIsTaskSelected('service') then
     begin
@@ -648,7 +730,7 @@ begin
   end;
   if not Result then
   begin
-    Problem := GetIniString('result', 'error', 'Unknown error', IniFile);
+    Problem := CoreError('Unknown error');
     StringChangeEx(Problem, ' | ', #13#10, True);   { setup_core puts one problem per " | " }
     MsgBox('These settings can''t be used yet:' + #13#10#13#10 + Problem + #13#10#13#10 +
       'Go Back to change a folder, or change the port.', mbError, MB_OK);
@@ -687,7 +769,8 @@ begin
         except
           if not DownloadPage.AbortedByUser then
             SuppressibleMsgBox('Download failed: ' + AddPeriod(GetExceptionMessage) + #13#10 +
-              'Check the internet connection and try again.', mbCriticalError, MB_OK, IDOK);
+              'Check the internet connection and try again.' + #13#10#13#10 +
+              FailureLogNote('Download failed: ' + GetExceptionMessage), mbCriticalError, MB_OK, IDOK);
           Result := False;
         end;
       finally
@@ -708,7 +791,7 @@ begin
         WorkPage.Hide;
       end;
       if not Result then
-        MsgBox('The app''s settings can''t be read: ' + GetIniString('result', 'error', '', IniFile), mbError, MB_OK);
+        MsgBox('The app''s settings can''t be read:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
     end;
   end
   else if CurPageID = BackupFilePage.ID then
@@ -724,7 +807,7 @@ begin
       if GetIniString('result', 'password_needed', '0', IniFile) = '1' then
         NeedPassword := True
       else begin
-        MsgBox('This backup can''t be used:' + #13#10#13#10 + GetIniString('result', 'error', 'Unknown error', IniFile), mbError, MB_OK);
+        MsgBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
         Result := False;
       end;
     end;
@@ -742,7 +825,7 @@ begin
         MsgBox('Wrong password - try again.' + #13#10#13#10 +
           'It''s the password set on the Backups page of the install the backup came from (letters are case-sensitive).', mbError, MB_OK)
       else
-        MsgBox('This backup can''t be used:' + #13#10#13#10 + GetIniString('result', 'error', 'Unknown error', IniFile), mbError, MB_OK);
+        MsgBox('This backup can''t be used:' + #13#10#13#10 + CoreError('Unknown error'), mbError, MB_OK);
       Result := False;
     end;
     BackupPwPage.Values[0] := '';
@@ -762,7 +845,7 @@ begin
         WorkPage.Hide;
       end;
       if not Result then
-        MsgBox(GetIniString('result', 'error', 'This account can''t be used.', IniFile), mbError, MB_OK);
+        MsgBox(CoreError('This account can''t be used.'), mbError, MB_OK);
     end;
   end
   else if CurPageID = BrowserPage.ID then
@@ -848,6 +931,8 @@ begin
       Result := 'Python couldn''t be installed (code ' + IntToStr(Code) + '). Install Python {#PythonVersion} from python.org, then run Setup again.'
     else if not FindPython then
       Result := 'Python was installed but Setup can''t find it. Run Setup again.';
+    if Result <> '' then
+      Result := Result + #13#10#13#10 + FailureLogNote(Result);
   end;
 end;
 
@@ -889,12 +974,14 @@ begin
         'Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ''' + AppDir + '\runtime\ffmpeg''; ' +
         'Move-Item $d.FullName ''' + AppDir + '\runtime\ffmpeg''; Remove-Item -Recurse -Force ''' + Tmp + '''"';
       if not RunLogged('Unpacking FFmpeg...', 'powershell.exe', Unzip, '') then
-        MsgBox('FFmpeg couldn''t be unpacked. Install it yourself (e.g. winget install Gyan.FFmpeg).', mbInformation, MB_OK);
+        MsgBox('FFmpeg couldn''t be unpacked. Install it yourself (e.g. winget install Gyan.FFmpeg).' + #13#10#13#10 +
+          FailureLogNote('FFmpeg couldn''t be unpacked: ' + LastLine(LogFile)), mbInformation, MB_OK);
     end;
     if not Ok then
     begin
       SetupFailed := True;
-      MsgBox('The Python packages couldn''t be installed. Details: ' + LogFile + #13#10#13#10 +
+      MsgBox('The Python packages couldn''t be installed. ' +
+        FailureLogNote('The Python environment or its packages couldn''t be installed: ' + LastLine(LogFile)) + #13#10#13#10 +
         'Check the internet connection and run Setup again (it continues where it stopped).', mbCriticalError, MB_OK);
     end
     else if IsUpgrade and ServiceWasThere then

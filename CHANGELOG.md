@@ -62,6 +62,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dates and numbers follow the chosen language. Scheduler results read as words in that language, without
   timestamps and addresses. The built-in jobs' names are translated while they keep their original name.
 - The interface's styles use start / end instead of left / right throughout (no change in English).
+- **A failed Windows install leaves its details in `C:\Logs`** (made when it isn't there):
+  `PMVNexus-install-<date>-<time>.log` with what failed, the install log and Setup's own log. Its message says where.
+
+### Fixed
+- **Windows Setup, "Start with an empty library" on a new PC:** it could stop at once with "The app's settings can't
+  be read" and no reason. Each of Setup's steps waited for a file saying it was done, and the previous step's file
+  could still be there (an antivirus still reading it), so Setup went on before the step had even run. Every step now
+  has its own file. Setup's helper also always says what went wrong (e.g. a package that isn't installed), and when it
+  can't, the message gives its exit code and the last line of its log.
 
 ## [3.6.0] - 2026-11-20
 

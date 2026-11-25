@@ -255,7 +255,8 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
   one on the next update. If there's none, Setup says so, downloads Python 3.12
   from python.org (checked against the file the release was built with) and installs it — its own progress window shows.
 - It then creates `.venv`, installs the packages and, if ticked and
-  not already on PATH, **FFmpeg** (in `runtime\`). Details: `data\logs\install.log`.
+  not already on PATH, **FFmpeg** (in `runtime\`). Details: `data\logs\install.log`; when the install fails, also
+  `C:\Logs\PMVNexus-install-<date>-<time>.log` (with Setup's own log; the folder is made when it isn't there).
 - **First install:** a new library or **from a backup** (the backup's password if it has one), then the **videos and
   cache folders** (from a backup: where you copied the videos), other folders only if one from the backup can't be
   reached here, and the **port**. Done with Tools/setup_core.py — the same checks as `run.py --restore`.

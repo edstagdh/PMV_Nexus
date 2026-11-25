@@ -37,7 +37,30 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend import backup, folders  # noqa: E402
+
+
+def _report_crash(exc: BaseException) -> None:
+    """Setup still gets an answer when a command fails unexpectedly (3.7.0): [result] in the
+    --ini file says what went wrong (the traceback goes to stderr: Setup's install log).
+    Without it the installer only knew the helper had stopped."""
+    argv = sys.argv
+    if "--ini" not in argv[:-1]:
+        return
+    text = f"{type(exc).__name__}: {exc}"
+    if isinstance(exc, ImportError):
+        text = f"A Python package the app needs isn't installed ({text}). Run Setup again."
+    try:
+        with open(argv[argv.index("--ini") + 1], "w", encoding="utf-8") as f:
+            f.write("[result]\nok = 0\nerror = " + " ".join(text.split()) + "\n")
+    except OSError:
+        pass
+
+
+try:
+    from backend import backup, folders  # noqa: E402
+except Exception as _exc:  # e.g. a package that isn't installed
+    _report_crash(_exc)
+    raise
 
 
 def _ini() -> configparser.ConfigParser:
@@ -309,4 +332,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        code = main()
+    except Exception as _exc:
+        _report_crash(_exc)
+        raise
+    sys.exit(code)
