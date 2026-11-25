@@ -27,8 +27,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **Daily backup**, a new built-in Scheduler job: the database and settings every day at 02:30, keeping 7.
   **Weekly backup** on a new install also takes the thumbnails, previews and details files, video frames and seekbar
   previews, keeping 4.
+- **Backup names say when, which version and what's in it:**
+  `pmvnexus_backup_<date>_<time>_v<version>_<flags>.zip`, e.g. `pmvnexus_backup_20261125_183250_v3.8.0_a0b1c1d1e1f0.zip`.
+  The date comes first, so names sort by date. The flags are a letter per part followed by 1 (in it) or 0: a
+  credentials, b ThePornDB photos, c thumbnails/previews/details files, d video frames, e seekbar previews, f videos
+  (the database and settings are always in). Older names keep working everywhere.
+- **`backup_report.md` inside every backup:** for a person reading it — what started it (the Backups page and who,
+  or which Scheduler job), when (local and UTC), the app version, a checklist of the parts with file counts and
+  sizes, the split size, whether it's password-protected, where it was saved, where it gets copied/uploaded, and the
+  steps with their times. In a password-protected backup it's encrypted like the rest.
 
 ### Changed
+- **Password-protected backups show less without the password:** the part readable without it (`backup_info.json`)
+  now holds only the format, the date and the job's id. The Backups page reads the rest with the saved password; a
+  backup the saved password doesn't open is described from its name.
 - **Each backup job keeps its own number of backups** (its **Keep**); backups made by hand on the Backups page, and
   older ones, still keep `backup.keep` (10). Backup jobs from before 3.8.0 get their options written in once —
   doing exactly what they did (Server Settings' "include thumbnails", keep 10) — so they show in the job dialog.

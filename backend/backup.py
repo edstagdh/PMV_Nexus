@@ -18,9 +18,10 @@ the newer one changed.
 
 Password (2.25.0): while a backup password is saved (Backups page; kept in the
 encrypted credential store), every new backup is a standard AES-256 encrypted
-zip -- 7-Zip / WinRAR open it with that password. Only backup_info.json
-(version, date, what's inside) stays readable without it, so the Backups page
-can list it. Restoring an encrypted backup first writes a decrypted copy to
+zip -- 7-Zip / WinRAR open it with that password. Only backup_info.json stays
+readable without it (3.8.0: just the format, the date and the job's id -- nothing that tells a
+stranger what's inside); the Backups page reads the rest with the saved password, and without
+it from the name's flags. Restoring an encrypted backup first writes a decrypted copy to
 data/restore_staged.zip, which the next start applies and deletes.
 
 What's in it (3.7.0): the database, settings, installed languages, own performer photos
@@ -59,7 +60,7 @@ import tempfile
 import time
 import zipfile
 import zlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -71,9 +72,15 @@ except ImportError:  # in requirements.txt; without it, backups can't have a pas
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PENDING_RESTORE_FILE = ROOT_DIR / "data" / "restore_pending.json"
 # 2.28.0: new backups are pmvnexus_backup_…; the older pmvhaven_backup_… names stay valid.
-BACKUP_NAME_RE = re.compile(r"^(pmvnexus|pmvhaven)_backup_\d{8}_\d{6}(_\d+)?\.zip$")
+# 3.8.0: pmvnexus_backup_<date>_<time>_v<app version>_<flags>.zip -- the date first so names sort
+# by date; the flags say what's in it (PART_LETTERS; meaningless to anyone who doesn't know the
+# app). Older names (no version, no flags) stay valid everywhere.
+BACKUP_NAME_RE = re.compile(
+    r"^(pmvnexus|pmvhaven)_backup_\d{8}_\d{6}(?:_v(?P<version>\d+(?:\.\d+)*))?(?:_(?P<flags>(?:[a-z][01])+))?(_\d+)?\.zip$")
 MANIFEST = "manifest.json"
 INFO = "backup_info.json"  # the readable part of a password-protected backup
+REPORT = "backup_report.md"  # (3.8.0) for a person: what's in it, what started it, how it went
+INFO_FORMAT = 2              # (3.8.0) the plain info holds only format, created_at, encrypted, job
 STAGED_FILE = ROOT_DIR / "data" / "restore_staged.zip"
 MIN_PASSWORD = 8
 _NEEDS_PYZIPPER = "Password-protected backups need the pyzipper package: pip install -r requirements.txt"
@@ -255,6 +262,27 @@ _STORED = {".mp4", ".m4v", ".mkv", ".webm", ".mov", ".avi", ".webp", ".jpg", ".j
 SPACE_MARGIN = 200 * 1024 * 1024  # kept free on top of the estimate
 
 
+# 3.8.0: a letter per part for the backup's name, in this order (a new part gets the next
+# letter; a letter missing from an older name means "not included"). Database + settings are
+# always in, so they have none.
+PART_LETTERS = {"secrets": "a", "performer_photos": "b", "thumbnails": "c", "frames": "d", "storyboards": "e", "videos": "f"}
+
+
+def name_flags(parts) -> str:
+    """e.g. "a0b1c1d1e1f0"."""
+    return "".join(f"{letter}{1 if key in parts else 0}" for key, letter in PART_LETTERS.items())
+
+
+def parts_from_name(name: str) -> Optional[dict]:
+    """What a backup's name says: {"app_version", "include"} -- None for an older name without flags."""
+    m = BACKUP_NAME_RE.match(base_of(Path(name)).name)
+    if not m or not m.group("flags"):
+        return None
+    flags = dict(zip(m.group("flags")[::2], m.group("flags")[1::2]))
+    return {"app_version": m.group("version"),
+            "include": [k for k, letter in PART_LETTERS.items() if flags.get(letter) == "1"]}
+
+
 def parts_from(include=None, include_cache: bool = False, include_secrets: bool = False) -> set[str]:
     """The optional parts asked for -- a list of PARTS keys, or the older two switches."""
     if include is not None:
@@ -391,7 +419,7 @@ def space_problem(plan: dict) -> Optional[str]:
 def create_backup(settings, *, include=None, include_cache: bool = False, include_secrets: bool = False,
                   trigger: str, progress: Optional[Callable[..., None]] = None, password: Optional[str] = None,
                   dest: Optional[Path] = None, part_size: Optional[int] = None, job: Optional[str] = None,
-                  keep: Optional[int] = None) -> dict:
+                  keep: Optional[int] = None, origin: Optional[str] = None, notes: Optional[list[str]] = None) -> dict:
     """BLOCKING -- run in a worker thread. Returns the new backup's summary.
     `include`: PARTS keys (3.7.0); without it the older include_cache / include_secrets.
     progress(stage, done, total, step=, steps=, bytes_done=, bytes_total=) reports what it's
@@ -399,7 +427,8 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
     (see the module docstring). NotEnoughSpace before anything is written when it wouldn't
     fit, or while writing when the disk gets close to full (the partial file is removed).
     3.8.0: `part_size` (bytes) instead of backup.split_gb; `job` (a scheduled job's id) is
-    recorded in the backup, and the backups folder keeps `keep` of that job's backups."""
+    recorded in the backup, and the backups folder keeps `keep` of that job's backups. `origin` (what
+    started it, in words) and `notes` (e.g. where it'll be copied) go into its backup_report.md."""
     progress = progress or (lambda *a, **k: None)
     if password and pyzipper is None:
         raise RuntimeError(_NEEDS_PYZIPPER)
@@ -415,11 +444,12 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
         raise NotEnoughSpace(problem)
 
     dest_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    name = f"pmvnexus_backup_{stamp}.zip"
+    started = datetime.now().astimezone()
+    stem = f"pmvnexus_backup_{started:%Y%m%d_%H%M%S}_v{APP_VERSION}_{name_flags(parts)}"
+    name = f"{stem}.zip"
     n = 1
     while exists(dest_dir / name):
-        name = f"pmvnexus_backup_{stamp}_{n}.zip"
+        name = f"{stem}_{n}.zip"
         n += 1
     target = dest_dir / name
     partial = target.with_suffix(".zip.part")
@@ -430,8 +460,12 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
     steps += [(PARTS[k], collected[k]) for k in PARTS if k in parts]
     total_bytes = plan["always"]["bytes"] + sum(p["bytes"] for p in plan["parts"] if p["included"])
     state = {"bytes": 0}
+    log: list[tuple[datetime, str]] = [(started, f"Started: {name}")]
 
     def report(i: int, done=None, total=None):
+        if done in (None, 0):
+            log.append((datetime.now().astimezone(), f"Step {i + 1} of {len(steps)}: {steps[i][0]}"
+                        + (f" ({total:,} files)" if total else "")))
         progress(steps[i][0], done, total, step=i + 1, steps=len(steps), bytes_done=state["bytes"], bytes_total=total_bytes)
 
     try:
@@ -494,13 +528,17 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
                 if job:
                     manifest["job"] = job
                 zf.writestr(MANIFEST, json.dumps(manifest, indent=2))
-        if password:  # what the Backups page shows, readable without the password
-            info = {k: v for k, v in manifest.items() if k != "entries"}
+                log.append((datetime.now().astimezone(), f"All files added: {len(entries):,}, {state['bytes']:,} bytes"))
+                zf.writestr(REPORT, _report_md(name, manifest, plan, log, origin, notes, split, bool(password), dest_dir))
+        if password:  # readable without the password: nothing about what's inside (3.8.0)
+            info = {"format": INFO_FORMAT, "created_at": manifest["created_at"], "encrypted": True}
+            if job:
+                info["job"] = job   # an id, meaningless elsewhere: lets copy folders be pruned without the password
             out = SplitFile(partial, "r+", part_size=split) if split else partial
             with zipfile.ZipFile(out, "a", compression=zipfile.ZIP_DEFLATED) as zf:
                 if split:
                     zf._filePassed = 0
-                zf.writestr(INFO, json.dumps({**info, "encrypted": True}, indent=2))
+                zf.writestr(INFO, json.dumps(info, indent=2))
             manifest = {**manifest, "encrypted": True}
         if not split:
             partial.replace(target)
@@ -537,14 +575,84 @@ def _summary(path: Path, manifest: Optional[dict] = None) -> dict:
                     manifest = json.loads(zf.read(MANIFEST))
         except (KeyError, zipfile.BadZipFile, json.JSONDecodeError, OSError, RuntimeError, NotImplementedError):
             manifest = {}
+        if manifest.get("encrypted") and manifest.get("format", 1) >= INFO_FORMAT:
+            manifest = {**manifest, **_inner_manifest(path, files), "encrypted": True}
     info.update({k: manifest.get(k) for k in ("app_version", "trigger", "include_cache", "include_secrets", "include_videos", "include",
                                                 "job")})
+    if info.get("include") is None:   # the saved password doesn't open it: what its name says
+        named = parts_from_name(path.name) or {}
+        if named:
+            parts = set(named["include"])
+            info.update(include=sorted(parts), app_version=info.get("app_version") or named["app_version"],
+                        include_secrets="secrets" in parts, include_videos="videos" in parts,
+                        include_cache=any(k in parts for k in CACHE_PARTS))
     if manifest.get("created_at"):
         info["created_at"] = manifest["created_at"]
     info["encrypted"] = bool(manifest.get("encrypted"))
     info["valid"] = bool(manifest.get("entries")) or info["encrypted"]
     info["test"] = _load_test_results().get(path.name)
     return info
+
+
+_INNER_CACHE: dict = {}
+
+
+def _inner_manifest(path: Path, files: list[Path]) -> dict:
+    """An encrypted backup's manifest (minus the file list), read with the saved password -- {} when
+    it doesn't open it. Cached per file and size/time."""
+    key = (str(path), tuple((f.stat().st_size, f.stat().st_mtime_ns) for f in files), saved_password())
+    if key in _INNER_CACHE:
+        return _INNER_CACHE[key]
+    try:
+        zf, manifest, _pw = _unlock_with(path)
+        zf.close()
+        found = {k: v for k, v in (manifest or {}).items() if k != "entries"}
+    except Exception:  # noqa: BLE001 -- no saved password / another one: the name says enough
+        found = {}
+    if len(_INNER_CACHE) > 500:
+        _INNER_CACHE.clear()
+    _INNER_CACHE[key] = found
+    return found
+
+
+def _size_text(n: int) -> str:
+    for unit in ("bytes", "KB", "MB", "GB", "TB"):
+        if n < 1024 or unit == "TB":
+            return f"{n:,} bytes" if unit == "bytes" else f"{n:,.1f} {unit}"
+        n /= 1024
+    return f"{n} bytes"
+
+
+def _report_md(name: str, manifest: dict, plan: dict, log: list, origin: Optional[str], notes: Optional[list[str]],
+               split: Optional[int], encrypted: bool, dest_dir: Path) -> str:
+    """backup_report.md (3.8.0): the backup described for a person -- what's in it (a checklist),
+    what started it, where it went, and the steps with their times. Nothing reads it back."""
+    made = datetime.fromtimestamp(manifest["created_at"]).astimezone()
+    utc = datetime.fromtimestamp(manifest["created_at"], tz=timezone.utc)
+    included = set(manifest.get("include") or [])
+    a = plan["always"]
+    lines = [f"# PMV Nexus backup", "",
+             f"- **File:** `{name}`", f"- **App version:** {manifest.get('app_version')}",
+             f"- **Made:** {made:%Y-%m-%d %H:%M:%S %Z} ({utc:%Y-%m-%d %H:%M:%S} UTC)",
+             f"- **Started by:** {origin or manifest.get('trigger') or 'unknown'}",
+             f"- **Saved to:** `{dest_dir}`",
+             f"- **Password-protected:** {'yes (AES-256)' if encrypted else 'no'}",
+             f"- **Split:** " + (f"parts of at most {_size_text(split)}" if split else "no (one file)"), "",
+             "## What's in it", "",
+             f"- [x] Database ({_size_text(a['database_bytes'])}) and settings, installed languages, own performer "
+             f"photos and playlist covers ({a['files'] - 1:,} files)"]
+    for p in plan["parts"]:
+        mark = "x" if p["key"] in included else " "
+        count = f" ({p['files']:,} files, {_size_text(p['bytes'])})" if p["key"] in included else ""
+        lines.append(f"- [{mark}] {PARTS[p['key']]}{count}")
+    lines += ["", f"Name flags: `{name_flags(included)}` — "
+              + ", ".join(f"{letter} = {PARTS[key]}" for key, letter in PART_LETTERS.items())
+              + " (1 = in it, 0 = not).", ""]
+    if notes:
+        lines += ["## Afterwards", ""] + [f"- {n}" for n in notes] + [""]
+    lines += ["## Log", ""] + [f"- {t:%H:%M:%S} {text}" for t, text in log] + [
+        "", "The restore test runs on the finished file, so its result isn't in here: see the Backups page.", ""]
+    return "\n".join(lines)
 
 
 def _backups_in(folder: Path) -> set[Path]:

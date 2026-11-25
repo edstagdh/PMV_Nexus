@@ -275,7 +275,8 @@ async def create_backup(payload: BackupRequest, user: AuthContext = Depends(requ
     if problem:
         raise HTTPException(status_code=507, detail=problem)
     try:
-        library_manager.start_backup(sorted(parts), dest=str(dest), upload=payload.upload)
+        library_manager.start_backup(sorted(parts), dest=str(dest), upload=payload.upload,
+                                     requested_by=getattr(user, "username", None))
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"started": True, "plan": plan}

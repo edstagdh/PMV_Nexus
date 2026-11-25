@@ -825,12 +825,25 @@ above when that's smaller), and the Filester copies of hand-made backups keep `b
 A copy or upload is only made after the backup passed its restore test. When one fails, the job's run shows
 *failed* with what went wrong, and a notification says so — the backup itself and the other copies are kept.
 
+**Names and the report inside (3.8.0):** a backup is named
+`pmvnexus_backup_<date>_<time>_v<version>_<flags>.zip` — e.g. `pmvnexus_backup_20261125_183250_v3.8.0_a0b1c1d1e1f0.zip`
+— so file managers sort backups by date and the name says which version made it. The flags are a letter per part,
+then 1 (in it) or 0 (not): **a** credentials, **b** ThePornDB photos, **c** thumbnails, previews and details files,
+**d** video frames, **e** seekbar previews, **f** the videos. The database and settings are always in. Inside every
+backup, `backup_report.md` describes it for a person: what started it (the Backups page and who, or which Scheduler
+job), when, the app version, a checklist of the parts with their file counts and sizes, the split size, password
+protection, where it was saved and where it's copied or uploaded, and the steps with their times. The app never reads
+it back — it's for you when looking into a backup. Older names (without version and flags) keep working.
+
 **Backup password:** with a password set under **Backup password** on the same page, every new backup (manual or
 scheduled) is an encrypted zip (AES-256) — marked 🔒 in the list. Nobody can open it without the password, the app
 included; 7-Zip or WinRAR open it with it. The password can't be recovered, so keep it in a password manager.
 Restore and **Test** use the saved password, and ask for it when it doesn't open a backup (e.g. one made with an
 earlier password). Changing or removing the password doesn't change backups already made. Recommended when backups
-include secrets or are copied off the computer.
+include secrets or are copied off the computer. Without the password only the date can be read from inside such a
+backup (3.8.0); the Backups page reads the rest with the saved password, and describes a backup it can't open from its
+name. Note that a password-protected zip hides the files' contents, not their names: anyone can list the names of
+the files inside (thumbnail names contain video titles).
 
 **Restore test:** right after each backup is made, and with **Test** next to any backup, the app opens it like a
 restore would — without changing anything — and checks that every file in the zip is intact, everything listed is

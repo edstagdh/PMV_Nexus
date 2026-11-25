@@ -241,7 +241,8 @@ class SchedulerWorkerMixin:
             if job_type == "duplicate_scan":
                 result = await method(verbose=job_config.get("verbose_logging", False))
             elif job_type == "backup":
-                result = await method(job_id=job_id, job_config=job_config)
+                result = await method(job_id=job_id, job_config=job_config,
+                                      trigger="scheduled" if trigger == "schedule" else "manual")
             else:
                 result = await method()
             status = "cancelled" if act.stopped_by else "interrupted" if self._shutting_down else "success"

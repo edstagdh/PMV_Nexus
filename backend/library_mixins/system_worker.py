@@ -124,7 +124,8 @@ class SystemWorkerMixin:
 
     async def run_backup(self, include_cache: bool | None = None, include_secrets: bool = False,
                          trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None,
-                         job_id: str | None = None, job_config: dict | None = None, upload: bool = False) -> dict:
+                         job_id: str | None = None, job_config: dict | None = None, upload: bool = False,
+                         requested_by: str | None = None) -> dict:
         """A backup, then its restore test. `include` (3.7.0): backup.PARTS keys; without it
         the older switches (a scheduled backup: Server Settings' include_cache). Tasks shows
         each step (the files it's adding) and the whole job (by bytes, the test included).
@@ -174,7 +175,8 @@ class SystemWorkerMixin:
                 backup.create_backup, settings, include=sorted(parts), trigger=trigger,
                 progress=on_create, password=backup.saved_password(), dest=dest,
                 part_size=backup_jobs.part_bytes(cfg) if cfg else None, job=job_id if cfg else None,
-                keep=cfg["keep"] if cfg else None,
+                keep=cfg["keep"] if cfg else None, origin=self._backup_origin(trigger, job_id, requested_by),
+                notes=backup_jobs.planned_copies(cfg),
             )
             act.summary = f"{summary['name']} ({summary['size_bytes'] / 1048576:.1f} MB)"
             logger.info("Backup created: {} ({} bytes)", summary["name"], summary["size_bytes"])
@@ -197,6 +199,19 @@ class SystemWorkerMixin:
                    body=text[:900], link="/admin/portal/backups")
             raise RuntimeError(L("The backup was made, but: {problems}", problems=text))
         return summary
+
+    def _backup_origin(self, trigger: str, job_id: str | None, requested_by: str | None) -> str:
+        """What started a backup, in words, for its backup_report.md (3.8.0)."""
+        if job_id:
+            try:
+                job = self.db.get_scheduled_job(job_id) or {}
+            except Exception:  # noqa: BLE001
+                job = {}
+            how = "run now" if trigger == "manual" else "on its schedule"
+            return f"Scheduler job “{job.get('name') or job_id}” ({how})"
+        if trigger == "manual":
+            return "Backups page → Create backup now" + (f", by {requested_by}" if requested_by else "")
+        return "Scheduler (a backup job from before 3.8.0)" if trigger == "scheduled" else trigger
 
     async def _backup_copies(self, settings, summary: dict, cfg: dict, job_id: str, state: dict, phase: dict,
                              overall) -> list[str]:
@@ -234,7 +249,7 @@ class SystemWorkerMixin:
         return problems
 
     def start_backup(self, include: list[str], trigger: str = "manual", dest: str | None = None,
-                     upload: bool = False) -> None:
+                     upload: bool = False, requested_by: str | None = None) -> None:
         """The Backups page's "Create backup now" (3.7.0): runs in the background (a backup of the
         whole library can take hours), followed on Tasks; its notification says how it went."""
         task = getattr(self, "_backup_task", None)
@@ -243,7 +258,7 @@ class SystemWorkerMixin:
 
         async def run():
             try:
-                await self.run_backup(include=include, trigger=trigger, dest=dest, upload=upload)
+                await self.run_backup(include=include, trigger=trigger, dest=dest, upload=upload, requested_by=requested_by)
             except Exception as exc:  # noqa: BLE001 -- the activity's notification reports it
                 logger.warning("Backup failed: {}", exc)
 

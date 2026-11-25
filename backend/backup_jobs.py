@@ -110,3 +110,15 @@ def manual_upload(settings, parts) -> dict:
                      "split_gb": min(configured, MAX_PART_GB) if configured >= backup.SPLIT_MIN_GB else MAX_PART_GB},
                     settings)
     return cfg
+
+
+def planned_copies(cfg: Optional[dict]) -> list[str]:
+    """Where a backup goes after its restore test, in words (its backup_report.md)."""
+    if not cfg:
+        return []
+    out = [f"Copied to `{f}` (checked byte for byte)" for f in cfg.get("copy_to") or []]
+    if cfg.get("upload") == "filester":
+        out.append("Uploaded to the private Filester folder")
+    if out:
+        out.append(f"Keeps the newest {cfg['keep']} of these backups in each place")
+    return out
