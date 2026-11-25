@@ -20,6 +20,12 @@ Windows, or running as a Windows service. **Linux / macOS:** `./install.sh` does
 set up a systemd user service). If Setup fails, the details are in **`C:\Logs`** (`PMVNexus-install-<date>-<time>.log`) —
 attach that file when you report the problem.
 
+**Windows warnings (the app isn't code-signed):** SmartScreen may say it protected your PC — **More info → Run
+anyway** (the `.sha256` file on the Releases page lets you check the download first: `Get-FileHash` in PowerShell).
+An antivirus may also block or remove `PMVNexus.exe` or files in the app's `.venv`. Setup says so when it sees that
+(and so does the launcher if it happens later): restore the file from the antivirus's quarantine, allow the
+PMV Nexus folder there (by default `%LOCALAPPDATA%\Programs\PMV Nexus`) and run Setup again.
+
 **Windows without Setup:** double-click **`install.bat`** in the app folder. It installs everything the app needs (into `.venv`)
 and asks for a **backup zip** to set up from (see *Backups → Scenario 3*) — or, for a new setup, where the
 **folders** go (videos, thumbnails & previews, logins, database, backups, logs; Enter keeps the defaults inside the

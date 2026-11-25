@@ -181,7 +181,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, LPWSTR cmdline, int show)
 start:
     if (GetFileAttributesW(target) == INVALID_FILE_ATTRIBUTES) {
         fail(L"PMV Nexus isn't installed completely (its Python environment is missing).\n\n"
-             L"Run PMV Nexus Setup again to repair it.");
+             L"An antivirus may have removed part of it (PMV Nexus isn't code-signed): check its quarantine "
+             L"and allow the PMV Nexus folder there. Then run PMV Nexus Setup again to repair it.");
         return 2;
     }
     args = arguments(GetCommandLineW());
@@ -198,7 +199,8 @@ start:
     ZeroMemory(&pi, sizeof pi);
     /* standing in for Python (workdir NULL): pass the handles on, wait, and return its exit code */
     if (!CreateProcessW(target, line, NULL, NULL, workdir == NULL, 0, NULL, workdir, &si, &pi)) {
-        fail(L"PMV Nexus couldn't be started.\n\nRun PMV Nexus Setup again to repair it.");
+        fail(L"PMV Nexus couldn't be started.\n\nAn antivirus may be blocking it (PMV Nexus isn't code-signed): "
+             L"check its quarantine and allow the PMV Nexus folder there. Then run PMV Nexus Setup again to repair it.");
         return 3;
     }
     CloseHandle(pi.hThread);

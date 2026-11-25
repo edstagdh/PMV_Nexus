@@ -385,16 +385,63 @@ begin
   Result := Dest;
 end;
 
-{ The message's last line: where the details are. }
-function FailureLogNote(const Reason: String): String;
+{ Shown when a failure looks like an antivirus's doing (3.7.0, LooksBlocked). }
+function AvNote: String;
+begin
+  Result := 'An antivirus may have blocked or removed part of PMV Nexus (it isn''t code-signed). ' +
+    'Check the antivirus''s quarantine / protection history, allow the PMV Nexus folder there, then run Setup again.';
+end;
+
+{ The end of a text file (the install log), at most MaxLen characters. }
+function LogTail(const FileName: String; MaxLen: Integer): String;
+var
+  S: AnsiString;
+begin
+  Result := '';
+  if not LoadStringFromFile(FileName, S) then
+    Exit;
+  Result := String(S);
+  if Length(Result) > MaxLen then
+    Result := Copy(Result, Length(Result) - MaxLen + 1, MaxLen);
+end;
+
+{ Does a failure after the files were copied look like an antivirus's doing (3.7.0)? A program
+  of ours gone, a step that couldn't start, or the usual messages of a blocked file. The app
+  isn't code-signed, so heuristic scanners may take PMVNexus.exe or Python's files. }
+function LooksBlocked: Boolean;
+var
+  Tail: String;
+begin
+  Result := (LastExitCode = -1) or (LastExitCode = 225) or (LastExitCode = 9009) or
+    not FileExists(AppDir + '\PMVNexus.exe') or (DirExists(AppDir + '\.venv') and not FileExists(VenvPython));
+  if Result then
+    Exit;
+  Tail := Lowercase(LogTail(LogFile, 3000));
+  Result := (Pos('access is denied', Tail) > 0) or (Pos('[winerror 5]', Tail) > 0) or
+    (Pos('permission denied', Tail) > 0) or (Pos('virus', Tail) > 0) or
+    (Pos('being used by another process', Tail) > 0) or
+    (Pos('is not recognized as an internal or external command', Tail) > 0);
+end;
+
+{ The message's last lines: the antivirus hint when the failure looks like one (only checked
+  when AfterFiles -- before that, our files aren't there to check), and where the details are. }
+function FailureLogNote(const Reason: String; AfterFiles: Boolean): String;
 var
   Saved: String;
+  Blocked: Boolean;
 begin
-  Saved := SaveFailureLog(Reason);
-  if Saved <> '' then
-    Result := 'The details are in ' + Saved
+  Blocked := AfterFiles and LooksBlocked;
+  if Blocked then
+    Saved := SaveFailureLog(Reason + #13#10#13#10 + 'Looks blocked: ' + AvNote)
   else
-    Result := 'The details are in ' + LogFile;
+    Saved := SaveFailureLog(Reason);
+  Result := '';
+  if Blocked then
+    Result := AvNote + #13#10#13#10;
+  if Saved <> '' then
+    Result := Result + 'The details are in ' + Saved
+  else
+    Result := Result + 'The details are in ' + LogFile;
 end;
 
 { Why a setup_core step failed: its [result] error -- or, when it stopped without writing
@@ -411,7 +458,7 @@ begin
   begin
     Result := 'Setup''s helper stopped without an answer (exit code ' + IntToStr(LastExitCode) + '). ' +
       'The last line of its log:' + #13#10 + LastLine(LogFile);
-    Result := Result + #13#10#13#10 + FailureLogNote(Result);
+    Result := Result + #13#10#13#10 + FailureLogNote(Result, True);
   end;
 end;
 
@@ -770,7 +817,7 @@ begin
           if not DownloadPage.AbortedByUser then
             SuppressibleMsgBox('Download failed: ' + AddPeriod(GetExceptionMessage) + #13#10 +
               'Check the internet connection and try again.' + #13#10#13#10 +
-              FailureLogNote('Download failed: ' + GetExceptionMessage), mbCriticalError, MB_OK, IDOK);
+              FailureLogNote('Download failed: ' + GetExceptionMessage, False), mbCriticalError, MB_OK, IDOK);
           Result := False;
         end;
       finally
@@ -932,7 +979,32 @@ begin
     else if not FindPython then
       Result := 'Python was installed but Setup can''t find it. Run Setup again.';
     if Result <> '' then
-      Result := Result + #13#10#13#10 + FailureLogNote(Result);
+      Result := Result + #13#10#13#10 + FailureLogNote(Result, False);
+  end;
+end;
+
+{ After a successful install (3.7.0): are our launchers still there? An antivirus may remove
+  them as soon as they're written (the app isn't code-signed). Setup says so instead of
+  leaving shortcuts that don't work. }
+procedure CheckLaunchers;
+var
+  VenvCopy: String;
+begin
+  Sleep(1000);   { a real-time scanner takes a moment }
+  VenvCopy := AppDir + '\.venv\Scripts\PMVNexus.exe';
+  if not FileExists(AppDir + '\PMVNexus.exe') then
+    SuppressibleMsgBox('PMVNexus.exe was removed right after it was installed - most likely by an antivirus ' +
+      '(PMV Nexus isn''t code-signed). The shortcuts start PMV Nexus through it, so they won''t work until it''s back.' + #13#10#13#10 +
+      'Restore it from the antivirus''s quarantine and allow the PMV Nexus folder there, or allow the folder and run Setup again.' + #13#10#13#10 +
+      FailureLogNote('PMVNexus.exe was removed after it was installed (antivirus?): ' + AppDir + '\PMVNexus.exe', False),
+      mbError, MB_OK, IDOK)
+  else if not FileExists(VenvCopy) then
+  begin
+    Log('No ' + VenvCopy + ' (removed, or it couldn''t be copied): the app runs as pythonw.exe');
+    SuppressibleMsgBox('PMV Nexus is installed, but the copy of PMVNexus.exe in its Python folder was removed or couldn''t be ' +
+      'written - most likely by an antivirus (PMV Nexus isn''t code-signed).' + #13#10#13#10 +
+      'PMV Nexus works anyway; Task Manager shows it as pythonw.exe instead. To change that, allow the PMV Nexus folder ' +
+      'in the antivirus and run Setup again.', mbInformation, MB_OK, IDOK);
   end;
 end;
 
@@ -975,21 +1047,25 @@ begin
         'Move-Item $d.FullName ''' + AppDir + '\runtime\ffmpeg''; Remove-Item -Recurse -Force ''' + Tmp + '''"';
       if not RunLogged('Unpacking FFmpeg...', 'powershell.exe', Unzip, '') then
         MsgBox('FFmpeg couldn''t be unpacked. Install it yourself (e.g. winget install Gyan.FFmpeg).' + #13#10#13#10 +
-          FailureLogNote('FFmpeg couldn''t be unpacked: ' + LastLine(LogFile)), mbInformation, MB_OK);
+          FailureLogNote('FFmpeg couldn''t be unpacked: ' + LastLine(LogFile), True), mbInformation, MB_OK);
     end;
     if not Ok then
     begin
       SetupFailed := True;
       MsgBox('The Python packages couldn''t be installed. ' +
-        FailureLogNote('The Python environment or its packages couldn''t be installed: ' + LastLine(LogFile)) + #13#10#13#10 +
+        FailureLogNote('The Python environment or its packages couldn''t be installed: ' + LastLine(LogFile), True) + #13#10#13#10 +
         'Check the internet connection and run Setup again (it continues where it stopped).', mbCriticalError, MB_OK);
     end
-    else if IsUpgrade and ServiceWasThere then
-      RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '')
-    else if AppWasRunning and not WizardIsTaskSelected('service') then
-      { closed for the update: back in the tray, as the person who ran Setup (not as admin) }
-      ExecAsOriginalUser(AppDir + '\PMVNexus.exe', 'run.py --tray', AppDir,
-        SW_HIDE, ewNoWait, Code);
+    else
+    begin
+      CheckLaunchers;
+      if IsUpgrade and ServiceWasThere then
+        RunLogged('Starting the Windows service again...', ExpandConstant('{#ServiceExe}'), 'start', '')
+      else if AppWasRunning and not WizardIsTaskSelected('service') then
+        { closed for the update: back in the tray, as the person who ran Setup (not as admin) }
+        ExecAsOriginalUser(AppDir + '\PMVNexus.exe', 'run.py --tray', AppDir,
+          SW_HIDE, ewNoWait, Code);
+    end;
   finally
     WorkPage.Hide;
   end;

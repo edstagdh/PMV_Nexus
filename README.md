@@ -244,6 +244,14 @@ project-root/
 Download **`PMV-Nexus-Setup-<version>.exe`** from [Releases](https://github.com/edstagdh/PMV_Nexus/releases)
 and run it. Windows may say it protected your PC — the installer isn't code-signed: **More info → Run anyway**.
 
+- **Not code-signed:** PMV Nexus is a free hobby project without a signing certificate, so Windows SmartScreen warns
+  about Setup and some antivirus programs may block or remove `PMVNexus.exe` (the small launcher the shortcuts start)
+  or files of the app's Python. To check that your download is the released one, compare its fingerprint with the
+  `.sha256` file next to it on the Releases page: in PowerShell, `Get-FileHash .\PMV-Nexus-Setup-<version>.exe`.
+  If the antivirus takes something, Setup (or the launcher) says so: restore it from the antivirus's quarantine,
+  allow the PMV Nexus folder there and run Setup again. You can also report it to the antivirus maker as a false
+  positive (Microsoft Defender: [file submission](https://www.microsoft.com/en-us/wdsi/filesubmission)).
+
 - **Just me** (no admin) installs to `%LOCALAPPDATA%\Programs\PMV Nexus`; **all users** (admin) to Program Files
   and also offers the Windows service.
 - **How the app runs:** only when you start it (Start-menu shortcut), also when you sign in to Windows, or as a

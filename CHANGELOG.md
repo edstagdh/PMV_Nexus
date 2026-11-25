@@ -64,6 +64,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - The interface's styles use start / end instead of left / right throughout (no change in English).
 - **A failed Windows install leaves its details in `C:\Logs`** (made when it isn't there):
   `PMVNexus-install-<date>-<time>.log` with what failed, the install log and Setup's own log. Its message says where.
+- **Antivirus hints (the app isn't code-signed):** when a failed install looks like an antivirus's doing (a program
+  of ours removed, a step that couldn't start, "access is denied" and the like), Setup says so and what to do: check
+  the quarantine, allow the PMV Nexus folder, run Setup again. After installing, Setup checks that `PMVNexus.exe` is
+  still there — without it the shortcuts don't work, so it says so; without its copy in `.venv` the app runs as
+  pythonw.exe, and it says that too. The launcher's own error messages mention it as well. README and the guide
+  explain the SmartScreen warning and how to check a download against its `.sha256` file.
 
 ### Fixed
 - **Windows Setup, "Start with an empty library" on a new PC:** it could stop at once with "The app's settings can't
