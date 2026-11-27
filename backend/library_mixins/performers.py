@@ -525,11 +525,26 @@ class PerformersMixin:
                 pass
         return end.year - b.year - ((end.month, end.day) < (b.month, b.day))
 
+    def _key_for_shown_name(self, key: str, lib: dict) -> Optional[str]:
+        """A name shown in the app that isn't in the library: a profile's own name (with merge
+        aliases on, "Vana Rose" in the videos shows as ThePornDB's "Vanna Rose"; similar performers
+        are listed by it too). The library name linked to that profile, the one most videos use."""
+        best = None
+        for k, r in self._perf_names.items():
+            if r.get("status") != "linked" or k not in lib:
+                continue
+            p = self._perf_by_id.get(r.get("performer_id"))
+            if p and fold(p["name"]) == key and (best is None or lib[k][1] > lib[best][1]):
+                best = k
+        return best
+
     def performer_profile(self, name: str) -> dict:
         """Everything the profile page shows for a performer name."""
         self._perf_load()
         key = fold(name)
         lib = self._library_performer_names()
+        if key not in lib and key not in self._perf_names:
+            key = self._key_for_shown_name(key, lib) or key
         row = self._perf_names.get(key)
         p = self._perf_by_id.get(row["performer_id"]) if row and row.get("performer_id") else None
         out: dict = {"name": name, "status": row["status"] if row else ("unchecked" if key in lib else "unknown"),
@@ -944,6 +959,7 @@ class PerformersMixin:
             g = self.badge_gender(((p or {}).get("data") or {}).get("extras", {}).get("gender")) if p else None
             if g:
                 out[key] = g
+                out[fold(p["name"])] = g  # the badge may show the profile's own spelling (merge aliases)
             else:
                 out.pop(key, None)  # linked: the profile decides, even when it doesn't say
         return out

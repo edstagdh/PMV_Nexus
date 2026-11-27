@@ -46,6 +46,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Management → Logs' **User actions** view leaves out the new network entries.
 
 ### Fixed
+- **A performer linked by hand to a ThePornDB profile spelled differently** (e.g. "Vana Rose" in your videos →
+  ThePornDB's "Vanna Rose"): with merge aliases on, the videos show the profile's spelling, but that badge opened an
+  empty page ("No videos with this performer"), the badge stayed grey, and a ♥ set before linking didn't show. The
+  profile's own name now opens the profile (also from similar performers), and colour and ♥ follow it.
 - Adding a photo to a performer who already had the most allowed could leave the new file and its row behind; the
   limit is now checked before anything is saved. A ThePornDB profile that received several photos when its name got
   linked no longer has all but one deleted by the next photo added — you're asked to remove them yourself first.

@@ -18,6 +18,7 @@ from ..config import save_overrides
 from ..library_manager import library_manager
 from ..library_mixins.performers import PerformerError
 from ..security import AuthContext, require_permission
+from ..spellings import spellings
 
 router = APIRouter()
 _viewer = require_permission("library.view")
@@ -58,8 +59,10 @@ class FavoriteBody(BaseModel):
 def performer_badges(user: AuthContext = Depends(_viewer)):
     """3.5.0: what performer badges show -- each known performer's gender (folded name ->
     female / male / trans; others are unknown, grey) and your favourite performers."""
-    return {"genders": library_manager.performer_genders(),
-            "favorites": list(library_manager.db.favorite_performers(user.id).values())}
+    favorites = list(library_manager.db.favorite_performers(user.id).values())
+    # 3.9.0: also as the badges show them (a linked name may show in its profile's spelling)
+    shown = [spellings.canonical("performers", n) for n in favorites]
+    return {"genders": library_manager.performer_genders(), "favorites": list(dict.fromkeys(favorites + shown))}
 
 
 @router.post("/api/performers/favorites")
