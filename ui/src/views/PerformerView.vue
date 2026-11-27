@@ -131,7 +131,7 @@ const STATUS_TEXT = {
             <button class="btn btn-sm fav-btn" :class="{ on: favorite }" :aria-pressed="favorite"
                     :title="favorite ? $t('Remove from your favourite performers') : $t('Add to your favourite performers (♥ on their badges; Library → sort Favourite performers)')"
                     @click="setFavorite(allNames, !favorite, prof.name)"><Icon name="heart" :size="14" />{{ favorite ? $t("Favourite") : $t("Add to favourites") }}</button>
-            <RouterLink :to="{ name: 'wall', query: { p: prof.name } }" class="btn btn-sm" :title="$t('Them and their videos, as a graph')"><Icon name="share" :size="14" />{{ $t("On the wall") }}</RouterLink>
+            <RouterLink :to="{ name: 'wall', query: { p: prof.name } }" class="btn btn-sm" :title="$t('Them and their videos, as a graph')"><Icon name="share" :size="14" />{{ $t("On The Wall") }}</RouterLink>
             <a v-if="p?.url" :href="p.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />ThePornDB</a>
             <a v-for="(url, site) in p?.links || {}" :key="site" :href="url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">{{ site }}</a>
             <a v-for="l in sbLinked" :key="l.box" :href="l.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />{{ l.label }}</a>

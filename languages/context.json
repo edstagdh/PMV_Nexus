@@ -53,6 +53,9 @@
  "0–51. Lower = better and bigger. The video was already compressed, so keep it low (18–22) to lose nothing more you can see; default 20.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "100 % = everything fits": [
+  "ui/src/views/WallView.vue"
+ ],
  "13 — fastest": [
   "ui/src/lib/reencodeOptions.js"
  ],
@@ -508,6 +511,9 @@
  "All {n} in the library": [
   "ui/src/views/PerformerView.vue"
  ],
+ "Almost everything here can be changed — speeds, zoom, sizes, lines, previews, what Pick for me picks — in {settings}.": [
+  "ui/src/views/WallView.vue"
+ ],
  "Already converting — see Tasks": [
   "backend/routers/performers.py"
  ],
@@ -545,11 +551,15 @@
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Also who they’re with": [
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/WallView.vue"
  ],
  "Also: {names}": [
   "ui/src/components/PerformerPicker.vue",
   "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Always": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Always included: the database ({size}) and your settings, installed languages, own performer photos and playlist covers ({n} files).": [
   "ui/src/views/admin/BackupsView.vue"
@@ -654,6 +664,15 @@
  "Arrange tabs": [
   "ui/src/components/TabBar.vue"
  ],
+ "Arrow key speed": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Arrow keys move it too; in 3D, Shift + arrow keys turn it.": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Arrow keys move it; in 3D, Shift + arrow keys turn it.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Ascending": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue"
@@ -675,6 +694,9 @@
  ],
  "At most {n} links": [
   "backend/library_mixins/performers.py"
+ ],
+ "At most. More shows everything but is heavier to turn.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "At once": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -701,6 +723,9 @@
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Aurora Vale": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Auto": [
   "ui/src/views/SettingsView.vue"
  ],
  "Auto: after {events}": [
@@ -856,6 +881,9 @@
  ],
  "Bitrate": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Black": [
+  "ui/src/views/SettingsView.vue"
  ],
  "blocked": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -1533,7 +1561,7 @@
  "Could not load the users": [
   "ui/src/views/admin/UsersView.vue"
  ],
- "Could not load the wall": [
+ "Could not load The Wall": [
   "ui/src/views/WallView.vue"
  ],
  "Could not load this page": [
@@ -2174,7 +2202,7 @@
  "Drag to move": [
   "ui/src/components/PlayerHost.vue"
  ],
- "Drag to move it; scroll or pinch zooms.": [
+ "Drag to move it.": [
   "ui/src/views/WallView.vue"
  ],
  "Drag to move this tab": [
@@ -2183,7 +2211,7 @@
  "Drag to reorder": [
   "ui/src/views/PlaylistView.vue"
  ],
- "Drag to turn it — any direction, all the way round. Right-drag (two fingers on a phone) moves it; scroll or pinch zooms.": [
+ "Drag to turn it — any direction, all the way round. Right-drag (two fingers on a phone) moves it.": [
   "ui/src/views/WallView.vue"
  ],
  "Drives": [
@@ -2767,6 +2795,9 @@
  "First-run setup": [
   "ui/src/views/AuthView.vue"
  ],
+ "Fit": [
+  "ui/src/views/WallView.vue"
+ ],
  "Fix forgotten — videos keep their current names": [
   "ui/src/views/admin/NamesView.vue"
  ],
@@ -2940,6 +2971,9 @@
  "Give the video a title": [
   "backend/library_mixins/local_upload.py"
  ],
+ "Glide (3D)": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Go": [
   "ui/src/components/admin/FolderPicker.vue"
  ],
@@ -3040,6 +3074,9 @@
  "Hide panel": [
   "ui/src/views/WallView.vue"
  ],
+ "High (512 px)": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Highest rated": [
   "ui/src/lib/wallPick.js"
  ],
@@ -3058,6 +3095,18 @@
  "How": [
   "ui/src/components/songs/SongMethodPicker.vue"
  ],
+ "How close it starts. 100 % shows everything; more starts closer.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "How far a drag turns it.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "How far a right-drag (two fingers) moves it.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "How long it keeps going after you let go. 0 stops at once.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "How long it takes": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -3068,6 +3117,9 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "How many to show (0 hides the column). Ranked by shared performers (strongest), the same creator, then shared tags.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "How much one mouse-wheel step zooms in or out. Hold Shift for five times as much; + and − on the keyboard zoom five steps.": [
   "ui/src/views/SettingsView.vue"
  ],
  "How often": [
@@ -3082,7 +3134,7 @@
  "How the duplicate scan on the {link1} page compares videos. Changing the method or thresholds makes the next scan compare everything again; changing the sample count or audio check also re-reads every file.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "How the wall works": [
+ "How The Wall works": [
   "ui/src/views/WallView.vue"
  ],
  "https://pmvhaven.com/video/...": [
@@ -3333,6 +3385,9 @@
  "Languages on this server": [
   "ui/src/components/LanguageSettings.vue"
  ],
+ "Large": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Largest file (GB)": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -3443,6 +3498,12 @@
   "ui/src/views/SettingsView.vue"
  ],
  "Light preset": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Line strength": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Lines shown to start with. Auto: 1, or 2 in a very large library.": [
   "ui/src/views/SettingsView.vue"
  ],
  "Link name": [
@@ -3563,6 +3624,9 @@
  "Looking up new names on ThePornDB": [
   "backend/library_mixins/performers.py"
  ],
+ "Looks": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Looks like {title} ({pct}% match).": [
   "backend/library_mixins/duplicate_worker.py"
  ],
@@ -3586,6 +3650,9 @@
  ],
  "Lost track of the upload": [
   "ui/src/views/UploadView.vue"
+ ],
+ "Low (128 px)": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Low disk space: downloads stopped ({percent}% free)": [
   "backend/library_mixins/disk_guard.py"
@@ -3756,6 +3823,9 @@
  "MediaInfo…": [
   "ui/src/views/VideoView.vue"
  ],
+ "Medium": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Members": [
   "ui/src/components/admin/AccessPanel.vue"
  ],
@@ -3898,8 +3968,14 @@
  "Move {name} later": [
   "ui/src/components/TabBar.vue"
  ],
+ "Moving around": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Moving files": [
   "backend/library_mixins/item_extras.py"
+ ],
+ "Moving speed (3D)": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Moving thumbnails and previews to the new cache folder": [
   "backend/library_mixins/item_extras.py"
@@ -3939,6 +4015,9 @@
   "ui/src/router.js",
   "ui/src/views/SettingsView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "My Settings → The Wall": [
+  "ui/src/views/WallView.vue"
  ],
  "Name": [
   "ui/src/components/admin/AccessPanel.vue",
@@ -4012,6 +4091,7 @@
   "ui/src/views/admin/StatsView.vue"
  ],
  "Never": [
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/admin/UsersView.vue"
  ],
  "Never uploaded to Filester": [
@@ -4318,7 +4398,7 @@
  "Nobody matches.": [
   "ui/src/views/PerformersView.vue"
  ],
- "Nobody on the wall yet: it shows performers linked to ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page.": [
+ "Nobody on The Wall yet: it shows performers linked to ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page.": [
   "ui/src/views/WallView.vue"
  ],
  "none": [
@@ -4335,6 +4415,9 @@
   "backend/video_frames.py"
  ],
  "None — Search frame is hidden in the player.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Normal (256 px)": [
   "ui/src/views/SettingsView.vue"
  ],
  "Not a frame from the player": [
@@ -4559,7 +4642,7 @@
  "On the site": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
- "On the wall": [
+ "On The Wall": [
   "ui/src/views/PerformerView.vue"
  ],
  "On ThePornDB": [
@@ -4570,6 +4653,9 @@
  ],
  "On this site the browser doesn't act on this key (outside text fields).": [
   "ui/src/components/PanicKeysSetting.vue"
+ ],
+ "On wide screens. On a phone it opens when you pick something.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "On · {height}p": [
   "ui/src/components/VideoPlayer.vue"
@@ -4773,8 +4859,14 @@
  "Opening a video I stopped partway through starts there (with a {em1} button for a few seconds). Saved for my account, so it follows me to other devices. Videos watched to the end start from the beginning.": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Opening it": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Opening the app": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Opens in": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Optional": [
   "ui/src/components/dialogs/PlaylistEditDialog.vue"
@@ -5023,7 +5115,7 @@
   "ui/src/views/SettingsView.vue",
   "ui/src/views/WallView.vue"
  ],
- "Pick for me opens one of their videos — which one, and the search before it, are set in My Settings → The wall. Click, Esc or Skip ends the search.": [
+ "Pick for me opens one of their videos. Click, Esc or Skip ends the search before it.": [
   "ui/src/views/WallView.vue"
  ],
  "Pick one of the playlist's videos": [
@@ -5043,6 +5135,9 @@
  ],
  "Picks: {how}": [
   "ui/src/views/WallView.vue"
+ ],
+ "Picture detail": [
+  "ui/src/views/SettingsView.vue"
  ],
  "picture-in-picture": [
   "ui/src/lib/panic.js"
@@ -5079,6 +5174,9 @@
  ],
  "Play the next video when one ends": [
   "ui/src/components/PlayQueue.vue"
+ ],
+ "Play the preview on hover": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Play videos": [
   "backend/permissions.py"
@@ -5170,6 +5268,9 @@
  "PMVHaven returned invalid JSON for {path}": [
   "backend/pmv_api.py"
  ],
+ "Pointing at a video with the mouse plays its preview, muted like in the library.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Pop-ups (toasts)": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -5222,8 +5323,14 @@
  "Preview made": [
   "ui/src/components/upload/PreviewStep.vue"
  ],
+ "Preview size": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Preview {problem}": [
   "ui/src/components/VideoThumb.vue"
+ ],
+ "Previews": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Previous": [
   "ui/src/components/PlayQueue.vue",
@@ -6322,10 +6429,14 @@
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
  "Shared videos at least": [
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/WallView.vue"
  ],
  "Shares scenes with": [
   "ui/src/views/VideoView.vue"
+ ],
+ "Sharper pictures use more memory and can make turning less smooth.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Shazam and Gemini (AI) — a second opinion": [
   "ui/src/components/songs/SongMethodPicker.vue"
@@ -6363,6 +6474,9 @@
  ],
  "Show all {n}": [
   "ui/src/components/JobList.vue"
+ ],
+ "Show everything": [
+  "ui/src/views/WallView.vue"
  ],
  "Show fewer": [
   "ui/src/components/JobList.vue"
@@ -6440,6 +6554,9 @@
  "Shuffle again": [
   "ui/src/views/LibraryView.vue"
  ],
+ "Side panel open": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Sides of the video in fullscreen": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -6489,6 +6606,9 @@
  "size (bytes)": [
   "backend/activity.py"
  ],
+ "Size of dots and pictures": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Size of the preview shown when hovering a row in the table view.": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -6522,6 +6642,9 @@
  ],
  "Slower = smaller file at the same quality. Server: {value}": [
   "ui/src/components/ReencodeOptions.vue"
+ ],
+ "Small": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Smaller at the same quality; slower, and some older devices can't play it.": [
   "ui/src/lib/reencodeOptions.js"
@@ -6672,6 +6795,9 @@
   "backend/library_mixins/system_worker.py"
  ],
  "Starting volume": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Starting zoom": [
   "ui/src/views/SettingsView.vue"
  ],
  "Starting…": [
@@ -7236,6 +7362,9 @@
  "The test failed": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
+ "The theme's": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "The upload couldn't start": [
   "ui/src/views/UploadView.vue"
  ],
@@ -7275,21 +7404,25 @@
  "The videos you picked. Add them to as many playlists as you like.": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
  ],
+ "The view used last": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "The virus scan refused this file: {detail}. It was deleted.": [
   "backend/library_mixins/local_upload.py"
  ],
  "The volume a video starts at on a computer (phones use their own volume buttons).": [
   "ui/src/views/SettingsView.vue"
  ],
- "The wall": [
+ "The Wall": [
+  "ui/src/components/AppSidebar.vue",
   "ui/src/router.js",
   "ui/src/views/PerformersView.vue",
   "ui/src/views/SettingsView.vue"
  ],
- "The wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.": [
+ "The Wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.": [
   "ui/src/views/SettingsView.vue"
  ],
- "The wall shows {n} of their {total} videos.": [
+ "The Wall shows {n} of their {total} videos (My Settings → The Wall).": [
   "ui/src/views/WallView.vue"
  ],
  "The {site} address isn't a web address (Server Settings → Credentials)": [
@@ -7533,6 +7666,9 @@
  "Ticked and greyed: already given by the role or a group. Tick more to give them to {name} only.": [
   "ui/src/components/admin/AccessPanel.vue"
  ],
+ "Ticked to start with: a performer comes with the other performers of their videos.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Time": [
   "ui/src/views/admin/LogsView.vue",
   "ui/src/views/admin/SchedulerView.vue"
@@ -7627,6 +7763,9 @@
  ],
  "Turn off": [
   "ui/src/components/PanicKeysSetting.vue"
+ ],
+ "Turning speed (3D)": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Type a name…": [
   "ui/src/views/UploadView.vue"
@@ -8005,6 +8144,9 @@
  "Video playback by {link1}; media processing by {link2} and {link3}.": [
   "ui/src/views/HelpView.vue"
  ],
+ "Video titles (2D)": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Video titles, names, tags and descriptions stay as they are. Texts a language doesn't have yet show in English.": [
   "ui/src/components/LanguageSettings.vue"
  ],
@@ -8033,6 +8175,9 @@
  ],
  "Videos already being converted for watching: {n} -- try again when one stops, or play the original": [
   "backend/transcode.py"
+ ],
+ "Videos around a performer": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Videos at once": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -8113,6 +8258,9 @@
  ],
  "Volume {percent}%": [
   "ui/src/components/VideoPlayer.vue"
+ ],
+ "Wait before playing": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Wait for ThePornDB": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -8215,13 +8363,16 @@
  "When scans start on their own (Server Settings → Duplicate scan; the daily scan is on the Scheduler page)": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
+ "When zoomed in": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Where the videos are saved.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Where this backup goes": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "Which of a performer's videos the wall's Pick for me button opens. Pressing it again gives another one.": [
+ "Which of a performer's videos The Wall's Pick for me button opens. Pressing it again gives another one.": [
   "ui/src/views/SettingsView.vue"
  ],
  "Which profile is it?": [
@@ -8410,6 +8561,21 @@
  "Z to A": [
   "ui/src/views/PerformersView.vue"
  ],
+ "Zoom": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Zoom in": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Zoom out": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Zoom per wheel step": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Zoom with the mouse wheel (hold Shift to go faster), a pinch, + and − on the keyboard, or −, the slider and + in the bar; Fit (or 0) shows everything (100 %).": [
+  "ui/src/views/WallView.vue"
+ ],
  "{action}: {queued} queued": [
   "ui/src/components/dialogs/BulkActionDialog.vue"
  ],
@@ -8562,6 +8728,9 @@
  ],
  "{moved} moved so far": [
   "backend/library_mixins/item_extras.py"
+ ],
+ "{ms} ms": [
+  "ui/src/views/SettingsView.vue"
  ],
  "{m}m": [
   "ui/src/lib/format.js"

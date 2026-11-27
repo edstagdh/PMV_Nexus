@@ -22,7 +22,7 @@ const TABS = [
   { key: "appearance", label: t("Appearance") },
   { key: "library", label: t("Library") },
   { key: "video", label: t("Video page") },
-  { key: "wall", label: t("The wall") },
+  { key: "wall", label: t("The Wall") },
   { key: "notifications", label: t("Notifications") },
   { key: "language", label: t("Language") },
   { key: "account", label: t("Account"), show: () => hasPermission("self.password_reset") || !isAdmin() },
@@ -97,6 +97,46 @@ function toggleRelatedBadge(key, on) {
 }
 const relatedFull = computed(() => session.prefs.relatedBadges.filter((b) => RELATED_BADGES_BOTTOM.includes(b)).length >= RELATED_BADGE_MAX);
 
+// My Settings -> The Wall (3.9.2: nearly every part of it); stores/session.js has the ranges
+const pct = (v) => `${v}%`;
+const WALL_GROUPS = [
+  { title: t("Opening it"), items: [
+    { key: "wallStartView", kind: "select", label: t("Opens in"), options: [["last", t("The view used last")], ["3d", "3D"], ["2d", "2D"]] },
+    { key: "wallZoomStart", kind: "range", min: 25, max: 400, step: 5, show: pct, label: t("Starting zoom"), help: t("How close it starts. 100 % shows everything; more starts closer.") },
+    { key: "wallPanel", kind: "switch", label: t("Side panel open"), help: t("On wide screens. On a phone it opens when you pick something.") },
+    { key: "wallMinShared", kind: "select", number: true, label: t("Shared videos at least"), help: t("Lines shown to start with. Auto: 1, or 2 in a very large library."),
+      options: [[0, t("Auto")], ...Array.from({ length: 10 }, (_, i) => [i + 1, String(i + 1)])] },
+    { key: "wallWithCo", kind: "switch", label: t("Also who they’re with"), help: t("Ticked to start with: a performer comes with the other performers of their videos.") },
+    { key: "wallMaxVideos", kind: "range", min: 50, max: 1000, step: 50, label: t("Videos around a performer"), help: t("At most. More shows everything but is heavier to turn.") },
+  ] },
+  { title: t("Moving around"), items: [
+    { key: "wallZoomStep", kind: "range", min: 1, max: 20, step: 1, show: pct, label: t("Zoom per wheel step"), help: t("How much one mouse-wheel step zooms in or out. Hold Shift for five times as much; + and − on the keyboard zoom five steps.") },
+    { key: "wallTurnSpeed", kind: "range", min: 0.5, max: 6, step: 0.5, label: t("Turning speed (3D)"), help: t("How far a drag turns it.") },
+    { key: "wallMoveSpeed", kind: "range", min: 0.2, max: 2, step: 0.1, label: t("Moving speed (3D)"), help: t("How far a right-drag (two fingers) moves it.") },
+    { key: "wallGlide", kind: "range", min: 0, max: 10, step: 1, label: t("Glide (3D)"), help: t("How long it keeps going after you let go. 0 stops at once.") },
+    { key: "wallKeySpeed", kind: "range", min: 1, max: 10, step: 1, label: t("Arrow key speed"), help: t("Arrow keys move it; in 3D, Shift + arrow keys turn it.") },
+  ] },
+  { title: t("Looks"), items: [
+    { key: "wallPictureSize", kind: "range", min: 50, max: 200, step: 10, show: pct, label: t("Size of dots and pictures") },
+    { key: "wallDetail", kind: "select", number: true, label: t("Picture detail"), help: t("Sharper pictures use more memory and can make turning less smooth."),
+      options: [[128, t("Low (128 px)")], [256, t("Normal (256 px)")], [512, t("High (512 px)")]] },
+    { key: "wallLines", kind: "range", min: 10, max: 100, step: 5, show: pct, label: t("Line strength") },
+    { key: "wallTitles", kind: "select", label: t("Video titles (2D)"), options: [["zoomed", t("When zoomed in")], ["always", t("Always")], ["never", t("Never")]] },
+    { key: "wallBackground", kind: "select", label: t("Background"), options: [["theme", t("The theme's")], ["black", t("Black")]] },
+  ] },
+  { title: t("Previews"), items: [
+    { key: "wallHover", kind: "switch", label: t("Play the preview on hover"), help: t("Pointing at a video with the mouse plays its preview, muted like in the library.") },
+    { key: "wallHoverDelay", kind: "range", min: 0, max: 1000, step: 50, show: (v) => t("{ms} ms", { ms: v }), label: t("Wait before playing"), off: () => !session.prefs.wallHover },
+    { key: "wallHoverSize", kind: "select", label: t("Preview size"), options: [["s", t("Small")], ["m", t("Medium")], ["l", t("Large")]] },
+  ] },
+  { title: t("Pick for me"), items: [
+    { key: "wallPick", kind: "select", label: t("Pick for me"), help: t("Which of a performer's videos The Wall's Pick for me button opens. Pressing it again gives another one."),
+      options: Object.entries(PICK_MODES).map(([k, l]) => [k, t(l)]) },
+    { key: "wallPickAnimate", kind: "switch", label: t("Show the search"), help: t("The Wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.") },
+    { key: "wallPickSeconds", kind: "range", min: 2, max: 12, step: 0.5, show: (v) => t("{s} s", { s: v }), label: t("How long it takes"), help: t("From the button to the video page."), off: () => !session.prefs.wallPickAnimate },
+  ] },
+];
+
 function setToast(key, on) { savePref("toasts", { ...session.prefs.toasts, [key]: on }); }
 
 function resetTab() {
@@ -105,7 +145,7 @@ function resetTab() {
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
     video: ["relatedCount", "relatedOrder", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
-    wall: ["wallPick", "wallPickAnimate", "wallPickSeconds"],
+    wall: WALL_GROUPS.flatMap((g) => g.items.map((it) => it.key)),
   }[tab.value] || [];
   for (const k of keys) {
     const v = DEFAULT_UI[k];
@@ -430,32 +470,26 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     </section>
 
     <!-- ================= Notifications ================= -->
-    <!-- ================= The wall (3.9.1) ================= -->
+    <!-- ================= The Wall (3.9.1; every option 3.9.2) ================= -->
     <section v-else-if="tab === 'wall'" class="card group">
-      <div class="row">
-        <div class="label">
-          <strong>{{ $t("Pick for me") }}</strong>
-          <span class="muted">{{ $t("Which of a performer's videos the wall's Pick for me button opens. Pressing it again gives another one.") }}</span>
+      <template v-for="g in WALL_GROUPS" :key="g.title">
+        <h3 class="wall-group">{{ g.title }}</h3>
+        <div v-for="it in g.items" :key="it.key" class="row">
+          <div class="label"><strong>{{ it.label }}</strong><span v-if="it.help" class="muted">{{ it.help }}</span></div>
+          <label v-if="it.kind === 'switch'" class="switch">
+            <input type="checkbox" :checked="session.prefs[it.key]" @change="savePref(it.key, $event.target.checked)">{{ $t("On") }}
+          </label>
+          <select v-else-if="it.kind === 'select'" class="select" :value="session.prefs[it.key]" :aria-label="it.label"
+                  @change="savePref(it.key, it.number ? Number($event.target.value) : $event.target.value)">
+            <option v-for="[v, l] in it.options" :key="v" :value="v">{{ l }}</option>
+          </select>
+          <div v-else class="range">
+            <input type="range" :min="it.min" :max="it.max" :step="it.step" :value="session.prefs[it.key]" :aria-label="it.label"
+                   :disabled="it.off && it.off()" @input="savePref(it.key, Number($event.target.value))">
+            <output>{{ it.show ? it.show(session.prefs[it.key]) : session.prefs[it.key] }}</output>
+          </div>
         </div>
-        <select class="select" :value="session.prefs.wallPick" :aria-label="$t('Pick for me')" @change="savePref('wallPick', $event.target.value)">
-          <option v-for="(label, k) in PICK_MODES" :key="k" :value="k">{{ $t(label) }}</option>
-        </select>
-      </div>
-      <div class="row">
-        <div class="label">
-          <strong>{{ $t("Show the search") }}</strong>
-          <span class="muted">{{ $t("The wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.") }}</span>
-        </div>
-        <label class="switch"><input type="checkbox" :checked="session.prefs.wallPickAnimate" @change="savePref('wallPickAnimate', $event.target.checked)">{{ $t("On") }}</label>
-      </div>
-      <div class="row">
-        <div class="label"><strong>{{ $t("How long it takes") }}</strong><span class="muted">{{ $t("From the button to the video page.") }}</span></div>
-        <div class="range">
-          <input type="range" min="2" max="12" step="0.5" :value="session.prefs.wallPickSeconds" :disabled="!session.prefs.wallPickAnimate"
-                 :aria-label="$t('How long it takes')" @input="savePref('wallPickSeconds', Number($event.target.value))">
-          <output>{{ $t("{s} s", { s: session.prefs.wallPickSeconds }) }}</output>
-        </div>
-      </div>
+      </template>
     </section>
 
     <section v-else-if="tab === 'notifications'" class="card group">
@@ -516,6 +550,9 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
 .row { display: grid; grid-template-columns: minmax(12rem, 18rem) 1fr; gap: 1rem 1.5rem; align-items: center; padding: 0.875rem 0; border-top: 1px solid var(--border); }
 .row:first-child { border-top: 0; }
 .row.top { align-items: start; }
+.wall-group { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 1.25rem 0 0; }
+.wall-group:first-child { margin-top: 0.75rem; }
+.wall-group + .row { border-top: 0; }
 .label { display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.875rem; }
 .label .muted { font-size: 0.78rem; }
 .stack { display: flex; flex-direction: column; gap: 0.75rem; }

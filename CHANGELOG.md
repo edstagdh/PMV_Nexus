@@ -4,6 +4,26 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.9.2] - 2026-11-27
+
+### Added
+- **The Wall in the sidebar** (under Performers).
+- **The Wall: zoom you control** — the mouse wheel zooms 1 % a step by default (Shift: five times as much), smoothly
+  and, in 2D, towards the mouse; **+** / **−** / **0** on the keyboard; and in the bar **−**, a zoom slider, **+**, the
+  zoom in % (100 % = everything fits) and **Fit**.
+- **The Wall: arrow keys** move it while held; in 3D, Shift + arrow keys turn it.
+- **My Settings → The Wall** now sets nearly every part of it: what it opens in, starting zoom, side panel, starting
+  "Shared videos at least" and "Also who they're with", videos around a performer (50–1000), zoom per wheel step,
+  turning / moving speed, glide, arrow-key speed, size of dots and pictures, picture detail, line strength, video
+  titles in 2D, background, hover previews (on/off, wait, size), and Pick for me.
+
+### Changed
+- "The wall" is now called **The Wall** everywhere.
+
+### Fixed
+- The Wall's mouse-wheel zoom jumped about a quarter at every step (the graph library's own zoom kept going after each
+  step), so it went from everything too small to one picture larger than the screen.
+
 ## [3.9.1] - 2026-11-27
 
 ### Added

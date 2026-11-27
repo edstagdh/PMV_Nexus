@@ -162,7 +162,7 @@ const firstUnlinked = computed(() => (show.value === "all" && sort.value !== "fa
           {{ s.label }}<span v-if="all && s.key !== 'all'" class="n">{{ counts[s.key] }}</span>
         </button>
       </div>
-      <RouterLink :to="{ name: 'wall' }" class="btn btn-sm" :title="$t('Who appears with whom, as a 3D graph')"><Icon name="share" :size="14" />{{ $t("The wall") }}</RouterLink>
+      <RouterLink :to="{ name: 'wall' }" class="btn btn-sm" :title="$t('Who appears with whom, as a 3D graph')"><Icon name="share" :size="14" />{{ $t("The Wall") }}</RouterLink>
       <div class="sortbox">
         <select :value="sort" class="input sort" :aria-label="$t('Sort by')" @change="setSort($event.target.value)">
           <option v-for="s in SORTS" :key="s.key" :value="s.key">{{ s.label }}</option>

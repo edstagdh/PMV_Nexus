@@ -119,7 +119,8 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Favourite performers** (per user): ♥ on their badges, and a library sort that puts their videos first or last.
 - **Not on ThePornDB?** Search **FansDB** or **StashDB** by hand, or type their details, links and up to 30 photos in
   yourself — from your computer or from a link the server fetches safely.
-- **The wall:** a 3D (or 2D) graph of who appears with whom; click a performer to see them with all their videos.
+- **The Wall:** a 3D (or 2D) graph of who appears with whom; click a performer to see them with all their videos,
+  or let **Pick for me** choose one. Nearly every part of it can be set to your liking.
 
 ### Songs
 - **Find songs:** listens to a video and suggests the songs in it, using **Shazam** (free, no key) and optionally

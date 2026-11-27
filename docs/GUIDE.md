@@ -524,25 +524,35 @@ How it works:
   of its photos are saved (untick **Also save up to 5 of their photos** to skip them); for a ThePornDB profile its
   page and links are added, and what ThePornDB leaves empty. The site's button then opens their page there;
   **Refresh** fetches it again (fills only what's still empty), **Unlink** forgets the link (what was copied stays).
-- **The wall** (3.9.0, Performers page → **The wall**, or **On the wall** on a performer's page): who appears with
-  whom, as a graph you can turn (3D) or a flat one (2D, also used when the browser can't draw 3D). Each dot is a
-  performer (coloured by gender); a line joins two who share videos — thicker for more; **Shared videos at least**
-  hides the weaker lines. Click a performer to put them in the middle with every video they're in (their thumbnails,
-  300 at most); the panel lists who they're **Most often with**. Tick **Also who they're with** to add the other
-  performers of those videos. With a mouse, pointing at a video plays its preview (muted, like the library); click it
-  to see it in the panel and open it (previews: 3.9.1). Only performers someone matched or filled in are on it: linked to ThePornDB,
-  FansDB or StashDB, or with details, photos or a gender set on their page. The **?** button shows how to use it (it
-  opens by itself the first time).
-  - Moving around (3.9.1): dragging always moves the view, never a dot. In 3D, drag turns it in any direction, all the way
-    round (it glides to a stop); right-drag or two fingers moves it; scroll or pinch zooms. In 2D, drag moves it.
-  - **Pick for me** (3.9.1, when a performer is in the middle): opens one of their videos. Which one is set in **My Settings →
-    The wall → Pick for me**: Random (default), One I haven't watched, One of my Favorites, The one I watch most,
-    Highest rated, Most viewed / Most liked on the site, Newest in the library. Pressing it again gives another one
-    (the ranked ways go down the list). If none fits (e.g. you've watched them all), it picks at random and says so.
-  - Before opening it, the wall looks through a few of the videos, stops on the picked one, zooms in until it fills
-    the view, and the picture grows into the video page's player. **Show the search** (on by default) and **How long
-    it takes** (2–12 s, default 4) are in the same settings tab; a click, Esc or **Skip** ends it and opens the video
-    at once. It's also skipped when your system asks for reduced motion.
+- **The Wall** (3.9.0; in the sidebar since 3.9.2, also Performers page → **The Wall**, or **On The Wall** on a
+  performer's page): who appears with whom, as a graph you can turn (3D) or a flat one (2D, also used when the browser
+  can't draw 3D). Each dot is a performer (coloured by gender); a line joins two who share videos — thicker for more;
+  **Shared videos at least** hides the weaker lines. Click a performer to put them in the middle with every video
+  they're in (their thumbnails); the panel lists who they're **Most often with**. Tick **Also who they're with** to add
+  the other performers of those videos. With a mouse, pointing at a video plays its preview (muted, like the library);
+  click it to see it in the panel and open it. Only performers someone matched or filled in are on it: linked to
+  ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page. The **?** button shows how to
+  use it (it opens by itself the first time).
+  - Moving around: dragging always moves the view, never a dot. In 3D, drag turns it in any direction, all the way
+    round (it glides to a stop); right-drag or two fingers moves it. In 2D, drag moves it. **Arrow keys** (3.9.2) move
+    it while held; in 3D, **Shift + arrow keys** turn it.
+  - Zoom (3.9.2): the mouse wheel zooms 1 % a step (hold Shift for 5 %), smoothly and towards the mouse in 2D; a pinch
+    works on phones; **+** / **−** on the keyboard zoom five steps, **0** shows everything. The bar has **−**, a zoom
+    slider, **+**, the zoom in % (100 % = everything fits) and **Fit**.
+  - **Pick for me** (3.9.1, when a performer is in the middle): opens one of their videos — Random (default), One I
+    haven't watched, One of my Favorites, The one I watch most, Highest rated, Most viewed / Most liked on the site,
+    Newest in the library. Pressing it again gives another one (the ranked ways go down the list). If none fits (e.g.
+    you've watched them all), it picks at random and says so. Before opening it, The Wall looks through a few of the
+    videos, stops on the picked one, zooms in until it fills the view, and the picture grows into the video page's
+    player; a click, Esc or **Skip** ends it and opens the video at once. It's skipped when your system asks for
+    reduced motion.
+  - **My Settings → The Wall** (3.9.2) sets nearly all of it, per person: what it opens in (last view / 3D / 2D), the
+    starting zoom, the side panel, the starting **Shared videos at least** (Auto: 1, or 2 in a very large library) and
+    **Also who they're with**, how many videos come around a performer (50–1000, default 300); zoom per wheel step
+    (1–20 %), turning and moving speed, glide (0 stops at once) and arrow-key speed; size of dots and pictures, picture
+    detail (128 / 256 / 512 px — sharper is heavier), line strength, video titles in 2D (when zoomed in / always /
+    never) and background (theme or black); hover previews on/off, the wait before one plays and its size; and Pick
+    for me's choice, its search on/off and length (2–12 s). **Reset this tab** puts them back.
   The graph library (three.js) loads only on this page; pictures are drawn from small copies, so hundreds of
   thumbnails stay smooth.
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture

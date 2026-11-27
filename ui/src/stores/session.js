@@ -55,6 +55,25 @@ export const DEFAULT_UI = Object.freeze({
   wallPick: "random",     // 3.9.1 the wall's Pick for me: lib/wallPick.js PICK_MODES
   wallPickAnimate: true,  // ... with the search-and-zoom animation (else straight to the video)
   wallPickSeconds: 4,     // ... how long the animation takes (2-12 s)
+  wallZoomStep: 1,        // 3.9.2: % per mouse-wheel step on the wall (1-20; Shift x5)
+  wallZoomStart: 100,     // 3.9.2: % the wall opens at (100 = everything fits; 25-400)
+  wallStartView: "last",   // 3.9.2 The Wall opens in: last used / 3d / 2d
+  wallPanel: true,         // side panel open when it opens (wide screens)
+  wallMinShared: 0,        // "Shared videos at least" to start with; 0 = auto
+  wallWithCo: false,       // "Also who they're with" ticked to start with
+  wallMaxVideos: 300,      // videos around one performer, at most
+  wallTurnSpeed: 2.5,      // 3D drag-to-turn speed
+  wallMoveSpeed: 0.6,      // 3D right-drag move speed
+  wallGlide: 8,            // 3D glide after letting go (0 = stops at once)
+  wallKeySpeed: 5,         // arrow-key speed
+  wallPictureSize: 100,    // % size of dots and pictures
+  wallDetail: 256,         // picture detail, px (sharper = heavier)
+  wallLines: 30,           // % line strength
+  wallTitles: "zoomed",    // video titles on the 2D wall
+  wallBackground: "theme", // background
+  wallHover: true,         // hover plays the preview
+  wallHoverDelay: 200,     // ms before the preview shows
+  wallHoverSize: "m",      // preview card size
   relatedBadges: ["quality", "duration", "rating", "gone"],
   chipColorsOn: true,
   // 3.5.0: performers by gender (female / male / trans / unknown); tags yellow (blue is now male).
@@ -68,6 +87,7 @@ export const DEFAULT_UI = Object.freeze({
 export const PREF_OPTIONS = { THEMES, VIEWS, PAGE_SIZES, SORT_KEYS, CUSTOM_BASES };
 
 const clampNum = (v, min, max, fallback) => (Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Number(v))) : fallback);
+const pick = (v, allowed, fallback) => (allowed.includes(v) ? v : allowed.includes(Number(v)) ? Number(v) : fallback); // 3.9.2
 
 /** Accepts whatever was saved (possibly by an older version) and returns a complete, valid object. */
 export function normalizeUi(raw) {
@@ -114,6 +134,25 @@ export function normalizeUi(raw) {
     wallPick: WALL_PICKS.includes(r.wallPick) ? r.wallPick : DEFAULT_UI.wallPick,
     wallPickAnimate: typeof r.wallPickAnimate === "boolean" ? r.wallPickAnimate : DEFAULT_UI.wallPickAnimate,
     wallPickSeconds: clampNum(r.wallPickSeconds, 2, 12, DEFAULT_UI.wallPickSeconds),
+    wallZoomStep: clampNum(r.wallZoomStep, 1, 20, DEFAULT_UI.wallZoomStep),
+    wallZoomStart: Math.round(clampNum(r.wallZoomStart, 25, 400, DEFAULT_UI.wallZoomStart)),
+    wallStartView: pick(r.wallStartView, ["last", "3d", "2d"], DEFAULT_UI.wallStartView),
+    wallPanel: typeof r.wallPanel === "boolean" ? r.wallPanel : DEFAULT_UI.wallPanel,
+    wallMinShared: Math.round(clampNum(r.wallMinShared, 0, 10, DEFAULT_UI.wallMinShared)),
+    wallWithCo: typeof r.wallWithCo === "boolean" ? r.wallWithCo : DEFAULT_UI.wallWithCo,
+    wallMaxVideos: Math.round(clampNum(r.wallMaxVideos, 50, 1000, DEFAULT_UI.wallMaxVideos)),
+    wallTurnSpeed: clampNum(r.wallTurnSpeed, 0.5, 6, DEFAULT_UI.wallTurnSpeed),
+    wallMoveSpeed: clampNum(r.wallMoveSpeed, 0.2, 2, DEFAULT_UI.wallMoveSpeed),
+    wallGlide: Math.round(clampNum(r.wallGlide, 0, 10, DEFAULT_UI.wallGlide)),
+    wallKeySpeed: Math.round(clampNum(r.wallKeySpeed, 1, 10, DEFAULT_UI.wallKeySpeed)),
+    wallPictureSize: Math.round(clampNum(r.wallPictureSize, 50, 200, DEFAULT_UI.wallPictureSize)),
+    wallDetail: pick(r.wallDetail, [128, 256, 512], DEFAULT_UI.wallDetail),
+    wallLines: Math.round(clampNum(r.wallLines, 10, 100, DEFAULT_UI.wallLines)),
+    wallTitles: pick(r.wallTitles, ["zoomed", "always", "never"], DEFAULT_UI.wallTitles),
+    wallBackground: pick(r.wallBackground, ["theme", "black"], DEFAULT_UI.wallBackground),
+    wallHover: typeof r.wallHover === "boolean" ? r.wallHover : DEFAULT_UI.wallHover,
+    wallHoverDelay: Math.round(clampNum(r.wallHoverDelay, 0, 1000, DEFAULT_UI.wallHoverDelay)),
+    wallHoverSize: pick(r.wallHoverSize, ["s", "m", "l"], DEFAULT_UI.wallHoverSize),
     relatedBadges: Array.isArray(r.relatedBadges)
       ? [
         ...[...new Set(r.relatedBadges.filter((b) => RELATED_BADGES_BOTTOM.includes(b)))].slice(0, RELATED_BADGE_MAX),
@@ -214,7 +253,7 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMoveSpeed: p.wallMoveSpeed, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }
