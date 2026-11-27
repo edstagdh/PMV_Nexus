@@ -4,7 +4,7 @@
   "name": "English",
   "native": "English",
   "direction": "ltr",
-  "version": "3.9.4"
+  "version": "3.10.0"
  },
  "messages": {
   "#{n} of {total} · {queue}": "#{n} of {total} · {queue}",
