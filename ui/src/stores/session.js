@@ -11,6 +11,7 @@ const VIEWS = ["grid", "list", "table"];
 // Multiples of 30, so full rows fit both 5 per row (sidebar open) and 6 (collapsed).
 const PAGE_SIZES = [30, 60, 90, 120];
 const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution", "fav_performers", "random"];
+const WALL_PICKS = ["random", "unwatched", "favorites", "most_watched", "highest_rated", "most_viewed", "most_liked", "newest"]; // lib/wallPick.js
 export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "favorite", "status"];
 // Badges on the small related-video thumbnails. The bottom row has room for
 // RELATED_BADGE_MAX; rating and 💀 sit in the top corners and don't count.
@@ -51,6 +52,9 @@ export const DEFAULT_UI = Object.freeze({
   tablePreviewScale: 200,
   relatedCount: 15,
   relatedOrder: "best",   // 3.9.0: "best" matches first, or "random" among all related ones
+  wallPick: "random",     // 3.9.1 the wall's Pick for me: lib/wallPick.js PICK_MODES
+  wallPickAnimate: true,  // ... with the search-and-zoom animation (else straight to the video)
+  wallPickSeconds: 4,     // ... how long the animation takes (2-12 s)
   relatedBadges: ["quality", "duration", "rating", "gone"],
   chipColorsOn: true,
   // 3.5.0: performers by gender (female / male / trans / unknown); tags yellow (blue is now male).
@@ -107,6 +111,9 @@ export function normalizeUi(raw) {
     tablePreviewScale: clampNum(r.tablePreviewScale, 100, 400, DEFAULT_UI.tablePreviewScale),
     relatedCount: Math.round(clampNum(r.relatedCount, 0, 40, DEFAULT_UI.relatedCount)),
     relatedOrder: r.relatedOrder === "random" ? "random" : "best",
+    wallPick: WALL_PICKS.includes(r.wallPick) ? r.wallPick : DEFAULT_UI.wallPick,
+    wallPickAnimate: typeof r.wallPickAnimate === "boolean" ? r.wallPickAnimate : DEFAULT_UI.wallPickAnimate,
+    wallPickSeconds: clampNum(r.wallPickSeconds, 2, 12, DEFAULT_UI.wallPickSeconds),
     relatedBadges: Array.isArray(r.relatedBadges)
       ? [
         ...[...new Set(r.relatedBadges.filter((b) => RELATED_BADGES_BOTTOM.includes(b)))].slice(0, RELATED_BADGE_MAX),
@@ -207,7 +214,7 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }

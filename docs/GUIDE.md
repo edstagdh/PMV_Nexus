@@ -527,11 +527,24 @@ How it works:
 - **The wall** (3.9.0, Performers page → **The wall**, or **On the wall** on a performer's page): who appears with
   whom, as a graph you can turn (3D) or a flat one (2D, also used when the browser can't draw 3D). Each dot is a
   performer (coloured by gender); a line joins two who share videos — thicker for more; **Shared videos at least**
-  hides the weaker lines. Click a performer to put them in the middle with every video they're in (their thumbnails;
-  300 at most on the wall, all of them listed in the panel); tick **Also who they're with** to add the other
-  performers of those videos. Click a video to see it in the panel and open it. Only performers someone matched or
-  filled in are on it: linked to ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page.
-  The graph library (three.js) loads only on this page.
+  hides the weaker lines. Click a performer to put them in the middle with every video they're in (their thumbnails,
+  300 at most); the panel lists who they're **Most often with**. Tick **Also who they're with** to add the other
+  performers of those videos. With a mouse, pointing at a video plays its preview (muted, like the library); click it
+  to see it in the panel and open it (previews: 3.9.1). Only performers someone matched or filled in are on it: linked to ThePornDB,
+  FansDB or StashDB, or with details, photos or a gender set on their page. The **?** button shows how to use it (it
+  opens by itself the first time).
+  - Moving around (3.9.1): dragging always moves the view, never a dot. In 3D, drag turns it in any direction, all the way
+    round (it glides to a stop); right-drag or two fingers moves it; scroll or pinch zooms. In 2D, drag moves it.
+  - **Pick for me** (3.9.1, when a performer is in the middle): opens one of their videos. Which one is set in **My Settings →
+    The wall → Pick for me**: Random (default), One I haven't watched, One of my Favorites, The one I watch most,
+    Highest rated, Most viewed / Most liked on the site, Newest in the library. Pressing it again gives another one
+    (the ranked ways go down the list). If none fits (e.g. you've watched them all), it picks at random and says so.
+  - Before opening it, the wall looks through a few of the videos, stops on the picked one, zooms in until it fills
+    the view, and the picture grows into the video page's player. **Show the search** (on by default) and **How long
+    it takes** (2–12 s, default 4) are in the same settings tab; a click, Esc or **Skip** ends it and opens the video
+    at once. It's also skipped when your system asks for reduced motion.
+  The graph library (three.js) loads only on this page; pictures are drawn from small copies, so hundreds of
+  thumbnails stay smooth.
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture
   from your computer next to ThePornDB's — pick it or drop it on the panel; **Replace photo** swaps it (after asking). It's converted to WebP like the
   others (JPEG, PNG, WebP, GIF, BMP, TIFF; 30 MB at most; iPhone HEIC isn't readable — export it as JPEG). **Show

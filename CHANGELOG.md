@@ -4,6 +4,23 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.9.1] - 2026-11-27
+
+### Added
+- **The wall → Pick for me** (when a performer is in the middle): opens one of their videos — random, one you haven't
+  watched, one of your Favorites, the one you watch most, highest rated, most viewed / liked on the site, or newest
+  (**My Settings → The wall**). Pressing it again gives another one. An animation looks through the videos, locks on,
+  zooms in and grows the picture into the video page's player; it can be turned off, made 2–12 s long, and skipped
+  with a click, Esc or **Skip**.
+- **The wall:** pointing at a video plays its preview (muted, like the library); a **?** button explains how to use it
+  (it opens by itself the first time).
+
+### Changed
+- **The wall:** 3D turns freely in every direction (also over the top) and glides to a stop; dragging always moves the
+  view — a dot can no longer be dragged away, which pulled everything linked to it along. Pictures are drawn from small
+  copies, so hundreds of thumbnails stay smooth. The panel no longer lists a performer's video titles (the library
+  does); **Most often with** stays.
+
 ## [3.9.0] - 2026-11-27
 
 ### Added

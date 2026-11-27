@@ -1032,6 +1032,9 @@
   "ui/src/components/PanicKeysSetting.vue",
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "change": [
+  "ui/src/views/WallView.vue"
+ ],
  "Change folder": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -1178,6 +1181,9 @@
  "Click a frame to use it, pick any moment with the slider, or upload your own picture.": [
   "ui/src/components/upload/ThumbnailStep.vue"
  ],
+ "Click a performer to put them in the middle with all their videos. “Also who they’re with” adds the other performers in those videos; “Everyone” goes back.": [
+  "ui/src/views/WallView.vue"
+ ],
  "Click or drop to pick another file": [
   "ui/src/views/UploadView.vue"
  ],
@@ -1196,6 +1202,7 @@
   "ui/src/components/dialogs/ThumbnailDialog.vue",
   "ui/src/components/playlists/CoverDialog.vue",
   "ui/src/views/PlaylistView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Close the player": [
@@ -2167,11 +2174,17 @@
  "Drag to move": [
   "ui/src/components/PlayerHost.vue"
  ],
+ "Drag to move it; scroll or pinch zooms.": [
+  "ui/src/views/WallView.vue"
+ ],
  "Drag to move this tab": [
   "ui/src/components/TabBar.vue"
  ],
  "Drag to reorder": [
   "ui/src/views/PlaylistView.vue"
+ ],
+ "Drag to turn it — any direction, all the way round. Right-drag (two fingers on a phone) moves it; scroll or pinch zooms.": [
+  "ui/src/views/WallView.vue"
  ],
  "Drives": [
   "ui/src/components/admin/FolderPicker.vue"
@@ -2247,7 +2260,7 @@
  "e.g. “Luna P” and “Luna Prism”, when ThePornDB says they're the same person.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "Each dot is a performer; a line means they share videos (thicker: more). Click one to put them in the middle with their videos. Drag to turn, scroll to zoom.": [
+ "Each dot is a performer; a line means they share videos — the thicker, the more. “Shared videos at least” hides the weaker lines.": [
   "ui/src/views/WallView.vue"
  ],
  "Each one waits a little longer first. 0: give up after the first.": [
@@ -2842,6 +2855,9 @@
  "from GitHub": [
   "ui/src/components/LanguageSettings.vue"
  ],
+ "From the button to the video page.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "from {time}": [
   "ui/src/views/admin/LogsView.vue"
  ],
@@ -3024,6 +3040,9 @@
  "Hide panel": [
   "ui/src/views/WallView.vue"
  ],
+ "Highest rated": [
+  "ui/src/lib/wallPick.js"
+ ],
  "History": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -3038,6 +3057,9 @@
  ],
  "How": [
   "ui/src/components/songs/SongMethodPicker.vue"
+ ],
+ "How long it takes": [
+  "ui/src/views/SettingsView.vue"
  ],
  "How long to wait for an answer before trying again. Its search can take a while when it's busy.": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -3059,6 +3081,9 @@
  ],
  "How the duplicate scan on the {link1} page compares videos. Changing the method or thresholds makes the next scan compare everything again; changing the sample count or audio check also re-reads every file.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "How the wall works": [
+  "ui/src/views/WallView.vue"
  ],
  "https://pmvhaven.com/video/...": [
   "ui/src/components/AddVideoDialog.vue"
@@ -3807,6 +3832,9 @@
  "More than {max} keys were pressed — only the first {max} were kept.": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
+ "Most liked on the site": [
+  "ui/src/lib/wallPick.js"
+ ],
  "Most often with": [
   "ui/src/views/WallView.vue"
  ],
@@ -3821,6 +3849,9 @@
  ],
  "Most videos first": [
   "ui/src/views/PerformersView.vue"
+ ],
+ "Most viewed on the site": [
+  "ui/src/lib/wallPick.js"
  ],
  "Most watched": [
   "ui/src/views/admin/StatsView.vue"
@@ -4037,6 +4068,9 @@
  ],
  "New smart playlist": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
+ ],
+ "Newest in the library": [
+  "ui/src/lib/wallPick.js"
  ],
  "Next": [
   "ui/src/components/PlayQueue.vue",
@@ -4289,6 +4323,9 @@
  ],
  "none": [
   "ui/src/components/upload/ConvertStep.vue"
+ ],
+ "None fits “{how}” — this one is picked at random": [
+  "ui/src/views/WallView.vue"
  ],
  "None missing": [
   "ui/src/components/admin/FramesPanel.vue",
@@ -4543,8 +4580,14 @@
  "Once, {when}": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "One I haven't watched": [
+  "ui/src/lib/wallPick.js"
+ ],
  "One key on its own is easy to press by accident — two or three is safer (e.g. A + D).": [
   "ui/src/components/PanicKeysSetting.vue"
+ ],
+ "One of my Favorites": [
+  "ui/src/lib/wallPick.js"
  ],
  "One of your favourites": [
   "ui/src/views/PerformersView.vue"
@@ -4976,6 +5019,13 @@
   "ui/src/components/PerformerPhotos.vue",
   "ui/src/components/playlists/CoverDialog.vue"
  ],
+ "Pick for me": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
+ ],
+ "Pick for me opens one of their videos — which one, and the search before it, are set in My Settings → The wall. Click, Esc or Skip ends the search.": [
+  "ui/src/views/WallView.vue"
+ ],
  "Pick one of the playlist's videos": [
   "backend/library_mixins/playlists.py"
  ],
@@ -4990,6 +5040,9 @@
  ],
  "Picked the first {n} — that's the most at once": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "Picks: {how}": [
+  "ui/src/views/WallView.vue"
  ],
  "picture-in-picture": [
   "ui/src/lib/panic.js"
@@ -5295,6 +5348,7 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Random": [
+  "ui/src/lib/wallPick.js",
   "ui/src/views/LibraryView.vue",
   "ui/src/views/VideoView.vue"
  ],
@@ -6346,6 +6400,9 @@
  "Show the A-B button": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Show the search": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Show them": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -6436,7 +6493,8 @@
   "ui/src/views/SettingsView.vue"
  ],
  "Skip": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/views/WallView.vue"
  ],
  "skip back": [
   "ui/src/lib/panic.js"
@@ -7073,6 +7131,9 @@
  "The new preview:": [
   "ui/src/components/upload/PreviewStep.vue"
  ],
+ "The one I watch most": [
+  "ui/src/lib/wallPick.js"
+ ],
  "The part size is 0 (Server Settings' size) or {min} to {max} GB": [
   "backend/backup_jobs.py"
  ],
@@ -7222,9 +7283,13 @@
  ],
  "The wall": [
   "ui/src/router.js",
-  "ui/src/views/PerformersView.vue"
+  "ui/src/views/PerformersView.vue",
+  "ui/src/views/SettingsView.vue"
  ],
- "The wall shows {n} of them; all are listed below.": [
+ "The wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "The wall shows {n} of their {total} videos.": [
   "ui/src/views/WallView.vue"
  ],
  "The {site} address isn't a web address (Server Settings → Credentials)": [
@@ -7956,7 +8021,6 @@
   "backend/permissions.py",
   "ui/src/lib/i18n.js",
   "ui/src/views/PerformersView.vue",
-  "ui/src/views/WallView.vue",
   "ui/src/views/admin/StatsView.vue"
  ],
  "videos": [
@@ -8157,6 +8221,9 @@
  "Where this backup goes": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Which of a performer's videos the wall's Pick for me button opens. Pressing it again gives another one.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Which profile is it?": [
   "ui/src/views/PerformerView.vue"
  ],
@@ -8184,6 +8251,9 @@
  ],
  "will use the site's on save": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
+ ],
+ "With a mouse, point at a video to play its preview. Click (tap) it to see it in the panel and open it.": [
+  "ui/src/views/WallView.vue"
  ],
  "with changes": [
   "backend/activity.py"
@@ -8759,6 +8829,9 @@
  ],
  "{size} saved": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "{s} s": [
+  "ui/src/views/SettingsView.vue"
  ],
  "{s}s": [
   "ui/src/components/JobList.vue"

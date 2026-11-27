@@ -14,6 +14,7 @@ import {
 import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
 import { cleanEngines, DEFAULT_ENGINES, PRESETS } from "../lib/frameSearch.js";
+import { PICK_MODES } from "../lib/wallPick.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -21,6 +22,7 @@ const TABS = [
   { key: "appearance", label: t("Appearance") },
   { key: "library", label: t("Library") },
   { key: "video", label: t("Video page") },
+  { key: "wall", label: t("The wall") },
   { key: "notifications", label: t("Notifications") },
   { key: "language", label: t("Language") },
   { key: "account", label: t("Account"), show: () => hasPermission("self.password_reset") || !isAdmin() },
@@ -103,6 +105,7 @@ function resetTab() {
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
     video: ["relatedCount", "relatedOrder", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
+    wall: ["wallPick", "wallPickAnimate", "wallPickSeconds"],
   }[tab.value] || [];
   for (const k of keys) {
     const v = DEFAULT_UI[k];
@@ -427,6 +430,34 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
     </section>
 
     <!-- ================= Notifications ================= -->
+    <!-- ================= The wall (3.9.1) ================= -->
+    <section v-else-if="tab === 'wall'" class="card group">
+      <div class="row">
+        <div class="label">
+          <strong>{{ $t("Pick for me") }}</strong>
+          <span class="muted">{{ $t("Which of a performer's videos the wall's Pick for me button opens. Pressing it again gives another one.") }}</span>
+        </div>
+        <select class="select" :value="session.prefs.wallPick" :aria-label="$t('Pick for me')" @change="savePref('wallPick', $event.target.value)">
+          <option v-for="(label, k) in PICK_MODES" :key="k" :value="k">{{ $t(label) }}</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="label">
+          <strong>{{ $t("Show the search") }}</strong>
+          <span class="muted">{{ $t("The wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.") }}</span>
+        </div>
+        <label class="switch"><input type="checkbox" :checked="session.prefs.wallPickAnimate" @change="savePref('wallPickAnimate', $event.target.checked)">{{ $t("On") }}</label>
+      </div>
+      <div class="row">
+        <div class="label"><strong>{{ $t("How long it takes") }}</strong><span class="muted">{{ $t("From the button to the video page.") }}</span></div>
+        <div class="range">
+          <input type="range" min="2" max="12" step="0.5" :value="session.prefs.wallPickSeconds" :disabled="!session.prefs.wallPickAnimate"
+                 :aria-label="$t('How long it takes')" @input="savePref('wallPickSeconds', Number($event.target.value))">
+          <output>{{ $t("{s} s", { s: session.prefs.wallPickSeconds }) }}</output>
+        </div>
+      </div>
+    </section>
+
     <section v-else-if="tab === 'notifications'" class="card group">
       <div class="row">
         <div class="label">

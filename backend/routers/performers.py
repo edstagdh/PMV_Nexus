@@ -99,7 +99,7 @@ def performers_browse(user: AuthContext = Depends(_viewer)):
 @router.get("/api/performers/wall")
 def performers_wall(user: AuthContext = Depends(_viewer)):
     """3.9.0 The wall: matched / filled-in performers and the videos they share."""
-    return library_manager.performer_wall()
+    return library_manager.performer_wall(user.id)
 
 
 class GenderBody(BaseModel):

@@ -1032,11 +1032,16 @@ class PerformersMixin:
             e.pop("_best", None)
         return out
 
-    def performer_wall(self) -> dict:
+    def performer_wall(self, user_id: Optional[str] = None) -> dict:
         """3.9.0 "The wall" (/wall): who appears with whom. Only performers someone has
         matched or filled in -- linked to ThePornDB, or with details, photos, a gender or a
         FansDB / StashDB link of their own -- and the finished videos they're in. Names linked
-        to the same profile are one person. The page works out the pairs itself."""
+        to the same profile are one person. The page works out the pairs itself. Per video also (3.9.1)
+        what "Pick for me" sorts by: rating, site views / likes, when it was added, and this
+        user's plays and whether they started it."""
+        from .core import _acquired
+        plays = self.db.user_play_counts(user_id) if user_id else {}
+        started = self._wp_for(user_id) if user_id else {}
         self._perf_load()
         lib = self._library_performer_names()
         sb_keys = {k for k, _box in self._perf_sb}
@@ -1074,10 +1079,19 @@ class PerformersMixin:
                 continue
             for pid in cast:
                 people[pid]["videos"] += 1
+            stats = item.site_stats or {}
+            try:
+                rating = float(str(item.ratings or "").replace("%", "")) if item.ratings else None
+            except ValueError:
+                rating = None
             videos.append({"id": item.id, "title": item.title or "", "creator": item.creator or "",
                            "length": item.tech_duration or "", "cast": cast,
                            "thumb": (f"/api/library/{item.id}/thumbnail?v={item.thumbnail_updated_at or ''}"
-                                     if item.thumbnail_path else None)})
+                                     if item.thumbnail_path else None),
+                           "preview": (f"/api/library/{item.id}/preview?v={item.preview_updated_at or ''}"
+                                       if item.preview_path else None),
+                           "rating": rating, "views": stats.get("views"), "likes": stats.get("likes"),
+                           "added": _acquired(item), "plays": plays.get(item.id, 0), "started": item.id in started})
         out = [p for p in people.values() if p["videos"]]
         for p in out:
             p.pop("_best", None)

@@ -1292,6 +1292,11 @@ class LibraryDB:
         return [dict(r) for r in self._conn.execute(
             "SELECT day, user_id, item_id, seconds, plays FROM watch_log WHERE day >= ?", (since_day,))]
 
+    def user_play_counts(self, user_id: str) -> dict[str, int]:
+        """3.9.1 (the wall's Pick for me): video id -> how often this user played it."""
+        return {r["item_id"]: int(r["n"] or 0) for r in self._conn.execute(
+            "SELECT item_id, SUM(plays) AS n FROM watch_log WHERE user_id = ? GROUP BY item_id", (user_id,))}
+
     def delete_user_watch_log(self, user_id: str) -> None:
         self._conn.execute("DELETE FROM watch_log WHERE user_id = ?", (user_id,))
         self._conn.commit()

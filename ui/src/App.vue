@@ -8,6 +8,7 @@ import AddVideoDialog from "./components/AddVideoDialog.vue";
 import ToastHost from "./components/ToastHost.vue";
 import DialogHost from "./components/DialogHost.vue";
 import ConfirmHost from "./components/ConfirmHost.vue";
+import FlyIn from "./components/FlyIn.vue";
 import BlankView from "./views/BlankView.vue";
 import { installPanic } from "./lib/panic.js";
 import { pickDecoy } from "./lib/decoyPages.js";
@@ -126,6 +127,7 @@ const disk = computed(() => live.summary?.disk);
     </div>
     <DialogHost />
     <ConfirmHost />
+    <FlyIn />
     <PlayerHost />
     <AddVideoDialog v-if="addOpen" @close="addOpen = false" />
     <div v-if="live.updateAvailable && !updateDismissed" class="update-banner card">
