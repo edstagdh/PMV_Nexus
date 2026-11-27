@@ -25,6 +25,9 @@ from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import extensions
 from .action_log import ActionLogMiddleware
+from . import net_log
+
+net_log.install()  # 3.9.0: every outgoing HTTP request in the log (category "network")
 
 
 def _quiet_proactor_reset_errors(loop: asyncio.AbstractEventLoop, context: dict) -> None:

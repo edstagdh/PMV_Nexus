@@ -198,6 +198,7 @@ class ReencodeConfig(BaseModel):
     # Re-encode… opens a window to pick the codec and change the settings (2.22.0).
     # Off (2.22.1): it queues straight away with the codec and settings above.
     ask_each_time: bool = True
+    check_first: bool = True  # 3.9.0: check the file isn't damaged before re-encoding it (media_tools.check_video_integrity)
 
     @model_validator(mode="before")
     @classmethod
@@ -364,9 +365,13 @@ class PerformersConfig(BaseModel):
                        can be split on the profile page.
       (Matching new names and refreshing profiles is the Scheduler system job
       "Match & refresh performers".)
-      refresh_days  -- re-read each matched profile this often."""
+      refresh_days  -- re-read each matched profile this often.
+      tpdb_timeout  -- (3.9.0) seconds to wait for ThePornDB's answer (its search can be slow)
+      tpdb_retries  -- (3.9.0) how many more tries after it didn't answer in time"""
     merge_aliases: bool = True
     refresh_days: int = Field(30, ge=7, le=365)
+    tpdb_timeout: int = Field(60, ge=10, le=600)
+    tpdb_retries: int = Field(2, ge=0, le=5)
 
 
 class ProxyConfig(BaseModel):

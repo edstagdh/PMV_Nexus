@@ -50,6 +50,7 @@ export const DEFAULT_UI = Object.freeze({
   defaultDir: "desc",
   tablePreviewScale: 200,
   relatedCount: 15,
+  relatedOrder: "best",   // 3.9.0: "best" matches first, or "random" among all related ones
   relatedBadges: ["quality", "duration", "rating", "gone"],
   chipColorsOn: true,
   // 3.5.0: performers by gender (female / male / trans / unknown); tags yellow (blue is now male).
@@ -105,6 +106,7 @@ export function normalizeUi(raw) {
     defaultDir: r.defaultDir === "asc" ? "asc" : "desc",
     tablePreviewScale: clampNum(r.tablePreviewScale, 100, 400, DEFAULT_UI.tablePreviewScale),
     relatedCount: Math.round(clampNum(r.relatedCount, 0, 40, DEFAULT_UI.relatedCount)),
+    relatedOrder: r.relatedOrder === "random" ? "random" : "best",
     relatedBadges: Array.isArray(r.relatedBadges)
       ? [
         ...[...new Set(r.relatedBadges.filter((b) => RELATED_BADGES_BOTTOM.includes(b)))].slice(0, RELATED_BADGE_MAX),
@@ -205,7 +207,7 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }

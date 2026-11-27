@@ -3,8 +3,9 @@ import { t, tn, N_ } from "../lib/i18n.js";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import Icon from "../components/Icon.vue";
+import MediaInfoDialog from "../components/dialogs/MediaInfoDialog.vue";
 import PlayQueue from "../components/PlayQueue.vue";
-import { player, openOnPage, leavePage, parkPlayer } from "../stores/player.js";
+import { player, openOnPage, leavePage, parkPlayer, seekPlayer } from "../stores/player.js";
 import { setPageTitle } from "../lib/title.js";
 import VideoCard from "../components/VideoCard.vue";
 import RelatedList from "../components/RelatedList.vue";
@@ -13,7 +14,7 @@ import FavoriteButton from "../components/FavoriteButton.vue";
 import VideoFrames from "../components/VideoFrames.vue";
 import { api, qs } from "../lib/api.js";
 import { normalizeMetadata } from "../lib/metadata.js";
-import { thumbUrl, compactNumber, workStatus, formatDateTime } from "../lib/format.js";
+import { thumbUrl, compactNumber, workStatus, formatDateTime, formatDuration } from "../lib/format.js";
 import { onLibraryChange } from "../stores/live.js";
 import { session, hasPermission } from "../stores/session.js";
 import { openDialog } from "../stores/dialogs.js";
@@ -28,6 +29,7 @@ const meta = ref(null);
 const syncInfo = ref({});
 const error = ref("");
 const related = ref([]);
+const shared = ref([]); // 3.9.0: videos with the same footage (GET .../shared-scenes)
 const sameCreator = ref([]);
 const showFullDescription = ref(false);
 
@@ -63,14 +65,16 @@ async function reloadMetadata(id) {
 
 async function loadNeighbours(it) {
   const id = it.id;
-  const [rel, same] = await Promise.all([
-    api(`/api/library/${encodeURIComponent(id)}/related?limit=${session.prefs.relatedCount || 1}`).catch(() => ({ items: [] })),
+  const [rel, same, sh] = await Promise.all([
+    api(`/api/library/${encodeURIComponent(id)}/related?limit=${session.prefs.relatedCount || 1}&order=${session.prefs.relatedOrder || "best"}`).catch(() => ({ items: [] })),
     makers(it).length
       ? api(`/api/library?${qs({ statuses: "done", creators: makers(it), page_size: 9, sort_key: "download_datetime", sort_dir: "desc" })}`).catch(() => ({ items: [] }))
       : Promise.resolve({ items: [] }),
+    api(`/api/library/${encodeURIComponent(id)}/shared-scenes`).catch(() => ({ items: [] })),
   ]);
   if (id !== props.id) return;
   related.value = rel.items;
+  shared.value = sh.items || [];
   sameCreator.value = (same.items || []).filter((x) => x.id !== id).slice(0, 8);
 }
 
@@ -79,7 +83,7 @@ async function loadNeighbours(it) {
 const slot = ref(null);
 watch(() => props.id, (id, old) => {
   if (old && player.mode === "page") parkPlayer(); // keep it out of the old page's DOM while the new one loads
-  item.value = null; meta.value = null; related.value = []; sameCreator.value = []; showFullDescription.value = false;
+  item.value = null; meta.value = null; related.value = []; shared.value = []; sameCreator.value = []; showFullDescription.value = false;
   load();
 }, { immediate: true });
 const stop = onLibraryChange((changed) => { if (!changed || changed.includes(props.id)) load(false); });
@@ -140,8 +144,13 @@ const techGroups = computed(() => {
       : /^audio\b|^sample rate|^channels?$/i.test(k) ? "Audio" : "Other";  // i18n-ignore
     groups[name].push([k, typeof v === "boolean" ? (v ? t("Yes") : t("No")) : v]);
   }
+  // 3.9.0: the video's perceptual hash (16 hex digits) -- what the duplicate finder compares
+  if (item.value?.local_phash) groups.General.push(["pHash", item.value.local_phash]);  // i18n-ignore
   return Object.entries(groups).filter(([, rows]) => rows.length).map(([name, rows]) => ({ name, label: TECH_GROUP_LABELS[name], rows }));
 });
+// 3.9.0: MediaInfo's full report of the file (who may run maintenance or edit videos)
+const mediaInfoOpen = ref(false);
+const canMediaInfo = computed(() => item.value?.status === "done" && (hasPermission("videos.maintain") || hasPermission("videos.edit")));
 const longDescription = computed(() => (view.value?.description || "").length > 300);
 const downloadStatus = computed(() => {
   const it = item.value;
@@ -234,11 +243,31 @@ function viewAllFrom(names) {
             <div class="tech-groups">
               <div v-for="g in techGroups" :key="g.name" class="tech-group">
                 <h5>{{ $t(g.label) }}</h5>
-                <dl class="facts"><template v-for="[k, v] in g.rows" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
+                <dl class="facts"><template v-for="[k, v] in g.rows" :key="k"><dt>{{ k }}</dt><dd :class="{ mono: k === 'pHash' }">{{ v }}</dd></template></dl>
               </div>
             </div>
+            <button v-if="canMediaInfo" class="btn btn-sm mi-btn" @click="mediaInfoOpen = true"><Icon name="list" :size="14" />{{ $t("MediaInfo…") }}</button>
           </details>
           <div v-if="syncInfo.synced_at" class="muted small">{{ $t("Last synced with PMVHaven {time}", { time: formatDateTime(syncInfo.synced_at) }) }}</div>
+        </section>
+
+        <section v-if="shared.length" class="card shared">
+          <h3>{{ $t("Shares scenes with") }}</h3>
+          <p class="muted small">{{ $t("Videos with the same footage, found by comparing frames. A time jumps there in this video.") }}</p>
+          <ul>
+            <li v-for="s in shared" :key="s.id">
+              <RouterLink :to="{ name: 'video', params: { id: s.id } }" class="sh-thumb"><img v-if="s.thumb" :src="s.thumb" alt="" loading="lazy"></RouterLink>
+              <div class="sh-text">
+                <RouterLink :to="{ name: 'video', params: { id: s.id } }" class="sh-title">{{ s.title }}</RouterLink>
+                <span class="muted small">{{ [s.creator, s.length, $t("about {s} s in common", { s: s.seconds })].filter(Boolean).join(" · ") }}</span>
+                <span class="times">
+                  <button v-for="(sc, i) in s.scenes" :key="i" class="btn btn-ghost btn-sm" :disabled="!playable"
+                          :title="$t('{from}–{to} here, {ofrom}–{oto} in the other video', { from: formatDuration(sc[0]), to: formatDuration(sc[1] + 2), ofrom: formatDuration(sc[2]), oto: formatDuration(sc[3] + 2) })"
+                          @click="seekPlayer(sc[0])">{{ formatDuration(sc[0]) }}</button>
+                </span>
+              </div>
+            </li>
+          </ul>
         </section>
 
         <section v-if="sameCreator.length" class="same">
@@ -259,11 +288,22 @@ function viewAllFrom(names) {
         </template>
       </aside>
     </div>
+    <MediaInfoDialog v-if="mediaInfoOpen" :id="props.id" @close="mediaInfoOpen = false" />
   </div>
 </template>
 
 <style scoped>
 .video-page { padding: 0.75rem 1.5rem 2rem; }
+.shared { padding: 0.9rem 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.shared h3 { margin: 0; font-size: 1rem; }
+.shared ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.shared li { display: flex; gap: 0.75rem; align-items: flex-start; }
+.sh-thumb { flex: none; width: 8rem; aspect-ratio: 16 / 9; border-radius: 0.4rem; overflow: hidden; background: var(--panel-2); }
+.sh-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sh-text { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.sh-title { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.times { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.times .btn { height: 1.6rem; padding: 0 0.45rem; font-variant-numeric: tabular-nums; }
 .watch-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
 .watch-head .title { flex: 1; min-width: 0; margin: 0; }
 .watch-head .random { flex: none; }
@@ -295,6 +335,8 @@ function viewAllFrom(names) {
 .tech summary { cursor: pointer; font-weight: 600; font-size: 0.84rem; }
 .tech-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: 0.75rem 1.5rem; margin-top: 0.625rem; }
 .tech-group h5 { margin: 0 0 0.375rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 600; }
+.mi-btn { margin-top: 0.75rem; }
+.tech dd.mono { font-family: var(--font-mono, ui-monospace, monospace); overflow-wrap: anywhere; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem 1rem; margin: 0; font-size: 0.8rem; }
 .facts dt { color: var(--text-dim); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }

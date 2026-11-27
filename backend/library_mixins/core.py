@@ -614,16 +614,19 @@ class CoreMixin:
         scored.sort()
         return [{"value": v, "count": n} for *_, v, n in scored[:max(1, min(limit, 50))]]
 
-    def related_items(self, item_id: str, limit: int = 12) -> list[dict]:
+    def related_items(self, item_id: str, limit: int = 12, order: str = "best") -> list[dict]:
         """Downloaded videos most similar to `item_id`: shared performers
         weigh most, then same creator, then shared tags. Ties go to the more
-        recently downloaded video."""
+        recently downloaded video. order "random" (3.9.0, My Settings): `limit` picked at random
+        from every related one (each visit another mix), still shown best first. 3.9.0: a video
+        sharing scenes with it (library_mixins/scenes.py) counts like 1-2 shared performers."""
         base = self._items.get(item_id)
         if base is None:
             raise KeyError(item_id)
         performers = {spellings.key("performers", v) for v in base.performers}
         tags = {fold(v) for v in base.tags}
         makers = {c.lower() for c in base.made_or_uploaded_by()}  # 3.6.0: creators and uploader
+        shared = self.scene_partners(item_id)
         scored = []
         for item in self._items.values():
             if item.id == item_id or item.status != "done":
@@ -632,10 +635,16 @@ class CoreMixin:
                 + len(tags.intersection(fold(v) for v in item.tags))
             if makers and makers.intersection(c.lower() for c in item.made_or_uploaded_by()):
                 score += 2
+            if item.id in shared:
+                score += 3 if shared[item.id] < 10 else 6
             if score:
                 scored.append((score, item.download_datetime or "", item))
+        limit = max(1, min(limit, 50))
+        if order == "random" and len(scored) > limit:
+            import random
+            scored = random.sample(scored, limit)
         scored.sort(key=lambda s: (s[0], s[1]), reverse=True)
-        return [s[2].model_dump() for s in scored[: max(1, min(limit, 50))]]
+        return [s[2].model_dump() for s in scored[:limit]]
 
     def list_active_tasks(self) -> list[dict]:
         """Every item that isn't just sitting at rest in the library: not

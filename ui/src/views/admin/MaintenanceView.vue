@@ -10,6 +10,7 @@ import ModalDialog from "../../components/ModalDialog.vue";
 import SiteSyncPanel from "../../components/admin/SiteSyncPanel.vue";
 import PerformersPanel from "../../components/admin/PerformersPanel.vue";
 import StoryboardsPanel from "../../components/admin/StoryboardsPanel.vue";
+import SharedScenesPanel from "../../components/admin/SharedScenesPanel.vue";
 import FramesPanel from "../../components/admin/FramesPanel.vue";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
@@ -149,6 +150,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
     </section>
 
     <StoryboardsPanel v-if="hasPermission('maintenance.run')" />
+    <SharedScenesPanel v-if="hasPermission('maintenance.run')" />
     <FramesPanel v-if="hasPermission('maintenance.run')" />
 
     <section v-if="hasPermission('maintenance.run')" class="card block">

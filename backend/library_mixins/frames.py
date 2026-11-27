@@ -102,14 +102,15 @@ class FramesMixin:
         return {"videos": len(done), "made": made, "missing": len(done) - made, "size": size,
                 "queued": len(self._fr_queue or ()), "running": bool(self._fr_task and not self._fr_task.done())}
 
-    def redo_frames(self, video_id: str) -> bool:
+    def redo_frames(self, video_id: str, first: bool = True) -> bool:
         """Video page -> "Redo Frames": made again FROM THE FILE (3.4.2) -- the site's are what was
-        there already, and the reason to redo them (blank, placeholder or wrong ones)."""
+        there already, and the reason to redo them (blank, placeholder or wrong ones). first=False
+        (3.9.0, Library -> Select -> Redo Frames): after what's queued, in the order picked."""
         if not self._fr_candidate(video_id):
             return False
         self._fr_from_file.add(video_id)
         self.remove_frames(video_id)
-        return self.request_frames(video_id, first=True)
+        return self.request_frames(video_id, first=first)
 
     async def _site_timeline(self, item) -> list[dict]:
         """The site's frames for `item`: the saved list, else asked for once from the site."""

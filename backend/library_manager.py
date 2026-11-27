@@ -18,6 +18,7 @@ from .library_mixins.disk_guard import DiskGuardMixin
 from .library_mixins.names import NamesMixin
 from .library_mixins.songs import SongsMixin
 from .library_mixins.storyboards import StoryboardsMixin
+from .library_mixins.scenes import ScenesMixin
 from .library_mixins.frames import FramesMixin
 from .library_mixins.audio_fix import AudioFixMixin
 from .library_mixins.preview_fix import PreviewFixMixin
@@ -63,6 +64,7 @@ class LibraryManager(
     NamesMixin,
     SongsMixin,
     StoryboardsMixin,
+    ScenesMixin,
     FramesMixin,
     AudioFixMixin,
     PreviewFixMixin,

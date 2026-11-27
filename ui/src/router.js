@@ -33,6 +33,8 @@ export const router = createRouter({
     { path: "/playlists", name: "playlists", component: PlaylistsView, meta: { title: N_("Playlists") } },
     { path: "/playlist/:id", name: "playlist", component: PlaylistView, props: true, meta: { title: N_("Playlist") } },
     { path: "/performers", name: "performers", component: PerformersView, meta: { title: N_("Performers") } },
+    // 3.9.0: its own chunk -- three.js loads only on this page
+    { path: "/wall", name: "wall", component: () => import("./views/WallView.vue"), meta: { title: N_("The wall") } },
     { path: "/performer/:name", name: "performer", component: PerformerView, props: true, meta: { title: (to) => to.params.name } },
     { path: "/upload", name: "upload", component: UploadView, meta: { title: N_("Upload"), permission: "videos.upload" } },
     // The panic keys' page (2.24.0): an ordinary-looking article (2.24.4), at an ordinary-looking address.

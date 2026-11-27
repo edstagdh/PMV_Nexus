@@ -91,6 +91,7 @@ function state(it) {
     return summary.value?.disk?.low ? { text: t("Waiting for disk space"), detail: t("Downloads are stopped until there's more free space") } : { text: t("Waiting to download") };
   }
   if (it.status === "failed") return { text: t("Download failed"), detail: it.error, failed: true };
+  if (it.reencode_status === "encoding" && it.reencode_stage === "checking") return { text: t("Checking the file before re-encoding") };
   if (it.reencode_status === "encoding") {
     return { text: t("Re-encoding"), percent: it.reencode_progress_percent, detail: it.reencode_eta_seconds != null ? t("ETA {time}", { time: eta(it.reencode_eta_seconds) }) : "" };
   }

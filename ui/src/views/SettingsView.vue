@@ -101,7 +101,7 @@ function resetTab() {
   const keys = {
     appearance: ["textScale", "goneColor", "chipColorsOn", "chipColors", "customTheme"],
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
-    video: ["relatedCount", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
+    video: ["relatedCount", "relatedOrder", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
   }[tab.value] || [];
   for (const k of keys) {
@@ -296,6 +296,16 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
                  @input="savePref('relatedCount', Number($event.target.value))">
           <output>{{ session.prefs.relatedCount }}</output>
         </div>
+      </div>
+      <div class="row">
+        <div class="label">
+          <strong>{{ $t("Which related videos") }}</strong>
+          <span class="muted">{{ $t("The best matches, or a different random pick from all related videos on each visit (when there are more than you show).") }}</span>
+        </div>
+        <select class="select" :value="session.prefs.relatedOrder" :aria-label="$t('Which related videos')" @change="savePref('relatedOrder', $event.target.value)">
+          <option value="best">{{ $t("Best matches") }}</option>
+          <option value="random">{{ $t("Random from all related") }}</option>
+        </select>
       </div>
       <div class="row top">
         <div class="label">

@@ -207,6 +207,9 @@
  "About {size} · {free} free in {folder}": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "about {s} s in common": [
+  "ui/src/views/VideoView.vue"
+ ],
  "Accent": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -231,6 +234,12 @@
   "ui/src/views/PerformersView.vue",
   "ui/src/views/admin/UsersView.vue"
  ],
+ "Active from (year)": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
+ "Active until (year)": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Activity": [
   "ui/src/views/admin/StatsView.vue"
  ],
@@ -251,11 +260,17 @@
  "Add a creator…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
+ "Add a FansDB or StashDB API key in Server Settings → Credentials to search them.": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
  "Add a flag…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
  "Add a folder": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Add a link": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "Add a performer…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
@@ -281,6 +296,9 @@
  "Add every video in this view to a playlist, or save it as a smart playlist": [
   "ui/src/views/LibraryView.vue"
  ],
+ "Add from link": [
+  "ui/src/components/PerformerPhotos.vue"
+ ],
  "Add job": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -293,10 +311,13 @@
  "Add photo": [
   "ui/src/components/PerformerPhotos.vue"
  ],
- "Add the Filester API key under Admin → Credentials first.": [
+ "Add photos": [
+  "ui/src/components/PerformerPhotos.vue"
+ ],
+ "Add the Filester API key under Server Settings → Credentials first.": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
- "Add the Filester API key under Admin → Credentials → Filester first.": [
+ "Add the Filester API key under Server Settings → Credentials → Filester first.": [
   "backend/backup_jobs.py"
  ],
  "Add the ThePornDB API key in Server Settings → Credentials first": [
@@ -337,7 +358,7 @@
  "Add videos by link, retry failed downloads": [
   "backend/permissions.py"
  ],
- "Add your own picture next to ThePornDB's (up to 10) — drop it here or pick it. It's saved as WebP, kept when the profile refreshes, and included in every backup. One per performer: a new one replaces it.": [
+ "Add your own picture next to ThePornDB's (up to 10) — drop it here, pick it, or paste a link to it. It's saved as WebP, kept when the profile refreshes, and included in every backup. One per performer: a new one replaces it.": [
   "ui/src/components/PerformerPhotos.vue"
  ],
  "Add your photo": [
@@ -410,6 +431,9 @@
  ],
  "Address the sites see": [
   "ui/src/components/admin/ProxyPanel.vue"
+ ],
+ "Addresses with a user name or password in them aren't used": [
+  "backend/safe_fetch.py"
  ],
  "Addresses: {mode}.": [
   "ui/src/views/admin/LogsView.vue"
@@ -496,6 +520,9 @@
  "Already next in line": [
   "backend/library_mixins/core.py"
  ],
+ "Already running: it goes once more when done": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
  "Also copy each backup to": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -504,6 +531,9 @@
  ],
  "Also known as {names}": [
   "ui/src/views/PerformerView.vue"
+ ],
+ "Also save up to 5 of their photos": [
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Also the folder it's saved in.": [
   "ui/src/views/UploadView.vue"
@@ -514,8 +544,12 @@
  "Also upload to Filester (a private folder)": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Also who they’re with": [
+  "ui/src/views/WallView.vue"
+ ],
  "Also: {names}": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Always included: the database ({size}) and your settings, installed languages, own performer photos and playlist covers ({n} files).": [
   "ui/src/views/admin/BackupsView.vue"
@@ -569,10 +603,16 @@
  "API key auth is not configured on the server": [
   "backend/security.py"
  ],
+ "API key from https://fansdb.cc → your user page → API key (an account is needed). Used to search performers by hand from a performer's page (Find on FansDB / StashDB); ThePornDB stays the automatic match. Change the address only if they move it.": [
+  "backend/secrets_store.py"
+ ],
  "API key from https://filester.me → Account settings. Only used to upload encrypted backups (never the credentials or the videos) to a private folder there: Scheduler → a backup job → Upload to Filester. Regenerating the key on Filester makes this one stop working.": [
   "backend/secrets_store.py"
  ],
  "API key from https://pmvhaven.com/api-keys (format pmvh_...). Used to sync videos with the site; the same key works on porntubeai.com and hmvhaven.com.": [
+  "backend/secrets_store.py"
+ ],
+ "API key from https://stashdb.org → your user page → API key (an account is needed). Used to search performers by hand from a performer's page (Find on FansDB / StashDB); ThePornDB stays the automatic match. Change the address only if they move it.": [
   "backend/secrets_store.py"
  ],
  "API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases).": [
@@ -632,6 +672,9 @@
  ],
  "At most {n} copy folders": [
   "backend/backup_jobs.py"
+ ],
+ "At most {n} links": [
+  "backend/library_mixins/performers.py"
  ],
  "At once": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -698,7 +741,8 @@
   "ui/src/components/VideoPlayer.vue"
  ],
  "Back": [
-  "ui/src/components/upload/PreviewStep.vue"
+  "ui/src/components/upload/PreviewStep.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Back 1 second": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
@@ -790,16 +834,24 @@
  "before a restore": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Before each re-encode.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Being made…": [
   "ui/src/components/upload/ThumbnailStep.vue"
+ ],
+ "Best matches": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Best quality": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Bio": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
  "Birthplace": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
  "Bitrate": [
@@ -818,6 +870,7 @@
   "backend/library_mixins/duplicate_worker.py"
  ],
  "Born": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
  "Both listen; when Shazam finds the wrong song, Gemini's answer shows up next to it.": [
@@ -910,6 +963,7 @@
  "Cancel": [
   "ui/src/components/AddVideoDialog.vue",
   "ui/src/components/PanicKeysSetting.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/VideoPlayer.vue",
   "ui/src/components/admin/AccessPanel.vue",
   "ui/src/components/admin/FolderPicker.vue",
@@ -1034,6 +1088,9 @@
  "Check now": [
   "ui/src/views/HelpView.vue"
  ],
+ "Check the file first": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Check the proxy before using it (every 5 minutes at most); while it doesn't answer, nothing is sent through it — downloads wait for the direct connection, uploads fail with a message": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
@@ -1058,6 +1115,9 @@
  ],
  "Checking the download and cache folders": [
   "backend/library_mixins/untracked_files.py"
+ ],
+ "Checking the file before re-encoding": [
+  "ui/src/views/TasksView.vue"
  ],
  "Checking the file…": [
   "ui/src/views/UploadView.vue"
@@ -1200,6 +1260,9 @@
  "Compares small grayscale frames pixel by pixel. Fast and reliable for re-uploads and re-encodes.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Comparing": [
+  "backend/library_mixins/scenes.py"
+ ],
  "Comparing and applying changes": [
   "backend/library_mixins/site_sync_worker.py"
  ],
@@ -1290,7 +1353,8 @@
  ],
  "Copied": [
   "ui/src/components/NotificationBell.vue",
-  "ui/src/components/admin/CredentialsPanel.vue"
+  "ui/src/components/admin/CredentialsPanel.vue",
+  "ui/src/components/dialogs/MediaInfoDialog.vue"
  ],
  "copied to {n} more folders": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -1301,6 +1365,7 @@
  "Copy": [
   "ui/src/components/NotificationBell.vue",
   "ui/src/components/admin/CredentialsPanel.vue",
+  "ui/src/components/dialogs/MediaInfoDialog.vue",
   "ui/src/views/admin/LogsView.vue"
  ],
  "Copy each backup to": [
@@ -1404,7 +1469,8 @@
   "backend/library_mixins/item_extras.py"
  ],
  "Could not link": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Could not load": [
   "ui/src/components/dialogs/SongsDialog.vue"
@@ -1459,6 +1525,9 @@
  ],
  "Could not load the users": [
   "ui/src/views/admin/UsersView.vue"
+ ],
+ "Could not load the wall": [
+  "ui/src/views/WallView.vue"
  ],
  "Could not load this page": [
   "ui/src/views/HelpView.vue"
@@ -1637,6 +1706,7 @@
  ],
  "Couldn't start it": [
   "ui/src/components/admin/FramesPanel.vue",
+  "ui/src/components/admin/SharedScenesPanel.vue",
   "ui/src/components/admin/StoryboardsPanel.vue"
  ],
  "Cover saved": [
@@ -1726,6 +1796,7 @@
  ],
  "Cup size": [
   "ui/src/components/FilterPanel.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -1920,10 +1991,17 @@
  "Descriptions (also desc:)": [
   "ui/src/components/SearchHelp.vue"
  ],
+ "Details": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Details come from ThePornDB; performers without a detail are hidden while it's filtered on.": [
   "ui/src/views/PerformersView.vue"
  ],
+ "Details must be a form": [
+  "backend/library_mixins/performers.py"
+ ],
  "Details saved": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
  "Didn't start": [
@@ -2169,6 +2247,12 @@
  "e.g. “Luna P” and “Luna Prism”, when ThePornDB says they're the same person.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Each dot is a performer; a line means they share videos (thicker: more). Click one to put them in the middle with their videos. Drag to turn, scroll to zoom.": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Each one waits a little longer first. 0: give up after the first.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Each performer name in your library is matched once to a ThePornDB profile (kept by its id), for the performer's profile page: photo, details, bio, aliases and similar performers. Clear matches link by themselves; names that could be several people wait here for you to pick. Options:": [
   "ui/src/components/admin/PerformersPanel.vue"
  ],
@@ -2185,7 +2269,8 @@
  "Edit details": [
   "backend/permissions.py",
   "ui/src/components/dialogs/EditDetailsDialog.vue",
-  "ui/src/lib/actions.js"
+  "ui/src/lib/actions.js",
+  "ui/src/views/PerformerView.vue"
  ],
  "Edit details, rename, thumbnails, previews, bulk edit": [
   "backend/permissions.py"
@@ -2248,6 +2333,7 @@
  ],
  "Enhanced": [
   "ui/src/components/FilterPanel.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/LibraryView.vue",
   "ui/src/views/PerformerView.vue"
  ],
@@ -2276,6 +2362,7 @@
   "ui/src/views/TasksView.vue"
  ],
  "Ethnicity": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -2293,6 +2380,9 @@
  ],
  "Every few hours": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Every field": [
+  "ui/src/components/dialogs/MediaInfoDialog.vue"
  ],
  "Every performer is written one way only.": [
   "ui/src/components/admin/SpellingsPanel.vue"
@@ -2329,7 +2419,8 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Everyone": [
-  "ui/src/views/PerformersView.vue"
+  "ui/src/views/PerformersView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Everyone has one role. {b1} can do everything (there's exactly one admin); {b2} is the default for new accounts.": [
   "ui/src/components/admin/AccessPanel.vue"
@@ -2387,6 +2478,7 @@
  ],
  "Eyes": [
   "ui/src/components/FilterPanel.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -2414,6 +2506,13 @@
  ],
  "Fallback sprite produced no frame hashes for {file}": [
   "backend/media_tools.py"
+ ],
+ "FansDB": [
+  "backend/secrets_store.py"
+ ],
+ "FansDB / StashDB": [
+  "ui/src/components/StashBoxPanel.vue",
+  "ui/src/views/PerformerView.vue"
  ],
  "faster": [
   "ui/src/lib/panic.js"
@@ -2458,6 +2557,9 @@
   "ui/src/stores/performerBadges.js",
   "ui/src/views/PerformerView.vue"
  ],
+ "Fetch the profile again (fills only what is still empty)": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
  "Fetching details from PMVHaven…": [
   "ui/src/views/TasksView.vue"
  ],
@@ -2472,6 +2574,9 @@
  ],
  "Fetching video details from the sites": [
   "backend/library_mixins/site_sync_worker.py"
+ ],
+ "Fetching…": [
+  "ui/src/components/PerformerPhotos.vue"
  ],
  "Fewest videos first": [
   "ui/src/views/PerformersView.vue"
@@ -2544,7 +2649,7 @@
  "Filester didn't say which folder it made": [
   "backend/cloud_filester.py"
  ],
- "Filester refused the API key -- check it under Admin → Credentials → Filester": [
+ "Filester refused the API key -- check it under Server Settings → Credentials → Filester": [
   "backend/cloud_filester.py"
  ],
  "Filester stored {file} with the wrong size ({stored} of {size} bytes)": [
@@ -2578,6 +2683,7 @@
  ],
  "Find a performer": [
   "ui/src/views/PerformersView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
  "Find a playlist": [
@@ -2585,6 +2691,9 @@
  ],
  "Find a tag": [
   "ui/src/views/admin/NamesView.vue"
+ ],
+ "Find now": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
  ],
  "Find on ThePornDB": [
   "ui/src/views/PerformerView.vue"
@@ -2614,6 +2723,12 @@
  ],
  "Find the songs in videos, add or dismiss the suggestions": [
   "backend/permissions.py"
+ ],
+ "Finding shared scenes": [
+  "backend/library_mixins/scenes.py"
+ ],
+ "Finding shared scenes — follow it on Tasks": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
  ],
  "Finding songs: {title}": [
   "backend/library_mixins/songs.py"
@@ -2659,6 +2774,9 @@
  ],
  "Folders": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "For a performer who isn't on ThePornDB. Fill in what you know; empty fields aren't shown.": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "For the sign-in page and for accounts that keep “The server's default”.": [
   "ui/src/components/LanguageSettings.vue"
@@ -2828,6 +2946,9 @@
  "Google Gemini (optional AI)": [
   "backend/secrets_store.py"
  ],
+ "GraphQL address": [
+  "backend/secrets_store.py"
+ ],
  "Grayscale (default)": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -2848,6 +2969,7 @@
  ],
  "Hair": [
   "ui/src/components/FilterPanel.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -2876,6 +2998,9 @@
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
+ "Height (cm)": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Help": [
   "ui/src/components/AppSidebar.vue",
   "ui/src/router.js",
@@ -2896,6 +3021,9 @@
  "Hide history": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "Hide panel": [
+  "ui/src/views/WallView.vue"
+ ],
  "History": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -2910,6 +3038,9 @@
  ],
  "How": [
   "ui/src/components/songs/SongMethodPicker.vue"
+ ],
+ "How long to wait for an answer before trying again. Its search can take a while when it's busy.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "How many of this job's backups stay — in the backups folder, in each copy folder and on Filester. Older ones of this job are deleted; nothing else is.": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -3195,6 +3326,9 @@
  "Last check {when}: {result}": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
+ "Last compared {time} ({s} s)": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
  "Last listened {when}: {result}": [
   "ui/src/components/dialogs/SongsDialog.vue"
  ],
@@ -3286,14 +3420,30 @@
  "Light preset": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Link name": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Link performers to ThePornDB, split names, run matching": [
   "backend/permissions.py"
+ ],
+ "Link to a picture": [
+  "ui/src/components/PerformerPhotos.vue"
  ],
  "linked by hand": [
   "ui/src/views/PerformerView.vue"
  ],
+ "Linked to {site}": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Linked to {site}: {n} details filled in, {p} photos saved": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
  "Linking…": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Links": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "List view": [
   "ui/src/views/PlaylistView.vue"
@@ -3447,8 +3597,14 @@
  "Make previews H.264 (one time)": [
   "backend/library_mixins/preview_fix.py"
  ],
+ "Make sure the video file isn't damaged before re-encoding it": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Make the frames under the player again from the video file (e.g. when PMVHaven's are blank or placeholders)": [
   "ui/src/lib/actions.js"
+ ],
+ "Make the frames under the player again, from the video files, for {n} videos? They're made one after another in the background (Tasks shows how far it got).": [
+  "ui/src/views/LibraryView.vue"
  ],
  "Make the preview": [
   "ui/src/components/upload/PreviewStep.vue"
@@ -3559,13 +3715,21 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Measurements": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
  "MediaInfo": [
+  "ui/src/components/dialogs/MediaInfoDialog.vue",
   "ui/src/views/HelpView.vue"
+ ],
+ "MediaInfo couldn't read the file: {error}": [
+  "backend/routers/library.py"
  ],
  "MediaInfo library": [
   "backend/app_info.py"
+ ],
+ "MediaInfo…": [
+  "ui/src/views/VideoView.vue"
  ],
  "Members": [
   "ui/src/components/admin/AccessPanel.vue"
@@ -3643,11 +3807,17 @@
  "More than {max} keys were pressed — only the first {max} were kept.": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
+ "Most often with": [
+  "ui/src/views/WallView.vue"
+ ],
  "Most read": [
   "ui/src/views/BlankView.vue"
  ],
  "most used": [
   "ui/src/components/admin/SpellingsPanel.vue"
+ ],
+ "Most videos": [
+  "ui/src/views/WallView.vue"
  ],
  "Most videos first": [
   "ui/src/views/PerformersView.vue"
@@ -3755,6 +3925,12 @@
  "Name this view…": [
   "ui/src/components/SavedSearches.vue"
  ],
+ "Name to search": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Name, e.g. Instagram": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Named by the AI only — check it": [
   "ui/src/components/songs/SongSuggestion.vue"
  ],
@@ -3769,6 +3945,7 @@
   "ui/src/views/admin/NamesView.vue"
  ],
  "Nationality": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -3794,7 +3971,7 @@
  "needs plural forms with “other”": [
   "backend/i18n.py"
  ],
- "Needs the Filester API key: Admin → Credentials → Filester.": [
+ "Needs the Filester API key: Server Settings → Credentials → Filester.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "needs {version}": [
@@ -3891,6 +4068,7 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "No": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/admin/ProxyPanel.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue",
@@ -3912,7 +4090,7 @@
   "backend/routers/credentials.py",
   "backend/routers/songs.py"
  ],
- "No API key: add it under Admin → Credentials → Filester.": [
+ "No API key: add it under Server Settings → Credentials → Filester.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "No backup job copies or uploads its backups yet.": [
@@ -3939,7 +4117,7 @@
  "No entries match these filters.": [
   "ui/src/views/admin/LogsView.vue"
  ],
- "No Filester API key -- add it under Admin → Credentials → Filester": [
+ "No Filester API key -- add it under Server Settings → Credentials → Filester": [
   "backend/cloud_filester.py"
  ],
  "No filters on": [
@@ -4076,6 +4254,9 @@
  "No timeline frames available for this video — pick a frame from the video instead.": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
  ],
+ "No video file to take frames from": [
+  "backend/routers/bulk.py"
+ ],
  "No videos match": [
   "ui/src/views/LibraryView.vue"
  ],
@@ -4094,11 +4275,17 @@
  "No window: videos are queued straight away with the codec and settings above. A video that already is in that codec still gets the window, to pick the other one.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "No {site} API key (Server Settings → Credentials → {site})": [
+  "backend/stashbox.py"
+ ],
  "No — this site has its own account": [
   "ui/src/components/admin/CredentialsPanel.vue"
  ],
  "Nobody matches.": [
   "ui/src/views/PerformersView.vue"
+ ],
+ "Nobody on the wall yet: it shows performers linked to ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page.": [
+  "ui/src/views/WallView.vue"
  ],
  "none": [
   "ui/src/components/upload/ConvertStep.vue"
@@ -4176,8 +4363,17 @@
  "Not found on ThePornDB.": [
   "ui/src/views/PerformerView.vue"
  ],
+ "Not found on {site}": [
+  "backend/stashbox.py"
+ ],
  "Not installed": [
   "ui/src/components/LanguageSettings.vue"
+ ],
+ "Not known": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
+ "Not linked to that site": [
+  "backend/library_mixins/performers.py"
  ],
  "Not listened to yet.": [
   "ui/src/components/dialogs/SongsDialog.vue"
@@ -4190,6 +4386,9 @@
  ],
  "Not password-protected — set a backup password below.": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Not re-encoded, the file looks damaged: {title}": [
+  "backend/library_mixins/reencode_worker.py"
  ],
  "Not recorded": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -4233,6 +4432,9 @@
  ],
  "Nothing found on ThePornDB.": [
   "ui/src/components/PerformerPicker.vue"
+ ],
+ "Nothing found on {site}.": [
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Nothing in this range yet": [
   "ui/src/components/MiniChart.vue"
@@ -4320,6 +4522,9 @@
  "On the site": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
+ "On the wall": [
+  "ui/src/views/PerformerView.vue"
+ ],
  "On ThePornDB": [
   "ui/src/views/PerformersView.vue"
  ],
@@ -4383,11 +4588,17 @@
  "Only failures.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Only http:// and https:// addresses can be used": [
+  "backend/safe_fetch.py"
+ ],
  "Only if the proxy asks for one.": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
  "Only in titles": [
   "ui/src/components/SearchHelp.vue"
+ ],
+ "Only lines between performers who share at least this many videos": [
+  "ui/src/views/WallView.vue"
  ],
  "Only one admin account is allowed at a time": [
   "backend/routers/users.py"
@@ -4412,6 +4623,9 @@
  ],
  "Only the owner can change this playlist": [
   "backend/library_mixins/playlists.py"
+ ],
+ "Only the usual web ports (80, 443, 8080, 8443) are used": [
+  "backend/safe_fetch.py"
  ],
  "Only these video files can be uploaded: {formats}": [
   "backend/library_mixins/local_upload.py"
@@ -4479,6 +4693,7 @@
   "ui/src/components/PerformerPicker.vue"
  ],
  "Open on {site}": [
+  "ui/src/components/StashBoxPanel.vue",
   "ui/src/lib/actions.js"
  ],
  "Open Songs": [
@@ -4491,7 +4706,8 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Open the video": [
-  "ui/src/components/NotificationBell.vue"
+  "ui/src/components/NotificationBell.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Open the video page": [
   "ui/src/components/PlayerHost.vue"
@@ -4556,6 +4772,9 @@
  ],
  "Other folders, e.g. an external drive or a network share. Each copy is checked byte for byte; a folder that can't be reached is reported, the others still get their copy.": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Other names": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "Other way": [
   "ui/src/views/admin/NamesView.vue"
@@ -4696,6 +4915,7 @@
   "ui/src/router.js",
   "ui/src/views/UploadView.vue",
   "ui/src/views/VideoView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/NamesView.vue",
   "ui/src/views/admin/ServerSettingsView.vue",
   "ui/src/views/admin/StatsView.vue"
@@ -4737,6 +4957,7 @@
   "ui/src/components/PhotoSlideshow.vue"
  ],
  "Photos": [
+  "ui/src/components/PerformerPhotos.vue",
   "ui/src/components/PhotoSlideshow.vue"
  ],
  "photos": [
@@ -4767,10 +4988,14 @@
  "Pick videos to add them to playlists or edit their tags, performers or music together": [
   "ui/src/views/LibraryView.vue"
  ],
+ "Picked the first {n} — that's the most at once": [
+  "ui/src/views/LibraryView.vue"
+ ],
  "picture-in-picture": [
   "ui/src/lib/panic.js"
  ],
  "Piercings": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -4966,6 +5191,9 @@
  "Problems": [
   "ui/src/components/NotificationBell.vue"
  ],
+ "Profile": [
+  "ui/src/views/WallView.vue"
+ ],
  "Profile refreshed": [
   "ui/src/views/PerformerView.vue"
  ],
@@ -5050,6 +5278,9 @@
  "Queued {n} videos — follow them on the Tasks page": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
+ "Queued {n} · skipped {s}": [
+  "ui/src/views/LibraryView.vue"
+ ],
  "Queued: made 1080p, staying {codec}": [
   "ui/src/components/dialogs/ReencodeDialog.vue"
  ],
@@ -5068,6 +5299,9 @@
   "ui/src/views/VideoView.vue"
  ],
  "Random (a new order each time you open the library)": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Random from all related": [
   "ui/src/views/SettingsView.vue"
  ],
  "random order": [
@@ -5192,11 +5426,17 @@
  "Reading every file in the backup": [
   "backend/backup.py"
  ],
+ "Reading frames": [
+  "backend/library_mixins/scenes.py"
+ ],
  "Reading upload dates": [
   "backend/library_mixins/core.py"
  ],
  "Reading videos": [
   "backend/library_mixins/duplicate_worker.py"
+ ],
+ "Reads the file through and decodes three short parts (a few seconds to a minute). A damaged file isn't re-encoded: it's reported, and the original stays. Re-encoding it a third time anyway uses the repair mode.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Record to": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -5208,9 +5448,11 @@
   "ui/src/components/PanicKeysSetting.vue"
  ],
  "Redo Frames": [
-  "ui/src/lib/actions.js"
+  "ui/src/lib/actions.js",
+  "ui/src/views/LibraryView.vue"
  ],
  "Refresh": [
+  "ui/src/components/StashBoxPanel.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/admin/LogsView.vue"
  ],
@@ -5224,6 +5466,7 @@
   "backend/library_mixins/performers.py"
  ],
  "Refreshing…": [
+  "ui/src/components/StashBoxPanel.vue",
   "ui/src/views/PerformerView.vue"
  ],
  "Refused: {detail}. It was deleted.": [
@@ -5256,6 +5499,7 @@
  ],
  "Remove": [
   "ui/src/components/LanguageSettings.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/PerformerPhotos.vue",
   "ui/src/components/SavedSearches.vue",
   "ui/src/components/admin/CredentialsPanel.vue",
@@ -5602,6 +5846,9 @@
  "Running now": [
   "ui/src/views/TasksView.vue"
  ],
+ "running now": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
  "running {time}": [
   "ui/src/views/admin/StatsView.vue"
  ],
@@ -5653,6 +5900,7 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Save": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/SavedSearches.vue",
   "ui/src/components/admin/AccessPanel.vue",
   "ui/src/components/admin/CredentialsPanel.vue",
@@ -5722,6 +5970,7 @@
   "backend/library_mixins/stats_worker.py"
  ],
  "Saving…": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/admin/AccessPanel.vue",
   "ui/src/components/admin/CredentialsPanel.vue",
   "ui/src/components/dialogs/BulkEditDialog.vue",
@@ -5794,6 +6043,7 @@
  "Search": [
   "backend/permissions.py",
   "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue",
   "ui/src/views/admin/LogsView.vue"
  ],
  "Search codecs…": [
@@ -5803,7 +6053,8 @@
   "ui/src/components/FilterPanel.vue"
  ],
  "Search failed": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Search for {query}": [
   "ui/src/components/SearchHelp.vue"
@@ -5839,7 +6090,8 @@
   "ui/src/components/SearchHelp.vue"
  ],
  "Searching…": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Search…": [
   "ui/src/components/MultiSelect.vue"
@@ -5848,7 +6100,8 @@
   "ui/src/views/LibraryView.vue"
  ],
  "seconds": [
-  "backend/activity.py"
+  "backend/activity.py",
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "secrets": [
   "ui/src/views/admin/BackupsView.vue"
@@ -5890,6 +6143,9 @@
  "Select all shown": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
+ "Select all {n}": [
+  "ui/src/views/LibraryView.vue"
+ ],
  "Select this page": [
   "ui/src/views/LibraryView.vue"
  ],
@@ -5904,6 +6160,9 @@
  ],
  "Selected: video frame at {time}": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
+ ],
+ "Selecting…": [
+  "ui/src/views/LibraryView.vue"
  ],
  "Send a JPEG, PNG or WebP image": [
   "backend/library_mixins/item_extras.py",
@@ -5924,6 +6183,9 @@
  ],
  "Send the app's connections through a proxy: downloads from PMVHaven / HMVHaven / PornTubeAI. Test it first — a slow proxy holds everything sent through it up.": [
   "ui/src/components/admin/ProxyPanel.vue"
+ ],
+ "Separated by commas": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "Server": [
   "backend/permissions.py",
@@ -6002,6 +6264,15 @@
  "Share of frames that must match on their own. Default 0.6.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Shared scenes": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
+ "Shared videos at least": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Shares scenes with": [
+  "ui/src/views/VideoView.vue"
+ ],
  "Shazam and Gemini (AI) — a second opinion": [
   "ui/src/components/songs/SongMethodPicker.vue"
  ],
@@ -6068,6 +6339,9 @@
  ],
  "Show only this address": [
   "ui/src/views/admin/LogsView.vue"
+ ],
+ "Show panel": [
+  "ui/src/views/WallView.vue"
  ],
  "Show the A-B button": [
   "ui/src/views/SettingsView.vue"
@@ -6139,6 +6413,9 @@
  ],
  "Simple": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Site": [
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "site stats": [
   "ui/src/components/admin/SiteSyncPanel.vue"
@@ -6345,6 +6622,9 @@
  "starts shortly, after the latest downloads": [
   "ui/src/components/JobList.vue"
  ],
+ "StashDB": [
+  "backend/secrets_store.py"
+ ],
  "Stats": [
   "backend/permissions.py",
   "ui/src/lib/portalTabs.js"
@@ -6397,6 +6677,7 @@
  ],
  "Stopped by an error (see the log)": [
   "backend/library_mixins/frames.py",
+  "backend/library_mixins/scenes.py",
   "backend/library_mixins/storyboards.py"
  ],
  "Stopped by {name}": [
@@ -6520,6 +6801,7 @@
   "ui/src/views/TasksView.vue"
  ],
  "Tattoos": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -6565,14 +6847,20 @@
  "Text size": [
   "ui/src/views/SettingsView.vue"
  ],
+ "That address isn't a picture ({type})": [
+  "backend/safe_fetch.py"
+ ],
  "That didn't work": [
   "ui/src/components/ExtensionForm.vue",
   "ui/src/components/FavoriteButton.vue",
   "ui/src/components/LanguageSettings.vue",
   "ui/src/components/NotificationBell.vue",
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/PerformerPhotos.vue",
   "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue",
   "ui/src/components/dialogs/BulkActionDialog.vue",
+  "ui/src/components/dialogs/MediaInfoDialog.vue",
   "ui/src/components/dialogs/PlaylistDialog.vue",
   "ui/src/components/dialogs/ReencodeDialog.vue",
   "ui/src/components/playlists/CoverDialog.vue",
@@ -6598,6 +6886,9 @@
  ],
  "That isn't a language file (it needs “language” and “messages”)": [
   "backend/i18n.py"
+ ],
+ "That isn't a web address": [
+  "backend/safe_fetch.py"
  ],
  "That job has already finished": [
   "backend/routers/library.py"
@@ -6632,6 +6923,9 @@
  "The account is signed out and removed for good. Their settings go with it; the library is not affected.": [
   "ui/src/views/admin/UsersView.vue"
  ],
+ "The address redirected nowhere": [
+  "backend/safe_fetch.py"
+ ],
  "The admin account cannot be deleted": [
   "backend/routers/me.py",
   "backend/routers/users.py"
@@ -6656,6 +6950,12 @@
  ],
  "The backup was made, but: {problems}": [
   "backend/library_mixins/system_worker.py"
+ ],
+ "The best matches, or a different random pick from all related videos on each visit (when there are more than you show).": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "The bio is too long (5,000 characters at most)": [
+  "backend/library_mixins/performers.py"
  ],
  "The browser blocked copying": [
   "ui/src/components/NotificationBell.vue"
@@ -6791,6 +7091,9 @@
  "The picture at {time} will be saved as the thumbnail.": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
  ],
+ "The picture is bigger than {mb} MB": [
+  "backend/safe_fetch.py"
+ ],
  "The picture is uploaded to that site, in a new tab.": [
   "ui/src/components/VideoPlayer.vue"
  ],
@@ -6917,8 +7220,24 @@
  "The volume a video starts at on a computer (phones use their own volume buttons).": [
   "ui/src/views/SettingsView.vue"
  ],
+ "The wall": [
+  "ui/src/router.js",
+  "ui/src/views/PerformersView.vue"
+ ],
+ "The wall shows {n} of them; all are listed below.": [
+  "ui/src/views/WallView.vue"
+ ],
+ "The {site} address isn't a web address (Server Settings → Credentials)": [
+  "backend/stashbox.py"
+ ],
  "Their files are deleted from disk. Each stays linked to the video you keep, so it won't be downloaded again and the userscript reports it as a duplicate — until you remove the kept video, which removes these links too.": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Their pages: OnlyFans, Fansly, Instagram, X, Reddit, a website… The name is optional.": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
+ "Them and their videos, as a graph": [
+  "ui/src/views/PerformerView.vue"
  ],
  "Theme": [
   "ui/src/views/SettingsView.vue"
@@ -6928,6 +7247,9 @@
  ],
  "ThePornDB": [
   "backend/secrets_store.py"
+ ],
+ "ThePornDB didn't answer within {s} seconds ({n} tries). Raise the time to wait in Server Settings → Performers.": [
+  "backend/tpdb.py"
  ],
  "ThePornDB didn't answer: {error}": [
   "backend/tpdb.py"
@@ -7004,6 +7326,9 @@
  "This browser can't show this video's picture — converting it to 720p while you watch": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "This browser can’t draw 3D (WebGL is off)": [
+  "ui/src/views/WallView.vue"
+ ],
  "This can take a while for a big library.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -7035,7 +7360,8 @@
   "ui/src/components/VideoPlayer.vue"
  ],
  "This is the one": [
-  "ui/src/components/PerformerPicker.vue"
+  "ui/src/components/PerformerPicker.vue",
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "This isn't a supported video file (it's {format})": [
   "backend/library_mixins/local_upload.py"
@@ -7070,8 +7396,14 @@
  "This part is for the admin.": [
   "ui/src/views/admin/AdminPortalView.vue"
  ],
+ "This performer has a ThePornDB profile: its details come from there": [
+  "backend/library_mixins/performers.py"
+ ],
  "This playlist doesn't exist (any more), or it's private.": [
   "ui/src/views/PlaylistView.vue"
+ ],
+ "This profile already has {n} of your photos (from before it was linked to ThePornDB) -- remove all but one first": [
+  "backend/library_mixins/performers.py"
  ],
  "This server has {n} cores.": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -7177,6 +7509,9 @@
  "Too many failed sign-ins — try again in {max} min": [
   "backend/routers/auth.py"
  ],
+ "Too many redirects": [
+  "backend/safe_fetch.py"
+ ],
  "took {time}": [
   "ui/src/components/JobList.vue"
  ],
@@ -7207,6 +7542,9 @@
  ],
  "Trans content": [
   "ui/src/lib/metadata.js"
+ ],
+ "Tries after no answer": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "trigger": [
   "backend/activity.py"
@@ -7303,6 +7641,10 @@
  "Unknown schedule kind: {kind}": [
   "backend/library_mixins/scheduler_worker.py"
  ],
+ "Unknown site": [
+  "backend/library_mixins/performers.py",
+  "backend/stashbox.py"
+ ],
  "Unknown upload service": [
   "backend/backup_jobs.py"
  ],
@@ -7311,6 +7653,12 @@
  ],
  "Unknown {name} preset '{preset}'": [
   "backend/library_mixins/reencode_worker.py"
+ ],
+ "Unlink": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Unlink {name} from {site}? Details and photos already copied stay; edit or remove them by hand.": [
+  "ui/src/components/StashBoxPanel.vue"
  ],
  "Unreachable": [
   "backend/pmv_api.py"
@@ -7341,6 +7689,9 @@
  ],
  "Up to date (checked {time}).": [
   "ui/src/views/HelpView.vue"
+ ],
+ "Up to {n} pictures — drop them here, pick them, or paste a link to a picture. They're saved as WebP and included in every backup.": [
+  "ui/src/components/PerformerPhotos.vue"
  ],
  "up to {to} min": [
   "ui/src/lib/libraryQuery.js"
@@ -7605,6 +7956,7 @@
   "backend/permissions.py",
   "ui/src/lib/i18n.js",
   "ui/src/views/PerformersView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/StatsView.vue"
  ],
  "videos": [
@@ -7633,14 +7985,23 @@
  "Videos still waiting leave the queue; the ones being repaired now finish.": [
   "ui/src/components/JobList.vue"
  ],
+ "Videos that use the same footage, found by comparing the frames of their seekbar previews (black, white and nearly flat frames, the first and last seconds, and frames found in many videos — intros, logos — are left out). Shown on the video page, and they rank higher among related videos. It runs by itself after new seekbar previews are made; videos without seekbar previews aren't compared.": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
  "Videos the duplicate scan found to be the same clip. Pick the copy to keep, compare them playing, or mark a group as not duplicates.": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Videos with any of these are left out. A word alone: anywhere. field:word: only there (tag:, performer:, title:, creator:, music:, description:, codec:). “Two words” together; * as in the search.": [
   "ui/src/components/FilterPanel.vue"
  ],
+ "Videos with the same footage, found by comparing frames. A time jumps there in this video.": [
+  "ui/src/views/VideoView.vue"
+ ],
  "videos without music": [
   "ui/src/views/admin/SongsView.vue"
+ ],
+ "View": [
+  "ui/src/views/WallView.vue"
  ],
  "View all": [
   "ui/src/views/VideoView.vue"
@@ -7689,6 +8050,9 @@
  "Volume {percent}%": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "Wait for ThePornDB": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Waiting": [
   "ui/src/components/JobList.vue",
   "ui/src/views/TasksView.vue"
@@ -7734,6 +8098,9 @@
   "backend/permissions.py",
   "ui/src/views/admin/StatsView.vue"
  ],
+ "Web address": [
+  "ui/src/components/PerformerDetailsForm.vue"
+ ],
  "Wednesday": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -7746,6 +8113,9 @@
  "Weight": [
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
+ ],
+ "Weight (kg)": [
+  "ui/src/components/PerformerDetailsForm.vue"
  ],
  "What a video's ⋮ menu and Library → Select do.": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -7790,8 +8160,14 @@
  "Which profile is it?": [
   "ui/src/views/PerformerView.vue"
  ],
+ "Which related videos": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "While a password is set, every new backup — made here or by the Scheduler — is an encrypted zip (AES-256). Without the password nobody can open it or restore it: not this app, not 7-Zip. Store it somewhere safe (e.g. a password manager); {b1}. Backups made before keep the password they had.": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Who appears with whom, as a 3D graph": [
+  "ui/src/views/PerformersView.vue"
  ],
  "Who can see it": [
   "ui/src/components/dialogs/PlaylistDialog.vue",
@@ -7874,6 +8250,7 @@
   "ui/src/views/admin/StatsView.vue"
  ],
  "Yes": [
+  "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/admin/ProxyPanel.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue",
@@ -8015,6 +8392,21 @@
  "{feature} switched on": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "{field} is a date like 1995-04-23": [
+  "backend/library_mixins/performers.py"
+ ],
+ "{field} is a number": [
+  "backend/library_mixins/performers.py"
+ ],
+ "{field} is a year": [
+  "backend/library_mixins/performers.py"
+ ],
+ "{field} is too long (100 characters at most)": [
+  "backend/library_mixins/performers.py"
+ ],
+ "{field} is {lo} to {hi} {unit}": [
+  "backend/library_mixins/performers.py"
+ ],
  "{file} is already there": [
   "backend/backup.py"
  ],
@@ -8033,11 +8425,32 @@
  "{from}+ min": [
   "ui/src/lib/libraryQuery.js"
  ],
+ "{from}–{to} here, {ofrom}–{oto} in the other video": [
+  "ui/src/views/VideoView.vue"
+ ],
  "{from}–{to} min": [
   "ui/src/lib/libraryQuery.js"
  ],
+ "{hashed} of {videos} videos read · {pairs} pairs share scenes · {size}": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
+ ],
  "{hits} of {n} samples": [
   "ui/src/components/songs/SongSuggestion.vue"
+ ],
+ "{host} answered {status}": [
+  "backend/safe_fetch.py"
+ ],
+ "{host} couldn't be reached ({error})": [
+  "backend/safe_fetch.py"
+ ],
+ "{host} didn't answer in time": [
+  "backend/safe_fetch.py"
+ ],
+ "{host} points to a local or private network address -- only public web addresses are used": [
+  "backend/safe_fetch.py"
+ ],
+ "{host} wasn't found": [
+  "backend/safe_fetch.py"
  ],
  "{h}h {m}m": [
   "ui/src/components/JobList.vue",
@@ -8188,6 +8601,10 @@
  "{n} performers": [
   "ui/src/views/PerformersView.vue"
  ],
+ "{n} photos at most -- remove one first": [
+  "backend/library_mixins/performers.py",
+  "ui/src/components/PerformerPhotos.vue"
+ ],
  "{n} photos saved before 2.15.0 aren't WebP yet — converting saves space (new photos already are).": [
   "ui/src/components/admin/PerformersPanel.vue"
  ],
@@ -8204,9 +8621,15 @@
  "{n} s left": [
   "ui/src/views/UploadView.vue"
  ],
+ "{n} scenes": [
+  "ui/src/components/StashBoxPanel.vue"
+ ],
  "{n} selected": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "{n} shared": [
+  "ui/src/views/WallView.vue"
  ],
  "{n} skipped (now part of the library)": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -8247,6 +8670,7 @@
   "ui/src/views/PerformersView.vue",
   "ui/src/views/PlaylistView.vue",
   "ui/src/views/PlaylistsView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/DuplicatesView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
@@ -8259,6 +8683,9 @@
  "{n} views": [
   "ui/src/components/VideoRow.vue",
   "ui/src/views/VideoView.vue"
+ ],
+ "{n} without seekbar previews": [
+  "ui/src/components/admin/SharedScenesPanel.vue"
  ],
  "{n} — slow": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -8293,6 +8720,9 @@
  "{problem} — playing the original": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "{p} performers · {v} videos": [
+  "ui/src/views/WallView.vue"
+ ],
  "{quality} or better": [
   "ui/src/components/FilterPanel.vue",
   "ui/src/views/LibraryView.vue"
@@ -8308,6 +8738,18 @@
  ],
  "{site} can't read a video id from {url}": [
   "backend/sources/__init__.py"
+ ],
+ "{site} couldn't be reached ({error})": [
+  "backend/stashbox.py"
+ ],
+ "{site} didn't answer within {s} seconds": [
+  "backend/stashbox.py"
+ ],
+ "{site} error {status}": [
+  "backend/stashbox.py"
+ ],
+ "{site} refused the API key (check it in Server Settings → Credentials)": [
+  "backend/stashbox.py"
  ],
  "{site} skipped: {reason}": [
   "ui/src/components/admin/SiteSyncPanel.vue"
@@ -8389,6 +8831,12 @@
  ],
  "“{title}” is in the library": [
   "ui/src/views/UploadView.vue"
+ ],
+ "“{url}” isn't a web address (https://…)": [
+  "backend/library_mixins/performers.py"
+ ],
+ "…or paste a link to a picture: https://…": [
+  "ui/src/components/PerformerPhotos.vue"
  ],
  "‹ frame": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"

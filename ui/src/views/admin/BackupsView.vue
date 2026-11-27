@@ -263,7 +263,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
       <p v-if="data" class="help-text">{{ data.password_set ? $t("🔒 Protected with the backup password (below).") : $t("Not password-protected — set a backup password below.") }}</p>
       <div v-if="offsite" class="upload-too">
         <label class="switch"><input type="checkbox" :checked="uploadToo" :disabled="!canUpload" @change="setUpload($event.target.checked)">{{ $t("Also upload to Filester (a private folder)") }}</label>
-        <p class="help-text">{{ !offsite.filester.configured ? $t("Needs the Filester API key: Admin → Credentials → Filester.")
+        <p class="help-text">{{ !offsite.filester.configured ? $t("Needs the Filester API key: Server Settings → Credentials → Filester.")
           : !data?.password_set ? $t("Needs a backup password (below): only encrypted backups are uploaded.")
           : $t("Encrypted, never with the credentials or the videos, in parts of up to {gb} GB.", { gb: offsite.filester.max_part_gb }) }}</p>
       </div>
@@ -305,7 +305,7 @@ const pendingName = (p) => p.name || fileName(p.zip);
       </ul>
       <template v-if="uploadJobs.length || offsite.filester.uploads.length || offsite.filester.configured">
         <h3>{{ $t("Filester") }}</h3>
-        <p v-if="!offsite.filester.configured" class="error-text small">{{ $t("No API key: add it under Admin → Credentials → Filester.") }}</p>
+        <p v-if="!offsite.filester.configured" class="error-text small">{{ $t("No API key: add it under Server Settings → Credentials → Filester.") }}</p>
         <p v-if="uploadJobs.length && !data?.password_set" class="error-text small">{{ $t("Set a backup password above: without it nothing is uploaded.") }}</p>
         <p v-if="offsite.filester.account" class="ok-text small">
           {{ offsite.filester.account.username ? $t("Connected as {name}.", { name: offsite.filester.account.username }) : $t("Connected.") }}</p>

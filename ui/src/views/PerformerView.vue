@@ -12,6 +12,8 @@ import VideoCard from "../components/VideoCard.vue";
 import PerformerPicker from "../components/PerformerPicker.vue";
 import PhotoSlideshow from "../components/PhotoSlideshow.vue";
 import PerformerPhotos from "../components/PerformerPhotos.vue";
+import PerformerDetailsForm from "../components/PerformerDetailsForm.vue";
+import StashBoxPanel from "../components/StashBoxPanel.vue";
 import PerformerPlaceholder from "../components/PerformerPlaceholder.vue";
 import { api, qs } from "../lib/api.js";
 import { hasPermission } from "../stores/session.js";
@@ -49,6 +51,14 @@ const p = computed(() => prof.value?.performer);
 // Whose photos: the ThePornDB profile, or -- not on ThePornDB (2.17.0) -- the
 // name's own (photos added by hand, placeholder gender).
 const owner = computed(() => p.value || prof.value?.local || null);
+// 3.9.0: a performer not on ThePornDB can have details typed in (PerformerDetailsForm)
+const local = computed(() => (!p.value && prof.value?.local) || null);
+const editingDetails = ref(false);
+const shownAliases = computed(() => p.value?.aliases || local.value?.aliases || []);
+const shownBio = computed(() => p.value?.bio || local.value?.bio || "");
+const localLinks = computed(() => local.value?.links || p.value?.more_links || []);
+const findingSb = ref(false); // 3.9.0: FansDB / StashDB panel (StashBoxPanel)
+const sbLinked = computed(() => prof.value?.stashbox || []);
 async function setGender(gender) {
   busy.value = "gender";
   try { await api("/api/performers/gender", { method: "POST", body: { name: props.name, gender } }); await load(); loadBadges(true); }
@@ -62,9 +72,10 @@ const LABELS = {
   piercings: t("Piercings"),
 };
 const facts = computed(() => {
-  const e = p.value?.extras || {};
+  const src = p.value || local.value;
+  const e = src?.extras || {};
   const out = [];
-  if (p.value?.age != null) out.push([t("Age"), e.deathday ? t("{age} (at death)", { age: p.value.age }) : String(p.value.age)]);
+  if (src?.age != null) out.push([t("Age"), e.deathday ? t("{age} (at death)", { age: src.age }) : String(src.age)]);
   for (const [k, label] of Object.entries(LABELS)) {
     const v = e[k];
     if (v === null || v === undefined || v === "") continue;
@@ -77,7 +88,7 @@ const otherNames = computed(() => (prof.value?.names || []).filter((n) => !n.mai
 // 3.5.0: favourite performer -- all their names in the library count.
 const allNames = computed(() => [...new Set([props.name, prof.value?.name, ...(prof.value?.names || []).map((n) => n.name)].filter(Boolean))]);
 const favorite = computed(() => allNames.value.some((n) => isFavorite(n)));
-const longBio = computed(() => (p.value?.bio || "").length > 420);
+const longBio = computed(() => shownBio.value.length > 420);
 
 function inLibrary() { router.push({ name: "library", query: { performer: prof.value.names.map((n) => n.name) } }); }
 async function split(n) {
@@ -110,8 +121,8 @@ const STATUS_TEXT = {
                         :gender="owner?.gender || 'unknown'" />
         <div class="head-text">
           <h1>{{ prof.name }}<span v-if="p?.disambiguation" class="muted dis"> ({{ p.disambiguation }})</span></h1>
-          <p v-if="p?.aliases?.length" class="muted small">{{ $t("Also known as {names}", { names: p.aliases.join(", ") }) }}</p>
-          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured"> {{ $t("Add a ThePornDB API key in Server Settings → Credentials to see profiles.") }}</template></p>
+          <p v-if="shownAliases.length" class="muted small">{{ $t("Also known as {names}", { names: shownAliases.join(", ") }) }}</p>
+          <p v-if="!p" class="muted">{{ STATUS_TEXT[prof.status] || "" }}<template v-if="!prof.configured">{{ " " + $t("Add a ThePornDB API key in Server Settings → Credentials to see profiles.") }}</template></p>
           <dl v-if="facts.length" class="facts">
             <div v-for="[k, v] in facts" :key="k" class="fact"><dt>{{ k }}</dt><dd>{{ v }}</dd></div>
           </dl>
@@ -120,8 +131,12 @@ const STATUS_TEXT = {
             <button class="btn btn-sm fav-btn" :class="{ on: favorite }" :aria-pressed="favorite"
                     :title="favorite ? $t('Remove from your favourite performers') : $t('Add to your favourite performers (♥ on their badges; Library → sort Favourite performers)')"
                     @click="setFavorite(allNames, !favorite, prof.name)"><Icon name="heart" :size="14" />{{ favorite ? $t("Favourite") : $t("Add to favourites") }}</button>
+            <RouterLink :to="{ name: 'wall', query: { p: prof.name } }" class="btn btn-sm" :title="$t('Them and their videos, as a graph')"><Icon name="share" :size="14" />{{ $t("On the wall") }}</RouterLink>
             <a v-if="p?.url" :href="p.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />ThePornDB</a>
             <a v-for="(url, site) in p?.links || {}" :key="site" :href="url" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">{{ site }}</a>
+            <a v-for="l in sbLinked" :key="l.box" :href="l.url" target="_blank" rel="noopener noreferrer" class="btn btn-sm"><Icon name="external" :size="14" />{{ l.label }}</a>
+            <a v-for="l in localLinks" :key="l.url" :href="l.url" target="_blank" rel="noopener noreferrer nofollow" class="btn btn-ghost btn-sm"><Icon name="external" :size="13" />{{ l.label }}</a>
+            <button v-if="canManage && local" class="btn btn-ghost btn-sm" @click="editingDetails = !editingDetails"><Icon name="edit" :size="14" />{{ $t("Edit details") }}</button>
             <button v-if="canManage && owner && !owner.custom_photos?.length" class="btn btn-ghost btn-sm" @click="showPhotos = !showPhotos">
               <Icon name="plus" :size="14" />{{ $t("Add your photo") }}</button>
             <span v-if="canManage && !p && prof.local" class="gender" role="group" :aria-label="$t('Gender')">
@@ -133,20 +148,24 @@ const STATUS_TEXT = {
               <button v-if="p" class="btn btn-ghost btn-sm" :disabled="busy === 'refresh'" @click="refresh">{{ busy === "refresh" ? $t("Refreshing…") : $t("Refresh") }}</button>
               <button class="btn btn-ghost btn-sm" @click="changing = !changing">{{ p ? $t("Wrong person?") : $t("Find on ThePornDB") }}</button>
             </template>
+            <button v-if="canManage && prof.status !== 'unknown'" class="btn btn-ghost btn-sm" @click="findingSb = !findingSb">{{ $t("FansDB / StashDB") }}</button>
           </div>
         </div>
       </header>
 
-      <PerformerPhotos v-if="canManage && owner && (showPhotos || owner.custom_photos?.length)" :performer="owner" @changed="load" />
+      <PerformerDetailsForm v-if="editingDetails && local" :name="props.name" :details="local.details" @saved="editingDetails = false; load()" @cancel="editingDetails = false" />
+      <StashBoxPanel v-if="canManage && findingSb" :name="props.name" :sites="prof.stashbox_sites || []"
+                     :linked="sbLinked" :on-tpdb="!!p" @changed="load" />
+      <PerformerPhotos v-if="canManage && owner && (showPhotos || owner.custom_photos?.length)" :performer="owner" :several="!p" @changed="load" />
 
       <section v-if="canManage && prof.configured && (changing || (!p && prof.status === 'review'))" class="card panel">
         <h3 class="sub">{{ p ? $t("Pick the right profile for “{name}”", { name: props.name }) : $t("Which profile is it?") }}</h3>
         <PerformerPicker :name="props.name" :candidates="prof.candidates" @done="changing = false; load()" />
       </section>
 
-      <section v-if="p?.bio" class="card panel">
+      <section v-if="shownBio" class="card panel">
         <h3 class="sub">{{ $t("Bio") }}</h3>
-        <p class="bio" :class="{ clamp: longBio && !showBio }">{{ p.bio }}</p>
+        <p class="bio" :class="{ clamp: longBio && !showBio }">{{ shownBio }}</p>
         <button v-if="longBio" class="btn btn-ghost btn-sm more" @click="showBio = !showBio">{{ showBio ? $t("Show less") : $t("Show more") }}</button>
       </section>
 

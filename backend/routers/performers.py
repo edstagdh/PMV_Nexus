@@ -36,6 +36,8 @@ class LinkBody(BaseModel):
 class PerformerSettings(BaseModel):
     merge_aliases: bool = True
     refresh_days: int = 30
+    tpdb_timeout: int = 60   # 3.9.0
+    tpdb_retries: int = 2
 
 
 async def _run(coro):
@@ -91,6 +93,12 @@ def performers_browse(user: AuthContext = Depends(_viewer)):
     return {"performers": library_manager.performers_browse(), "configured": tpdb.configured()}
 
 
+@router.get("/api/performers/wall")
+def performers_wall(user: AuthContext = Depends(_viewer)):
+    """3.9.0 The wall: matched / filled-in performers and the videos they share."""
+    return library_manager.performer_wall()
+
+
 class GenderBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     gender: str = Field(..., pattern="^(female|male|trans)$")  # trans: 3.5.0 (badge colour)
@@ -101,6 +109,55 @@ def performers_set_gender(body: GenderBody, user: AuthContext = Depends(_manager
     """Placeholder silhouette of a performer without a ThePornDB profile."""
     try:
         return library_manager.set_performer_gender(body.name, body.gender)
+    except PerformerError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+
+
+class LocalDetails(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    details: dict
+
+
+@router.post("/api/performers/local")
+def performers_local_details(body: LocalDetails, user: AuthContext = Depends(_manager)):
+    """3.9.0: details typed in for a performer not on ThePornDB (birthday, hair, links...)."""
+    try:
+        return library_manager.set_local_details(body.name, body.details)
+    except PerformerError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+
+
+# 3.9.0: FansDB / StashDB, searched and linked by hand (backend/stashbox.py)
+_BOX = "^(fansdb|stashdb)$"
+
+
+@router.get("/api/performers/stashbox/search")
+async def performers_stashbox_search(box: str = Query(..., pattern=_BOX), q: str = Query(..., min_length=1, max_length=100),
+                                     user: AuthContext = Depends(_manager)):
+    return {"results": await _run(library_manager.stashbox_search(box, q))}
+
+
+class StashBoxLink(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    box: str = Field(..., pattern=_BOX)
+    id: str = Field(..., min_length=8, max_length=64)
+    photos: bool = True
+
+
+@router.post("/api/performers/stashbox/link")
+async def performers_stashbox_link(body: StashBoxLink, user: AuthContext = Depends(_manager)):
+    return await _run(library_manager.stashbox_link(body.name, body.box, body.id, user.username, body.photos))
+
+
+class StashBoxUnlink(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    box: str = Field(..., pattern=_BOX)
+
+
+@router.post("/api/performers/stashbox/unlink")
+def performers_stashbox_unlink(body: StashBoxUnlink, user: AuthContext = Depends(_manager)):
+    try:
+        return library_manager.stashbox_unlink(body.name, body.box)
     except PerformerError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
 
@@ -155,6 +212,19 @@ async def performers_add_photo(performer_id: str, request: Request, user: AuthCo
             raise HTTPException(status_code=413, detail=L('That picture is too big (30 MB at most)'))
     try:
         return await library_manager.add_custom_photo(performer_id, bytes(data), user.username)
+    except PerformerError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+
+
+class PhotoUrl(BaseModel):
+    url: str = Field(..., min_length=8, max_length=2000)
+
+
+@router.post("/api/performers/{performer_id}/photos/url")
+async def performers_add_photo_url(performer_id: str, body: PhotoUrl, user: AuthContext = Depends(_manager)):
+    """3.9.0: a photo from a web address, fetched by the server (backend/safe_fetch.py)."""
+    try:
+        return await library_manager.add_custom_photo_from_url(performer_id, body.url, user.username)
     except PerformerError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
 
@@ -232,6 +302,8 @@ async def performers_match_now(retry_none: bool = False, user: AuthContext = Dep
 
 @router.post("/api/settings/performers")
 def performer_settings(body: PerformerSettings, user: AuthContext = Depends(require_permission("settings.manage"))):
-    save_overrides(performers={**body.model_dump(), "refresh_days": max(7, min(365, body.refresh_days))})
+    save_overrides(performers={**body.model_dump(), "refresh_days": max(7, min(365, body.refresh_days)),
+                               "tpdb_timeout": max(10, min(600, body.tpdb_timeout)),
+                               "tpdb_retries": max(0, min(5, body.tpdb_retries))})
     library_manager.invalidate_performer_names()
     return {"ok": True}

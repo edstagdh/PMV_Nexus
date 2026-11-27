@@ -3,7 +3,9 @@ ThePornDB API (https://api.theporndb.net) -- performers only: search,
 profile, similar performers, photos. The API key is a credential
 (Server Settings -> Credentials -> ThePornDB) sent as a Bearer token.
 Requests are spaced out (MIN_GAP seconds) so a library-wide match doesn't
-hammer the API.
+hammer the API. 3.9.0: how long to wait for an answer and how often to try again
+when none comes are settings (Server Settings -> Performers: tpdb_timeout,
+tpdb_retries); every failure is logged.
 """
 from __future__ import annotations
 
@@ -47,19 +49,32 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
     global _gap
     headers = {"Authorization": f"Bearer {key}", "Accept": "application/json",
                "User-Agent": "PMV-Nexus"}
-    for attempt in range(RETRIES_429 + 1):
+    cfg = get_settings().performers
+    timeouts = 0
+    for attempt in range(RETRIES_429 + cfg.tpdb_retries + 1):
         async with _lock:
             wait = _gap - (time.monotonic() - _last)
             if wait > 0:
                 await asyncio.sleep(wait)
             _last = time.monotonic()
         try:
-            async with httpx.AsyncClient(base_url=BASE_URL, headers=headers, timeout=httpx.Timeout(30.0),
+            async with httpx.AsyncClient(base_url=BASE_URL, headers=headers, timeout=httpx.Timeout(float(cfg.tpdb_timeout)),
                                          follow_redirects=True) as client:
                 r = await client.get(path, params=params)
+        except httpx.TimeoutException as exc:
+            timeouts += 1
+            if timeouts <= cfg.tpdb_retries:
+                logger.warning("ThePornDB: no answer to {} within {}s -- trying again ({} of {})",
+                               path, cfg.tpdb_timeout, timeouts, cfg.tpdb_retries)
+                await asyncio.sleep(5.0 * timeouts)
+                continue
+            logger.warning("ThePornDB: no answer to {} within {}s, {} tries -- giving up", path, cfg.tpdb_timeout, timeouts)
+            raise TPDBError(L("ThePornDB didn't answer within {s} seconds ({n} tries). Raise the time to wait in Server Settings → Performers.",
+                              s=cfg.tpdb_timeout, n=timeouts)) from exc
         except httpx.HTTPError as exc:
+            logger.warning("ThePornDB: {} failed: {}", path, exc or exc.__class__.__name__)
             raise TPDBError(L("ThePornDB didn't answer: {error}", error=exc or exc.__class__.__name__)) from exc
-        if r.status_code != 429 or attempt == RETRIES_429:
+        if r.status_code != 429 or attempt >= RETRIES_429:
             break
         # Too many requests: slow down for good (until restart) and wait as long as it asks.
         _gap = min(MAX_GAP, _gap * 2)
@@ -72,6 +87,8 @@ async def _get(path: str, params: Optional[dict] = None) -> dict:
         async with _lock:  # every other ThePornDB request waits too
             await asyncio.sleep(pause)
             _last = time.monotonic()
+    if r.status_code >= 400 and r.status_code != 404:
+        logger.warning("ThePornDB: {} answered {}: {}", path, r.status_code, r.text[:200])
     if r.status_code in (401, 403):
         raise TPDBError(L('ThePornDB refused the API key (check it in Server Settings → Credentials)'))
     if r.status_code == 404:
@@ -130,10 +147,12 @@ async def download_photo(url: str, dest_base: Path) -> Optional[Path]:
     """Saves the photo as dest_base.webp (2.15.0, see images.py; a file that
     can't be converted keeps its own format); None if it fails."""
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(float(get_settings().performers.tpdb_timeout)),
+                                     follow_redirects=True) as client:
             r = await client.get(url)
             r.raise_for_status()
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        logger.warning("ThePornDB: photo {} not downloaded: {}", url, exc or exc.__class__.__name__)
         return None
     ctype = r.headers.get("content-type", "").split(";")[0].strip()
     content = r.content

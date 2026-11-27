@@ -353,7 +353,7 @@ async function save() {
             <label class="switch"><input :checked="form.b_upload" type="checkbox" @change="toggleUpload($event.target.checked)">{{ $t("Upload to Filester (a private folder)") }}</label>
             <small class="muted">{{ $t("Only encrypted with the backup password, never with the credentials or the videos, in parts Filester takes (up to {max} GB each). Filester deletes files nobody downloads for 45 days.", { max: backupOpts.upload_max_part_gb }) }}</small>
             <small v-if="form.b_upload && !backupOpts.password_set" class="error-text">{{ $t("Set a backup password on the Backups page first.") }}</small>
-            <small v-if="form.b_upload && !backupOpts.filester_key_set" class="error-text">{{ $t("Add the Filester API key under Admin → Credentials first.") }}</small>
+            <small v-if="form.b_upload && !backupOpts.filester_key_set" class="error-text">{{ $t("Add the Filester API key under Server Settings → Credentials first.") }}</small>
           </div>
           <label class="field">{{ $t("Part size (GB)") }}
             <input v-model.number="form.b_split" class="input input-num" type="number" step="0.1" min="0"

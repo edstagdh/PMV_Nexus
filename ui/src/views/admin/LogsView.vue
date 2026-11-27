@@ -13,7 +13,7 @@ import { toast } from "../../stores/toast.js";
 
 const route = useRoute();
 const router = useRouter();
-const ACTIONS = "!system";
+const ACTIONS = "!system,network";  // 3.9.0: requests in and out (category network) aren't user actions
 const LEVELS = [
   { key: "DEBUG", label: t("Everything (debug)") }, { key: "INFO", label: t("Info and up") },
   { key: "WARNING", label: t("Warnings and errors") }, { key: "ERROR", label: t("Errors only") },

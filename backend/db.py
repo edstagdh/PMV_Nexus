@@ -203,6 +203,35 @@ CREATE TABLE IF NOT EXISTS performer_custom_photos (
     created_by   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_perf_custom_photos ON performer_custom_photos(performer_id);
+-- 3.9.0 shared scenes (backend/scene_match.py, library_mixins/scenes.py): frame hashes per
+-- video (made from its seekbar previews) and the pairs of videos that share footage
+CREATE TABLE IF NOT EXISTS scene_hashes (
+    video_id   TEXT PRIMARY KEY,
+    version    INTEGER NOT NULL,
+    sb_made_at REAL,                   -- the seekbar previews they were made from
+    data       BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS scene_links (
+    a        TEXT NOT NULL,
+    b        TEXT NOT NULL,
+    frames_a INTEGER NOT NULL,
+    frames_b INTEGER NOT NULL,
+    scenes   TEXT NOT NULL,            -- JSON [[a_from, a_to, b_from, b_to], ...] seconds
+    PRIMARY KEY (a, b)
+);
+CREATE INDEX IF NOT EXISTS idx_scene_links_b ON scene_links(b);
+-- 3.9.0 a performer name linked by hand to FansDB / StashDB (backend/stashbox.py); data is
+-- the profile as it came (JSON), kept for its page link, links and gaps in a ThePornDB profile
+CREATE TABLE IF NOT EXISTS performer_stashbox (
+    name_key   TEXT NOT NULL,
+    box        TEXT NOT NULL,          -- fansdb | stashdb
+    sb_id      TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    data       TEXT NOT NULL DEFAULT '{}',
+    fetched_at REAL NOT NULL,
+    linked_by  TEXT,
+    PRIMARY KEY (name_key, box)
+);
 -- 2.14.0 song recognition (library_mixins/songs.py)
 CREATE TABLE IF NOT EXISTS song_scans (
     item_id    TEXT PRIMARY KEY,
@@ -580,6 +609,8 @@ class LibraryDB:
         self._conn.commit()
         # 2.7.1: every photo of a performer (main image + ThePornDB posters), local paths as JSON.
         self._ensure_column("performers", "photos", "TEXT NOT NULL DEFAULT '[]'")
+        # 3.9.0: details typed in by hand for a performer not on ThePornDB (JSON; performers.py)
+        self._ensure_column("performer_local", "details", "TEXT NOT NULL DEFAULT '{}'")
         self._seed_default_roles_if_needed()
         # 2.12.0: permissions given to one person directly (on top of role and groups).
         self._ensure_column("users", "extra_permissions", "TEXT NOT NULL DEFAULT '[]'")
@@ -836,6 +867,72 @@ class LibraryDB:
                            (local_id, name_key, name, gender))
         self._conn.commit()
         self._note_change([f"performer:{local_id}", "performers"])
+
+    def set_performer_local_details(self, local_id: str, name_key: str, name: str, details: dict) -> None:
+        """3.9.0: what was typed in for a performer not on ThePornDB (gender kept as it is)."""
+        self._conn.execute("INSERT INTO performer_local (local_id, name_key, name, gender, details) VALUES (?, ?, ?, 'unknown', ?) "
+                           "ON CONFLICT(local_id) DO UPDATE SET name = excluded.name, details = excluded.details",
+                           (local_id, name_key, name, json.dumps(details)))
+        self._conn.commit()
+        self._note_change([f"performer:{local_id}", "performers"])
+
+    # 3.9.0 shared scenes
+    def scene_hash_marks(self) -> dict[str, tuple[int, Optional[float]]]:
+        return {r["video_id"]: (r["version"], r["sb_made_at"])
+                for r in self._conn.execute("SELECT video_id, version, sb_made_at FROM scene_hashes")}
+
+    def scene_hash_blobs(self) -> dict[str, bytes]:
+        return {r["video_id"]: bytes(r["data"]) for r in self._conn.execute("SELECT video_id, data FROM scene_hashes")}
+
+    def set_scene_hash(self, video_id: str, version: int, sb_made_at: Optional[float], data: bytes) -> None:
+        self._conn.execute("INSERT OR REPLACE INTO scene_hashes (video_id, version, sb_made_at, data) VALUES (?, ?, ?, ?)",
+                           (video_id, version, sb_made_at, data))
+        self._conn.commit()
+
+    def delete_scene_hashes(self, video_ids: Iterable[str]) -> None:
+        self._conn.executemany("DELETE FROM scene_hashes WHERE video_id = ?", [(v,) for v in video_ids])
+        self._conn.commit()
+
+    def replace_scene_links(self, rows: list[tuple]) -> None:
+        """rows: (a, b, frames_a, frames_b, scenes list) -- the whole set, found again."""
+        with self._conn.lock:
+            try:
+                self._conn.execute("DELETE FROM scene_links")
+                self._conn.executemany("INSERT OR REPLACE INTO scene_links (a, b, frames_a, frames_b, scenes) VALUES (?, ?, ?, ?, ?)",
+                                       [(a, b, fa, fb, json.dumps(sc)) for a, b, fa, fb, sc in rows])
+                self._conn.commit()
+            except BaseException:
+                self._conn.rollback()
+                raise
+
+    def scene_link_rows(self) -> list[dict]:
+        out = []
+        for r in self._conn.execute("SELECT * FROM scene_links"):
+            d = dict(r)
+            d["scenes"] = json.loads(d["scenes"] or "[]")
+            out.append(d)
+        return out
+
+    def scene_data_size(self) -> int:
+        row = self._conn.execute("SELECT COALESCE(SUM(LENGTH(data)), 0) FROM scene_hashes").fetchone()
+        return int(row[0] or 0)
+
+    # 3.9.0 FansDB / StashDB links
+    def performer_stashbox_rows(self) -> list[dict]:
+        return [dict(r) for r in self._conn.execute("SELECT * FROM performer_stashbox")]
+
+    def set_performer_stashbox(self, name_key: str, box: str, sb_id: str, name: str, data: dict, by: str) -> None:
+        self._conn.execute("INSERT OR REPLACE INTO performer_stashbox (name_key, box, sb_id, name, data, fetched_at, linked_by) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?)", (name_key, box, sb_id, name, json.dumps(data), time.time(), by))
+        self._conn.commit()
+        self._note_change(["performers"])
+
+    def delete_performer_stashbox(self, name_key: str, box: str) -> bool:
+        n = self._conn.execute("DELETE FROM performer_stashbox WHERE name_key = ? AND box = ?", (name_key, box)).rowcount
+        self._conn.commit()
+        if n:
+            self._note_change(["performers"])
+        return bool(n)
 
     def move_custom_photos(self, from_owner: str, to_owner: str) -> int:
         """Photos of a name that just got its ThePornDB profile go with it; one stays

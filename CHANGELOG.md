@@ -4,6 +4,54 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.9.0] - 2026-11-27
+
+### Added
+- **Library → Select → Redo Frames:** takes the video frames under the player again for every picked video, one after
+  another on Tasks (a video someone is watching still goes first). **Select all {n}** picks every result of the current
+  search and filters, up to 5,000 — e.g. all vertical videos.
+- **FansDB and StashDB**, searched by hand from a performer's page (**FansDB / StashDB**); ThePornDB stays the automatic
+  match. Each site has its own API key and GraphQL address under **Server Settings → Credentials**. Linking a performer
+  not on ThePornDB fills the details nobody typed in, adds their links, sets the placeholder's gender and saves up to 5
+  of their photos; on a ThePornDB profile it adds their page, links and what ThePornDB leaves empty. **Refresh** and
+  **Unlink** on the same panel.
+- **Details typed in for performers not on ThePornDB** (**Edit details** on their page): other names, birthday,
+  birthplace, nationality, ethnicity, hair, eyes, height, weight, measurements, cup size, enhanced, tattoos, piercings,
+  active years, a bio and up to 20 links to their pages. They show like a profile's and count for the Performers
+  page's filters.
+- **More performer photos:** up to 30 for a performer not on ThePornDB, several picked or dropped at once, and **Add
+  from link**: the server fetches the picture — public internet addresses only (never your own network or the server;
+  checked again after each redirect, at most 3), usual ports, pictures only, 30 MB and 20 seconds at most.
+- **The wall** (Performers → **The wall**, or **On the wall** on a performer's page): who appears with whom as a 3D
+  graph (2D too); click a performer to put them in the middle with all their videos as thumbnails, optionally with the
+  people they share them with. Only performers matched to ThePornDB / FansDB / StashDB or filled in by hand.
+- **Shared scenes:** videos using the same footage are found by comparing the frames of their seekbar previews
+  (black, white and flat frames, the first and last seconds, and intros found in many videos are left out) and listed
+  under the video (**Shares scenes with**, with times to jump to). They also rank higher among related videos. Runs
+  after new seekbar previews and from **Management → Maintenance → Shared scenes**.
+- **Re-encode: check the file first** (Server Settings → Re-encode, on by default): every packet is read and a few
+  seconds at 10/50/90 % are decoded before re-encoding; a damaged file is marked failed with what was found instead of
+  being re-encoded, and you get a notification.
+- **MediaInfo…** in a video's Technical Details: MediaInfo's full report of the file in a window (with **Every field**
+  and **Copy**). The video's **pHash** is shown under General.
+- **Network logging:** every request the app sends out (ThePornDB, FansDB/StashDB, PMVHaven, Gemini, VirusTotal,
+  Filester, update checks, photos, extensions) and every request it receives is logged under the category *network* —
+  failures, timeouts and errors as warnings, slow ones as info, the rest at Debug. Keys and tokens in addresses are left
+  out; headers and bodies are never logged.
+- **ThePornDB: how long to wait and how often to try again** (Server Settings → Performers → **Wait for ThePornDB**,
+  60 s, and **Tries after no answer**, 2). Each try without an answer is logged.
+- **My Settings → Video → Which related videos:** best matches, or a random pick among all related videos.
+
+### Changed
+- Management → Logs' **User actions** view leaves out the new network entries.
+
+### Fixed
+- Adding a photo to a performer who already had the most allowed could leave the new file and its row behind; the
+  limit is now checked before anything is saved. A ThePornDB profile that received several photos when its name got
+  linked no longer has all but one deleted by the next photo added — you're asked to remove them yourself first.
+- Performer page: a missing space between "Not looked up on ThePornDB yet." and the next sentence.
+- Filester messages pointed to "Admin → Credentials"; the credentials are under **Server Settings → Credentials**.
+
 ## [3.8.0] - 2026-11-25
 
 ### Added

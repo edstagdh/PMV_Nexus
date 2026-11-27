@@ -88,7 +88,7 @@ def normalize(job_config: dict, settings=None, check_ready: bool = True) -> dict
         if check_ready and not backup.saved_password():
             raise ValueError(L("Set a backup password on the Backups page first: a backup is only uploaded encrypted."))
         if check_ready and not api_key():
-            raise ValueError(L("Add the Filester API key under Admin → Credentials → Filester first."))
+            raise ValueError(L("Add the Filester API key under Server Settings → Credentials → Filester first."))
     elif split_gb and not backup.SPLIT_MIN_GB <= split_gb <= backup.SPLIT_MAX_GB:
         raise ValueError(L("The part size is 0 (Server Settings' size) or {min} to {max} GB",
                            min=f"{backup.SPLIT_MIN_GB:g}", max=f"{backup.SPLIT_MAX_GB:g}"))

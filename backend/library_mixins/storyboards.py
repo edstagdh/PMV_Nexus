@@ -131,6 +131,8 @@ class StoryboardsMixin:
                     logger.warning("Couldn't make seekbar previews for '{}' [{}]: {}", item.title, video_id, exc)
                 finally:
                     state["current"] = None
+            if state["done"] and not self._sb_stop:  # 3.9.0: their frames, compared for shared scenes
+                self.request_shared_scenes()
             parts = [f"{state['done']} made"] + ([f"{state['failed']} failed (see the log)"] if state["failed"] else [])
             act.finish("cancelled" if self._sb_stop else ("failed" if state["failed"] and not state["done"] else "success"),
                        (f"Stopped by {act.stopped_by} · " if act.stopped_by else "") + ", ".join(parts))

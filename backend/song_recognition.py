@@ -109,13 +109,20 @@ class ShazamClient:
 
     async def lookup(self, wav: bytes) -> Optional[dict]:
         from shazamio_core import SignatureError
+        started = time.monotonic()
         try:
             answer = await self._shazam.recognize(wav)
+            # shazamio talks to Shazam through aiohttp, not httpx: logged here (3.9.0, see net_log)
+            logger.bind(category="network", event="network.out").debug(
+                "Out: Shazam recognize -> answered in {:.1f}s", time.monotonic() - started)
         except SignatureError as exc:  # made here, before anything is sent: this sample only
             logger.warning("Song scan: Shazam's signature couldn't be made from a sample: {}", exc)
             return None
         except Exception as exc:  # noqa: BLE001 -- network, 429, changed API...
             status = getattr(exc, "status", None)
+            logger.bind(category="network", event="network.out").warning(
+                "Out: Shazam recognize failed after {:.1f}s: {} {}", time.monotonic() - started,
+                exc.__class__.__name__ + (f" {status}" if status else ""), str(exc)[:200])
             if status == 429:
                 raise RecognitionError(L('Shazam is limiting requests right now -- try again later')) from exc
             raise RecognitionError(L("Shazam didn't answer ({error})", error=exc.__class__.__name__ + (f' {status}' if status else ''))) from exc

@@ -312,6 +312,7 @@ class ReencodeSettingsRequest(BaseModel):
     remove_chapters: bool
     keep_original_file: bool
     ask_each_time: bool = True
+    check_first: bool = True  # 3.9.0
 
 
 class PlaybackSettingsRequest(BaseModel):

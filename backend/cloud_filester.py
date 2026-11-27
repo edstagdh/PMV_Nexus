@@ -154,7 +154,7 @@ class Filester:
         except ValueError:
             payload = {}
         if r.status_code == 401 or r.status_code == 403:
-            raise CloudError(L("Filester refused the API key -- check it under Admin → Credentials → Filester"))
+            raise CloudError(L("Filester refused the API key -- check it under Server Settings → Credentials → Filester"))
         if r.status_code >= 400 or (isinstance(payload, dict) and payload.get("success") is False):
             msg = payload.get("message") if isinstance(payload, dict) else None
             raise CloudError(L("Filester: {message}", message=msg or f"HTTP {r.status_code}"))
@@ -243,7 +243,7 @@ def upload_backup(settings, name: str, job: str, keep: int,
     uploads beyond `keep`. progress(bytes sent, bytes total)."""
     key = api_key()
     if not key:
-        raise CloudError(L("No Filester API key -- add it under Admin → Credentials → Filester"))
+        raise CloudError(L("No Filester API key -- add it under Server Settings → Credentials → Filester"))
     path = backup.resolve_backup(settings, name)
     files = backup.files_of(path)
     summary = backup._summary(path)
@@ -314,7 +314,7 @@ def status(live: bool = False, transport: Optional[httpx.BaseTransport] = None) 
     if live:
         key = api_key()
         if not key:
-            raise CloudError(L("No Filester API key -- add it under Admin → Credentials → Filester"))
+            raise CloudError(L("No Filester API key -- add it under Server Settings → Credentials → Filester"))
         with Filester(key, transport) as fs:
             acct = fs.account()
             out["account"] = {"username": acct.get("username"), "storage_used": acct.get("storage_used")}

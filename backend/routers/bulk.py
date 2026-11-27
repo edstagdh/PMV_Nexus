@@ -4,6 +4,7 @@ Library -> Select: actions on several picked videos at once (2.18.0).
   POST /api/bulk/songs     {ids}                                   songs.manage
   POST /api/bulk/repair    {ids}                                   videos.maintain
   POST /api/bulk/reencode  {ids, codec?}                           videos.maintain
+  POST /api/bulk/frames    {ids}                                   videos.edit (3.9.0: Redo Frames, from the files)
 
 Each queues the same work as the single-video action; a video that can't take
 part (already in that codec, already queued, file missing...) is skipped and
@@ -25,8 +26,8 @@ from ..security import AuthContext, require_any
 
 router = APIRouter()
 
-MAX_IDS = 1000
-_PERMISSION = {"songs": "songs.manage", "repair": "videos.maintain", "reencode": "videos.maintain"}
+MAX_IDS = 5000   # 3.9.0: "Select all" picks every matching video (was 1000)
+_PERMISSION = {"songs": "songs.manage", "repair": "videos.maintain", "reencode": "videos.maintain", "frames": "videos.edit"}
 
 
 class BulkRequest(BaseModel):
@@ -43,7 +44,7 @@ def _title(video_id: str) -> str:
 
 @router.post("/api/bulk/{action}")
 async def bulk_action(action: str, body: BulkRequest,
-                      user: AuthContext = Depends(require_any("songs.manage", "videos.maintain"))):
+                      user: AuthContext = Depends(require_any("songs.manage", "videos.maintain", "videos.edit"))):
     permission = _PERMISSION.get(action)
     if permission is None:
         raise HTTPException(status_code=404, detail=L('Unknown action'))
@@ -63,6 +64,9 @@ async def bulk_action(action: str, body: BulkRequest,
         try:
             if action == "repair":
                 library_manager.request_repair(video_id)
+            elif action == "frames":
+                if not library_manager.redo_frames(video_id, first=False):   # after what's already queued
+                    raise ValueError(L("No video file to take frames from"))
             else:
                 await library_manager.request_reencode(video_id, codec=body.codec,
                                                        options=body.options.model_dump() if body.options else None)

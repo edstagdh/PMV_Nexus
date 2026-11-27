@@ -25,6 +25,8 @@ import { featureOn } from "../lib/actions.js";
 import BulkActionDialog from "../components/dialogs/BulkActionDialog.vue";
 import { extensionActions } from "../stores/extensions.js";
 import { hasPermission } from "../stores/session.js";
+import { askConfirm } from "../stores/confirm.js";
+import { toast } from "../stores/toast.js";
 
 defineOptions({ name: "LibraryView" });
 
@@ -268,6 +270,34 @@ function onPickClick(e) {
   togglePick(el.dataset.id);
 }
 function pickPage() { picked.value = new Set([...picked.value, ...(data.value?.items || []).map((i) => i.id)]); }
+// 3.9.0: every video the current search/filters find, not just this page (200 per request)
+const MAX_PICK = 5000;
+const pickingAll = ref(false);
+async function pickAll() {
+  pickingAll.value = true;
+  try {
+    const ids = new Set(picked.value);
+    const s = state.value;
+    for (let page = 1; ; page++) {
+      const res = await api(`/api/library?${qs({ statuses: "done", page, page_size: 200, ...toApiParams(s) })}`);
+      res.items.forEach((i) => ids.add(i.id));
+      if (page >= res.total_pages || ids.size >= MAX_PICK) break;
+    }
+    picked.value = new Set([...ids].slice(0, MAX_PICK));
+    if (ids.size > MAX_PICK) toast(t("Picked the first {n} — that's the most at once", { n: formatNumber(MAX_PICK) }), { type: "warning" });
+  } catch (err) { toast(err.message, { type: "error" }); }
+  finally { pickingAll.value = false; }
+}
+// 3.9.0: Redo Frames for the picked videos (from their files, after what's queued)
+async function redoFramesPicked() {
+  const n = picked.value.size;
+  if (!await askConfirm(t("Make the frames under the player again, from the video files, for {n} videos? They're made one after another in the background (Tasks shows how far it got).", { n: formatNumber(n) }),
+    { title: t("Redo Frames"), ok: t("Redo Frames") })) return;
+  try {
+    const r = await api("/api/bulk/frames", { method: "POST", body: { ids: [...picked.value] } });
+    toast(t("Queued {n} · skipped {s}", { n: formatNumber(r.queued), s: formatNumber(r.skipped_count) }), { type: "success" });
+  } catch (err) { toast(err.message, { type: "error" }); }
+}
 function endSelect() { selectMode.value = false; picked.value = new Set(); }
 </script>
 
@@ -367,6 +397,8 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
       <div v-if="selectMode" class="pick-bar card" role="toolbar" :aria-label="$t('Selected videos')">
         <strong>{{ $t("{n} selected", { n: picked.size }) }}</strong>
         <button class="btn btn-sm" @click="pickPage">{{ $t("Select this page") }}</button>
+        <button v-if="total > (data?.items?.length || 0)" class="btn btn-sm" :disabled="pickingAll" @click="pickAll">
+          {{ pickingAll ? $t("Selecting…") : $t("Select all {n}", { n: formatNumber(Math.min(total, MAX_PICK)) }) }}</button>
         <button class="btn btn-ghost btn-sm" :disabled="!picked.size" @click="picked = new Set()">{{ $t("Clear") }}</button>
         <span style="flex: 1" />
         <button class="btn btn-sm" :disabled="!picked.size" @click="openDialog('playlist', null, { ids: [...picked] })"><Icon name="playlist" :size="15" />{{ $t("Add to playlists…") }}</button>
@@ -375,6 +407,7 @@ function endSelect() { selectMode.value = false; picked.value = new Set(); }
           <button class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'repair'"><Icon name="wrench" :size="15" />{{ $t("Repair / update") }}</button>
           <button v-if="featureOn('reencode')" class="btn btn-sm" :disabled="!picked.size" @click="bulkAction = 'reencode'"><Icon name="cpu" :size="15" />{{ $t("Re-encode…") }}</button>
         </template>
+        <button v-if="canBulkEdit" class="btn btn-sm" :disabled="!picked.size" @click="redoFramesPicked"><Icon name="image" :size="15" />{{ $t("Redo Frames") }}</button>
         <button v-for="a in extensionActions('bulk')" :key="a.id" class="btn btn-sm" :disabled="!picked.size"
                 @click="openDialog('extension', { ids: [...picked] }, { action: a })"><Icon :name="a.icon || 'plus'" :size="15" />{{ a.label }}</button>
         <button v-if="canBulkEdit" class="btn btn-primary btn-sm" :disabled="!picked.size" @click="bulkOpen = true"><Icon name="edit" :size="15" />{{ $t("Edit tags, performers, music…") }}</button>

@@ -109,7 +109,7 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Phones and tablets:** the whole app works on a phone. In the player, tap to show the controls, double-tap to
   skip, swipe for brightness and volume in fullscreen, and the screen turns to suit each video.
 
-### Performers (ThePornDB)
+### Performers (ThePornDB, FansDB, StashDB)
 - Every performer name is matched to a **ThePornDB** profile: photos, age, measurements, bio, aliases, links and
   similar performers you have. Clear matches link themselves; doubtful ones wait for you to pick.
 - **Aliases merge:** different names of the same person show as one, and each performer has a page with all their
@@ -117,6 +117,9 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Performer badges are coloured by gender** (female, male, trans / non-binary, unknown). For performers who aren't
   on ThePornDB, set it by hand.
 - **Favourite performers** (per user): ♥ on their badges, and a library sort that puts their videos first or last.
+- **Not on ThePornDB?** Search **FansDB** or **StashDB** by hand, or type their details, links and up to 30 photos in
+  yourself — from your computer or from a link the server fetches safely.
+- **The wall:** a 3D (or 2D) graph of who appears with whom; click a performer to see them with all their videos.
 
 ### Songs
 - **Find songs:** listens to a video and suggests the songs in it, using **Shazam** (free, no key) and optionally
@@ -128,9 +131,10 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   site removed (💀). There's a preview first, and your own edits are kept.
 - **Duplicate detection:** compares the pictures (perceptual hashes), not just the files. It runs daily and after
   downloads, and you review the pairs side by side.
+- **Shared scenes:** finds videos that use the same footage by comparing their frames, and shows where.
 - **Re-encoding:** HEVC, AV1 or AVC (H.264), from any codec to any other. Downscale to 1080p, even keeping the same
   codec (e.g. 8K HEVC → 1080p HEVC). Choose quality and preset, limit CPU use, keep the original if you like.
-  A reorderable queue shows live progress, ETA and speed.
+  A reorderable queue shows live progress, ETA and speed. Each file is checked for damage before it's re-encoded.
 - **Repair / update** missing thumbnails, previews and details. **Make audio playable** (AAC) for files with
   audio a browser can't play. Hover previews are made **H.264**, with a graphics card's encoder when it's faster.
   **Untracked files** finds leftovers to delete.
@@ -147,7 +151,8 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   SHA-256 hashes) or from a file. Right-to-left languages get a mirrored layout. Adding a language:
   [languages/TRANSLATING.md](languages/TRANSLATING.md).
 - **Stats:** live CPU, memory, network and disks; library growth; watching and failures over time.
-- **Logs:** every action and change, searchable and exportable. Passwords and keys are never logged.
+- **Logs:** every action and change, and every request the app sends out or receives, searchable and exportable.
+  Passwords and keys are never logged.
 - **Backups:** scheduled (daily and weekly built in) or by hand, optionally password-protected (AES-256), tested and
   restorable from the app; a backup job can also copy each backup to other folders (an external drive, a NAS) and
   upload it, encrypted and without credentials, to a private [Filester](https://filester.me) folder.
@@ -180,11 +185,11 @@ the forms it describes. See [Extensions](#extensions-1) below and the comments a
 | Backend | Python, FastAPI, Uvicorn |
 | Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`) |
 | Site access | httpx (the sites' API and downloads) |
-| Media | ffmpeg (re-encoding, live HLS conversion, previews, seekbar previews, frames), PyMediaInfo, OpenCV (duration/fps probing) |
+| Media | ffmpeg (re-encoding, live HLS conversion, previews, seekbar previews, frames), PyMediaInfo, OpenCV (duration/fps probing; frame hashes for shared scenes, with numpy) |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
 | Song recognition | shazamio (Shazam); optional Google Gemini API (AI) |
 | Images | Pillow (performer photos stored as WebP) |
-| Frontend | Vue 3 + Vite, hand-written CSS, Video.js 10 for video playback, hls.js for converted (720p) streams |
+| Frontend | Vue 3 + Vite, hand-written CSS, Video.js 10 for video playback, hls.js for converted (720p) streams, three.js with 3d-force-graph / force-graph for the performers' wall |
 | Auth | Signed session cookies (itsdangerous) for the web UI; a static API key for external tools |
 | Encryption | cryptography (Fernet) for stored credentials, pyzipper (AES-256 zips) for password-protected backups |
 

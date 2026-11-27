@@ -49,6 +49,11 @@ FIELDS: dict[str, dict] = {
     "gemini_api_key": {"group": "gemini", "label": L('API key'), "kind": "secret", "env": "GEMINI_API_KEY"},
     # 3.8.0: off-site backups (backend/cloud_filester.py)
     "filester_api_key": {"group": "filester", "label": L('API key'), "kind": "secret"},
+    # 3.9.0: performer search by hand (backend/stashbox.py); each site its own address and key
+    "fansdb_url": {"group": "fansdb", "label": L('GraphQL address'), "kind": "text", "default": "https://fansdb.cc/graphql"},
+    "fansdb_api_key": {"group": "fansdb", "label": L('API key'), "kind": "secret"},
+    "stashdb_url": {"group": "stashdb", "label": L('GraphQL address'), "kind": "text", "default": "https://stashdb.org/graphql"},
+    "stashdb_api_key": {"group": "stashdb", "label": L('API key'), "kind": "secret"},
     "proxy_url": {"group": "proxy", "label": L('Address'), "kind": "text"},
     "proxy_username": {"group": "proxy", "label": L('Username'), "kind": "text"},
     "proxy_password": {"group": "proxy", "label": L('Password'), "kind": "secret"},
@@ -72,6 +77,10 @@ GROUPS = [
      L('API key from https://theporndb.net/user/api-tokens. Used for performer profiles (photo, bio, aliases).')),
     ("filester", L('Filester (off-site backups)'),
      L("API key from https://filester.me → Account settings. Only used to upload encrypted backups (never the credentials or the videos) to a private folder there: Scheduler → a backup job → Upload to Filester. Regenerating the key on Filester makes this one stop working.")),
+    ("fansdb", L('FansDB'),
+     L("API key from https://fansdb.cc → your user page → API key (an account is needed). Used to search performers by hand from a performer's page (Find on FansDB / StashDB); ThePornDB stays the automatic match. Change the address only if they move it.")),
+    ("stashdb", L('StashDB'),
+     L("API key from https://stashdb.org → your user page → API key (an account is needed). Used to search performers by hand from a performer's page (Find on FansDB / StashDB); ThePornDB stays the automatic match. Change the address only if they move it.")),
     ("proxy", L('Proxy'),
      L("e.g. socks5://192.168.1.10:1080 or http://proxy.example:8080; username/password only if it needs them. Where it's used, and a speed test: Server Settings → Proxy.")),
 ]

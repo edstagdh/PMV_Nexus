@@ -40,6 +40,7 @@ from loguru import logger
 
 from ..i18n import L
 from .. import tpdb
+from .. import stashbox
 from .. import activity
 from .core import JobBlockedError
 from ..spellings import fold, spellings
@@ -95,6 +96,89 @@ def _to_kg(value) -> Optional[int]:
     return round(n) if 30 <= n <= 200 else None
 
 
+# 3.9.0: what can be typed in for a performer not on ThePornDB -- the same names ThePornDB uses,
+# so the profile page, the Performers page filters and the library filters treat both alike.
+LOCAL_TEXT = ("birthplace", "nationality", "ethnicity", "hair_colour", "eye_colour", "measurements", "cupsize",
+              "tattoos", "piercings", "disambiguation")
+MAX_LINKS = 20
+
+
+def clean_local_details(raw: dict) -> dict:
+    """The details form, checked (PerformerError for anything that can't be kept)."""
+    if not isinstance(raw, dict):
+        raise PerformerError(L("Details must be a form"))
+    out: dict = {}
+    for k in LOCAL_TEXT:
+        v = str(raw.get(k) or "").strip()
+        if len(v) > 100:
+            raise PerformerError(L("{field} is too long (100 characters at most)", field=k))
+        if v:
+            out[k] = v
+    for k, lo, hi, unit in (("height", 100, 230, "cm"), ("weight", 30, 200, "kg")):
+        v = raw.get(k)
+        if v not in (None, ""):
+            try:
+                n = int(float(v))
+            except (TypeError, ValueError):
+                raise PerformerError(L("{field} is a number", field=k)) from None
+            if not lo <= n <= hi:
+                raise PerformerError(L("{field} is {lo} to {hi} {unit}", field=k, lo=lo, hi=hi, unit=unit))
+            out[k] = f"{n} {unit}"
+    for k in ("birthday", "deathday"):
+        v = str(raw.get(k) or "").strip()
+        if v:
+            try:
+                date.fromisoformat(v)
+            except ValueError:
+                raise PerformerError(L("{field} is a date like 1995-04-23", field=k)) from None
+            out[k] = v
+    for k in ("career_start_year", "career_end_year"):
+        v = raw.get(k)
+        if v not in (None, ""):
+            try:
+                n = int(v)
+            except (TypeError, ValueError):
+                raise PerformerError(L("{field} is a year", field=k)) from None
+            if not 1950 <= n <= 2100:
+                raise PerformerError(L("{field} is a year", field=k))
+            out[k] = n
+    if raw.get("fake_boobs") not in (None, ""):
+        out["fake_boobs"] = bool(_yes_no(raw.get("fake_boobs")))
+    aliases = [str(a).strip()[:80] for a in (raw.get("aliases") or []) if str(a).strip()]
+    if aliases:
+        out["aliases"] = list(dict.fromkeys(aliases))[:20]
+    bio = str(raw.get("bio") or "").strip()
+    if len(bio) > 5000:
+        raise PerformerError(L("The bio is too long (5,000 characters at most)"))
+    if bio:
+        out["bio"] = bio
+    links = []
+    for link in raw.get("links") or []:
+        if not isinstance(link, dict):
+            continue
+        url, label = str(link.get("url") or "").strip(), str(link.get("label") or "").strip()[:40]
+        if not url:
+            continue
+        if not re.match(r"^https?://[^\s/$.?#][^\s]*$", url, re.I) or len(url) > 500:
+            raise PerformerError(L("“{url}” isn't a web address (https://…)", url=url[:80]))
+        links.append({"label": label or re.sub(r"^https?://(www\.)?", "", url, flags=re.I).split("/")[0], "url": url})
+    if len(links) > MAX_LINKS:
+        raise PerformerError(L("At most {n} links", n=MAX_LINKS))
+    if links:
+        out["links"] = links
+    return out
+
+
+def _editable(details: dict) -> dict:
+    """Saved details back in the form's shape ("170 cm" -> 170), so they can be checked again."""
+    out = dict(details)
+    for k in ("height", "weight"):
+        if isinstance(out.get(k), str):
+            m = re.match(r"\s*(\d+)", out[k])
+            out[k] = int(m.group(1)) if m else None
+    return out
+
+
 def _cup(cupsize, measurements) -> Optional[str]:
     for text in (cupsize, measurements):
         m = re.match(r"^\s*\d*\s*([A-Ka-k]{1,4})\b", str(text or ""))
@@ -113,6 +197,7 @@ class PerformersMixin:
     _perf_by_id: dict = {}
     _perf_custom: dict = {}  # owner id -> photos added by hand (2.16.0)
     _perf_local: dict = {}   # name key -> performer_local row (2.17.0)
+    _perf_sb: dict = {}      # (name key, fansdb | stashdb) -> performer_stashbox row (3.9.0)
     _perf_by_tpdb: dict = {}
     _perf_names: dict = {}
     _perf_busy: Optional[str] = None
@@ -140,6 +225,14 @@ class PerformersMixin:
             custom.setdefault(c["performer_id"], []).append(c)
         self._perf_custom = custom
         self._perf_local = {r["name_key"]: r for r in self.db.performer_local_rows()}
+        sb: dict = {}
+        for r in self.db.performer_stashbox_rows():
+            try:
+                r["data"] = json.loads(r["data"] or "{}")
+            except ValueError:
+                r["data"] = {}
+            sb[(r["name_key"], r["box"])] = r
+        self._perf_sb = sb
         self._perf_by_id = by_id
         self._perf_by_tpdb = {r["tpdb_id"]: r for r in by_id.values() if r.get("tpdb_id")}
         self._perf_names = names
@@ -447,6 +540,8 @@ class PerformersMixin:
                              "source": None, "main": True}]
             if key in lib:  # their own photos and placeholder (2.17.0)
                 out["local"] = self._local_info(key, lib[key][0])
+            out["stashbox"] = self._stashbox_links([key])
+            out["stashbox_sites"] = stashbox.boxes()
             return out
         d = p["data"]
         extras = d.get("extras") or {}
@@ -474,6 +569,24 @@ class PerformersMixin:
               "videos": lib.get(r["name_key"], ("", 0))[1], "source": r.get("source"),
               "main": r["name_key"] == fold(p["name"])} for r in names],
             key=lambda n: (not n["main"], -n["videos"]))
+        # 3.9.0: FansDB / StashDB linked by hand -- their page, their links, and what ThePornDB leaves empty
+        keys = [r["name_key"] for r in names] or [key]
+        out["stashbox"] = self._stashbox_links(keys)
+        out["stashbox_sites"] = stashbox.boxes()
+        known = set(out["performer"]["links"].values())
+        more = []
+        for r in self._perf_sb.values():
+            if r["name_key"] not in keys:
+                continue
+            sbd = (r["data"] or {}).get("details") or {}
+            for k, v in sbd.items():
+                if k in out["performer"]["extras"] and out["performer"]["extras"][k] in (None, ""):
+                    out["performer"]["extras"][k] = f"{v} cm" if k == "height" else v
+            for link in sbd.get("links") or []:
+                if link["url"] not in known:
+                    known.add(link["url"])
+                    more.append(link)
+        out["performer"]["more_links"] = more[:MAX_LINKS]
         for s in p.get("similar") or []:
             other = self._perf_by_tpdb.get(s.get("tpdb_id"))
             if other and other["id"] != p["id"]:
@@ -634,12 +747,141 @@ class PerformersMixin:
         local_id = self._local_id(key)
         photos = self._local_photos(local_id)
         v = self._local_version(local_id)
+        details = self._local_details(key)
         return {"id": local_id, "gender": (self._perf_local.get(key) or {}).get("gender") or "unknown",
+                # 3.9.0: typed in by hand (clean_local_details); "extras" like a ThePornDB profile's
+                "details": details, "extras": {k: v for k, v in details.items() if k not in ("aliases", "bio", "links")},
+                "aliases": details.get("aliases") or [], "bio": details.get("bio"), "links": details.get("links") or [],
+                "age": self._age(details.get("birthday"), details.get("deathday")),
                 "photo": f"/api/performers/{local_id}/photo?v={v}" if photos else None,
                 "photos": [f"/api/performers/{local_id}/photo?n={n}&v={v}" for n in range(len(photos))],
                 "custom_photos": [{"id": c["id"], "main": bool(c["main"]), "by": c.get("created_by"),
                                    "url": f"/api/performers/{local_id}/custom-photo/{c['id']}"}
                                   for c in self._perf_custom.get(local_id, [])]}
+
+    def _local_details(self, key: str) -> dict:
+        row = self._perf_local.get(key) or {}
+        try:
+            d = json.loads(row.get("details") or "{}")
+        except (TypeError, ValueError):
+            d = {}
+        return d if isinstance(d, dict) else {}
+
+    def set_local_details(self, name: str, details: dict) -> dict:
+        """3.9.0: details typed in for a performer not on ThePornDB (or FansDB / StashDB)."""
+        self._perf_load()
+        key = fold(name)
+        lib = self._library_performer_names()
+        if key not in lib:
+            raise PerformerError(L('No videos with this performer'))
+        row = self._perf_names.get(key)
+        if row and row.get("status") == "linked" and row.get("performer_id") in self._perf_by_id:
+            raise PerformerError(L("This performer has a ThePornDB profile: its details come from there"))
+        clean = clean_local_details(details)
+        self.db.set_performer_local_details(self._local_id(key), key, lib[key][0], clean)
+        self._perf_load(force=True)
+        return {"ok": True, "details": clean}
+
+    # ---------------------------------------------------------------- FansDB / StashDB, by hand (3.9.0)
+    def _stashbox_links(self, keys: list[str]) -> list[dict]:
+        out = []
+        for (key, box), r in sorted(self._perf_sb.items(), key=lambda kv: kv[0][1]):
+            if key in keys and box in stashbox.BOXES and not any(o["box"] == box for o in out):
+                try:
+                    url = stashbox.site_url(box, r["sb_id"])
+                except stashbox.StashBoxError:
+                    url = None
+                out.append({"box": box, "label": stashbox.BOXES[box]["label"], "id": r["sb_id"], "name": r["name"],
+                            "name_key": key, "url": url, "fetched_at": r["fetched_at"], "by": r.get("linked_by")})
+        return out
+
+    async def stashbox_search(self, box: str, q: str) -> list[dict]:
+        try:
+            return await stashbox.search(box, q)
+        except stashbox.StashBoxError as exc:
+            raise PerformerError(str(exc), 502) from None
+
+    async def stashbox_link(self, name: str, box: str, sb_id: str, user: str, photos: bool = True) -> dict:
+        """Links a name to a FansDB / StashDB profile. Not on ThePornDB: the profile's details
+        fill what wasn't typed in (what was typed in is kept), its links are added, and up to
+        STASHBOX_PHOTOS of its photos are saved as the performer's own. On ThePornDB: only its
+        page, links and what the ThePornDB profile leaves empty are shown."""
+        if box not in stashbox.BOXES:
+            raise PerformerError(L("Unknown site"))
+        self._perf_load()
+        key = fold(name)
+        lib = self._library_performer_names()
+        if key not in lib:
+            raise PerformerError(L('No videos with this performer'))
+        try:
+            p = await stashbox.performer(box, sb_id)
+        except stashbox.StashBoxError as exc:
+            raise PerformerError(str(exc), 502) from None
+        label = stashbox.BOXES[box]["label"]
+        sbd = stashbox.details(p)
+        self.db.set_performer_stashbox(key, box, p["id"], p.get("name") or name,
+                                       {"details": sbd, "images": stashbox.images(p)[:10], "gender": stashbox.gender(p)}, user)
+        row = self._perf_names.get(key)
+        on_tpdb = bool(row and row.get("status") == "linked" and row.get("performer_id") in self._perf_by_id)
+        added_photos = filled = 0
+        if not on_tpdb:
+            have = self._local_details(key)
+            merged = _editable(have)
+            for k, v in sbd.items():
+                if k == "links":
+                    urls = {link["url"] for link in merged.get("links") or []}
+                    merged["links"] = (merged.get("links") or []) + [link for link in v if link["url"] not in urls]
+                    merged["links"] = merged["links"][:MAX_LINKS]
+                elif k == "aliases":
+                    merged["aliases"] = list(dict.fromkeys((merged.get("aliases") or []) + v))[:20]
+                elif merged.get(k) in (None, ""):
+                    merged[k] = v
+                    filled += 1
+            try:
+                clean = clean_local_details(merged)
+            except PerformerError as exc:  # a value from the site the form wouldn't take: keep what was there
+                logger.warning("{} details for {} not all kept: {}", label, name, exc)
+                clean = have
+            self.db.set_performer_local_details(self._local_id(key), key, lib[key][0], clean)
+            g = stashbox.gender(p)
+            if g and (self._perf_local.get(key) or {}).get("gender") in (None, "unknown"):
+                self.db.upsert_performer_local(self._local_id(key), key, lib[key][0], g)
+            self._perf_load(force=True)
+            if photos:
+                added_photos = await self._stashbox_photos(self._local_id(key), stashbox.images(p), label)
+        self._perf_load(force=True)
+        logger.info("Performer {} linked to {} {} by {} ({} details filled, {} photos)", name, label, p["id"], user, filled, added_photos)
+        return {"ok": True, "box": box, "id": p["id"], "name": p.get("name"), "filled": filled, "photos": added_photos,
+                "on_tpdb": on_tpdb}
+
+    STASHBOX_PHOTOS = 5
+
+    async def _stashbox_photos(self, owner: str, urls: list[str], label: str) -> int:
+        from .. import safe_fetch
+        room = self.MAX_LOCAL_PHOTOS - len(self._perf_custom.get(owner, []))
+        added = 0
+        for url in urls[:min(self.STASHBOX_PHOTOS, max(0, room))]:
+            try:
+                data = await safe_fetch.fetch_image(url)
+                await self.add_custom_photo(owner, data, label)
+                added += 1
+            except (safe_fetch.FetchRefused, PerformerError) as exc:
+                logger.warning("{} photo not saved: {}", label, exc)
+        return added
+
+    def stashbox_unlink(self, name: str, box: str) -> dict:
+        """Forgets the link; details and photos already copied stay (they can be edited / removed)."""
+        self._perf_load()
+        key = fold(name)
+        keys = [key]
+        row = self._perf_names.get(key)
+        if row and row.get("performer_id"):
+            keys += [r["name_key"] for r in self._perf_names.values() if r.get("performer_id") == row["performer_id"]]
+        gone = any([self.db.delete_performer_stashbox(k, box) for k in dict.fromkeys(keys)])
+        if not gone:
+            raise PerformerError(L("Not linked to that site"), 404)
+        self._perf_load(force=True)
+        return {"ok": True}
 
     def set_performer_gender(self, name: str, gender: str) -> dict:
         """The placeholder of a performer without a ThePornDB profile."""
@@ -654,7 +896,8 @@ class PerformersMixin:
         if row and row.get("status") == "linked" and row.get("performer_id") in self._perf_by_id:
             raise PerformerError(L('The gender comes from the ThePornDB profile'))
         self.db.upsert_performer_local(self._local_id(key), key, lib[key][0], gender)
-        self._perf_local[key] = {"local_id": self._local_id(key), "name_key": key, "name": lib[key][0], "gender": gender}
+        self._perf_local[key] = {**(self._perf_local.get(key) or {}), "local_id": self._local_id(key), "name_key": key,
+                                 "name": lib[key][0], "gender": gender}
         return {"ok": True, "gender": gender}
 
     def _browse_details(self, p: dict) -> dict:
@@ -719,6 +962,9 @@ class PerformersMixin:
                 if p["id"] not in by_profile:
                     by_profile[p["id"]] = self._browse_details(p)
                 facts[key] = by_profile[p["id"]]
+        for key in self._perf_local:   # 3.9.0: details typed in by hand count too
+            if key not in facts and self._local_details(key):
+                facts[key] = self._browse_details({"data": {"extras": self._local_details(key)}})
         return facts
 
     def performer_filter_options(self) -> dict:
@@ -761,15 +1007,72 @@ class PerformersMixin:
                 people[info["id"]] = {"name": name, "link": name, "linked": False, "videos": videos, "names": 1,
                                       "gender": info["gender"], "photo": info["photo"],
                                       "status": row["status"] if row else "unchecked",
-                                      # only the placeholder gender is known (set on their page; else not known)
+                                      # 3.9.0: what was typed in on their page (age, hair, cup...), if anything
+                                      **self._browse_details({"data": {"extras": info["details"]}}),
+                                      # the gender set on their page (else not known)
                                       "gender_label": None if info["gender"] == "unknown" else info["gender"].title()}
         out = list(people.values())
         for e in out:
             e.pop("_best", None)
         return out
 
+    def performer_wall(self) -> dict:
+        """3.9.0 "The wall" (/wall): who appears with whom. Only performers someone has
+        matched or filled in -- linked to ThePornDB, or with details, photos, a gender or a
+        FansDB / StashDB link of their own -- and the finished videos they're in. Names linked
+        to the same profile are one person. The page works out the pairs itself."""
+        self._perf_load()
+        lib = self._library_performer_names()
+        sb_keys = {k for k, _box in self._perf_sb}
+        who: dict[str, str] = {}   # name key -> person id
+        people: dict[str, dict] = {}
+        for key, (name, videos) in lib.items():
+            row = self._perf_names.get(key)
+            p = self._perf_by_id.get(row["performer_id"]) if row and row.get("status") == "linked" and row.get("performer_id") else None
+            if p:
+                pid = p["id"]
+                if pid not in people:
+                    people[pid] = {"id": pid, "name": p["name"], "link": name, "gender": self._gender_of(p), "videos": 0,
+                                   "photo": f"/api/performers/{pid}/photo?v={self._photo_version(p)}" if self._all_photos(p) else None,
+                                   "_best": -1}
+                if videos > people[pid]["_best"]:
+                    people[pid]["link"], people[pid]["_best"] = name, videos
+            else:
+                local_id = self._local_id(key)
+                local = self._perf_local.get(key) or {}
+                edited = (self._local_details(key) or self._perf_custom.get(local_id) or key in sb_keys
+                          or (local.get("gender") or "unknown") != "unknown")
+                if not edited:
+                    continue
+                pid = local_id
+                photos = self._local_photos(local_id)
+                people[pid] = {"id": pid, "name": name, "link": name, "gender": local.get("gender") or "unknown", "videos": 0,
+                               "photo": f"/api/performers/{pid}/photo?v={self._local_version(local_id)}" if photos else None}
+            who[key] = pid
+        videos = []
+        for item in self._items.values():
+            if item.status != "done":
+                continue
+            cast = list(dict.fromkeys(who[k] for k in (fold(n) for n in item.performers or []) if k in who))
+            if not cast:
+                continue
+            for pid in cast:
+                people[pid]["videos"] += 1
+            videos.append({"id": item.id, "title": item.title or "", "creator": item.creator or "",
+                           "length": item.tech_duration or "", "cast": cast,
+                           "thumb": (f"/api/library/{item.id}/thumbnail?v={item.thumbnail_updated_at or ''}"
+                                     if item.thumbnail_path else None)})
+        out = [p for p in people.values() if p["videos"]]
+        for p in out:
+            p.pop("_best", None)
+        return {"performers": out, "videos": videos}
+
     # ---------------------------------------------------------------- photos added by hand (2.16.0)
-    MAX_CUSTOM_PHOTOS = 1  # 2.18.0: one of your own per performer; a new one replaces it
+    MAX_CUSTOM_PHOTOS = 1  # 2.18.0: one of your own per ThePornDB profile; a new one replaces it
+    MAX_LOCAL_PHOTOS = 30  # 3.9.0: a performer not on ThePornDB has only these, so several
+
+    def _max_custom(self, owner: str) -> int:
+        return self.MAX_LOCAL_PHOTOS if self._local_name(owner) else self.MAX_CUSTOM_PHOTOS
 
     def performer_photos_dir(self) -> Path:
         """ThePornDB photos (3.2.0): their own folder in the app's data folder.
@@ -853,16 +1156,23 @@ class PerformersMixin:
             webp = await asyncio.to_thread(images.to_webp, data)
         except ValueError:
             raise PerformerError(L("That file isn't a picture the app can read (JPEG, PNG, WebP, GIF, BMP, TIFF…)")) from None
+        # Own photos are limited: a ThePornDB profile keeps one (a new one replaces it), a
+        # performer not on ThePornDB up to MAX_LOCAL_PHOTOS. Never more than one is replaced:
+        # photos that came along when a name got its profile are removed by hand, not here.
+        old = list(self._perf_custom.get(performer_id, []))
+        limit = self._max_custom(performer_id)
+        if limit > 1 and len(old) >= limit:
+            raise PerformerError(L("{n} photos at most -- remove one first", n=limit))
+        if limit == 1 and len(old) > 1:
+            raise PerformerError(L("This profile already has {n} of your photos (from before it was linked to ThePornDB) -- remove all but one first", n=len(old)))
         photo_id = uuid.uuid4().hex
         folder = self._custom_photo_dir()
         folder.mkdir(parents=True, exist_ok=True)
         dest = folder / f"{performer_id}_{photo_id}.webp"
         await asyncio.to_thread(dest.write_bytes, webp)
-        # Own photos are limited (MAX_CUSTOM_PHOTOS): the oldest go once the new one is saved.
-        old = list(self._perf_custom.get(performer_id, []))
         keep_main = any(c["main"] for c in old)
         self.db.add_custom_photo(photo_id, performer_id, str(dest), user)
-        for c in old[:max(0, len(old) + 1 - self.MAX_CUSTOM_PHOTOS)]:
+        for c in old[:max(0, len(old) + 1 - limit)]:
             self.db.delete_custom_photo(c["id"])
             try:
                 os.unlink(c["path"])
@@ -874,6 +1184,18 @@ class PerformersMixin:
         logger.debug("Photo added to performer {} by {} ({} KB → {} KB WebP)", owner_name, user,
                     len(data) // 1024, len(webp) // 1024)
         return {"id": photo_id, "size": len(webp), "original_size": len(data)}
+
+    async def add_custom_photo_from_url(self, performer_id: str, url: str, user: str) -> dict:
+        """3.9.0: a photo from a web address, fetched by the server (backend/safe_fetch.py:
+        public addresses only, a size limit, pictures only), then saved like an uploaded one."""
+        from .. import safe_fetch
+        if self._photo_owner_name(performer_id) is None:
+            raise PerformerError(L('Performer not found'))
+        try:
+            data = await safe_fetch.fetch_image(url)
+        except safe_fetch.FetchRefused as exc:
+            raise PerformerError(str(exc)) from None
+        return await self.add_custom_photo(performer_id, data, user)
 
     def remove_custom_photo(self, performer_id: str, photo_id: str) -> None:
         path = self.custom_photo_file(performer_id, photo_id)

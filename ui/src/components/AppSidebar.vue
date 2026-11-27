@@ -73,7 +73,7 @@ function nav(fn) { emit("close"); fn?.(); }
       <router-link to="/playlists" class="nav-item" :class="{ active: $route.name === 'playlist' }" active-class="active" :title="$t('Playlists')" @click="nav()">
         <Icon name="playlist" /><span class="label">{{ $t("Playlists") }}</span>
       </router-link>
-      <router-link to="/performers" class="nav-item" :class="{ active: $route.name === 'performer' }" active-class="active" :title="$t('Performers')" @click="nav()">
+      <router-link to="/performers" class="nav-item" :class="{ active: $route.name === 'performer' || $route.name === 'wall' }" active-class="active" :title="$t('Performers')" @click="nav()">
         <Icon name="user" /><span class="label">{{ $t("Performers") }}</span>
       </router-link>
       <router-link v-if="hasPermission('live.view')" to="/playing" class="nav-item" active-class="active" :title="$t('Currently Playing')" @click="nav()">

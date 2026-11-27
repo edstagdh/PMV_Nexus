@@ -850,6 +850,68 @@ def _tag_seconds(tags: Optional[dict]) -> Optional[float]:
         return None
 
 
+# 3.9.0: what in FFmpeg's error output means the file itself is damaged (not just untidy timestamps)
+_DAMAGE = re.compile(r"moov atom not found|invalid data found|error while decoding|corrupt|truncat|"
+                     r"partial file|end of file|could not find codec|invalid nal|error reading|no frame|"
+                     r"concealing \d+ (?:dc|ac|mv) errors|missing reference|decode_slice_header error", re.I)
+
+
+def check_video_integrity(file_path: str, stop: Optional[dict] = None) -> dict:
+    """BLOCKING. Is the file fit to be re-encoded (3.9.0)? Three looks, quickest first:
+      1. ffprobe: a video track and a length;
+      2. every packet of the video track read through (no decoding: about as fast as the disk),
+         which finds a cut-off file or a broken index;
+      3. 3 seconds decoded at 10 %, 50 % and 90 % of the way, which finds damaged pictures.
+    {"ok", "problems": [...], "warnings": [...], "seconds"}. Only errors that mean damage count
+    (_DAMAGE); timestamp complaints and the like are warnings. `stop` (the re-encode's process
+    holder): {"cancel": True} ends it early."""
+    started = time.monotonic()
+    problems: list[str] = []
+    warnings: list[str] = []
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+    def run(cmd: list[str], timeout: float) -> str:
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                                    errors="replace", creationflags=flags)
+        except OSError as exc:
+            problems.append(f"FFmpeg couldn't be started: {exc}")
+            return ""
+        if stop is not None:
+            stop["check"] = proc
+        try:
+            _out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            warnings.append(f"a check took longer than {int(timeout)} s and was skipped")
+            return ""
+        return err or ""
+
+    info = probe_streams(file_path)
+    duration = float(info.get("duration") or 0)
+    if not info.get("video"):
+        problems.append("no readable video track")
+        return {"ok": False, "problems": problems, "warnings": warnings, "seconds": round(time.monotonic() - started, 1)}
+    if duration <= 0:
+        warnings.append("the length couldn't be read")
+    size_gb = max(0.1, os.path.getsize(file_path) / 1024 ** 3)
+    for label, err in [("reading it through", run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "error", "-i", file_path,
+                                                  "-map", "0:v:0", "-c", "copy", "-f", "null", "-"], 120 + size_gb * 60))] + [
+            (f"decoding at {int(at * 100)} %", run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "error", "-ss", f"{duration * at:.2f}",
+                                                    "-i", file_path, "-map", "0:v:0", "-t", "3", "-f", "null", "-"], 120))
+            for at in ((0.1, 0.5, 0.9) if duration > 10 else (0.0,))]:
+        if stop is not None and stop.get("cancel"):
+            break
+        lines = [ln.strip() for ln in err.splitlines() if ln.strip()]
+        bad = [ln for ln in lines if _DAMAGE.search(ln)]
+        if bad:
+            problems.append(f"{label}: {bad[0][:200]}" + (f" (+{len(bad) - 1} more)" if len(bad) > 1 else ""))
+        elif lines:
+            warnings.append(f"{label}: {lines[0][:200]}")
+    return {"ok": not problems, "problems": problems, "warnings": warnings, "seconds": round(time.monotonic() - started, 1)}
+
+
 def probe_streams(file_path: str) -> dict:
     """{"video": codec, "pix_fmt", "audio": codec or None, "width", "height",
     "duration"} of the first real video track and first audio track, via

@@ -196,6 +196,51 @@ class ReencodeWorkerMixin:
 
         loop = asyncio.get_running_loop()
 
+        # 3.9.0: is the file fit to be re-encoded? A damaged one isn't (hours of encoding a
+        # broken file help nobody); from the 3rd try on, the repair mode below runs anyway.
+        if cfg.check_first and not use_recovery:
+            item.reencode_stage = "checking"   # Tasks: "Checking the file"
+            loop.call_soon_threadsafe(self.db._note_change, ["progress"])
+            check = await asyncio.to_thread(media_tools.check_video_integrity, str(video_path), self._current_reencode_proc)
+            item.reencode_stage = None
+            if self._cancel_requested:   # a stopped check isn't a damaged file
+                check = {"ok": True, "problems": [], "warnings": [], "seconds": check.get("seconds")}
+            if check["ok"]:
+                logger.info("Re-encode check of '{}' [{}]: fine in {}s{}", item.title, item.id, check["seconds"],
+                            f" (notes: {'; '.join(check['warnings'])})" if check["warnings"] else "")
+            else:
+                reason = "; ".join(check["problems"])
+                logger.warning("Re-encode of '{}' [{}] skipped: the file looks damaged: {}", item.title, item.id, reason)
+                self._current_reencode_id = None
+                self._current_reencode_proc = {}
+                async with self._lock:
+                    if item.id not in self._items:
+                        return
+                    item.reencode_attempts = (item.reencode_attempts or 0) + 1
+                    item.reencode_status = "failed"
+                    tries_left = 3 - item.reencode_attempts
+                    item.reencode_error = (f"The video file looks damaged ({reason}) -- not re-encoded, the original is kept. "
+                                           "Repair / update gets the file again"
+                                           + (f"; re-encoding it {tries_left} more time(s) uses the repair mode." if tries_left > 0
+                                              else "; re-encoding it again uses the repair mode."))
+                    item.reencode_progress_percent = None
+                    item.touch()
+                    self.db.save_item(item)
+                notify("reencode", "error", L('Not re-encoded, the file looks damaged: {title}', title=title_of(item)),
+                       body=reason[:500], link=video_link(item), user_id=item.added_by)
+                return
+            if self._cancel_requested:   # cancelled while checking
+                self._current_reencode_id = None
+                self._current_reencode_proc = {}
+                self._cancel_requested = False
+                async with self._lock:
+                    item.reencode_status = "cancelled"
+                    item.reencode_error = None
+                    item.reencode_progress_percent = None
+                    item.touch()
+                    self.db.save_item(item)
+                return
+
         last_saved = [0.0]
 
         def on_progress(data: dict) -> None:
@@ -414,9 +459,11 @@ class ReencodeWorkerMixin:
 
         if item.reencode_status == "encoding" and self._current_reencode_id == video_id:
             self._cancel_requested = True
-            proc = self._current_reencode_proc.get("proc")
-            if proc and proc.poll() is None:
-                proc.terminate()
+            self._current_reencode_proc["cancel"] = True   # 3.9.0: the file check stops too
+            for key in ("proc", "check"):
+                proc = self._current_reencode_proc.get(key)
+                if proc and proc.poll() is None:
+                    proc.terminate()
             return item
 
         raise ValueError(L('This item is not currently queued or encoding'))

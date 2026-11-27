@@ -21,6 +21,11 @@ from .library_manager import library_manager
 from .security import COOKIE_NAME, _read_session_payload
 
 _MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
+# 3.9.0, read-only requests: long-lived ones (live updates, streams) aren't "slow"; the many
+# small pictures and stream pieces are only logged when they fail.
+_STREAMING = re.compile(r"^/api/(events|library/[^/]+/stream|live/)")
+_NOISY = re.compile(r"(/thumbnail|/preview|/frames/\d+\.webp|/storyboard|/photo|/cover/image|/custom-photo/|\.ts$|/stream$|^/api/events"
+                    r"|^/api/now-playing$|^/api/notifications)")
 _ITEM_PATH = re.compile(r"^/api/(?:library|external)/([^/]+)(?:/|$)")
 _PLAYLIST_PATH = re.compile(r"^/api/playlists/([0-9a-f]{32})(?:/|$)")
 _MAX_PEEK = 64 * 1024
@@ -115,6 +120,11 @@ _LABELS = {
     "performers_remove_photo": "Remove performer photo",
     "performers_main_photo": "Change performer's main photo",
     "performers_set_gender": "Set performer placeholder (female / male)",
+    "performers_local_details": "Change performer details (typed in)",
+    "performers_add_photo_url": "Add performer photo from a link",
+    "find_shared_scenes": "Find shared scenes",
+    "performers_stashbox_link": "Link performer to FansDB / StashDB",
+    "performers_stashbox_unlink": "Unlink performer from FansDB / StashDB",
     # playlists
     "create_playlist": "Create playlist",
     "update_playlist": "Change playlist",
@@ -406,9 +416,44 @@ class ActionLogMiddleware:
     def __init__(self, app):
         self.app = app
 
+    async def _read_only(self, scope, receive, send):
+        """Requests that only read (GET...) aren't actions, but are logged too (3.9.0, category
+        "network", event network.in): an answer of 500 or more as WARNING, other refusals (not
+        401 / 404 / 304) as INFO, slow ones (> 10 s, not live streams) as INFO, the rest DEBUG --
+        except the many small pictures and stream pieces, which only show when they fail."""
+        started = time.perf_counter()
+        status = {"code": 0}
+
+        async def watch(message):
+            if message["type"] == "http.response.start":
+                status["code"] = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, watch)
+        finally:
+            try:
+                code, took, path = status["code"], time.perf_counter() - started, scope["path"]
+                log = logger.bind(category="network", event="network.in", user=_username(scope),
+                                  ip=ip_privacy.apply((scope.get("client") or [None])[0]))
+                line = f"In: {scope['method']} {path} -> {code or 'no answer'} in {took:.2f}s"
+                if not code or code >= 500:
+                    log.warning(line)
+                elif code >= 400 and code not in (401, 404):
+                    log.info(line)
+                elif took > 10 and not _STREAMING.search(path):
+                    log.info(line + " (slow)")
+                elif not _NOISY.search(path):
+                    log.debug(line)
+            except Exception:  # noqa: BLE001 -- logging never breaks a request
+                pass
+
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope["method"] not in _MUTATING or not scope["path"].startswith("/api/"):
+        if scope["type"] != "http" or not scope["path"].startswith("/api/"):
             await self.app(scope, receive, send)
+            return
+        if scope["method"] not in _MUTATING:
+            await self._read_only(scope, receive, send)
             return
 
         started = time.perf_counter()
@@ -514,7 +559,7 @@ class ActionLogMiddleware:
             return
         label = _label(name) if name else f"{scope['method']} {scope['path']}"
         if name == "bulk_action":  # /api/bulk/<action> (2.18.0)
-            label = {"songs": "Find songs", "repair": "Repair / update", "reencode": "Re-encode"}.get(scope["path"].rsplit("/", 1)[-1], label) + " (picked videos)"
+            label = {"songs": "Find songs", "repair": "Repair / update", "reencode": "Re-encode", "frames": "Redo Frames"}.get(scope["path"].rsplit("/", 1)[-1], label) + " (picked videos)"
         if name in ("run_extension_action", "run_extension_panel"):  # 2.30.0: name the extension's action
             from . import extensions
             key = scope["path"].rsplit("/", 1)[-1]

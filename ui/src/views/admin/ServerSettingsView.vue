@@ -73,7 +73,8 @@ function saveTray() {
 function savePerformers() {
   const v = perf.value;
   return run("performers", () => api("/api/settings/performers", {
-    method: "POST", body: { merge_aliases: !!v.merge_aliases, refresh_days: int(v.refresh_days, 7, 365) },
+    method: "POST", body: { merge_aliases: !!v.merge_aliases, refresh_days: int(v.refresh_days, 7, 365),
+      tpdb_timeout: int(v.tpdb_timeout, 10, 600), tpdb_retries: int(v.tpdb_retries, 0, 5) },
   }));
 }
 const LOG_LEVELS = [
@@ -186,7 +187,7 @@ function saveReencode() {
       warn_crf: !!r.warn_crf, copy_audio: !!r.copy_audio, downscale: !!r.downscale,
       cpu_limit_mode: r.cpu_limit_mode, cpu_limit_cores: int(r.cpu_limit_cores, 1, cpuCount.value),
       cpu_limit_percent: int(r.cpu_limit_percent, 5, 100),
-      remove_chapters: !!r.remove_chapters, keep_original_file: !!r.keep_original_file, ask_each_time: r.ask_each_time !== false,
+      remove_chapters: !!r.remove_chapters, keep_original_file: !!r.keep_original_file, ask_each_time: r.ask_each_time !== false, check_first: r.check_first !== false,
     },
   }));
 }
@@ -415,6 +416,13 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
         </div>
       </div>
       <div class="form-row">
+        <span class="label">{{ $t("Check the file first") }}<small>{{ $t("Before each re-encode.") }}</small></span>
+        <div class="field-col">
+          <label class="switch"><input v-model="re.check_first" type="checkbox">{{ $t("Make sure the video file isn't damaged before re-encoding it") }}</label>
+          <small class="help-text">{{ $t("Reads the file through and decodes three short parts (a few seconds to a minute). A damaged file isn't re-encoded: it's reported, and the original stays. Re-encoding it a third time anyway uses the repair mode.") }}</small>
+        </div>
+      </div>
+      <div class="form-row">
         <span class="label">{{ $t("Re-encode…") }}<small>{{ $t("What a video's ⋮ menu and Library → Select do.") }}</small></span>
         <div class="field-col">
           <label class="switch"><input v-model="re.ask_each_time" type="checkbox">{{ $t("Ask for the codec and settings each time") }}</label>
@@ -546,6 +554,14 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
       <div class="form-row">
         <label class="label" for="pf-days">{{ $t("Refresh profiles every") }}<small>{{ $t("Performer data rarely changes; 30 days is plenty.") }}</small></label>
         <div class="inline-input"><input id="pf-days" v-model.number="perf.refresh_days" class="input input-num" style="max-width: 7rem" type="number" min="7" max="365"><span class="muted">{{ $t("days") }}</span></div>
+      </div>
+      <div class="form-row">
+        <label class="label" for="pf-timeout">{{ $t("Wait for ThePornDB") }}<small>{{ $t("How long to wait for an answer before trying again. Its search can take a while when it's busy.") }}</small></label>
+        <div class="inline-input"><input id="pf-timeout" v-model.number="perf.tpdb_timeout" class="input input-num" style="max-width: 7rem" type="number" min="10" max="600"><span class="muted">{{ $t("seconds") }}</span></div>
+      </div>
+      <div class="form-row">
+        <label class="label" for="pf-retries">{{ $t("Tries after no answer") }}<small>{{ $t("Each one waits a little longer first. 0: give up after the first.") }}</small></label>
+        <input id="pf-retries" v-model.number="perf.tpdb_retries" class="input input-num" style="max-width: 7rem" type="number" min="0" max="5">
       </div>
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="busy === 'performers'" @click="savePerformers">{{ $t("Save") }}</button></div>
     </section>

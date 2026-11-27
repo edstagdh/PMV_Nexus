@@ -12,12 +12,15 @@ verify_api_key in security.py) unrelated to user accounts at all.
 """
 from __future__ import annotations
 
+import asyncio
 import mimetypes
+import os
 import time
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from loguru import logger
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from starlette.requests import ClientDisconnect
@@ -230,6 +233,25 @@ def get_storyboard_sheet(video_id: str, n: int, user: AuthContext = Depends(requ
     if not path:
         raise HTTPException(status_code=404, detail=L('Not found'))
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=2592000"})
+
+
+@router.get("/api/maintenance/shared-scenes")
+def shared_scenes_overview(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    return library_manager.shared_scenes_overview()
+
+
+@router.post("/api/maintenance/shared-scenes")
+async def find_shared_scenes(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """3.9.0: read the frames of videos with new seekbar previews, then compare every pair."""
+    return {"started": library_manager.request_shared_scenes("manual")}
+
+
+@router.get("/api/library/{video_id}/shared-scenes")
+def get_shared_scenes(video_id: str, user: AuthContext = Depends(require_permission("library.view"))):
+    try:
+        return {"items": library_manager.shared_scenes_for(video_id)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail=L("Video not found")) from None
 
 
 @router.get("/api/maintenance/storyboards")
@@ -573,10 +595,11 @@ def report_watch(video_id: str, body: WatchReport, user: AuthContext = Depends(r
 
 
 @router.get("/api/library/{video_id}/related")
-def get_related_items(video_id: str, limit: int = 12, user: AuthContext = Depends(require_permission("library.view"))):
+def get_related_items(video_id: str, limit: int = 12, order: str = Query("best", pattern="^(best|random)$"),
+                      user: AuthContext = Depends(require_permission("library.view"))):
     try:
         return {"items": library_manager.with_watch(
-            [scrub_item(i, user) for i in library_manager.related_items(video_id, max(1, min(limit, 50)))], user)}
+            [scrub_item(i, user) for i in library_manager.related_items(video_id, max(1, min(limit, 50)), order)], user)}
     except KeyError:
         raise HTTPException(status_code=404, detail=L('Not found'))
 
@@ -602,6 +625,31 @@ async def get_thumbnail(video_id: str, user: AuthContext = Depends(require_permi
         raise HTTPException(status_code=404, detail=L('Thumbnail file missing on disk'))
     media_type = mimetypes.guess_type(str(path))[0] or "image/jpeg"
     return FileResponse(str(path), media_type=media_type)
+
+
+@router.get("/api/library/{video_id}/mediainfo")
+async def video_mediainfo(video_id: str, full: bool = False,
+                          user: AuthContext = Depends(require_any("videos.maintain", "videos.edit"))):
+    """3.9.0: MediaInfo's own report of the file (as `mediainfo <file>` prints it; full: every
+    field). The file's folder is left out of "Complete name"."""
+    item = library_manager.get_item_dict(video_id)
+    if not item or not item.get("video_path"):
+        raise HTTPException(status_code=404, detail=L('Video not found'))
+    path = Path(item["video_path"])
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=L('File missing on disk'))
+
+    def report() -> str:
+        from pymediainfo import MediaInfo
+        text = MediaInfo.parse(str(path), output="text", full=full)
+        return text.replace(str(path), path.name).replace(str(path.parent) + os.sep, "")
+
+    try:
+        text = await asyncio.to_thread(report)
+    except Exception as exc:  # noqa: BLE001 -- MediaInfo missing / unreadable file
+        logger.warning("MediaInfo couldn't read {}: {}", path.name, exc)
+        raise HTTPException(status_code=500, detail=L("MediaInfo couldn't read the file: {error}", error=str(exc)[:200])) from exc
+    return {"text": text.strip(), "file": path.name, "full": full}
 
 
 @router.get("/api/library/{video_id}/stream")

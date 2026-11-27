@@ -96,7 +96,14 @@ Tips:
   - **Notifications:** which kinds of background updates pop up (see Notifications below).
   - **Account:** change your password; regular users can also delete their own account here.
 - **Related videos** are other downloaded videos ranked by what they share with the one you're watching:
-  each shared performer counts most, the same creator next, then each shared tag.
+  each shared performer counts most, the same creator next, then each shared tag; a video with the same footage
+  (*Shared scenes*, 3.9.0) counts like one or two shared performers. **My Settings → Video → Which related videos**
+  (3.9.0): **Best matches**, or **Random from all related** — a different pick each visit when there are more related
+  videos than you show (still listed best first).
+- **Technical Details** (under a video's description) lists the file's video, audio and container facts, and its
+  perceptual hash (**pHash**, under General). **MediaInfo…** (3.9.0, people who may edit or maintain videos) shows
+  MediaInfo's full report of the file in a window — **Every field** adds MediaInfo's less common fields, **Copy**
+  copies it; the server's folders are left out of it.
 - **Edit details** (on a video's page or its ⋮ menu) lets you change its performers, tags, music and content
   flags, side by side — click a box to see every value already in your library, type to narrow it down, and pick. Your edits are kept when you sync,
   update or repair; **Use the site's** goes back to PMVHaven's.
@@ -192,6 +199,11 @@ re-encode (the picture itself changes). Library → Select → Re-encode still s
 turned into HEVC or AVC for devices that struggle with AV1). It shows that codec's settings from Server Settings, which you
 can change for **this re-encode only** (switching codec shows the other codec's settings; **Back to the server's
 settings** undoes your changes). Many at once: **Select** in the library → **Re-encode…**, the same window.
+**Check the file first** (3.9.0, Server Settings → Re-encode, on by default): before each re-encode the file is
+checked — FFmpeg reads every packet, then decodes a few seconds at 10 %, 50 % and 90 %. A damaged file isn't re-encoded
+(the re-encode would fail late or keep the damage): it's marked failed with what was found, counted as a try, and a
+notification says so; the original stays as it is. Tasks shows "Checking the file before re-encoding" meanwhile, and
+**Cancel** stops the check too. It takes a few seconds to a minute per video (reading the whole file once).
 **Without the window:** untick **Ask for the codec and settings each time** (Server Settings → Re-encode) and
 **Re-encode** queues the video straight away in the default codec with the settings there (Library → Select just
 confirms); a video already in that codec still gets the window, to pick the other codec.
@@ -300,6 +312,16 @@ priority: new videos right after they're downloaded or uploaded, any other video
 there from the next time), or the whole library at once from **Management → Maintenance → Seekbar previews → Make the
 … missing** (one job on Tasks, can be stopped). They're kept in the cache folder (`.storyboards`, roughly 0.2–1 MB per
 video), deleted with the video, moved with the cache folder, and not included in backups (they can be made again).
+
+**Shared scenes** (3.9.0): videos that use the same footage are listed under the video, in **Shares scenes with**,
+with roughly how many seconds they have in common and where (click a time to jump there in this video). They're found by
+comparing the frames of the seekbar previews — nothing is read from the video files again: black, white and nearly
+flat frames, the first and last 4 seconds, and frames found in a dozen or more videos (intros, logos, title cards) are
+left out, and a match only counts when several frames play in step in both videos. It runs by itself after new
+seekbar previews are made, and from **Management → Maintenance → Shared scenes → Find now** (one job on Tasks, can be
+stopped). Videos without seekbar previews aren't compared. It keeps about 4 KB per video in the database (about
+10 MB for 2,500 videos); the first run over a big library takes a few minutes of CPU at low priority, later runs only
+read the new videos and take seconds.
 Videos with a key frame every few seconds (most PMVs) take a few seconds; others are decoded fully and take longer. After the seek bar is the video's **length**; click it to see the time left
 instead (and again to go back). On the video page the keys (Space, ←/→, M, F, …) work anywhere on the page.
 
@@ -481,7 +503,35 @@ How it works:
   (several values each), age, height (cm) and weight (kg) ranges, and still active / enhanced breasts / tattoos /
   piercings (yes or no). Only details someone has are offered; while a detail is filtered on, performers without it are
   hidden. The number on the button counts the filters in use; **Clear filters** removes them.
-- **Photos per performer:** up to 10 from ThePornDB, plus one of your own (11 at most).
+- **Photos per performer:** up to 10 from ThePornDB, plus one of your own (11 at most). A performer not on ThePornDB
+  (3.9.0) can have up to 30 of your own.
+- **Waiting for ThePornDB** (3.9.0, Server Settings → Performers): how long to wait for an answer (**Wait for
+  ThePornDB**, 60 s by default, 10–600) and how many more tries after no answer (**Tries after no answer**, 2 by
+  default, 0–5). Raise them if ThePornDB is slow for you; each try that gets no answer is logged.
+- **Details typed in** (3.9.0): for a performer not on ThePornDB — often amateurs — **Edit details** on their page
+  (people with the Performers permission): other names, birthday, birthplace, nationality, ethnicity, hair, eyes, height
+  (cm), weight (kg), measurements, cup size, enhanced, tattoos, piercings, active from/until, a bio, and links to their
+  pages (OnlyFans, Fansly, Instagram, X, a website… up to 20, each with an optional name). They show like a ThePornDB
+  profile's, count for the Performers page's filters, and are kept in the database (so in every backup).
+- **Photo from a link** (3.9.0): on the photos panel, paste the address of a picture and **Add from link**. The server
+  fetches it with care: only http/https on the usual ports, only addresses on the public internet (nothing on your own
+  network or the server itself, checked again after every redirect, at most 3), pictures only, 30 MB at most, 20 seconds
+  at most; then it's converted to WebP like an uploaded one. Several files can be picked or dropped at once.
+- **FansDB / StashDB** (3.9.0): the **FansDB / StashDB** button on a performer's page searches either site by hand
+  (ThePornDB stays the automatic match) — each needs its own API key, and has its own address, under **Server Settings
+  → Credentials**. **This is the one** links the name: for a performer not on ThePornDB the profile's details fill
+  what nobody typed in (what was typed in is kept), its links are added, its gender sets the placeholder, and up to 5
+  of its photos are saved (untick **Also save up to 5 of their photos** to skip them); for a ThePornDB profile its
+  page and links are added, and what ThePornDB leaves empty. The site's button then opens their page there;
+  **Refresh** fetches it again (fills only what's still empty), **Unlink** forgets the link (what was copied stays).
+- **The wall** (3.9.0, Performers page → **The wall**, or **On the wall** on a performer's page): who appears with
+  whom, as a graph you can turn (3D) or a flat one (2D, also used when the browser can't draw 3D). Each dot is a
+  performer (coloured by gender); a line joins two who share videos — thicker for more; **Shared videos at least**
+  hides the weaker lines. Click a performer to put them in the middle with every video they're in (their thumbnails;
+  300 at most on the wall, all of them listed in the panel); tick **Also who they're with** to add the other
+  performers of those videos. Click a video to see it in the panel and open it. Only performers someone matched or
+  filled in are on it: linked to ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page.
+  The graph library (three.js) loads only on this page.
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture
   from your computer next to ThePornDB's — pick it or drop it on the panel; **Replace photo** swaps it (after asking). It's converted to WebP like the
   others (JPEG, PNG, WebP, GIF, BMP, TIFF; 30 MB at most; iPhone HEIC isn't readable — export it as JPEG). **Show
@@ -573,6 +623,13 @@ they end up with). Changes apply on the person's next click — no need to sign 
 themselves. Only the admin manages users, roles, groups and permissions, and there is one admin. Pages and buttons
 someone may not use aren't shown to them, and the server refuses them anyway.
 
+**Network** (3.9.0): every request the app sends out (ThePornDB, FansDB/StashDB, PMVHaven, Gemini, VirusTotal,
+Filester, update checks, photos from a link, extensions) is logged under the category *network*: failed ones, timeouts
+and answers of 400 or more as warnings, slow ones (20 s or more) as info, the rest at Debug level. Requests to the app
+are logged the same way — server errors and requests that got no answer as warnings, slow ones as info. Logged: method,
+address and path, status, time and size; keys, tokens and passwords in addresses are left out, and headers and bodies
+are never logged. The **User actions** view leaves the network entries out; pick the *network* category to see them.
+
 **Logs** has search and filters (category, event, user, level, text). Click an entry for its full JSON
 record (**Copy** copies it; **Copy error details** only the traceback, which also shows readably below);
 **Export** downloads the matching entries as JSON Lines. Client addresses are hashed by default.
@@ -633,7 +690,10 @@ the picked videos) or **Edit tags, performers, music…**: what you add goes on 
 what you remove comes off the ones that have it. These count as your edits, so syncs don't undo them.
 The same bar also has (depending on your permissions) **Find songs**, **Repair / update**, **Re-encode…** (pick the
 codec and its settings) and any extensions' actions: they queue every picked video and show which were skipped and why
-(already in that codec, already queued, file missing…).
+(already in that codec, already queued, file missing…). **Redo Frames** (3.9.0) takes the video frames shown under the
+player again for every picked video (the frames from the site, or 8 from the file), one after another on Tasks; a video
+someone is watching still goes first. **Select all {n}** (3.9.0) picks every result of the current search and filters
+(up to 5,000) — e.g. filter on vertical videos, **Select all**, **Redo Frames**.
 
 **Names → Spellings** lists tags, performers and music written in more than one way (e.g. "Natural Tits"
 and "Natural tits"). The app treats them as one and shows the spelling most videos use (on a tie, the newest one), so
@@ -658,6 +718,10 @@ previews of videos no longer in the library are listed as "seekbar preview", the
   or from its menu (**Sync Downloaded List Now**), and marks videos on PMVHaven as Downloaded or Duplicate.
 - **Google Gemini:** optional, free-tier API key for the AI step of finding songs (see *Songs*).
 - **VirusTotal:** optional API key (free account at virustotal.com) for the uploads' fingerprint check.
+- **FansDB / StashDB** (3.9.0): an API key for each (from your user page on fansdb.cc / stashdb.org; an account is
+  needed), used only when you search a performer by hand. The GraphQL address is filled in
+  (`https://fansdb.cc/graphql`, `https://stashdb.org/graphql`); change it only if they move. The key goes in a request
+  header, never in an address or the log.
 
 Passwords and keys are never shown again after saving; type a new value to replace one, or **Clear** to remove it.
 Everything is stored encrypted in `data/secrets.db` with the key in `data/secret.key`, so keep the `data` folder
@@ -809,7 +873,7 @@ you change it). Add more with **Add job → Backup**. Each backup job has its ow
   under **Copies elsewhere** below and their backups in the list, ready to test or restore. In a copy folder only
   the job's own backups are ever deleted — nothing else in it.
 - **Upload to Filester** — also to a private folder (“PMV Nexus backups”) on [Filester](https://filester.me), with
-  the API key from **Admin → Credentials → Filester**. Only what may leave the computer goes: the backup must be
+  the API key from **Server Settings → Credentials → Filester**. Only what may leave the computer goes: the backup must be
   encrypted (a **Backup password** must be set), the credentials (**Secrets**) and the videos can't be ticked, and
   the backup is made in parts of at most 9 GB (Filester takes files up to 10 GB; set **Part size** 1.9–9).
   Filester's storage per account isn't limited; its API docs say files nobody downloads for 45 days are deleted.
