@@ -53,7 +53,7 @@ export const DEFAULT_UI = Object.freeze({
   tablePreviewScale: 200,
   relatedCount: 15,
   relatedOrder: "best",   // 3.9.0: "best" matches first, or "random" among all related ones
-  wallPick: "random",     // 3.9.1 the wall's Pick for me: lib/wallPick.js PICK_MODES
+  wallPick: "random",     // 3.9.1 what The Wall's Random button picks: lib/wallPick.js PICK_MODES
   wallPickAnimate: true,  // ... with the search-and-zoom animation (else straight to the video)
   wallPickSeconds: 4,     // ... how long the animation takes (2-12 s)
   wallZoomStep: 1,        // 3.9.2: % per mouse-wheel step on the wall (1-20; Shift x5)
@@ -68,6 +68,7 @@ export const DEFAULT_UI = Object.freeze({
   wallArrows: "fly",       // 3.9.3 arrow keys: "fly" (up/down forward/back, left/right sideways) | "move" | "turn"
   wallDblClick: "none",    // 3.9.3 double-click a picture: "none" | "same" (open here) | "new" (new tab)
   wallHoverGrow: true,     // 3.9.3 the preview takes the picture's size when that's bigger
+  wallHoverTitle: "over",  // 3.9.4 the preview's title: "over" the video | "under" it
   wallDetails: WALL_DETAILS.slice(),  // 3.9.3 what the panel shows about a video
   wallGlide: 8,            // 3D glide after letting go (0 = stops at once)
   wallKeySpeed: 5,         // arrow-key speed
@@ -151,6 +152,7 @@ export function normalizeUi(raw) {
     wallArrows: pick(r.wallArrows, ["fly", "move", "turn"], DEFAULT_UI.wallArrows),
     wallDblClick: pick(r.wallDblClick, ["none", "same", "new"], DEFAULT_UI.wallDblClick),
     wallHoverGrow: typeof r.wallHoverGrow === "boolean" ? r.wallHoverGrow : DEFAULT_UI.wallHoverGrow,
+    wallHoverTitle: pick(r.wallHoverTitle, ["over", "under"], DEFAULT_UI.wallHoverTitle),
     wallDetails: Array.isArray(r.wallDetails) ? WALL_DETAILS.filter((k) => r.wallDetails.includes(k)) : WALL_DETAILS.slice(),
     wallGlide: Math.round(clampNum(r.wallGlide, 0, 10, DEFAULT_UI.wallGlide)),
     wallKeySpeed: Math.round(clampNum(r.wallKeySpeed, 1, 10, DEFAULT_UI.wallKeySpeed)),
@@ -262,7 +264,7 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMovePct: p.wallMovePct, wallArrows: p.wallArrows, wallDblClick: p.wallDblClick, wallHoverGrow: p.wallHoverGrow, wallDetails: p.wallDetails, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMovePct: p.wallMovePct, wallArrows: p.wallArrows, wallDblClick: p.wallDblClick, wallHoverGrow: p.wallHoverGrow, wallHoverTitle: p.wallHoverTitle, wallDetails: p.wallDetails, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }

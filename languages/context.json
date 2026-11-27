@@ -521,7 +521,7 @@
  "All {n} in the library": [
   "ui/src/views/PerformerView.vue"
  ],
- "Almost everything here can be changed — speeds, zoom, sizes, lines, previews, what Pick for me picks — in {settings}.": [
+ "Almost everything here can be changed — speeds, zoom, sizes, lines, previews, what Random picks — in {settings}.": [
   "ui/src/views/WallView.vue"
  ],
  "Already converting — see Tasks": [
@@ -595,6 +595,9 @@
  ],
  "Any hair colour…": [
   "ui/src/components/FilterPanel.vue"
+ ],
+ "Any of them, at random": [
+  "ui/src/lib/wallPick.js"
  ],
  "Any quality or better": [
   "ui/src/components/FilterPanel.vue"
@@ -4705,6 +4708,9 @@
  "On the site": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
+ "On the video": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "On The Wall": [
   "ui/src/views/PerformerView.vue"
  ],
@@ -5181,13 +5187,6 @@
   "ui/src/components/PerformerPhotos.vue",
   "ui/src/components/playlists/CoverDialog.vue"
  ],
- "Pick for me": [
-  "ui/src/views/SettingsView.vue",
-  "ui/src/views/WallView.vue"
- ],
- "Pick for me opens one of their videos. Click, Esc or Skip ends the search before it.": [
-  "ui/src/views/WallView.vue"
- ],
  "Pick one of the playlist's videos": [
   "backend/library_mixins/playlists.py"
  ],
@@ -5526,9 +5525,10 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Random": [
-  "ui/src/lib/wallPick.js",
   "ui/src/views/LibraryView.vue",
-  "ui/src/views/VideoView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/VideoView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Random (a new order each time you open the library)": [
   "ui/src/views/SettingsView.vue"
@@ -5536,8 +5536,14 @@
  "Random from all related": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Random opens one of their videos: it lights up, The Wall flies to it and zooms in. Click, Esc or Skip opens it at once.": [
+  "ui/src/views/WallView.vue"
+ ],
  "random order": [
   "ui/src/lib/libraryQuery.js"
+ ],
+ "Random picks": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Range": [
   "ui/src/views/admin/StatsView.vue"
@@ -6586,7 +6592,7 @@
  "Show the A-B button": [
   "ui/src/views/SettingsView.vue"
  ],
- "Show the search": [
+ "Show the way there": [
   "ui/src/views/SettingsView.vue"
  ],
  "Show them": [
@@ -7351,6 +7357,9 @@
  "The performer job is missing from the Scheduler — restart the app": [
   "backend/routers/performers.py"
  ],
+ "The picked video lights up, The Wall flies to it and zooms in, then the video opens. Off: the video opens right away. Click, Esc or Skip opens it at once.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "The picture at {time} will be saved as the thumbnail.": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
  ],
@@ -7493,9 +7502,6 @@
   "ui/src/components/AppSidebar.vue",
   "ui/src/router.js",
   "ui/src/views/PerformersView.vue",
-  "ui/src/views/SettingsView.vue"
- ],
- "The Wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.": [
   "ui/src/views/SettingsView.vue"
  ],
  "The Wall shows {n} of their {total} videos (My Settings → The Wall).": [
@@ -7859,6 +7865,9 @@
   "ui/src/components/MultiSelect.vue"
  ],
  "Type your username ({name})": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Under the video": [
   "ui/src/views/SettingsView.vue"
  ],
  "Unexpected response from PMVHaven (HTTP {status})": [
@@ -8458,7 +8467,7 @@
  "Where this backup goes": [
   "ui/src/views/admin/BackupsView.vue"
  ],
- "Which of a performer's videos The Wall's Pick for me button opens. Pressing it again gives another one.": [
+ "Which of a performer's videos The Wall's Random button opens. Pressing it again gives another one.": [
   "ui/src/views/SettingsView.vue"
  ],
  "Which profile is it?": [

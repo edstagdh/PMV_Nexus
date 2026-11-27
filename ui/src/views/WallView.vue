@@ -3,7 +3,7 @@
 // as a 3D (three.js, 3d-force-graph) or 2D (force-graph) graph. Click a performer to put them in
 // the middle with every video they're in (thumbnails); tick "Also who they're with" to add the
 // other performers of those videos. 3.9.1: hovering a video plays its preview (muted, like the
-// library); a click shows it in the side panel. "Pick for me" picks one of the performer's
+// library); a click shows it in the side panel. "Random" (was "Pick for me") picks one of the performer's
 // videos (My Settings -> The Wall: which one, the search animation, how long it takes), then
 // stores/flyIn.js grows its thumbnail into the video page's player.
 // Dragging always moves the view (nodes can't be dragged); 3D turns freely in every direction.
@@ -17,6 +17,8 @@
 // steps), arrow keys fly by default (up / down forward and back, left / right sideways), a
 // double-click can open a video, the hover preview grows to the picture's size, and the side
 // panel shows the picked video's details (GET /api/library/{id}/item).
+// 3.9.4: the hover preview's title sits on the video (setting), and Random no longer hops between
+// videos: the picked one glows, the view flies to it and zooms in, then the video page opens.
 // Data: GET /api/performers/wall. This page is its own chunk: the libraries load only here.
 import { t } from "../lib/i18n.js";
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
@@ -143,7 +145,7 @@ function small(url, done) {
 }
 let redrawTimer = 0;
 function redraw2d() {  // 2D draws only while something moves: show pictures that arrived later
-  if (is3d() || !graph || redrawTimer) return;
+  if (is3d() || !graph || redrawTimer || picking.value) return;
   redrawTimer = setTimeout(() => { redrawTimer = 0; graph?.zoom?.(graph.zoom()); }, 120);
 }
 
@@ -160,8 +162,9 @@ const colorOf = (n) => (n.kind === "video" ? colors.video : n.center ? colors.ac
 let graph = null;
 let disposables = [];
 const sprites = new Map();  // 3D: node id -> {s, h, ratio}
-let hot = null;             // the node "Pick for me" is looking at: drawn bigger
+let hot = null;             // the node Random picked: drawn a little bigger, with a glow
 let hotScale = 1;
+let glowAt = 0;             // when the glow started (performance.now()), 0 = none
 
 const sizeK = () => (P.wallPictureSize || 100) / 100;
 const nodeHeight3d = (n) => (n.kind === "video" ? 9 : n.center ? 22 : 12) * sizeK();
@@ -192,6 +195,41 @@ function scaleSprite(id) {
   const k = id === hot ? hotScale : 1;
   e.s.scale.set(e.h * e.ratio * k, e.h * k, 1);
 }
+let glowTex = null;
+function glowTexture() {   // a blurred accent rectangle: stretched to the picture, it's a halo around it
+  if (glowTex) return glowTex;
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.shadowColor = colors.accent;
+  g.shadowBlur = 42;
+  g.fillStyle = colors.accent;
+  for (let i = 0; i < 3; i++) g.fillRect(52, 52, 152, 152);   // three passes: a stronger glow
+  glowTex = new THREE.CanvasTexture(c);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  disposables.push(glowTex);
+  return glowTex;
+}
+function setGlow(id) {
+  for (const [nid, e] of sprites) if (e.glow) { e.glow.visible = nid === id; }
+  const e = id ? sprites.get(id) : null;
+  if (e && !e.glow) {
+    const mat = new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 });
+    e.glow = new THREE.Sprite(mat);
+    e.glow.scale.set(1.7, 1.7, 1);   // of the picture's size (it's a child of it)
+    e.glow.renderOrder = -1;
+    e.glow.position.z = -0.01;
+    e.s.add(e.glow);
+    disposables.push(mat);
+  }
+  glowAt = id ? performance.now() : 0;
+}
+function pulseGlow(now) {   // brighter and softer, about once a second
+  const k = 0.65 + 0.35 * Math.sin(((now - glowAt) / 1000) * Math.PI * 2);
+  const e = hot ? sprites.get(hot) : null;
+  if (e?.glow) e.glow.material.opacity = k;
+  return k;
+}
 function setHot(id, k = 1.5) {
   const before = hot;
   hot = id;
@@ -212,6 +250,14 @@ function size2d(n) {   // drawn size in graph units (2D)
 function draw2d(n, ctx, scale) {
   const { r, h, w, e } = size2d(n);
   if (e?.ready || n.kind === "video") {
+    if (n.id === hot && glowAt) {   // Random's pick: a pulsing accent glow around it
+      ctx.save();
+      ctx.shadowColor = colors.accent;
+      ctx.shadowBlur = 18 + 22 * pulseGlow(performance.now());
+      ctx.fillStyle = colors.accent;
+      ctx.fillRect(n.x - w / 2, n.y - h / 2, w, h);
+      ctx.restore();
+    }
     if (e?.ready) ctx.drawImage(e.canvas, n.x - w / 2, n.y - h / 2, w, h);
     else { ctx.fillStyle = colors.video; ctx.fillRect(n.x - w / 2, n.y - h / 2, w, h); }
     if (n.center || n.id === hot) { ctx.strokeStyle = colors.accent; ctx.lineWidth = 2 / scale; ctx.strokeRect(n.x - w / 2, n.y - h / 2, w, h); }
@@ -238,6 +284,8 @@ function destroy() {
   sprites.clear();
   for (const e of smalls.values()) e.waiters.length = 0;
   hot = null;
+  glowAt = 0;
+  glowTex = null;
   if (stage.value) stage.value.innerHTML = "";
 }
 let fitted = false;
@@ -501,7 +549,7 @@ const hoverStyle = computed(() => {
     const r = hoverRect.value;
     return { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` };
   }
-  const cw = hoverCardWidth(), ch = cw * 9 / 16 + 48;
+  const cw = hoverCardWidth(), ch = cw * 9 / 16 + (P.wallHoverTitle === "under" ? 48 : 0);
   let x = pointer.value.x + 18, y = pointer.value.y + 18;
   if (x + cw > W - 8) x = pointer.value.x - cw - 18;
   if (y + ch > H - 8) y = pointer.value.y - ch - 18;
@@ -568,7 +616,7 @@ function find() {
 }
 function toggleHelp(on = !helpOpen.value) { helpOpen.value = on; if (!on) store("pmv.wall.help", "1"); }
 
-// ---------------------------------------------------------------- Pick for me
+// ---------------------------------------------------------------- Random (was "Pick for me")
 const picking = ref(false);
 let run = null;
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -621,11 +669,6 @@ function screenRect(n) {      // where node n's picture is on the screen now
   }
   return { left: box.left + cx - w / 2, top: box.top + cy - h / 2, width: w, height: h };
 }
-function shuffle(list) {
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
-}
 
 async function pickForMe() {
   if (!focus.value || picking.value) return;
@@ -643,22 +686,19 @@ async function pickForMe() {
   picked.value = null;
   const T = session.prefs.wallPickSeconds * 1000;
   const wait = (ms) => new Promise((done) => { const id = setTimeout(done, ms); me_.wake = () => { clearTimeout(id); done(); }; });
+  let pulse = 0;
+  const beat = (now) => { pulseGlow(now); pulse = requestAnimationFrame(beat); };   // 2D redraws by itself meanwhile
   try {
-    for (const n of nodes()) { n.fx = n.x; n.fy = n.y; if (is3d()) n.fz = n.z; }   // hold still while it looks
+    for (const n of nodes()) { n.fx = n.x; n.fy = n.y; if (is3d()) n.fz = n.z; }   // hold still
     if (is3d()) graph.enableNavigationControls(false);
-    // 1. look through a few of the videos, slowing down -- 45 %
-    const hops = [...shuffle(nodes().filter((n) => n.kind === "video" && n !== target)).slice(0, 7), target];
-    const weights = hops.map((_, i) => 1 + i * 0.6);
-    const sum = weights.reduce((a, b) => a + b, 0);
-    for (let i = 0; i < hops.length && !me_.skipped; i++) {
-      const ms = (T * 0.45 * weights[i]) / sum;
-      setHot(hops[i].id, 1.5);
-      aim(hops[i], fill(hops[i], 0.28), ms);
-      await wait(ms);
-    }
-    // 2. lock on -- 15 %
-    if (!me_.skipped) { setHot(target.id, 1.9); await wait(T * 0.07); }
-    if (!me_.skipped) { setHot(target.id, 1.5); await wait(T * 0.08); }
+    else graph.autoPauseRedraw(false);   // 2D: keep drawing so the glow pulses
+    // 1. the picked one glows where it is -- 20 %
+    setHot(target.id, 1.15);
+    setGlow(target.id);
+    pulse = requestAnimationFrame(beat);
+    await wait(T * 0.2);
+    // 2. fly to it -- 40 %
+    if (!me_.skipped) { aim(target, fill(target, 0.4), T * 0.4); await wait(T * 0.4); }
     // 3. zoom in until it fills the view -- 25 %
     if (!me_.skipped) { aim(target, fill(target, 0.9), T * 0.25); await wait(T * 0.25); }
     if (me_.skipped) { openVideo(video); return; }
@@ -666,6 +706,8 @@ async function pickForMe() {
     if (video.thumb) startFlyIn(video.thumb, screenRect(target), T * 0.15 + 250);
     openVideo(video);
   } finally {
+    cancelAnimationFrame(pulse);
+    if (graph && !is3d()) graph.autoPauseRedraw(true);
     if (run === me_) run = null;
     picking.value = false;
   }
@@ -786,7 +828,7 @@ onBeforeUnmount(() => {
         <button class="btn btn-ghost btn-sm" :disabled="picking" :title="$t('Show everything')" @click="fitAll">{{ $t("Fit") }}</button>
       </div>
       <label v-if="focus" class="co"><input v-model="showCo" type="checkbox"> {{ $t("Also who they’re with") }}</label>
-      <button v-if="focus" class="btn btn-sm btn-primary" :disabled="picking || !myVideos.length" @click="pickForMe"><Icon name="dice" :size="14" />{{ $t("Pick for me") }}</button>
+      <button v-if="focus" class="btn btn-sm btn-primary" :disabled="picking || !myVideos.length" @click="pickForMe"><Icon name="dice" :size="14" />{{ $t("Random") }}</button>
       <button v-if="focus" class="btn btn-sm" :disabled="picking" @click="setFocus(null)"><Icon name="back" :size="14" />{{ $t("Everyone") }}</button>
       <span class="bar-end">
         <button class="btn btn-ghost btn-icon btn-sm" :class="{ active: helpOpen }" :aria-expanded="helpOpen" :aria-label="$t('How The Wall works')"
@@ -802,7 +844,7 @@ onBeforeUnmount(() => {
         <div v-else-if="!data" class="skeleton fill" />
         <div ref="stage" class="stage" />
 
-        <div v-if="hover" class="hover-card card" :class="{ inplace: hoverInPlace }" :style="hoverStyle">
+        <div v-if="hover" class="hover-card card" :class="{ inplace: hoverInPlace, over: hoverInPlace || P.wallHoverTitle !== 'under' }" :style="hoverStyle">
           <div class="hc-media">
             <PreviewVideo v-if="hover.v.preview" :key="hover.v.id" :src="hover.v.preview" :item-id="hover.v.id" />
             <img v-else-if="hover.v.thumb" :src="hover.v.thumb" alt="">
@@ -824,8 +866,8 @@ onBeforeUnmount(() => {
             <li>{{ $t("Each dot is a performer; a line means they share videos — the thicker, the more. “Shared videos at least” hides the weaker lines.") }}</li>
             <li>{{ $t("Click a performer to put them in the middle with all their videos. “Also who they’re with” adds the other performers in those videos; “Everyone” goes back.") }}</li>
             <li>{{ $t("With a mouse, point at a video to play its preview. Click (tap) it to see it in the panel and open it.") }}</li>
-            <li>{{ $t("Pick for me opens one of their videos. Click, Esc or Skip ends the search before it.") }}</li>
-            <li><Tx msg="Almost everything here can be changed — speeds, zoom, sizes, lines, previews, what Pick for me picks — in {settings}."><template #settings><RouterLink :to="{ name: 'settings', query: { tab: 'wall' } }">{{ $t("My Settings → The Wall") }}</RouterLink></template></Tx></li>
+            <li>{{ $t("Random opens one of their videos: it lights up, The Wall flies to it and zooms in. Click, Esc or Skip opens it at once.") }}</li>
+            <li><Tx msg="Almost everything here can be changed — speeds, zoom, sizes, lines, previews, what Random picks — in {settings}."><template #settings><RouterLink :to="{ name: 'settings', query: { tab: 'wall' } }">{{ $t("My Settings → The Wall") }}</RouterLink></template></Tx></li>
           </ul>
         </div>
 
@@ -877,7 +919,7 @@ onBeforeUnmount(() => {
             <div><h2>{{ me.name }}</h2><p class="muted small">{{ $tn("{n} video", "{n} videos", me.videos) }}</p></div>
           </div>
           <div class="acts">
-            <button class="btn btn-primary btn-sm" :disabled="picking || !myVideos.length" @click="pickForMe"><Icon name="dice" :size="14" />{{ $t("Pick for me") }}</button>
+            <button class="btn btn-primary btn-sm" :disabled="picking || !myVideos.length" @click="pickForMe"><Icon name="dice" :size="14" />{{ $t("Random") }}</button>
             <RouterLink :to="{ name: 'performer', params: { name: me.link } }" class="btn btn-sm">{{ $t("Profile") }}</RouterLink>
           </div>
           <p class="muted small">{{ $t("Picks: {how}", { how: $t(PICK_MODES[session.prefs.wallPick]) }) }} · <RouterLink :to="{ name: 'settings', query: { tab: 'wall' } }">{{ $t("change") }}</RouterLink></p>
@@ -925,8 +967,8 @@ onBeforeUnmount(() => {
 .hover-card.inplace { border-radius: 0.25rem; box-shadow: 0 0 0 2px var(--accent), 0 0.75rem 2rem rgba(0, 0, 0, 0.45); }
 .hover-card.inplace .hc-media { aspect-ratio: auto; height: 100%; }
 .hover-card.inplace .hc-media video, .hover-card.inplace .hc-media img { object-fit: cover; }
-.hover-card.inplace .hc-text { position: absolute; inset-inline: 0; bottom: 0; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); padding-top: 1.2rem; }
-.hover-card.inplace .hc-text .muted { color: rgba(255, 255, 255, 0.75); }
+.hover-card.over .hc-text { position: absolute; inset-inline: 0; bottom: 0; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); padding-top: 1.2rem; }
+.hover-card.over .hc-text .muted { color: rgba(255, 255, 255, 0.75); }
 .hc-media video, .hc-media img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .hc-text { padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
 .hc-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

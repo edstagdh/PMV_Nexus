@@ -543,12 +543,14 @@ How it works:
   - Zoom (3.9.2): the mouse wheel zooms 1 % a step (hold Shift for 5 %), smoothly and towards the mouse in 2D; a pinch
     works on phones; **+** / **−** on the keyboard zoom five steps, **0** shows everything. The bar has **−**, a zoom
     slider, **+**, the zoom in % (100 % = everything fits) and **Fit**.
-  - **Pick for me** (3.9.1, when a performer is in the middle): opens one of their videos — Random (default), One I
-    haven't watched, One of my Favorites, The one I watch most, Highest rated, Most viewed / Most liked on the site,
-    Newest in the library. Pressing it again gives another one (the ranked ways go down the list). If none fits (e.g.
-    you've watched them all), it picks at random and says so. Before opening it, The Wall looks through a few of the
-    videos, stops on the picked one, zooms in until it fills the view, and the picture grows into the video page's
-    player; a click, Esc or **Skip** ends it and opens the video at once. It's skipped when your system asks for
+  - **Random** (3.9.1 as "Pick for me", renamed 3.9.4; when a performer is in the middle): opens one of their videos —
+    by default any of them at random; or One I haven't watched, One of my Favorites, The one I watch most, Highest
+    rated, Most viewed / Most liked on the site, Newest in the library (**My Settings → The Wall → Random picks**).
+    Pressing it again gives another one (the ranked ways go down the list). If none fits (e.g. you've watched them
+    all), it picks at random and says so. Before opening it, the picked video lights up with a pulsing glow, The Wall
+    flies to it and zooms in until it fills the view, and the picture grows into the video page's player (3.9.4; it
+    no longer hops between other videos first); a click, Esc or **Skip** opens the video at once. **Show the way
+    there** and **How long it takes** (2–12 s) are in the same settings; it's skipped when your system asks for
     reduced motion.
   - Clicking a video (3.9.3) shows it in the side panel: a preview when you point at the picture, the title, its
     creators, **Open the video** / **New tab**, and its details — length, quality, file size, codec, rating, views,
@@ -556,15 +558,16 @@ How it works:
     Settings → The Wall → Details in the side panel**) — then its performers. **Double-click** (same tab) can open the
     video here or in a new tab (a performer: their profile); by default it does nothing more.
   - The hover preview (3.9.3) plays right on the picture, at its size, when the picture is shown bigger than the
-    preview size (**As big as the picture**); smaller pictures get the usual card next to the pointer.
+    preview size (**As big as the picture**); smaller pictures get a card next to the pointer. The title and creator
+    are written on the video (3.9.4; **Title: Under the video** puts them below it instead).
   - **My Settings → The Wall** (3.9.2) sets nearly all of it, per person: what it opens in (last view / 3D / 2D), the
     starting zoom, the side panel, the starting **Shared videos at least** (Auto: 1, or 2 in a very large library) and
     **Also who they're with**, how many videos come around a performer (50–1000, default 300); zoom per wheel step
     (1–20 %), turning and moving speed (100 % = the pictures follow the pointer), glide (0 stops at once), what the
     arrow keys do and their speed; double-click; details in the side panel; size of dots and pictures, picture
     detail (128 / 256 / 512 px — sharper is heavier), line strength, video titles in 2D (when zoomed in / always /
-    never) and background (theme or black); hover previews on/off, the wait before one plays and its size; and Pick
-    for me's choice, its search on/off and length (2–12 s). **Reset this tab** puts them back.
+    never) and background (theme or black); hover previews on/off, the wait before one plays and its size; and what
+    Random picks, its animation on/off and length (2–12 s). **Reset this tab** puts them back.
   The graph library (three.js) loads only on this page; pictures are drawn from small copies, so hundreds of
   thumbnails stay smooth.
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture

@@ -141,6 +141,7 @@ const WALL_GROUPS = [
     { key: "wallHover", kind: "switch", label: t("Play the preview on hover"), help: t("Pointing at a video with the mouse plays its preview, muted like in the library.") },
     { key: "wallHoverDelay", kind: "range", min: 0, max: 1000, step: 50, show: (v) => t("{ms} ms", { ms: v }), label: t("Wait before playing"), off: () => !session.prefs.wallHover },
     { key: "wallHoverSize", kind: "select", label: t("Preview size"), help: t("For pictures shown smaller than this."), options: [["s", t("Small")], ["m", t("Medium")], ["l", t("Large")]] },
+    { key: "wallHoverTitle", kind: "select", label: t("Title"), options: [["over", t("On the video")], ["under", t("Under the video")]] },
     { key: "wallHoverGrow", kind: "switch", label: t("As big as the picture"), help: t("A picture shown bigger than the preview size plays its preview right on it, at its size.") },
   ] },
   { title: t("Clicking a video"), items: [
@@ -148,10 +149,10 @@ const WALL_GROUPS = [
       options: [["none", t("Nothing more")], ["same", t("Open it in this tab")], ["new", t("Open it in a new tab")]] },
     { key: "wallDetails", kind: "checks", label: t("Details in the side panel"), options: WALL_DETAIL_LABELS },
   ] },
-  { title: t("Pick for me"), items: [
-    { key: "wallPick", kind: "select", label: t("Pick for me"), help: t("Which of a performer's videos The Wall's Pick for me button opens. Pressing it again gives another one."),
+  { title: t("Random"), items: [
+    { key: "wallPick", kind: "select", label: t("Random picks"), help: t("Which of a performer's videos The Wall's Random button opens. Pressing it again gives another one."),
       options: Object.entries(PICK_MODES).map(([k, l]) => [k, t(l)]) },
-    { key: "wallPickAnimate", kind: "switch", label: t("Show the search"), help: t("The Wall looks through the videos, stops on the one picked, zooms in and opens it. Off: the video opens right away. Click, Esc or Skip ends it early.") },
+    { key: "wallPickAnimate", kind: "switch", label: t("Show the way there"), help: t("The picked video lights up, The Wall flies to it and zooms in, then the video opens. Off: the video opens right away. Click, Esc or Skip opens it at once.") },
     { key: "wallPickSeconds", kind: "range", min: 2, max: 12, step: 0.5, show: (v) => t("{s} s", { s: v }), label: t("How long it takes"), help: t("From the button to the video page."), off: () => !session.prefs.wallPickAnimate },
   ] },
 ];

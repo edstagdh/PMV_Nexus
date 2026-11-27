@@ -1,4 +1,4 @@
-// The wall's "Pick for me" (3.9.1): one of a performer's videos, by the way chosen in My Settings
+// The Wall's "Random" button (3.9.1 "Pick for me"; renamed 3.9.4): one of a performer's videos, by the way chosen in My Settings
 // -> The Wall. Ranked ways take the best one not picked for this performer lately (this browser
 // tab), so pressing again gives the next one; ties are shuffled. Videos come from
 // GET /api/performers/wall (rating, views, likes, added, plays, started per video).
@@ -6,7 +6,7 @@ import { N_ } from "./i18n.js";
 import { isFavorite } from "../stores/favorites.js";
 
 export const PICK_MODES = {
-  random: N_("Random"),
+  random: N_("Any of them, at random"),
   unwatched: N_("One I haven't watched"),
   favorites: N_("One of my Favorites"),
   most_watched: N_("The one I watch most"),

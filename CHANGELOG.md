@@ -4,6 +4,15 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.9.4] - 2026-11-28
+
+### Changed
+- **The Wall: "Pick for me" is now "Random".** Its way there is calmer: the picked video lights up with a pulsing glow,
+  The Wall flies to it and zooms in, then the video opens — it no longer hops between other videos first. The settings
+  are now "Random picks" (the first choice reads "Any of them, at random") and "Show the way there".
+- **The Wall: the hover preview's title** is written on the video for small previews too, like on the big ones
+  (My Settings → The Wall → Title: "Under the video" for the old look).
+
 ## [3.9.3] - 2026-11-27
 
 ### Added
