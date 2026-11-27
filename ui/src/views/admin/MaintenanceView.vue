@@ -82,6 +82,28 @@ function toggleAll() {
   selected.value = s;
 }
 
+// 3.10.0: untracked videos with a site video id in their name can be added back (no download)
+const addableSelected = computed(() => (scan.value?.files || []).filter((f) => f.can_add && selected.value.has(f.path)));
+const addableCount = computed(() => (scan.value?.files || []).filter((f) => f.can_add).length);
+const adding = ref(false);
+function selectAddable() {
+  selected.value = new Set((scan.value?.files || []).filter((f) => f.can_add).map((f) => f.path));
+}
+async function doAdd() {
+  adding.value = true;
+  try {
+    const r = await api("/api/maintenance/untracked-files/add", { method: "POST", body: { paths: addableSelected.value.map((f) => f.path) } });
+    const parts = r.queued ? [tn("Adding {n} video to the library — follow it on Tasks", "Adding {n} videos to the library — follow it on Tasks", r.queued)] : [];
+    if (r.refused.length) parts.push(t("{n} skipped: {why}", { n: r.refused.length, why: [...new Set(r.refused.map((x) => x.reason))].join("; ") }));
+    toast(parts.join(" · "), { type: r.queued ? "success" : "error", timeout: 8000 });
+    selected.value = new Set();
+  } catch (err) {
+    toast(err.message || t("Could not add them"), { type: "error" });
+  } finally {
+    adding.value = false;
+  }
+}
+
 async function doDelete() {
   deleting.value = true;
   try {
@@ -158,6 +180,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
         <div>
           <h2>{{ $t("Untracked files") }}</h2>
           <p class="muted small">{{ $t("Files in the download and cache folders that no video in the library points to — for example a removed duplicate whose file was in use at the time, or something copied there by hand. Nothing is deleted until you choose.") }}</p>
+          <p class="muted small">{{ $t("Videos the app downloaded carry their PMVHaven video id in their name. If the library lost them (an older backup restored, a lost database), Add to the library brings them back without downloading: the details come from the site, the file stays where it is, and their leftover thumbnail, preview and details in the cache are linked again.") }}</p>
         </div>
         <button class="btn btn-primary btn-sm" :disabled="scanning" @click="runScan"><Icon name="search" />{{ scanning ? $t("Scanning…") : scan ? $t("Scan again") : $t("Scan folders") }}</button>
       </div>
@@ -178,6 +201,10 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
           </select>
           <span class="spacer" />
           <span class="muted small">{{ $t("{n} selected", { n: selected.size }) }} · {{ size(selectedSize) }}</span>
+          <button v-if="addableCount" class="btn btn-ghost btn-sm" @click="selectAddable">{{ $t("Select the {n} that can be added", { n: addableCount }) }}</button>
+          <button v-if="addableCount" class="btn btn-sm" :disabled="!addableSelected.length || adding"
+                  :title="$t('Videos with a PMVHaven video id in their name: their details come from the site, the file stays where it is — nothing is downloaded')"
+                  @click="doAdd"><Icon name="plus" />{{ $t("Add to the library ({n})", { n: addableSelected.length }) }}</button>
           <button class="btn btn-danger btn-sm" :disabled="!selected.size" @click="confirming = true"><Icon name="trash" />{{ $t("Delete selected") }}</button>
         </div>
         <div v-if="scan.files.length" class="table-wrap">
@@ -193,7 +220,10 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
                 <td class="cb"><input type="checkbox" :checked="selected.has(f.path)" :aria-label="$t('Select {relative}', { relative: f.relative })" @click.stop @change="toggle(f.path)"></td>
                 <td><span class="kind" :class="f.kind.replace(/\s/g, '-')">{{ f.kind }}</span></td>
                 <td class="muted">{{ f.location }}</td>
-                <td class="path" :title="f.path">{{ f.relative }}</td>
+                <td class="path" :title="f.path">{{ f.relative }}
+                  <span v-if="f.can_add" class="pill pill-accent" :title="$t('Add to the library brings it back with its details from the site, without downloading it')">{{ $t("can be added") }}</span>
+                  <span v-else-if="f.why_not === 'in_library'" class="pill" :title="$t('The library already has this video, in another file — this one is a second copy')">{{ $t("already in the library") }}</span>
+                </td>
                 <td class="num">{{ size(f.size) }}</td>
                 <td class="muted nowrap">{{ when(f.modified) }}</td>
               </tr>

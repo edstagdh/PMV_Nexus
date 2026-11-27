@@ -4,6 +4,22 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.10.0] - 2026-11-28
+
+### Added
+- **Maintenance → Untracked files → Add to the library:** videos the app downloaded keep their PMVHaven video id in
+  their name; when the library lost track of them (an older backup restored, a lost database), they're marked "can
+  be added" and come back **without downloading them again** — details from the site, the file left where it is,
+  leftover thumbnail / preview / details JSON / funscript of the same video linked again, the rest made by
+  Repair/Update. Videos the site no longer has are added from their file name and old details. One job on Tasks.
+
+### Changed
+- Repair/Update of a video that's gone from the site makes its missing thumbnail and preview from the file (like for
+  an upload) instead of failing.
+
+### Fixed
+- The guide said that adding a lost video's link again picks up the existing file; it downloads it again.
+
 ## [3.9.4] - 2026-11-28
 
 ### Changed

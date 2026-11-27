@@ -123,6 +123,7 @@ _LABELS = {
     "performers_local_details": "Change performer details (typed in)",
     "performers_add_photo_url": "Add performer photo from a link",
     "find_shared_scenes": "Find shared scenes",
+    "add_untracked_files": "Add untracked videos to the library",
     "performers_stashbox_link": "Link performer to FansDB / StashDB",
     "performers_stashbox_unlink": "Unlink performer from FansDB / StashDB",
     # playlists

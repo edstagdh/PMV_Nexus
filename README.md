@@ -138,7 +138,7 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   A reorderable queue shows live progress, ETA and speed. Each file is checked for damage before it's re-encoded.
 - **Repair / update** missing thumbnails, previews and details. **Make audio playable** (AAC) for files with
   audio a browser can't play. Hover previews are made **H.264**, with a graphics card's encoder when it's faster.
-  **Untracked files** finds leftovers to delete.
+  **Untracked files** finds leftovers to delete, and adds videos the library lost track of back without downloading them.
 
 ### Running it
 - **Multi-user:** accounts with **roles, groups and per-person permissions** (e.g. a helper who may only fix names).

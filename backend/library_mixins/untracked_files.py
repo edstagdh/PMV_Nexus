@@ -3,7 +3,8 @@ Maintenance -> Untracked files: files in the download and cache folders that
 no library item points to -- e.g. a duplicate's video that couldn't be
 deleted because it was in use, or files left by a manual move. Listing is
 read-only; deleting only ever touches files that are still untracked and
-inside those two folders.
+inside those two folders. 3.10.0: videos with a site video id in their name
+can be added back to the library (library_mixins/adopt.py).
 """
 from __future__ import annotations
 
@@ -103,10 +104,13 @@ class UntrackedFilesMixin:
                         st = path.stat()
                     except OSError:
                         continue
-                    files.append({
+                    entry = {
                         "path": str(path), "relative": str(path.relative_to(root)), "location": location,
                         "kind": _kind(path), "size": st.st_size, "modified": st.st_mtime,
-                    })
+                    }
+                    if location == "downloads" and entry["kind"] == "video":
+                        entry.update(self.untracked_video_info(path))   # 3.10.0: can it be added back?
+                    files.append(entry)
         files.sort(key=lambda f: (f["location"], f["relative"].lower()))
         return {"scanned_at": time.time(), "files": files, "total_size": sum(f["size"] for f in files),
                 "errors": errors[:20], "roots": {loc: str(root) for loc, root in roots}}

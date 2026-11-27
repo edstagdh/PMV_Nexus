@@ -469,6 +469,12 @@ class RepairWorkerMixin:
             meta, raw_json = await sources.get(item.site).details(item, need_file=False)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Repair/Update for {}: could not re-fetch metadata: {}", item.id, exc)
+            if item.site_status == "removed":
+                # 3.10.0: gone from the site (e.g. added back from an untracked file): what's
+                # missing is made from the file, like for an upload, instead of failing.
+                fixed += await self.repair_local_item(item, thumb_broken, preview_broken)
+                await self._finish_repair(item, "done", fixed=fixed)
+                return
             await self._finish_repair(
                 item, "failed",
                 error=(f"Fixed {', '.join(fixed)}, but couldn't re-fetch metadata: {exc}" if fixed else f"Could not re-fetch metadata: {exc}"),

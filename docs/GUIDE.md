@@ -744,6 +744,20 @@ no performer uses any more is listed as "performer photo". A re-encode's work fi
 while it's being written; one left over from an interrupted re-encode is listed as "unfinished re-encode". Seekbar
 previews of videos no longer in the library are listed as "seekbar preview", their video frames as "video frame".
 
+**Add to the library** (3.10.0): a video the app downloaded keeps its PMVHaven video id in its name
+(`<creator> - <date> - <title> [<id>].mp4`). If the library lost track of it — an older backup restored, a lost or
+damaged database — it's listed with **can be added**. Pick it (or **Select the … that can be added**) and **Add to
+the library**: nothing is downloaded and nothing is moved or renamed. Its details come from the site's API, as for a
+new download; its leftovers of the same id — the thumbnail, preview clip and details (JSON) in the cache folder, a
+`.funscript` next to the video — are linked again; then Repair/Update fills in the rest (thumbnail, preview,
+technical details, fingerprint) and seekbar previews and frames are made. A video the site doesn't have any more is
+added too, from its file name and its old details JSON when that's there, marked as removed from the site, with a
+thumbnail and preview made from the file. Its date added is the file's date. It runs as one job on Tasks (it can be
+stopped), one site look-up a second. Not offered: a video the library already has (the file is a second copy —
+"already in the library"), and files without an id in their name (renamed by hand). Adding the link again instead
+(Add videos) downloads the whole video again — into the same file name, replacing it, or next to it when the site
+changed its title.
+
 ## Credentials
 
 **Server Settings → Credentials** holds everything the app needs to sign in to other services:
@@ -984,8 +998,8 @@ A bad bulk edit, a wrong merge in Names, deleted playlists…
 1. **Create backup now** first (so today's state can be got back too).
 2. **Restore** the newest backup made before the mistake, restart.
 3. Anything done after that backup (new downloads, edits) is gone from the library — the video files of new
-   downloads stay in the folder: **Maintenance → Untracked files** lists them, and adding them again by link
-   picks up the existing file.
+   downloads stay in the folder: **Maintenance → Untracked files** lists them, and **Add to the library** there
+   brings them back without downloading them again (3.10.0).
 
 #### Scenario 2 — the database is damaged
 Errors like "database disk image is malformed", or the app won't start after a crash or power cut.

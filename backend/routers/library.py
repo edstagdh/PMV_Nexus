@@ -314,6 +314,15 @@ async def list_untracked_files(user: AuthContext = Depends(require_permission("m
     return await library_manager.find_untracked_files()
 
 
+@router.post("/api/maintenance/untracked-files/add")
+async def add_untracked_files(payload: DeleteFilesRequest, user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """3.10.0: video files with a site id in their name become library videos again (no download)."""
+    try:
+        return library_manager.start_adopting(payload.paths[:5000], user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.post("/api/maintenance/untracked-files/delete")
 async def delete_untracked_files(payload: DeleteFilesRequest, user: AuthContext = Depends(require_permission("maintenance.run"))):
     return await library_manager.delete_untracked_files(payload.paths[:5000])

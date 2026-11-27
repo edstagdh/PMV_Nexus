@@ -351,6 +351,12 @@
   "ui/src/lib/actions.js",
   "ui/src/views/PlaylistView.vue"
  ],
+ "Add to the library ({n})": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "Add to the library brings it back with its details from the site, without downloading it": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Add to your favourite performers (♥ on their badges; Library → sort Favourite performers)": [
   "ui/src/views/PerformerView.vue"
  ],
@@ -429,8 +435,14 @@
  "Adding the settings and own pictures": [
   "backend/backup.py"
  ],
+ "Adding untracked videos to the library": [
+  "backend/library_mixins/adopt.py"
+ ],
  "Adding {n} of {total}…": [
   "ui/src/components/PerformerPhotos.vue"
+ ],
+ "Adding {n} videos to the library — follow it on Tasks": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Adding…": [
   "ui/src/components/AddVideoDialog.vue",
@@ -530,11 +542,17 @@
  "Already given by the role or a group": [
   "ui/src/components/admin/PermissionPicker.vue"
  ],
+ "already in the library": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Already last in the queue": [
   "backend/library_mixins/core.py"
  ],
  "Already next in line": [
   "backend/library_mixins/core.py"
+ ],
+ "already part of the library": [
+  "backend/library_mixins/adopt.py"
  ],
  "Already running: it goes once more when done": [
   "ui/src/components/admin/SharedScenesPanel.vue"
@@ -579,6 +597,9 @@
  ],
  "An encode uses {used} of {total} cores.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "another picked file is the same video": [
+  "backend/library_mixins/adopt.py"
  ],
  "Any": [
   "ui/src/components/FilterPanel.vue",
@@ -982,6 +1003,9 @@
  "Cache folder": [
   "ui/src/views/admin/ServerSettingsView.vue",
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "can be added": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "can be downloaded again": [
   "ui/src/views/admin/BackupsView.vue"
@@ -1471,6 +1495,9 @@
  ],
  "could not add it": [
   "ui/src/components/PerformerPhotos.vue"
+ ],
+ "Could not add them": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Could not change the folder": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -4434,6 +4461,9 @@
  "No video file to take frames from": [
   "backend/routers/bulk.py"
  ],
+ "no video id in its name": [
+  "backend/library_mixins/adopt.py"
+ ],
  "No videos match": [
   "ui/src/views/LibraryView.vue"
  ],
@@ -4493,6 +4523,9 @@
  "Not a valid folder name": [
   "backend/routers/_common.py"
  ],
+ "not a video file": [
+  "backend/library_mixins/adopt.py"
+ ],
  "Not allowed": [
   "backend/routers/health.py",
   "ui/src/App.vue"
@@ -4549,6 +4582,9 @@
  "Not found on {site}": [
   "backend/stashbox.py"
  ],
+ "not in the download folder": [
+  "backend/library_mixins/adopt.py"
+ ],
  "Not installed": [
   "ui/src/components/LanguageSettings.vue"
  ],
@@ -4591,6 +4627,9 @@
  ],
  "Not the same": [
   "ui/src/views/admin/NamesView.vue"
+ ],
+ "not there any more": [
+  "backend/library_mixins/adopt.py"
  ],
  "Not used": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -6385,6 +6424,9 @@
  "Select all {n}": [
   "ui/src/views/LibraryView.vue"
  ],
+ "Select the {n} that can be added": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Select this page": [
   "ui/src/views/LibraryView.vue"
  ],
@@ -6941,6 +6983,7 @@
   "backend/library_mixins/songs.py"
  ],
  "Stopped by an error (see the log)": [
+  "backend/library_mixins/adopt.py",
   "backend/library_mixins/frames.py",
   "backend/library_mixins/scenes.py",
   "backend/library_mixins/storyboards.py"
@@ -7180,6 +7223,9 @@
  "That suggestion was already handled": [
   "backend/routers/songs.py"
  ],
+ "that video is already in the library (another file)": [
+  "backend/library_mixins/adopt.py"
+ ],
  "That's switched off in Server Settings": [
   "backend/routers/bulk.py"
  ],
@@ -7323,6 +7369,9 @@
  ],
  "The last sync failed: {error}": [
   "ui/src/components/admin/SiteSyncPanel.vue"
+ ],
+ "The library already has this video, in another file — this one is a second copy": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "The library has no downloaded videos yet": [
   "backend/routers/library.py"
@@ -8269,6 +8318,9 @@
  "Videos already being converted for watching: {n} -- try again when one stops, or play the original": [
   "backend/transcode.py"
  ],
+ "Videos are already being added -- see Tasks": [
+  "backend/library_mixins/adopt.py"
+ ],
  "Videos around a performer": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -8290,8 +8342,14 @@
  "Videos that use the same footage, found by comparing the frames of their seekbar previews (black, white and nearly flat frames, the first and last seconds, and frames found in many videos — intros, logos — are left out). Shown on the video page, and they rank higher among related videos. It runs by itself after new seekbar previews are made; videos without seekbar previews aren't compared.": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
+ "Videos the app downloaded carry their PMVHaven video id in their name. If the library lost them (an older backup restored, a lost database), Add to the library brings them back without downloading: the details come from the site, the file stays where it is, and their leftover thumbnail, preview and details in the cache are linked again.": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Videos the duplicate scan found to be the same clip. Pick the copy to keep, compare them playing, or mark a group as not duplicates.": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Videos with a PMVHaven video id in their name: their details come from the site, the file stays where it is — nothing is downloaded": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Videos with any of these are left out. A word alone: anywhere. field:word: only there (tag:, performer:, title:, creator:, music:, description:, codec:). “Two words” together; * as in the search.": [
   "ui/src/components/FilterPanel.vue"
@@ -8970,6 +9028,9 @@
   "ui/src/views/WallView.vue"
  ],
  "{n} skipped (now part of the library)": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "{n} skipped: {why}": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "{n} song(s) so far": [
