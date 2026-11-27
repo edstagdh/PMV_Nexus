@@ -110,6 +110,9 @@
  "A backup is already being made -- see Tasks": [
   "backend/library_mixins/system_worker.py"
  ],
+ "A click shows the video in the side panel. A double-click on a video (or a performer: their profile) can also open it.": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "A copy folder must be another folder than the backups folder": [
   "backend/backup.py"
  ],
@@ -133,6 +136,9 @@
  ],
  "a performer with {details}": [
   "ui/src/lib/libraryQuery.js"
+ ],
+ "A picture shown bigger than the preview size plays its preview right on it, at its size.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "A position in the video is required": [
   "backend/library_mixins/item_extras.py"
@@ -387,7 +393,8 @@
  ],
  "Added": [
   "ui/src/components/AddVideoDialog.vue",
-  "ui/src/views/PlaylistView.vue"
+  "ui/src/views/PlaylistView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "added": [
   "backend/activity.py"
@@ -397,6 +404,9 @@
  ],
  "Added to Favorites": [
   "ui/src/components/FavoriteButton.vue"
+ ],
+ "Added to the library": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Added to {name}": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
@@ -667,10 +677,19 @@
  "Arrow key speed": [
   "ui/src/views/SettingsView.vue"
  ],
- "Arrow keys move it too; in 3D, Shift + arrow keys turn it.": [
+ "Arrow keys": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Arrow keys fly: ↑ ↓ forward and back, ← → sideways; Shift + arrow keys turn it (3D).": [
   "ui/src/views/WallView.vue"
  ],
- "Arrow keys move it; in 3D, Shift + arrow keys turn it.": [
+ "Arrow keys slide it up, down, left and right; Shift + arrow keys turn it (3D).": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Arrow keys turn it (3D); Shift + arrow keys slide it.": [
+  "ui/src/views/WallView.vue"
+ ],
+ "As big as the picture": [
   "ui/src/views/SettingsView.vue"
  ],
  "Ascending": [
@@ -1215,6 +1234,9 @@
  "Click or drop to pick another file": [
   "ui/src/views/UploadView.vue"
  ],
+ "Clicking a video": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Client addresses": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -1240,6 +1262,8 @@
   "ui/src/components/ReencodeOptions.vue",
   "ui/src/components/VideoTable.vue",
   "ui/src/components/upload/ConvertStep.vue",
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/DuplicatesView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -2017,8 +2041,10 @@
  "Description": [
   "ui/src/components/admin/AccessPanel.vue",
   "ui/src/components/dialogs/PlaylistEditDialog.vue",
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/UploadView.vue",
-  "ui/src/views/VideoView.vue"
+  "ui/src/views/VideoView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "description": [
   "ui/src/components/admin/SiteSyncPanel.vue"
@@ -2031,6 +2057,9 @@
  ],
  "Details come from ThePornDB; performers without a detail are hidden while it's filtered on.": [
   "ui/src/views/PerformersView.vue"
+ ],
+ "Details in the side panel": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Details must be a form": [
   "backend/library_mixins/performers.py"
@@ -2090,6 +2119,15 @@
  ],
  "done": [
   "backend/activity.py"
+ ],
+ "Double-click": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Double-click a video to open it (a performer: their profile).": [
+  "ui/src/views/WallView.vue"
+ ],
+ "Double-click a video to open it in a new tab (a performer: their profile).": [
+  "ui/src/views/WallView.vue"
  ],
  "Double-tap: skip 10 s": [
   "ui/src/views/SettingsView.vue"
@@ -2661,7 +2699,8 @@
  ],
  "File size": [
   "ui/src/views/LibraryView.vue",
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "file size": [
   "ui/src/lib/libraryQuery.js"
@@ -2804,6 +2843,9 @@
  "fixed": [
   "backend/activity.py"
  ],
+ "Fly: ↑ ↓ forward and back, ← → sideways": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Folder": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
@@ -2821,6 +2863,9 @@
  ],
  "For a performer who isn't on ThePornDB. Fill in what you know; empty fields aren't shown.": [
   "ui/src/components/PerformerDetailsForm.vue"
+ ],
+ "For pictures shown smaller than this.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "For the sign-in page and for accounts that keep “The server's default”.": [
   "ui/src/components/LanguageSettings.vue"
@@ -3086,6 +3131,9 @@
  "HLS video download failed -- check the server log for ffmpeg output": [
   "backend/library_mixins/download_worker.py"
  ],
+ "Hold Shift for the other one: turning, or moving when this is set to turn (3D).": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Hours": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -3101,7 +3149,7 @@
  "How far a drag turns it.": [
   "ui/src/views/SettingsView.vue"
  ],
- "How far a right-drag (two fingers) moves it.": [
+ "How far a right-drag (two fingers) moves it: 100 % = the pictures follow the pointer exactly.": [
   "ui/src/views/SettingsView.vue"
  ],
  "How long it keeps going after you let go. 0 stops at once.": [
@@ -3464,6 +3512,10 @@
  "Left “{name}” alone": [
   "ui/src/components/PerformerPicker.vue"
  ],
+ "Length": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
+ ],
  "Level": [
   "ui/src/views/admin/LogsView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -3499,6 +3551,10 @@
  ],
  "Light preset": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Likes": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Line strength": [
   "ui/src/views/SettingsView.vue"
@@ -3990,6 +4046,7 @@
   "ui/src/views/SettingsView.vue",
   "ui/src/views/UploadView.vue",
   "ui/src/views/VideoView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
  "music": [
@@ -4148,6 +4205,9 @@
  ],
  "New smart playlist": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
+ ],
+ "New tab": [
+  "ui/src/views/WallView.vue"
  ],
  "Newest in the library": [
   "ui/src/lib/wallPick.js"
@@ -4568,6 +4628,9 @@
  "Nothing matches.": [
   "ui/src/views/admin/NamesView.vue"
  ],
+ "Nothing more": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Nothing needed repairing": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
@@ -4809,8 +4872,15 @@
  "Open it": [
   "ui/src/views/UploadView.vue"
  ],
+ "Open it in a new tab": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
+ ],
  "Open it in the library": [
   "ui/src/views/PlaylistView.vue"
+ ],
+ "Open it in this tab": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Open it like a restore would, without changing anything": [
   "ui/src/views/admin/BackupsView.vue"
@@ -5402,6 +5472,7 @@
   "ui/src/components/FilterPanel.vue",
   "ui/src/components/VideoTable.vue",
   "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Quality (CRF)": [
@@ -5481,6 +5552,7 @@
   "ui/src/components/VideoTable.vue",
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "rating": [
@@ -6634,6 +6706,9 @@
  "Slate": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Slide: up, down, left and right": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "slower": [
   "ui/src/lib/panic.js"
  ],
@@ -6964,6 +7039,7 @@
   "ui/src/views/SettingsView.vue",
   "ui/src/views/UploadView.vue",
   "ui/src/views/VideoView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/NamesView.vue",
   "ui/src/views/admin/StatsView.vue"
  ],
@@ -7761,6 +7837,9 @@
  "Tuesday": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "Turn it (3D)": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Turn off": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
@@ -7967,6 +8046,8 @@
  ],
  "Uploaded": [
   "ui/src/components/VideoTable.vue",
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue",
   "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/DuplicatesView.vue"
  ],
@@ -7978,6 +8059,9 @@
  ],
  "Uploaded by {item}": [
   "ui/src/components/VideoTable.vue"
+ ],
+ "uploaded by {name}": [
+  "ui/src/views/WallView.vue"
  ],
  "uploaded to Filester": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -8219,7 +8303,9 @@
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Views": [
-  "ui/src/components/VideoTable.vue"
+  "ui/src/components/VideoTable.vue",
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "views": [
   "ui/src/lib/libraryQuery.js"
@@ -8557,6 +8643,10 @@
  ],
  "Your playlists": [
   "ui/src/views/PlaylistsView.vue"
+ ],
+ "Your plays": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/WallView.vue"
  ],
  "Z to A": [
   "ui/src/views/PerformersView.vue"
@@ -8926,6 +9016,9 @@
  "{n} without seekbar previews": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
+ "{n} · {p}% watched": [
+  "ui/src/views/WallView.vue"
+ ],
  "{n} — slow": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -8960,6 +9053,9 @@
   "ui/src/components/VideoPlayer.vue"
  ],
  "{p} performers · {v} videos": [
+  "ui/src/views/WallView.vue"
+ ],
+ "{p}% watched": [
   "ui/src/views/WallView.vue"
  ],
  "{quality} or better": [

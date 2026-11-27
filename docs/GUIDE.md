@@ -534,8 +534,12 @@ How it works:
   ThePornDB, FansDB or StashDB, or with details, photos or a gender set on their page. The **?** button shows how to
   use it (it opens by itself the first time).
   - Moving around: dragging always moves the view, never a dot. In 3D, drag turns it in any direction, all the way
-    round (it glides to a stop); right-drag or two fingers moves it. In 2D, drag moves it. **Arrow keys** (3.9.2) move
-    it while held; in 3D, **Shift + arrow keys** turn it.
+    round; right-drag, middle-drag, Shift + drag or two fingers moves it (two fingers also pinch-zoom). Since 3.9.3 the
+    movement flows smoothly however slowly you drag and glides on after you let go (**Glide**, 0 stops at once). In 2D,
+    drag moves it. A sideways scroll (touchpad, tilt wheel) moves it sideways.
+  - **Arrow keys** (3.9.2, held down) — **My Settings → The Wall → Arrow keys**: **Fly** (default since 3.9.3: ↑ ↓
+    forward and back like the mouse wheel, ← → sideways), **Slide** (all four directions) or **Turn** (3D). Shift gives
+    turning (or sliding, when set to Turn).
   - Zoom (3.9.2): the mouse wheel zooms 1 % a step (hold Shift for 5 %), smoothly and towards the mouse in 2D; a pinch
     works on phones; **+** / **−** on the keyboard zoom five steps, **0** shows everything. The bar has **−**, a zoom
     slider, **+**, the zoom in % (100 % = everything fits) and **Fit**.
@@ -546,10 +550,18 @@ How it works:
     videos, stops on the picked one, zooms in until it fills the view, and the picture grows into the video page's
     player; a click, Esc or **Skip** ends it and opens the video at once. It's skipped when your system asks for
     reduced motion.
+  - Clicking a video (3.9.3) shows it in the side panel: a preview when you point at the picture, the title, its
+    creators, **Open the video** / **New tab**, and its details — length, quality, file size, codec, rating, views,
+    likes, uploaded, added, your plays (and how much you watched), tags, music and description (pick which in **My
+    Settings → The Wall → Details in the side panel**) — then its performers. **Double-click** (same tab) can open the
+    video here or in a new tab (a performer: their profile); by default it does nothing more.
+  - The hover preview (3.9.3) plays right on the picture, at its size, when the picture is shown bigger than the
+    preview size (**As big as the picture**); smaller pictures get the usual card next to the pointer.
   - **My Settings → The Wall** (3.9.2) sets nearly all of it, per person: what it opens in (last view / 3D / 2D), the
     starting zoom, the side panel, the starting **Shared videos at least** (Auto: 1, or 2 in a very large library) and
     **Also who they're with**, how many videos come around a performer (50–1000, default 300); zoom per wheel step
-    (1–20 %), turning and moving speed, glide (0 stops at once) and arrow-key speed; size of dots and pictures, picture
+    (1–20 %), turning and moving speed (100 % = the pictures follow the pointer), glide (0 stops at once), what the
+    arrow keys do and their speed; double-click; details in the side panel; size of dots and pictures, picture
     detail (128 / 256 / 512 px — sharper is heavier), line strength, video titles in 2D (when zoomed in / always /
     never) and background (theme or black); hover previews on/off, the wait before one plays and its size; and Pick
     for me's choice, its search on/off and length (2–12 s). **Reset this tab** puts them back.

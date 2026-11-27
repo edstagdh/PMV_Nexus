@@ -13,6 +13,10 @@
 // (1 % by default, Shift x5), the bar has -, a slider, + and Fit; it starts at "Starting zoom".
 // 3.9.2: arrow keys move it (Shift + arrows turns the 3D wall), + / - zoom, 0 fits; and nearly
 // everything is set in My Settings -> The Wall (P = session.prefs, read when the graph is built).
+// 3.9.3: 3D dragging is the page's own (smooth, then glides; the trackball turned in whole-pixel
+// steps), arrow keys fly by default (up / down forward and back, left / right sideways), a
+// double-click can open a video, the hover preview grows to the picture's size, and the side
+// panel shows the picked video's details (GET /api/library/{id}/item).
 // Data: GET /api/performers/wall. This page is its own chunk: the libraries load only here.
 import { t } from "../lib/i18n.js";
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
@@ -25,6 +29,8 @@ import PerformerPlaceholder from "../components/PerformerPlaceholder.vue";
 import PreviewVideo from "../components/PreviewVideo.vue";
 import Tx from "../components/Tx.vue";
 import { api } from "../lib/api.js";
+import { qualityInfo, codecLabel, compactNumber, formatDate } from "../lib/format.js";
+import { creatorText, uploadedBy } from "../lib/creators.js";
 import { session } from "../stores/session.js";
 import { toast } from "../stores/toast.js";
 import { pickVideo, PICK_MODES } from "../lib/wallPick.js";
@@ -221,6 +227,7 @@ function draw2d(n, ctx, scale) {
 }
 
 function destroy() {
+  stopDrag();
   cancelAnimationFrame(zoomFrame);
   zoomFrame = 0;
   clearTimeout(fitTimer);
@@ -263,11 +270,9 @@ function build() {
         .linkOpacity(Math.min(1, lineAlpha() * 1.2)).nodeResolution(12).nodeThreeObject((n) => (n.img || n.kind === "video" ? sprite(n) : null));
       graph.renderer().setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       const c = graph.controls();
-      if (c) {   // My Settings -> The Wall: turning / moving speed and how long it glides
-        const glide = P.wallGlide ?? 8;
-        c.rotateSpeed = P.wallTurnSpeed || 2.5; c.zoomSpeed = 0.4; c.panSpeed = P.wallMoveSpeed || 0.6;
-        c.staticMoving = glide === 0; c.dynamicDampingFactor = Math.max(0.04, 0.5 - glide * 0.045);
-      }
+      // the trackball only keeps the point it turns around (its target): dragging, pinching and
+      // zooming are the page's own (smooth; see "3D moving" below)
+      if (c) { c.noRotate = true; c.noPan = true; c.noZoom = true; }
       return;
     } catch (err) {
       console.warn("3D not available", err);  // no WebGL: the 2D wall instead
@@ -336,7 +341,9 @@ function onWheel(e) {
   if (!graph || !fitAt || picking.value || e.target.closest?.(".help, .hover-card")) return;
   e.preventDefault();
   e.stopPropagation();   // the graph libraries' own wheel zoom never sees it
-  const px = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+  const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) { slide(e.deltaX * unit, 0); return; }   // sideways scroll (touchpads, tilt wheels)
+  const px = e.deltaY * unit;
   const notches = px / 100;   // a mouse notch is ~100 px; touchpads send small, smooth amounts
   const per = (session.prefs.wallZoomStep || 1) / 100 * (e.shiftKey ? 5 : 1);
   if (zoomFrame === 0 || Math.abs(zoomGoal / readZoom() - 1) < 1e-4) zoomGoal = readZoom();
@@ -352,36 +359,149 @@ function onWheel(e) {
   };
   zoomFrame = requestAnimationFrame(ease);
 }
+// ---------------------------------------------------------------- 3D moving (3.9.3)
+// The pointer's movement is collected and played out over the next frames (no steps, however
+// slowly you drag), then it glides on for "Glide" (My Settings) after you let go. One finger /
+// left button turns it (any direction, no end), right or middle button / Shift moves it, two
+// fingers move and pinch-zoom.
+function turnBy(dx, dy) {   // screen pixels -> turn around the middle
+  const cam = graph.camera(), target = graph.controls().target;
+  const k = ((P.wallTurnSpeed || 2.5) * 0.4 * Math.PI) / size()[1];   // 2.5: a drag of the full height = half a turn
+  const eye = cam.position.clone().sub(target);
+  const right = new THREE.Vector3().crossVectors(cam.up, eye).normalize();
+  const q = new THREE.Quaternion().setFromAxisAngle(cam.up.clone().normalize(), -dx * k)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(right, -dy * k));
+  eye.applyQuaternion(q);
+  cam.up.applyQuaternion(q);
+  cam.position.copy(target).add(eye);
+  cam.lookAt(target);
+}
+function moveBy(dx, dy, follow = (P.wallMovePct || 100) / 100) {   // screen pixels -> slide; 1 = follows the pointer
+  const cam = graph.camera(), target = graph.controls().target;
+  const dist = cam.position.distanceTo(target);
+  const perPx = ((2 * dist * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))) / size()[1]) * follow;
+  const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+  const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+  const m = right.multiplyScalar(-dx * perPx).add(up.multiplyScalar(dy * perPx));
+  cam.position.add(m);
+  target.add(m);
+}
+const drag = { kind: null, held: false, pend: { x: 0, y: 0 }, vel: { x: 0, y: 0 }, pts: new Map(), pinch: 0, frame: 0, last: 0 };
+function dragStart(e) {
+  if (!is3d() || !graph || picking.value || e.target.closest?.(".help, .picking, .hover-card")) return;
+  drag.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (drag.pts.size === 1) {
+    drag.kind = e.button === 2 || e.button === 1 || e.shiftKey ? "move" : "turn";
+    drag.vel = { x: 0, y: 0 };
+  } else if (drag.pts.size === 2) {
+    drag.kind = "move";
+    const [a, b] = [...drag.pts.values()];
+    drag.pinch = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  drag.held = true;
+  if (!drag.frame) { drag.last = 0; drag.frame = requestAnimationFrame(dragFrame); }
+}
+function dragMove(e) {
+  const before = drag.pts.get(e.pointerId);
+  if (!before || !graph) return;
+  const now = { x: e.clientX, y: e.clientY };
+  if (drag.pts.size === 1) {
+    drag.pend.x += now.x - before.x;
+    drag.pend.y += now.y - before.y;
+  } else if (drag.pts.size === 2) {
+    const others = [...drag.pts.entries()].filter(([id]) => id !== e.pointerId).map(([, v]) => v);
+    drag.pend.x += (now.x - before.x) / 2;   // the middle of the two fingers moves half as far
+    drag.pend.y += (now.y - before.y) / 2;
+    const d = Math.hypot(now.x - others[0].x, now.y - others[0].y);
+    if (drag.pinch && d) applyZoom(clampZ(readZoom() * (d / drag.pinch)));
+    drag.pinch = d;
+  }
+  drag.pts.set(e.pointerId, now);
+}
+function dragEnd(e) {
+  if (!drag.pts.delete(e.pointerId)) return;
+  if (drag.pts.size === 1) drag.kind = "move";   // one finger of two lifted: keep moving
+  if (!drag.pts.size) drag.held = false;
+}
+function dragFrame(now) {
+  drag.frame = 0;
+  if (!graph || !is3d()) return;
+  const dt = drag.last ? Math.min(0.05, (now - drag.last) / 1000) : 1 / 60;
+  drag.last = now;
+  const apply = drag.kind === "move" ? moveBy : turnBy;
+  const f = 1 - Math.exp(-dt / 0.045);   // ~45 ms to play out the pointer's movement
+  let sx = drag.pend.x * f, sy = drag.pend.y * f;
+  drag.pend.x -= sx; drag.pend.y -= sy;
+  if (drag.held) {
+    const a = 1 - Math.exp(-dt / 0.08);
+    drag.vel.x += (sx / dt - drag.vel.x) * a;
+    drag.vel.y += (sy / dt - drag.vel.y) * a;
+  } else {
+    const glide = P.wallGlide ?? 8;
+    if (glide === 0) { drag.vel = { x: 0, y: 0 }; sx += drag.pend.x; sy += drag.pend.y; drag.pend = { x: 0, y: 0 }; }
+    else {
+      sx += drag.vel.x * dt; sy += drag.vel.y * dt;
+      const decay = Math.exp(-dt / (glide * 0.09));   // glide 8: ~0.7 s to settle
+      drag.vel.x *= decay; drag.vel.y *= decay;
+    }
+  }
+  if (sx || sy) { apply(sx, sy); if (hover.value) placeHover(); }
+  const moving = Math.abs(drag.pend.x) + Math.abs(drag.pend.y) > 0.05 || Math.hypot(drag.vel.x, drag.vel.y) > 4;
+  if (drag.held || moving) drag.frame = requestAnimationFrame(dragFrame);
+  else drag.vel = { x: 0, y: 0 };
+}
+function stopDrag() { cancelAnimationFrame(drag.frame); drag.frame = 0; drag.pts.clear(); drag.held = false; drag.pend = { x: 0, y: 0 }; drag.vel = { x: 0, y: 0 }; }
+function slide(dx, dy) {   // screen pixels, any mode: the view goes this way (the pictures the other)
+  if (is3d()) moveBy(-dx, -dy, 1);
+  else { const c = graph.centerAt(), z = graph.zoom(); graph.centerAt(c.x + dx / z, c.y + dy / z); }
+}
+
 // the slider: log scale, 0..1000 -> ZMIN..ZMAX
 const LOG_MIN = Math.log(ZMIN), LOG_SPAN = Math.log(ZMAX) - Math.log(ZMIN);
 const sliderValue = computed(() => Math.round(((Math.log(clampZ(zoomPct.value / 100)) - LOG_MIN) / LOG_SPAN) * 1000));
 const fromSlider = (v) => setZoom(Math.exp(LOG_MIN + (Number(v) / 1000) * LOG_SPAN));
 const zoomBy = (f) => setZoom(readZoom() * f, 250);
-function fitAll() { graph?.zoomToFit(500, size()[0] > 640 ? 70 : 24); clearTimeout(fitTimer); fitTimer = setTimeout(noteFit, 550); }
+function zoomNowBy(f) { if (graph && fitAt) { cancelAnimationFrame(zoomFrame); zoomFrame = 0; applyZoom(clampZ(readZoom() * f)); } }
+function fitAll() { stopDrag(); graph?.zoomToFit(500, size()[0] > 640 ? 70 : 24); clearTimeout(fitTimer); fitTimer = setTimeout(noteFit, 550); }
 let zoomPoll = 0;   // pinch zoom (phones) and trackball moves change it too: keep the % in step
 function pollZoom() { if (graph && fitAt && !zoomFrame) zoomPct.value = Math.round(readZoom() * 100); }
 
 // ---------------------------------------------------------------- hover preview
-const hover = ref(null);       // {v}
+const hover = ref(null);       // {v, node}
+const hoverRect = ref(null);   // the picture's place on the stage, while hovered
 const pointer = ref({ x: 0, y: 0 });
 let hoverTimer = 0;
 let dragging = false;   // no preview while turning / moving the view
-function onDown() { dragging = true; clearTimeout(hoverTimer); hover.value = null; }
+function onDown(e) { dragging = true; clearTimeout(hoverTimer); hover.value = null; dragStart(e); }
 function onUp() { dragging = false; }
 function onHover(n) {
   clearTimeout(hoverTimer);
   if (!n || n.kind !== "video" || picking.value || dragging) { hover.value = null; return; }
   const v = videoById.value[n.vid];
   if (P.wallHover === false) return;
-  hoverTimer = setTimeout(() => { hover.value = v ? { v } : null; }, P.wallHoverDelay ?? 200);
+  hoverTimer = setTimeout(() => { hover.value = v ? { v, node: n } : null; placeHover(); }, P.wallHoverDelay ?? 200);
 }
+let hoverFrame = 0;
+function placeHover() {   // where the hovered picture is now (it moves while the view glides / zooms)
+  cancelAnimationFrame(hoverFrame);
+  if (!hover.value || !graph || !wrap.value) { hoverRect.value = null; return; }
+  const r = screenRect(hover.value.node), box = wrap.value.getBoundingClientRect();
+  hoverRect.value = { left: r.left - box.left, top: r.top - box.top, width: r.width, height: r.height };
+  hoverFrame = requestAnimationFrame(placeHover);
+}
+const hoverCardWidth = () => Math.min({ s: 224, m: 288, l: 384 }[P.wallHoverSize] || 288, size()[0] - 24);
+const hoverInPlace = computed(() => !!(P.wallHoverGrow !== false && hoverRect.value && hoverRect.value.width >= hoverCardWidth()));
 function onMove(e) {
   const r = wrap.value?.getBoundingClientRect();
   if (r) pointer.value = { x: e.clientX - r.left, y: e.clientY - r.top };
 }
 const hoverStyle = computed(() => {
   const [W, H] = size();
-  const cw = Math.min({ s: 224, m: 288, l: 384 }[P.wallHoverSize] || 288, W - 24), ch = cw * 9 / 16 + 48;
+  if (hoverInPlace.value) {   // right on the picture, at its size
+    const r = hoverRect.value;
+    return { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` };
+  }
+  const cw = hoverCardWidth(), ch = cw * 9 / 16 + 48;
   let x = pointer.value.x + 18, y = pointer.value.y + 18;
   if (x + cw > W - 8) x = pointer.value.x - cw - 18;
   if (y + ch > H - 8) y = pointer.value.y - ch - 18;
@@ -389,11 +509,50 @@ const hoverStyle = computed(() => {
 });
 
 // ---------------------------------------------------------------- clicks
+let lastClick = { id: null, at: 0 };
 function onNodeClick(n) {
   if (picking.value) return;
+  const now = performance.now();
+  const twice = lastClick.id === n.id && now - lastClick.at < 400;
+  lastClick = twice ? { id: null, at: 0 } : { id: n.id, at: now };
+  if (twice && P.wallDblClick && P.wallDblClick !== "none") { openFromWall(n, P.wallDblClick === "new"); return; }
   if (n.kind === "video") { picked.value = videoById.value[n.vid] || null; panelOpen.value = true; return; }
-  setFocus(n.id);
+  if (!twice) setFocus(n.id);
 }
+function openFromWall(n, newTab) {   // double-click: the video page, or a performer's profile
+  const p = n.kind === "video" ? null : byId.value[n.id];
+  const to = n.kind === "video" ? { name: "video", params: { id: n.vid } } : { name: "performer", params: { name: p?.link || n.label } };
+  if (newTab) window.open(router.resolve(to).href, "_blank", "noopener");
+  else router.push(to);
+}
+const detail = ref(null);   // the picked video, in full
+watch(picked, async (v) => {
+  detail.value = null;
+  if (!v) return;
+  try { const it = await api(`/api/library/${encodeURIComponent(v.id)}/item`); if (picked.value?.id === v.id) detail.value = it; } catch { /* the short facts stay */ }
+});
+const shows = (k) => (P.wallDetails || []).includes(k);
+const facts = computed(() => {
+  const d = detail.value, v = picked.value;
+  if (!v) return [];
+  const st = d?.site_stats || {};
+  const q = qualityInfo(d?.tech_resolution);
+  const watched = d?.watch?.dur ? Math.round((100 * d.watch.pos) / d.watch.dur) : null;
+  return [
+    ["length", t("Length"), d?.tech_duration || v.length],
+    ["quality", t("Quality"), q ? [q.label, d.tech_resolution].filter(Boolean).join(" · ") : ""],
+    ["size", t("File size"), d?.tech_filesize],
+    ["codec", t("Codec"), d?.tech_codec ? codecLabel(d.tech_codec) : ""],
+    ["rating", t("Rating"), d?.ratings ? `★ ${d.ratings}` : ""],
+    ["views", t("Views"), st.views != null ? compactNumber(st.views) : ""],
+    ["likes", t("Likes"), st.likes != null ? compactNumber(st.likes) : ""],
+    ["uploaded", t("Uploaded"), d?.upload_date ? formatDate(d.upload_date) : ""],
+    ["added", t("Added"), d?.download_datetime ? formatDate(d.download_datetime) : ""],
+    ["plays", t("Your plays"), v.plays ? (watched != null ? t("{n} · {p}% watched", { n: v.plays, p: watched }) : String(v.plays)) : watched != null ? t("{p}% watched", { p: watched }) : ""],
+  ].filter(([k, , val]) => val && shows(k));
+});
+function openPicked(newTab) { openFromWall({ kind: "video", vid: picked.value.id }, newTab); }
+const panelPreview = ref(false);
 function setFocus(id) {
   picked.value = null;
   focus.value = id;
@@ -477,6 +636,7 @@ async function pickForMe() {
   const target = nodes().find((n) => n.vid === video.id);
   if (!session.prefs.wallPickAnimate || reduceMotion() || !target || !graph) { openVideo(video); return; }
 
+  stopDrag();
   const me_ = run = { skipped: false, wake: null };
   picking.value = true;
   hover.value = null;
@@ -512,7 +672,9 @@ async function pickForMe() {
 }
 function skipPick() { if (run) { run.skipped = true; run.wake?.(); } }
 // ---------------------------------------------------------------- keys (3.9.2)
-// Arrows move the view while held (Shift + arrows turns the 3D wall), + / - zoom, 0 fits.
+// Arrows while held, by My Settings -> Arrow keys: fly (up / down forward and back like the wheel,
+// left / right sideways -- the default), slide in all four directions, or turn (3D). Shift gives
+// turning (or sliding, when set to turn). + / - zoom, 0 fits.
 // Not while typing in a box, and not with Ctrl / Alt / Cmd (the browser's own keys).
 const held = new Set();
 let keyFrame = 0, keyLast = 0;
@@ -525,32 +687,16 @@ function keyStep(now) {
   let dx = 0, dy = 0;
   for (const k of held) { const a = ARROWS[k]; if (a) { dx += a[0]; dy += a[1]; } }
   const speed = (P.wallKeySpeed || 5) / 5;
-  if (is3d()) {
-    const cam = graph.camera(), target = graph.controls().target;
-    const eye = cam.position.clone().sub(target);
-    if (keyShift) {   // turn around the middle: any direction, no end
-      const angle = 1.6 * speed * dt;
-      const right = new THREE.Vector3().crossVectors(cam.up, eye).normalize();
-      const q = new THREE.Quaternion();
-      if (dx) q.multiply(new THREE.Quaternion().setFromAxisAngle(cam.up.clone().normalize(), -dx * angle));
-      if (dy) q.multiply(new THREE.Quaternion().setFromAxisAngle(right, -dy * angle));
-      eye.applyQuaternion(q);
-      cam.up.applyQuaternion(q);
-      cam.position.copy(target).add(eye);
-      cam.lookAt(target);
-    } else {          // move sideways / up and down, faster when further away
-      const dist = eye.length();
-      const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
-      const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
-      const move = right.multiplyScalar(dx).add(up.multiplyScalar(dy)).multiplyScalar(dist * 0.8 * speed * dt);
-      cam.position.add(move);
-      target.add(move);
-    }
-  } else {
-    const c = graph.centerAt(), z = graph.zoom();
-    const px = 500 * speed * dt / z;   // ~500 screen pixels a second at normal speed
-    graph.centerAt(c.x + dx * px, c.y - dy * px);
-  }
+  const set = P.wallArrows || "fly";
+  let how = keyShift ? (set === "turn" ? "move" : "turn") : set;
+  if (how === "turn" && !is3d()) how = "move";
+  const px = 500 * speed * dt;   // ~500 screen pixels a second at normal speed
+  if (how === "turn") turnBy(dx * px * 0.6, -dy * px * 0.6);
+  else if (how === "fly") {
+    if (dx) slide(dx * px, 0);
+    if (dy) zoomNowBy(Math.pow(1 + 1.2 * speed, dy * dt));   // up: forward (closer), down: back
+  } else slide(dx * px, -dy * px);
+  if (hover.value) placeHover();
   keyFrame = requestAnimationFrame(keyStep);
 }
 let keyShift = false;
@@ -576,6 +722,9 @@ onMounted(async () => {
   window.addEventListener("pointerup", onUp);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
+  window.addEventListener("pointermove", dragMove);
+  window.addEventListener("pointerup", dragEnd);
+  window.addEventListener("pointercancel", dragEnd);
   wrap.value?.addEventListener("wheel", onWheel, { passive: false, capture: true });
   zoomPoll = setInterval(pollZoom, 300);
   try {
@@ -595,6 +744,11 @@ onBeforeUnmount(() => {
   window.removeEventListener("pointerup", onUp);
   window.removeEventListener("keyup", onKeyUp);
   window.removeEventListener("blur", onBlur);
+  window.removeEventListener("pointermove", dragMove);
+  window.removeEventListener("pointerup", dragEnd);
+  window.removeEventListener("pointercancel", dragEnd);
+  stopDrag();
+  cancelAnimationFrame(hoverFrame);
   cancelAnimationFrame(keyFrame);
   wrap.value?.removeEventListener("wheel", onWheel, { capture: true });
   clearInterval(zoomPoll);
@@ -648,7 +802,7 @@ onBeforeUnmount(() => {
         <div v-else-if="!data" class="skeleton fill" />
         <div ref="stage" class="stage" />
 
-        <div v-if="hover" class="hover-card card" :style="hoverStyle">
+        <div v-if="hover" class="hover-card card" :class="{ inplace: hoverInPlace }" :style="hoverStyle">
           <div class="hc-media">
             <PreviewVideo v-if="hover.v.preview" :key="hover.v.id" :src="hover.v.preview" :item-id="hover.v.id" />
             <img v-else-if="hover.v.thumb" :src="hover.v.thumb" alt="">
@@ -662,7 +816,10 @@ onBeforeUnmount(() => {
           <ul>
             <li v-if="is3d()">{{ $t("Drag to turn it — any direction, all the way round. Right-drag (two fingers on a phone) moves it.") }}</li>
             <li v-else>{{ $t("Drag to move it.") }}</li>
-            <li>{{ $t("Arrow keys move it too; in 3D, Shift + arrow keys turn it.") }}</li>
+            <li v-if="(P.wallArrows || 'fly') === 'fly'">{{ $t("Arrow keys fly: ↑ ↓ forward and back, ← → sideways; Shift + arrow keys turn it (3D).") }}</li>
+            <li v-else-if="P.wallArrows === 'move'">{{ $t("Arrow keys slide it up, down, left and right; Shift + arrow keys turn it (3D).") }}</li>
+            <li v-else>{{ $t("Arrow keys turn it (3D); Shift + arrow keys slide it.") }}</li>
+            <li v-if="P.wallDblClick === 'same' || P.wallDblClick === 'new'">{{ P.wallDblClick === "new" ? $t("Double-click a video to open it in a new tab (a performer: their profile).") : $t("Double-click a video to open it (a performer: their profile).") }}</li>
             <li>{{ $t("Zoom with the mouse wheel (hold Shift to go faster), a pinch, + and − on the keyboard, or −, the slider and + in the bar; Fit (or 0) shows everything (100 %).") }}</li>
             <li>{{ $t("Each dot is a performer; a line means they share videos — the thicker, the more. “Shared videos at least” hides the weaker lines.") }}</li>
             <li>{{ $t("Click a performer to put them in the middle with all their videos. “Also who they’re with” adds the other performers in those videos; “Everyone” goes back.") }}</li>
@@ -680,10 +837,34 @@ onBeforeUnmount(() => {
       <aside v-if="data && panelOpen" class="drawer card">
         <template v-if="picked">
           <button class="btn btn-ghost btn-icon btn-sm close" :aria-label="$t('Back')" @click="picked = null"><Icon name="x" :size="14" /></button>
-          <img v-if="picked.thumb" :src="picked.thumb" alt="" class="vthumb">
+          <div class="vthumb" @mouseenter="panelPreview = true" @mouseleave="panelPreview = false">
+            <PreviewVideo v-if="panelPreview && picked.preview" :key="'p' + picked.id" :src="picked.preview" :item-id="picked.id" />
+            <img v-else-if="picked.thumb" :src="picked.thumb" alt="">
+          </div>
           <h2>{{ picked.title }}</h2>
-          <p class="muted small">{{ [picked.creator, picked.length].filter(Boolean).join(" · ") }}</p>
-          <RouterLink :to="{ name: 'video', params: { id: picked.id } }" class="btn btn-primary btn-sm">{{ $t("Open the video") }}</RouterLink>
+          <p class="muted small">
+            {{ detail ? creatorText(detail) || picked.creator : picked.creator }}<template v-if="detail && uploadedBy(detail)"> · {{ $t("uploaded by {name}", { name: uploadedBy(detail) }) }}</template>
+          </p>
+          <div class="acts">
+            <button class="btn btn-primary btn-sm" @click="openPicked(false)">{{ $t("Open the video") }}</button>
+            <button class="btn btn-sm" :title="$t('Open it in a new tab')" @click="openPicked(true)"><Icon name="external" :size="14" />{{ $t("New tab") }}</button>
+          </div>
+          <dl v-if="facts.length" class="facts">
+            <template v-for="[k, label, val] in facts" :key="k"><dt>{{ label }}</dt><dd>{{ val }}</dd></template>
+          </dl>
+          <template v-if="detail && shows('tags') && detail.tags?.length">
+            <h3>{{ $t("Tags") }}</h3>
+            <div class="chips"><span v-for="tg in detail.tags.slice(0, 16)" :key="tg" class="chip chip-tag">{{ tg }}</span>
+              <span v-if="detail.tags.length > 16" class="muted small">+{{ detail.tags.length - 16 }}</span></div>
+          </template>
+          <template v-if="detail && shows('music') && detail.music?.length">
+            <h3>{{ $t("Music") }}</h3>
+            <ul class="plain small"><li v-for="m in detail.music.slice(0, 8)" :key="m">{{ m }}</li></ul>
+          </template>
+          <template v-if="detail && shows('description') && detail.description">
+            <h3>{{ $t("Description") }}</h3>
+            <p class="small desc">{{ detail.description.length > 400 ? detail.description.slice(0, 400) + "…" : detail.description }}</p>
+          </template>
           <h3>{{ $t("Performers") }}</h3>
           <ul class="list">
             <li v-for="c in picked.cast" :key="c"><button @click="setFocus(c)"><span>{{ byId[c]?.name }}</span><span class="n">{{ $tn("{n} video", "{n} videos", byId[c]?.videos || 0) }}</span></button></li>
@@ -741,6 +922,11 @@ onBeforeUnmount(() => {
 .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; text-align: center; color: var(--text-dim); z-index: 1; }
 .hover-card { position: absolute; z-index: 4; padding: 0; overflow: hidden; pointer-events: none; box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); }
 .hc-media { aspect-ratio: 16 / 9; background: #000; }
+.hover-card.inplace { border-radius: 0.25rem; box-shadow: 0 0 0 2px var(--accent), 0 0.75rem 2rem rgba(0, 0, 0, 0.45); }
+.hover-card.inplace .hc-media { aspect-ratio: auto; height: 100%; }
+.hover-card.inplace .hc-media video, .hover-card.inplace .hc-media img { object-fit: cover; }
+.hover-card.inplace .hc-text { position: absolute; inset-inline: 0; bottom: 0; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); padding-top: 1.2rem; }
+.hover-card.inplace .hc-text .muted { color: rgba(255, 255, 255, 0.75); }
 .hc-media video, .hc-media img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .hc-text { padding: 0.45rem 0.6rem; display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; }
 .hc-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -766,7 +952,15 @@ onBeforeUnmount(() => {
 .n { color: var(--text-dim); flex: none; }
 .who { display: flex; gap: 0.7rem; align-items: center; }
 .ph { width: 3.5rem; height: 3.5rem; border-radius: 50%; object-fit: cover; flex: none; overflow: hidden; display: block; }
-.vthumb { width: 100%; border-radius: 0.4rem; }
+.vthumb { width: 100%; aspect-ratio: 16 / 9; border-radius: 0.4rem; overflow: hidden; background: #000; }
+.vthumb img, .vthumb video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.75rem; margin: 0.2rem 0 0; font-size: 0.82rem; }
+.facts dt { color: var(--text-dim); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.chips .chip { font-size: 0.75rem; }
+.plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.desc { color: var(--text-dim); white-space: pre-line; overflow-wrap: anywhere; }
 .drawer > .btn { align-self: flex-start; }
 @media (max-width: 40rem) {
   .stage-wrap { flex-direction: column; }

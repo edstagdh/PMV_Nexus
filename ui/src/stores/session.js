@@ -11,6 +11,7 @@ const VIEWS = ["grid", "list", "table"];
 // Multiples of 30, so full rows fit both 5 per row (sidebar open) and 6 (collapsed).
 const PAGE_SIZES = [30, 60, 90, 120];
 const SORT_KEYS = ["download_datetime", "upload_date", "title", "creator", "ratings", "views", "tech_duration", "tech_filesize", "tech_resolution", "fav_performers", "random"];
+export const WALL_DETAILS = ["length", "quality", "size", "codec", "rating", "views", "likes", "uploaded", "added", "plays", "tags", "music", "description"]; // 3.9.3 the wall panel's video facts
 const WALL_PICKS = ["random", "unwatched", "favorites", "most_watched", "highest_rated", "most_viewed", "most_liked", "newest"]; // lib/wallPick.js
 export const OPTIONAL_BADGES = ["codec", "filesize", "orientation", "rating", "gone", "favorite", "status"];
 // Badges on the small related-video thumbnails. The bottom row has room for
@@ -63,7 +64,11 @@ export const DEFAULT_UI = Object.freeze({
   wallWithCo: false,       // "Also who they're with" ticked to start with
   wallMaxVideos: 300,      // videos around one performer, at most
   wallTurnSpeed: 2.5,      // 3D drag-to-turn speed
-  wallMoveSpeed: 0.6,      // 3D right-drag move speed
+  wallMovePct: 100,        // 3.9.3: right-drag / two fingers move it this % of the pointer's way (3D)
+  wallArrows: "fly",       // 3.9.3 arrow keys: "fly" (up/down forward/back, left/right sideways) | "move" | "turn"
+  wallDblClick: "none",    // 3.9.3 double-click a picture: "none" | "same" (open here) | "new" (new tab)
+  wallHoverGrow: true,     // 3.9.3 the preview takes the picture's size when that's bigger
+  wallDetails: WALL_DETAILS.slice(),  // 3.9.3 what the panel shows about a video
   wallGlide: 8,            // 3D glide after letting go (0 = stops at once)
   wallKeySpeed: 5,         // arrow-key speed
   wallPictureSize: 100,    // % size of dots and pictures
@@ -142,7 +147,11 @@ export function normalizeUi(raw) {
     wallWithCo: typeof r.wallWithCo === "boolean" ? r.wallWithCo : DEFAULT_UI.wallWithCo,
     wallMaxVideos: Math.round(clampNum(r.wallMaxVideos, 50, 1000, DEFAULT_UI.wallMaxVideos)),
     wallTurnSpeed: clampNum(r.wallTurnSpeed, 0.5, 6, DEFAULT_UI.wallTurnSpeed),
-    wallMoveSpeed: clampNum(r.wallMoveSpeed, 0.2, 2, DEFAULT_UI.wallMoveSpeed),
+    wallMovePct: Math.round(clampNum(r.wallMovePct, 25, 300, DEFAULT_UI.wallMovePct)),
+    wallArrows: pick(r.wallArrows, ["fly", "move", "turn"], DEFAULT_UI.wallArrows),
+    wallDblClick: pick(r.wallDblClick, ["none", "same", "new"], DEFAULT_UI.wallDblClick),
+    wallHoverGrow: typeof r.wallHoverGrow === "boolean" ? r.wallHoverGrow : DEFAULT_UI.wallHoverGrow,
+    wallDetails: Array.isArray(r.wallDetails) ? WALL_DETAILS.filter((k) => r.wallDetails.includes(k)) : WALL_DETAILS.slice(),
     wallGlide: Math.round(clampNum(r.wallGlide, 0, 10, DEFAULT_UI.wallGlide)),
     wallKeySpeed: Math.round(clampNum(r.wallKeySpeed, 1, 10, DEFAULT_UI.wallKeySpeed)),
     wallPictureSize: Math.round(clampNum(r.wallPictureSize, 50, 200, DEFAULT_UI.wallPictureSize)),
@@ -253,7 +262,7 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMoveSpeed: p.wallMoveSpeed, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMovePct: p.wallMovePct, wallArrows: p.wallArrows, wallDblClick: p.wallDblClick, wallHoverGrow: p.wallHoverGrow, wallDetails: p.wallDetails, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }

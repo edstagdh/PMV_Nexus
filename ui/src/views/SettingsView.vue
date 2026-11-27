@@ -15,6 +15,7 @@ import { api } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
 import { cleanEngines, DEFAULT_ENGINES, PRESETS } from "../lib/frameSearch.js";
 import { PICK_MODES } from "../lib/wallPick.js";
+import { WALL_DETAILS } from "../stores/session.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -99,6 +100,16 @@ const relatedFull = computed(() => session.prefs.relatedBadges.filter((b) => REL
 
 // My Settings -> The Wall (3.9.2: nearly every part of it); stores/session.js has the ranges
 const pct = (v) => `${v}%`;
+const WALL_DETAIL_LABELS = WALL_DETAILS.map((k) => [k, {
+  length: t("Length"), quality: t("Quality"), size: t("File size"), codec: t("Codec"), rating: t("Rating"), views: t("Views"),
+  likes: t("Likes"), uploaded: t("Uploaded"), added: t("Added to the library"), plays: t("Your plays"), tags: t("Tags"),
+  music: t("Music"), description: t("Description"),
+}[k]]);
+function toggleDetail(k, on) {
+  const now = new Set(session.prefs.wallDetails);
+  if (on) now.add(k); else now.delete(k);
+  savePref("wallDetails", WALL_DETAILS.filter((x) => now.has(x)));
+}
 const WALL_GROUPS = [
   { title: t("Opening it"), items: [
     { key: "wallStartView", kind: "select", label: t("Opens in"), options: [["last", t("The view used last")], ["3d", "3D"], ["2d", "2D"]] },
@@ -112,9 +123,11 @@ const WALL_GROUPS = [
   { title: t("Moving around"), items: [
     { key: "wallZoomStep", kind: "range", min: 1, max: 20, step: 1, show: pct, label: t("Zoom per wheel step"), help: t("How much one mouse-wheel step zooms in or out. Hold Shift for five times as much; + and − on the keyboard zoom five steps.") },
     { key: "wallTurnSpeed", kind: "range", min: 0.5, max: 6, step: 0.5, label: t("Turning speed (3D)"), help: t("How far a drag turns it.") },
-    { key: "wallMoveSpeed", kind: "range", min: 0.2, max: 2, step: 0.1, label: t("Moving speed (3D)"), help: t("How far a right-drag (two fingers) moves it.") },
+    { key: "wallMovePct", kind: "range", min: 25, max: 300, step: 5, show: pct, label: t("Moving speed (3D)"), help: t("How far a right-drag (two fingers) moves it: 100 % = the pictures follow the pointer exactly.") },
     { key: "wallGlide", kind: "range", min: 0, max: 10, step: 1, label: t("Glide (3D)"), help: t("How long it keeps going after you let go. 0 stops at once.") },
-    { key: "wallKeySpeed", kind: "range", min: 1, max: 10, step: 1, label: t("Arrow key speed"), help: t("Arrow keys move it; in 3D, Shift + arrow keys turn it.") },
+    { key: "wallArrows", kind: "select", label: t("Arrow keys"), help: t("Hold Shift for the other one: turning, or moving when this is set to turn (3D)."),
+      options: [["fly", t("Fly: ↑ ↓ forward and back, ← → sideways")], ["move", t("Slide: up, down, left and right")], ["turn", t("Turn it (3D)")]] },
+    { key: "wallKeySpeed", kind: "range", min: 1, max: 10, step: 1, label: t("Arrow key speed") },
   ] },
   { title: t("Looks"), items: [
     { key: "wallPictureSize", kind: "range", min: 50, max: 200, step: 10, show: pct, label: t("Size of dots and pictures") },
@@ -127,7 +140,13 @@ const WALL_GROUPS = [
   { title: t("Previews"), items: [
     { key: "wallHover", kind: "switch", label: t("Play the preview on hover"), help: t("Pointing at a video with the mouse plays its preview, muted like in the library.") },
     { key: "wallHoverDelay", kind: "range", min: 0, max: 1000, step: 50, show: (v) => t("{ms} ms", { ms: v }), label: t("Wait before playing"), off: () => !session.prefs.wallHover },
-    { key: "wallHoverSize", kind: "select", label: t("Preview size"), options: [["s", t("Small")], ["m", t("Medium")], ["l", t("Large")]] },
+    { key: "wallHoverSize", kind: "select", label: t("Preview size"), help: t("For pictures shown smaller than this."), options: [["s", t("Small")], ["m", t("Medium")], ["l", t("Large")]] },
+    { key: "wallHoverGrow", kind: "switch", label: t("As big as the picture"), help: t("A picture shown bigger than the preview size plays its preview right on it, at its size.") },
+  ] },
+  { title: t("Clicking a video"), items: [
+    { key: "wallDblClick", kind: "select", label: t("Double-click"), help: t("A click shows the video in the side panel. A double-click on a video (or a performer: their profile) can also open it."),
+      options: [["none", t("Nothing more")], ["same", t("Open it in this tab")], ["new", t("Open it in a new tab")]] },
+    { key: "wallDetails", kind: "checks", label: t("Details in the side panel"), options: WALL_DETAIL_LABELS },
   ] },
   { title: t("Pick for me"), items: [
     { key: "wallPick", kind: "select", label: t("Pick for me"), help: t("Which of a performer's videos The Wall's Pick for me button opens. Pressing it again gives another one."),
@@ -479,6 +498,11 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
           <label v-if="it.kind === 'switch'" class="switch">
             <input type="checkbox" :checked="session.prefs[it.key]" @change="savePref(it.key, $event.target.checked)">{{ $t("On") }}
           </label>
+          <div v-else-if="it.kind === 'checks'" class="checks">
+            <label v-for="[v, l] in it.options" :key="v" class="switch">
+              <input type="checkbox" :checked="session.prefs[it.key].includes(v)" @change="toggleDetail(v, $event.target.checked)">{{ l }}
+            </label>
+          </div>
           <select v-else-if="it.kind === 'select'" class="select" :value="session.prefs[it.key]" :aria-label="it.label"
                   @change="savePref(it.key, it.number ? Number($event.target.value) : $event.target.value)">
             <option v-for="[v, l] in it.options" :key="v" :value="v">{{ l }}</option>
@@ -553,6 +577,7 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
 .wall-group { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 1.25rem 0 0; }
 .wall-group:first-child { margin-top: 0.75rem; }
 .wall-group + .row { border-top: 0; }
+.checks { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; }
 .label { display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.875rem; }
 .label .muted { font-size: 0.78rem; }
 .stack { display: flex; flex-direction: column; gap: 0.75rem; }

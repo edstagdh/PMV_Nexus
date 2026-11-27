@@ -4,6 +4,27 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.9.3] - 2026-11-27
+
+### Added
+- **The Wall: video details in the side panel** — a preview on pointing at the picture, creators, **Open the video** /
+  **New tab**, length, quality, file size, codec, rating, views, likes, uploaded and added dates, your plays and how much
+  you watched, tags, music and description (choose which in My Settings → The Wall).
+- **The Wall: double-click** a video to open it in this tab or a new one (a performer: their profile) — My Settings →
+  The Wall → Double-click; by default it does nothing more than a click.
+- **The Wall: the hover preview grows with the picture** — a picture shown bigger than the preview size plays its
+  preview right on it, at its size (can be turned off).
+- **The Wall: sideways scrolling** (touchpads, tilt wheels) moves it sideways.
+
+### Changed
+- **The Wall: arrow keys fly** by default — ↑ ↓ forward and back (like the mouse wheel), ← → sideways. My Settings →
+  The Wall → Arrow keys can set them to slide in all four directions (3.9.2's way) or to turn; Shift gives turning.
+- **The Wall: "Moving speed (3D)"** is now in % of the pointer's way (100 % = the pictures follow the pointer).
+
+### Fixed
+- **The Wall (3D): dragging stepped** instead of flowing (the turning followed the mouse in whole-pixel jumps). The page
+  now moves it itself: smoothly however slowly you drag, gliding on after you let go.
+
 ## [3.9.2] - 2026-11-27
 
 ### Added
