@@ -4,6 +4,20 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.11.5] - 2026-11-28
+
+### Changed
+- **The update check looks at published GitHub Releases** (a pushed `vX.Y.Z` tag), not at the `VERSION` file on the
+  main branch: commits and test builds of the Release workflow no longer count as a new version, and neither do
+  drafts or pre-releases. When several releases are newer, it points to the newest.
+
+### Added
+- **A highlighted "New version" notification** for admins, at the top of the bell (in both lists) and counted on its
+  badge, with **See what's new and download** opening that release's page. It's made once per release (deleting it
+  doesn't bring it back the next day), replaced when a newer release comes out, and removed by itself once the app
+  has that version. Help → About links to the release too and says how many releases are newer.
+- A failed check keeps what the last good one found.
+
 ## [3.11.4] - 2026-11-28
 
 ### Fixed

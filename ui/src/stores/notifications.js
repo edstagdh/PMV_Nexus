@@ -70,6 +70,11 @@ export async function markAllRead() {
   notes.unread = r.unread;
   notes.items = notes.items.map((n) => ({ ...n, read: true }));
 }
+export async function markRead(ids) {
+  const r = await api("/api/notifications/read", { method: "POST", body: { ids } });
+  notes.unread = r.unread;
+  notes.items = notes.items.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n));
+}
 export async function deleteNotification(id) {
   const r = await api(`/api/notifications/${id}`, { method: "DELETE" });
   notes.items = notes.items.filter((n) => n.id !== id);

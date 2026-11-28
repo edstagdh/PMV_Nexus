@@ -29,7 +29,7 @@ from . import i18n
 
 KEEP_DAYS = 30
 KEEP_MAX = 2000
-CATEGORIES = ("download", "reencode", "repair", "upload", "extension", "job", "duplicate", "system")
+CATEGORIES = ("download", "reencode", "repair", "upload", "extension", "job", "duplicate", "system", "update")  # update: 3.11.5
 LEVELS = ("success", "info", "warning", "error")
 
 _db = None

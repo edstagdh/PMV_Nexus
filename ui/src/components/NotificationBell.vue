@@ -7,7 +7,7 @@ import { askConfirm, confirmState } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import Icon from "./Icon.vue";
-import { notes, markAllRead, clearNotifications, deleteNotification } from "../stores/notifications.js";
+import { notes, markAllRead, markRead, clearNotifications, deleteNotification } from "../stores/notifications.js";
 import { toast } from "../stores/toast.js";
 import { formatDateTime } from "../lib/format.js";
 import { hasPermission } from "../stores/session.js";
@@ -18,7 +18,12 @@ const router = useRouter();
 const open = ref(false);
 const show = ref("problems");
 const ICON = { success: "check", info: "bell", warning: "disk", error: "x" };
-const items = computed(() => (show.value === "problems" ? notes.items.filter((n) => n.level === "error" || n.level === "warning") : notes.items));
+// 3.11.5: a new version comes first, in both lists, with its own look
+const isUpdate = (n) => n.category === "update";
+const items = computed(() => {
+  const list = show.value === "problems" ? notes.items.filter((n) => n.level === "error" || n.level === "warning" || isUpdate(n)) : notes.items;
+  return [...list.filter(isUpdate), ...list.filter((n) => !isUpdate(n))];
+});
 
 function toggle() {
   open.value = !open.value;
@@ -51,6 +56,10 @@ function go(to) {
 async function copyNote(n) {
   const ok = await copyText([n.title, n.body, formatDateTime(n.created_at)].filter(Boolean).join("\n"));
   toast(ok ? t("Copied") : t("The browser blocked copying"), { type: ok ? "success" : "error" });
+}
+async function markSeen(n) {
+  if (n.read) return;
+  try { await markRead([n.id]); } catch { /* still opens the page */ }
 }
 async function dismiss(n) {   // 3.11.3: one at a time
   if (openId.value === n.id) openId.value = null;
@@ -93,8 +102,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           <button class="btn btn-ghost btn-sm" :disabled="!notes.items.length" @click="clearAll">{{ $t("Clear") }}</button>
         </div>
         <ul v-if="items.length" class="nc-list scroll-thin">
-          <li v-for="n in items" :key="n.id" :class="[n.level, { unread: !n.read && (n.level === 'error' || n.level === 'warning'), open: openId === n.id }]">
-            <button class="row" type="button" :aria-expanded="openId === n.id" @click="toggleMenu(n)">
+          <li v-for="n in items" :key="n.id" :class="[n.level, { unread: !n.read && (n.level === 'error' || n.level === 'warning'), open: openId === n.id, update: isUpdate(n) }]">
+            <div v-if="isUpdate(n)" class="upd">
+              <span class="upd-ic"><Icon name="download" :size="18" /></span>
+              <div class="upd-txt">
+                <span class="upd-k">{{ $t("New version") }}</span>
+                <span class="t">{{ n.title }}</span>
+                <span v-if="n.body" class="b">{{ n.body }}</span>
+                <a v-if="n.link" class="btn btn-primary btn-sm upd-go" :href="n.link" target="_blank" rel="noopener noreferrer"
+                   @click="markSeen(n)">{{ $t("See what's new and download") }}<Icon name="external" :size="14" /></a>
+              </div>
+            </div>
+            <button v-else class="row" type="button" :aria-expanded="openId === n.id" @click="toggleMenu(n)">
               <span class="ic"><Icon :name="ICON[n.level] || 'bell'" :size="16" /></span>
               <span class="txt">
                 <span class="t">{{ n.title }}</span>
@@ -104,7 +123,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
             </button>
             <button class="dismiss btn btn-ghost btn-icon btn-sm" type="button" :title="$t('Delete this notification')"
                     :aria-label="$t('Delete this notification')" @click="dismiss(n)"><Icon name="x" :size="14" /></button>
-            <div v-if="openId === n.id" class="nmenu" role="menu">
+            <div v-if="openId === n.id && !isUpdate(n)" class="nmenu" role="menu">
               <button v-for="l in linksOf(n)" :key="l.label" class="btn btn-sm" role="menuitem" type="button" @click="go(l.to)">{{ l.label }}</button>
               <button class="btn btn-ghost btn-sm" role="menuitem" type="button" @click="copyNote(n)">{{ $t("Copy") }}</button>
             </div>
@@ -141,6 +160,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 .dismiss { position: absolute; top: 0.4rem; inset-inline-end: 0.5rem; opacity: 0; }
 .nc-list li:hover .dismiss, .dismiss:focus-visible { opacity: 1; }
 @media (hover: none) { .dismiss { opacity: 0.7; } }
+/* 3.11.5: a new version */
+.nc-list li.update { border-bottom: 0; padding: 0.625rem 0.75rem 0.25rem; }
+.upd { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: 0.625rem; padding: 0.75rem 2.25rem 0.75rem 0.75rem;
+  border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--panel)), var(--panel)); }
+.upd-ic { width: 2.25rem; height: 2.25rem; border-radius: 999px; display: grid; place-items: center; background: var(--accent); color: #fff; }
+.upd-txt { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.upd-k { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.upd .t { font-weight: 700; }
+.upd .b { font-size: 0.8rem; color: var(--text-2); }
+.upd-go { align-self: flex-start; margin-top: 0.375rem; gap: 0.375rem; }
+li.update .dismiss { top: 1rem; inset-inline-end: 1.125rem; opacity: 0.7; }
 .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .txt { display: flex; flex-direction: column; min-width: 0; }
 .nmenu { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-block: 0 0.65rem; padding-inline: 3.25rem 1rem; background: var(--panel-hover); }

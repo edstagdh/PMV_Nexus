@@ -27,8 +27,9 @@ REPO_OWNER = "edstagdh"
 REPO_NAME = "PMV_Nexus"
 REPO_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}"
 RELEASES_URL = f"{REPO_URL}/releases"
-# HEAD resolves to the repository's default branch (currently "master").
-REMOTE_VERSION_URL = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/HEAD/VERSION"
+# 3.11.5: published GitHub Releases only (a pushed vX.Y.Z tag) -- not the VERSION on the main branch,
+# not drafts or pre-releases, not test builds of the Release workflow (those are artifacts, not releases).
+RELEASES_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases?per_page=30"
 LICENSE_NAME = "MIT"
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
@@ -56,27 +57,40 @@ def is_newer(remote: str, local: str) -> bool:
 
 
 async def fetch_latest_version(timeout: float = 15.0) -> dict:
-    """Reads VERSION from the repo's main branch. Never raises -- failures come
-    back as {"error": ...} so a scheduled job or button click can report them."""
+    """The newest published release on GitHub (3.11.5: releases, not the main branch's VERSION).
+    Never raises -- failures come back as {"error": ...} so a scheduled job or button click can
+    report them. "newer": how many releases are newer than this app; "release_url": the newest one's page."""
     result = {
-        "checked_at": time.time(), "current": APP_VERSION, "latest": None,
-        "update_available": False, "error": None, "releases_url": RELEASES_URL,
+        "checked_at": time.time(), "current": APP_VERSION, "latest": None, "update_available": False,
+        "newer": 0, "release_url": None, "release_name": None, "published_at": None, "error": None,
+        "releases_url": RELEASES_URL,
     }
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            resp = await client.get(REMOTE_VERSION_URL, headers={"Cache-Control": "no-cache"})
+            resp = await client.get(RELEASES_API_URL, headers={
+                "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": f"PMV-Nexus/{APP_VERSION}"})
         if resp.status_code == 404:
-            result["error"] = "VERSION file not found on GitHub (the repository may be private, or not published yet)"
+            result["error"] = "The repository wasn't found on GitHub (it may be private)"
+        elif resp.status_code == 403:
+            result["error"] = "GitHub refused for now (too many checks from this address) -- it's tried again tomorrow"
         elif resp.status_code != 200:
             result["error"] = f"GitHub returned HTTP {resp.status_code}"
         else:
-            latest = resp.text.strip()
-            if not re.match(r"^v?\d+(\.\d+){0,2}", latest):
-                result["error"] = f"Unexpected VERSION content: {latest[:40]!r}"
-            else:
-                result["latest"] = latest
-                result["update_available"] = is_newer(latest, APP_VERSION)
-    except httpx.HTTPError as exc:
+            published = []
+            for rel in resp.json() if isinstance(resp.json(), list) else []:
+                tag = str(rel.get("tag_name") or "")
+                if rel.get("draft") or rel.get("prerelease") or not re.match(r"^v?\d+\.\d+(\.\d+)?$", tag):
+                    continue
+                published.append((parse_version(tag), tag.lstrip("v"), rel))
+            if published:
+                published.sort(key=lambda r: r[0], reverse=True)
+                _, version, rel = published[0]
+                result.update(latest=version, release_url=rel.get("html_url") or RELEASES_URL,
+                              release_name=rel.get("name") or f"PMV Nexus {version}", published_at=rel.get("published_at"))
+                result["newer"] = sum(1 for v, _, _ in published if v > parse_version(APP_VERSION))
+                result["update_available"] = result["newer"] > 0
+    except (httpx.HTTPError, ValueError) as exc:
         result["error"] = f"Could not reach GitHub: {exc.__class__.__name__}"
     return result
 

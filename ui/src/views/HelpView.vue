@@ -57,7 +57,8 @@ const updateLine = computed(() => {
   const u = info.value?.update;
   if (!u) return t("Not checked yet.");
   if (u.error) return t("Last check failed: {error}", { error: u.error });
-  if (u.update_available) return t("Version {version} is available.", { version: u.latest });
+  if (u.update_available) return u.newer > 1 ? t("Version {version} is available ({n} releases newer than yours).", { version: u.latest, n: u.newer })
+    : t("Version {version} is available.", { version: u.latest });
   if (u.checked_at) return t("Up to date (checked {time}).", { time: new Date(u.checked_at * 1000).toLocaleString(locale()) });
   return t("Not checked yet.");
 });
@@ -139,7 +140,7 @@ function onArticleClick(e) {
           <dt>{{ $t("Updates") }}</dt>
           <dd>
             {{ updateLine }}
-            <a v-if="info.update?.update_available && info.releases_url" :href="info.releases_url" target="_blank" rel="noopener noreferrer">{{ $t("See releases") }}</a>
+            <a v-if="info.update?.update_available && (info.update.release_url || info.releases_url)" :href="info.update.release_url || info.releases_url" target="_blank" rel="noopener noreferrer">{{ $t("See what's new and download") }}</a>
             <button class="btn btn-sm" :disabled="checking" @click="checkUpdate">{{ checking ? $t("Checking…") : $t("Check now") }}</button>
           </dd>
           <dt>{{ $t("License") }}</dt><dd>{{ info.license || "MIT" }}</dd>

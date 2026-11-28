@@ -161,7 +161,7 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   upload it, encrypted and without credentials, to a private [Filester](https://filester.me) folder.
   Credentials are stored encrypted.
 - **Windows installer** (runs from the tray or as a Windows service), or `install.sh` on Linux / macOS.
-  **Update check** built in.
+  **Update check** built in: published releases only, with a highlighted "New version" notification.
 - **Security:** made for a home network or VPN. Sign-in throttling, a strict Content-Security-Policy, cross-site
   request protection, and regular users never see server paths.
 

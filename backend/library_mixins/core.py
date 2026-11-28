@@ -1063,6 +1063,7 @@ class CoreMixin:
         self._relink_task = asyncio.create_task(self.run_pending_relink())
         self._ensure_disk_guard()
         self.clean_incoming_uploads()
+        self.update_notices()   # 3.11.5: drop a "new version" notice the app is now at (after an update)
         from ..transcode import live_transcoder
         live_transcoder.clean(self.settings)
         activity.set_notifier(lambda: self.db._note_change(["activity"]))

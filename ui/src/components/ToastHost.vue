@@ -5,7 +5,10 @@ import { toasts, dismissToast } from "../stores/toast.js";
 const router = useRouter();
 function open(t) {
   dismissToast(t.id);
-  if (t.link) router.push(t.link);
+  if (!t.link) return;
+  // 3.11.5: a page outside the app (a new version's release page) opens in a new tab
+  if (/^https?:\/\//.test(t.link)) window.open(t.link, "_blank", "noopener,noreferrer");
+  else router.push(t.link);
 }
 </script>
 

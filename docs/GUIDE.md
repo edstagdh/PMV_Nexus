@@ -1095,7 +1095,11 @@ Made for a home network or VPN. What the app does to stay safe there:
 ## Updates
 
 The version is shown under the app name in the sidebar. **Help → About → Check now** looks for a newer
-version on GitHub; the daily "Check for updates" system job also runs automatically.
+version on GitHub; the daily "Check for updates" system job also runs automatically. Only **published releases**
+count (3.11.5): a new tag `vX.Y.Z` with its release, not commits on the main branch, test builds of the Release
+workflow, drafts or pre-releases. When one is newer than yours, admins get a highlighted **New version**
+notification at the top of the bell, with **See what's new and download** (the newest release's page, when there
+are several). It's shown once per release, replaced by the next one, and goes away once you've updated.
 
 To update, download the new version (or `git pull`), then run `pip install -r requirements.txt` and
 restart the app. Browser tabs that were open during the update show a **Reload** notice.

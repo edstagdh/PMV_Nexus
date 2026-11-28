@@ -13,7 +13,7 @@ from ..i18n import L
 from .. import backup, backup_jobs
 from ..notifications import notify
 from .. import activity
-from ..app_info import fetch_latest_version
+from ..app_info import APP_VERSION, fetch_latest_version, is_newer
 from ..config import get_settings
 
 UPDATE_STATE_KEY = "update_check"
@@ -115,12 +115,41 @@ class SystemWorkerMixin:
             return last
         async with activity.track("update_check", L('Checking for app updates')):
             result = await fetch_latest_version()
+        if result.get("error") and last and last.get("latest"):
+            # a failed check keeps what the last good one found (the version, its page)
+            result = {**last, "checked_at": result["checked_at"], "error": result["error"], "current": result["current"],
+                      "update_available": bool(last.get("latest") and is_newer(last["latest"], APP_VERSION))}
         self.db.set_app_state(UPDATE_STATE_KEY, result)
-        if result.get("update_available"):
-            logger.info("Update available: {} -> {}", result["current"], result["latest"])
+        if result.get("update_available") and not result.get("error"):
+            logger.info("Update available: {} -> {} ({} newer release(s)) {}", result["current"], result["latest"],
+                        result.get("newer"), result.get("release_url"))
         elif result.get("error"):
             logger.warning("Update check failed: {}", result["error"])
+        self.update_notices(result)
         return result
+
+    def update_notices(self, result: dict | None = None) -> None:
+        """3.11.5: one highlighted "new version" notification per release, for the admins (made once:
+        deleting it doesn't bring it back the next day). Ones about a version this app already has,
+        or an older release than the newest, are removed. Also run at start (after an update)."""
+        result = result if result is not None else (self.get_update_status() or {})
+        try:
+            latest = result.get("latest") if result.get("update_available") and is_newer(result.get("latest") or "", APP_VERSION) else None
+            stale = []
+            for row in self.db.notifications_of("update"):
+                version = (row.get("link") or "").rstrip("/").rsplit("/", 1)[-1].lstrip("v")
+                if not is_newer(version, APP_VERSION) or (latest and version != latest):
+                    stale.append(row["id"])
+            self.db.delete_notification_ids(stale)
+            if latest and self.db.get_app_state("update_notified", None) != latest:
+                newer = result.get("newer") or 1
+                notify("update", "info", L("PMV Nexus {version} is available", version=latest),
+                       body=(L("You have {current}; {n} releases are newer, and this is the newest.", current=APP_VERSION, n=newer)
+                             if newer > 1 else L("You have {current}.", current=APP_VERSION)),
+                       link=result.get("release_url") or result.get("releases_url"))
+                self.db.set_app_state("update_notified", latest)
+        except Exception:  # noqa: BLE001 -- never stop a check or the start over this
+            logger.opt(exception=True).warning("Couldn't update the new-version notification")
 
     async def run_backup(self, include_cache: bool | None = None, include_secrets: bool = False,
                          trigger: str = "scheduled", include: list[str] | None = None, dest: str | None = None,

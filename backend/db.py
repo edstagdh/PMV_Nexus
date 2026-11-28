@@ -1328,7 +1328,8 @@ class LibraryDB:
     def notification_counts(self, user_id: str, admin: bool) -> dict:
         where, args = self._notif_where(user_id, admin)
         row = self._conn.execute(
-            f"SELECT MAX(id) AS last_id, SUM(CASE WHEN read = 0 AND level IN ('warning','error') THEN 1 ELSE 0 END) AS unread "
+            f"SELECT MAX(id) AS last_id, SUM(CASE WHEN read = 0 AND (level IN ('warning','error') OR category = 'update') "
+            f"THEN 1 ELSE 0 END) AS unread "
             f"FROM notifications WHERE {where}", args).fetchone()
         return {"last_id": row["last_id"] or 0, "unread": row["unread"] or 0}
 
@@ -1350,6 +1351,16 @@ class LibraryDB:
             args = list(args) + list(ids)
         self._conn.execute(sql, args)
         self._conn.commit()
+
+    def notifications_of(self, category: str) -> list[dict]:
+        """Every notification of one kind, everyone's (3.11.5: the "new version" ones)."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, link, user_id FROM notifications WHERE category = ?", (category,)).fetchall()]
+
+    def delete_notification_ids(self, ids: list[int]) -> None:
+        if ids:
+            self._conn.execute(f"DELETE FROM notifications WHERE id IN ({','.join('?' * len(ids))})", list(ids))
+            self._conn.commit()
 
     def prune_notifications(self, older_than: float, keep: int) -> None:
         self._conn.execute("DELETE FROM notifications WHERE created_at < ? OR id <= "

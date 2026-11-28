@@ -4377,6 +4377,9 @@
  "New tab": [
   "ui/src/views/WallView.vue"
  ],
+ "New version": [
+  "ui/src/components/NotificationBell.vue"
+ ],
  "Newest in the library": [
   "ui/src/lib/wallPick.js"
  ],
@@ -5517,6 +5520,9 @@
  "PMV Nexus was updated to v{version}.": [
   "ui/src/App.vue"
  ],
+ "PMV Nexus {version} is available": [
+  "backend/library_mixins/system_worker.py"
+ ],
  "PMVHaven API": [
   "backend/secrets_store.py"
  ],
@@ -6555,9 +6561,6 @@
  "Secrets (credentials and extensions' sign-ins)": [
   "backend/backup.py"
  ],
- "See releases": [
-  "ui/src/views/HelpView.vue"
- ],
  "See Tasks": [
   "backend/permissions.py"
  ],
@@ -6569,6 +6572,10 @@
  ],
  "See the log from then": [
   "ui/src/components/NotificationBell.vue"
+ ],
+ "See what's new and download": [
+  "ui/src/components/NotificationBell.vue",
+  "ui/src/views/HelpView.vue"
  ],
  "See which videos are being played right now (never who plays them)": [
   "backend/permissions.py"
@@ -8485,6 +8492,9 @@
  "Version {version} is available": [
   "ui/src/views/HelpView.vue"
  ],
+ "Version {version} is available ({n} releases newer than yours).": [
+  "ui/src/views/HelpView.vue"
+ ],
  "Version {version} is available.": [
   "ui/src/views/HelpView.vue"
  ],
@@ -8889,6 +8899,12 @@
  ],
  "You have no playlists yet.": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
+ ],
+ "You have {current}.": [
+  "backend/library_mixins/system_worker.py"
+ ],
+ "You have {current}; {n} releases are newer, and this is the newest.": [
+  "backend/library_mixins/system_worker.py"
  ],
  "You're told about the videos you added.": [
   "ui/src/views/SettingsView.vue"
