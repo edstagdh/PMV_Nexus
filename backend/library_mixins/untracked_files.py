@@ -111,6 +111,8 @@ class UntrackedFilesMixin:
                     }
                     if location == "downloads" and entry["kind"] == "video":
                         entry.update(self.untracked_video_info(path))   # 3.10.0: can it be added back?
+                    elif entry["kind"] in ("thumbnail", "preview", "metadata", "funscript"):
+                        entry.update(self.untracked_companion_info(path, entry["kind"]) or {})   # 3.11.1
                     files.append(entry)
         files.sort(key=lambda f: (f["location"], f["relative"].lower()))
         return {"scanned_at": time.time(), "files": files, "total_size": sum(f["size"] for f in files),
@@ -181,4 +183,8 @@ class UntrackedFilesMixin:
             item = self._items.get(vid) if vid else None
             if item and item.status == "done" and file_state(item.video_path):
                 return L("it's probably the file of a library video whose own file is missing -- link it back instead")
+        else:
+            info = self.untracked_companion_info(path, _kind(path))
+            if info and info.get("can_link"):
+                return L("the library video it belongs to has none -- link it back instead")
         return None

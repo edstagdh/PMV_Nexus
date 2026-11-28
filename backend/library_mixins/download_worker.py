@@ -376,7 +376,11 @@ class DownloadWorkerMixin:
                 tech_info = media_tools.get_technical_info(str(video_path))
                 meta_dict.setdefault("video_details", {})
                 meta_dict["video_details"].update(tech_info)
-                meta_path = cache_creator_dir / f"{base_name}.json"
+                # 3.11.1: into the file written when the details were fetched (or by an earlier
+                # download) when there is one -- a new name (the uploader or title changed in
+                # between) left that one behind as "untracked"
+                own_meta = Path(item.metadata_path) if item.metadata_path else None
+                meta_path = own_meta if own_meta is not None and own_meta.parent.is_dir() else cache_creator_dir / f"{base_name}.json"
                 meta_path.write_text(json.dumps(meta_dict, indent=2, ensure_ascii=False), encoding="utf-8")
                 item.metadata_path = str(meta_path)
 

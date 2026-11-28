@@ -4,7 +4,7 @@
   "name": "English",
   "native": "English",
   "direction": "ltr",
-  "version": "3.11.0"
+  "version": "3.11.1"
  },
  "messages": {
   " (thorough)": " (thorough)",
@@ -53,6 +53,8 @@
   "A folder with that name already exists": "A folder with that name already exists",
   "A group gives its permissions to everyone in it — e.g. {em1} with Names, or {em2} with Edit details.": "A group gives its permissions to everyone in it — e.g. {em1} with Names, or {em2} with Edit details.",
   "A is {time} — click at the end of the part (B)": "A is {time} — click at the end of the part (B)",
+  "A library video with this id has none (or its file is missing) — this is probably its own. Link back gives it to the video; it is never deleted from here.": "A library video with this id has none (or its file is missing) — this is probably its own. Link back gives it to the video; it is never deleted from here.",
+  "A library video with this id uses another file of this kind — this is an older copy, left behind (for example by a renamed uploader or title)": "A library video with this id uses another file of this kind — this is an older copy, left behind (for example by a renamed uploader or title)",
   "A match by either method counts. Finds the most, with a slightly higher risk of false matches.": "A match by either method counts. Finds the most, with a slightly higher risk of false matches.",
   "a merged duplicate": "a merged duplicate",
   "a performer with {details}": "a performer with {details}",
@@ -1109,6 +1111,7 @@
   "it's probably the file of a library video whose own file is missing -- link it back instead": "it's probably the file of a library video whose own file is missing -- link it back instead",
   "Item {id} not found": "Item {id} not found",
   "Its file is there -- use Repair / Update, or Check video files (thorough)": "Its file is there -- use Repair / Update, or Check video files (thorough)",
+  "its name doesn't have this video's id": "its name doesn't have this video's id",
   "its name has neither this video's id nor its old file name": "its name has neither this video's id nor its old file name",
   "Its own codec: stays {codec}, only made 1080p": "Its own codec: stays {codec}, only made 1080p",
   "Its thumbnail, preview clip and details file are deleted too.": "Its thumbnail, preview clip and details file are deleted too.",
@@ -1179,6 +1182,7 @@
   "Library care": "Library care",
   "Library repair (all videos)": "Library repair (all videos)",
   "Library size": "Library size",
+  "Library videos that lack these files (or whose own file is missing): use these instead": "Library videos that lack these files (or whose own file is missing): use these instead",
   "Library-wide jobs. Duplicate detection has its own {link1} page.": "Library-wide jobs. Duplicate detection has its own {link1} page.",
   "License": "License",
   "LICENSE file not found.": "LICENSE file not found.",
@@ -1197,9 +1201,9 @@
   "linked by hand": "linked by hand",
   "Linked to {site}": "Linked to {site}",
   "Linked to {site}: {n} details filled in, {p} photos saved": "Linked to {site}: {n} details filled in, {p} photos saved",
-  "Linked {n} videos back to their files": {
-   "one": "Linked {n} video back to its file",
-   "other": "Linked {n} videos back to their files"
+  "Linked {n} files back to their videos": {
+   "one": "Linked {n} file back to its video",
+   "other": "Linked {n} files back to their videos"
   },
   "Linked {n} videos to their files": {
    "one": "Linked {n} video to its file",
@@ -1528,6 +1532,7 @@
   "Not found on ThePornDB.": "Not found on ThePornDB.",
   "Not found on {site}": "Not found on {site}",
   "not in the download folder": "not in the download folder",
+  "not in the download or cache folder": "not in the download or cache folder",
   "Not installed": "Not installed",
   "Not known": "Not known",
   "Not linked to that site": "Not linked to that site",
@@ -1544,6 +1549,7 @@
   "not text": "not text",
   "Not the same": "Not the same",
   "not there any more": "not there any more",
+  "not there any more, or empty": "not there any more, or empty",
   "Not used": "Not used",
   "Not what you pressed? Some keyboards don't report certain keys pressed together — try again, or pick other keys.": "Not what you pressed? Some keyboards don't report certain keys pressed together — try again, or pick other keys.",
   "not {words}": "not {words}",
@@ -1576,6 +1582,7 @@
   "Off: videos with ANY selected tag/performer. On: videos with ALL of them.": "Off: videos with ANY selected tag/performer. On: videos with ALL of them.",
   "Off: “Re-encode” disappears from every menu and page for everyone, and the server refuses new re-encodes (ones already queued still finish). Converting uploads (Uploads tab) isn't affected.": "Off: “Re-encode” disappears from every menu and page for everyone, and the server refuses new re-encodes (ones already queued still finish). Converting uploads (Uploads tab) isn't affected.",
   "OK": "OK",
+  "older copy — the video uses another": "older copy — the video uses another",
   "Oldest age": "Oldest age",
   "On": "On",
   "on its way already — see Tasks": "on its way already — see Tasks",
@@ -2344,6 +2351,7 @@
   "That picture is too big (20 MB at most)": "That picture is too big (20 MB at most)",
   "That picture is too big (30 MB at most)": "That picture is too big (30 MB at most)",
   "That suggestion was already handled": "That suggestion was already handled",
+  "That video has one already -- this is an older copy": "That video has one already -- this is an older copy",
   "that video is already in the library (another file)": "that video is already in the library (another file)",
   "That video is being downloaded right now": "That video is being downloaded right now",
   "That video's own file is there -- nothing to link": "That video's own file is there -- nothing to link",
@@ -2398,9 +2406,10 @@
   "The last sync failed: {error}": "The last sync failed: {error}",
   "The library already has this video, in another file that is there — this one is a second copy": "The library already has this video, in another file that is there — this one is a second copy",
   "The library has no downloaded videos yet": "The library has no downloaded videos yet",
-  "The library has these videos, but their own files are missing: use these files instead": "The library has these videos, but their own files are missing: use these files instead",
   "The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.": "The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.",
   "The library now": "The library now",
+  "the library video has none — link back": "the library video has none — link back",
+  "the library video it belongs to has none -- link it back instead": "the library video it belongs to has none -- link it back instead",
   "the library's file is missing — link back": "the library's file is missing — link back",
   "The log store is not running": "The log store is not running",
   "The new passwords don't match.": "The new passwords don't match.",

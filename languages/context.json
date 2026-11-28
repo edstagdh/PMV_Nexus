@@ -137,6 +137,12 @@
  "A is {time} — click at the end of the part (B)": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "A library video with this id has none (or its file is missing) — this is probably its own. Link back gives it to the video; it is never deleted from here.": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "A library video with this id uses another file of this kind — this is an older copy, left behind (for example by a renamed uploader or title)": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "A match by either method counts. Finds the most, with a slightly higher risk of false matches.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -3443,6 +3449,9 @@
  "Its file is there -- use Repair / Update, or Check video files (thorough)": [
   "backend/library_mixins/file_check.py"
  ],
+ "its name doesn't have this video's id": [
+  "backend/library_mixins/file_check.py"
+ ],
  "its name has neither this video's id nor its old file name": [
   "backend/library_mixins/file_check.py"
  ],
@@ -3662,6 +3671,9 @@
  "Library size": [
   "ui/src/views/admin/StatsView.vue"
  ],
+ "Library videos that lack these files (or whose own file is missing): use these instead": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Library-wide jobs. Duplicate detection has its own {link1} page.": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
@@ -3717,7 +3729,7 @@
  "Linked to {site}: {n} details filled in, {p} photos saved": [
   "ui/src/components/StashBoxPanel.vue"
  ],
- "Linked {n} videos back to their files": [
+ "Linked {n} files back to their videos": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Linked {n} videos to their files": [
@@ -4711,6 +4723,9 @@
   "backend/library_mixins/adopt.py",
   "backend/library_mixins/file_check.py"
  ],
+ "not in the download or cache folder": [
+  "backend/library_mixins/file_check.py"
+ ],
  "Not installed": [
   "ui/src/components/LanguageSettings.vue"
  ],
@@ -4759,6 +4774,9 @@
  ],
  "not there any more": [
   "backend/library_mixins/adopt.py"
+ ],
+ "not there any more, or empty": [
+  "backend/library_mixins/file_check.py"
  ],
  "Not used": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -4861,6 +4879,9 @@
  "OK": [
   "ui/src/stores/confirm.js",
   "ui/src/views/admin/ToolsView.vue"
+ ],
+ "older copy — the video uses another": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Oldest age": [
   "ui/src/components/FilterPanel.vue"
@@ -7367,6 +7388,9 @@
  "That suggestion was already handled": [
   "backend/routers/songs.py"
  ],
+ "That video has one already -- this is an older copy": [
+  "backend/library_mixins/file_check.py"
+ ],
  "that video is already in the library (another file)": [
   "backend/library_mixins/adopt.py"
  ],
@@ -7532,14 +7556,17 @@
  "The library has no downloaded videos yet": [
   "backend/routers/library.py"
  ],
- "The library has these videos, but their own files are missing: use these files instead": [
-  "ui/src/views/admin/MaintenanceView.vue"
- ],
  "The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "The library now": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "the library video has none — link back": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "the library video it belongs to has none -- link it back instead": [
+  "backend/library_mixins/untracked_files.py"
  ],
  "the library's file is missing — link back": [
   "ui/src/views/admin/MaintenanceView.vue"

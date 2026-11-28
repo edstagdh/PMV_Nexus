@@ -77,6 +77,21 @@ class AdoptMixin:
             return {"video_id": vid, "can_add": False, "why_not": "in_library"}
         return {"video_id": vid, "can_add": True}
 
+    def untracked_companion_info(self, path: Path, kind: str) -> Optional[dict]:
+        """3.11.1: a thumbnail / preview / details JSON / funscript carrying the id of a library
+        video: the one it lacks (link it back), or an older copy (it uses another file)."""
+        from .file_check import COMPANION_FIELDS, file_state
+        field = COMPANION_FIELDS.get(kind)
+        vid = video_id_in_name(path.name)
+        item = self._items.get(vid) if vid and field else None
+        if item is None or item.status == "merged":
+            return None
+        if kind == "thumbnail" and path.stem.lower().endswith(("_original", "_custom")):
+            return {"video_id": vid, "why_not": "older_copy"}
+        if file_state(getattr(item, field, None)):
+            return {"video_id": vid, "can_link": True, "why_not": "library_lacks"}
+        return {"video_id": vid, "why_not": "older_copy"}
+
     def _leftovers(self, vid: str, untracked: list[Path]) -> dict:
         """Untracked companions of video `vid` (same [id] in the name), by what they are."""
         found: dict = {}

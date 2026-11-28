@@ -128,7 +128,7 @@ async function doLink() {
     try { await api(`/api/library/${encodeURIComponent(f.video_id)}/link-file`, { method: "POST", body: { path: f.path } }); ok++; }
     catch (err) { errors.push(`${f.relative}: ${err.message}`); }
   }
-  if (ok) toast(tn("Linked {n} video back to its file", "Linked {n} videos back to their files", ok), { type: "success" });
+  if (ok) toast(tn("Linked {n} file back to its video", "Linked {n} files back to their videos", ok), { type: "success" });
   if (errors.length) toast(errors.slice(0, 3).join(" · "), { type: "error", timeout: 9000 });
   await runScan();
 }
@@ -238,7 +238,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
                   :title="$t('Videos with a PMVHaven video id in their name: their details come from the site, the file stays where it is — nothing is downloaded')"
                   @click="doAdd"><Icon name="plus" />{{ $t("Add to the library ({n})", { n: addableSelected.length }) }}</button>
           <button v-if="linkableCount" class="btn btn-sm" :disabled="!linkableSelected.length"
-                  :title="$t('The library has these videos, but their own files are missing: use these files instead')"
+                  :title="$t('Library videos that lack these files (or whose own file is missing): use these instead')"
                   @click="doLink"><Icon name="check" />{{ $t("Link back ({n})", { n: linkableSelected.length }) }}</button>
           <button class="btn btn-danger btn-sm" :disabled="!selected.size" @click="confirming = true"><Icon name="trash" />{{ $t("Delete selected") }}</button>
         </div>
@@ -258,6 +258,8 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
                 <td class="path" :title="f.path">{{ f.relative }}
                   <span v-if="f.can_add" class="pill pill-accent" :title="$t('Add to the library brings it back with its details from the site, without downloading it')">{{ $t("can be added") }}</span>
                   <span v-else-if="f.adding" class="pill">{{ $t("being added…") }}</span>
+                  <span v-else-if="f.can_link && f.why_not === 'library_lacks'" class="pill pill-warn" :title="$t('A library video with this id has none (or its file is missing) — this is probably its own. Link back gives it to the video; it is never deleted from here.')">{{ $t("the library video has none — link back") }}</span>
+                  <span v-else-if="f.why_not === 'older_copy'" class="pill" :title="$t('A library video with this id uses another file of this kind — this is an older copy, left behind (for example by a renamed uploader or title)')">{{ $t("older copy — the video uses another") }}</span>
                   <span v-else-if="f.can_link" class="pill pill-warn" :title="$t('The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.')">{{ $t("the library's file is missing — link back") }}</span>
                   <span v-else-if="f.why_not === 'merged'" class="pill" :title="$t('This video was merged into another one as its duplicate — this is a leftover copy')">{{ $t("a merged duplicate") }}</span>
                   <span v-else-if="f.why_not === 'in_library'" class="pill" :title="$t('The library already has this video, in another file that is there — this one is a second copy')">{{ $t("second copy of a library video") }}</span>

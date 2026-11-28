@@ -356,7 +356,7 @@ async def link_video_file(video_id: str, payload: LinkFileRequest,
                           user: AuthContext = Depends(require_permission("maintenance.run"))):
     """A video whose file is missing: use this file in the download folder (found by the check or in Untracked files)."""
     try:
-        return await library_manager.link_video_file(video_id, payload.path)
+        return await library_manager.link_file(video_id, payload.path)
     except KeyError:
         raise HTTPException(status_code=404, detail=L("Video not found")) from None
     except ValueError as exc:

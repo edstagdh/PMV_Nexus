@@ -766,7 +766,10 @@ site changed its title. The list is read again by itself once the job is done.
 **Link back** (3.11.0): when the library has the video but its own file is missing, a file with its id is marked
 **the library's file is missing — link back**: it's most likely that very video, renamed or moved. **Link back**
 makes the library video use it. Such files are never deleted from this list (Delete selected skips them and says
-why), and neither are files being added. Every file deleted here is written to the log by name.
+why), and neither are files being added. Every file deleted here is written to the log by name. A thumbnail, preview, details JSON or funscript with a
+library video's id is marked too (3.11.1): **the library video has none — link back** (it gets it back; never
+deleted from here), or **older copy — the video uses another** (left behind, e.g. when the uploader's name or the
+title changed; safe to delete).
 
 **Check video files** (3.11.0) goes through every downloaded video and checks that its file is there, isn't empty
 (0 bytes) and that ffprobe can read a video track from it. **Thorough** also reads the whole file through and

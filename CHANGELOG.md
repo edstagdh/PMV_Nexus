@@ -4,6 +4,20 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.11.1] - 2026-11-28
+
+### Fixed
+- **Repair/Update left a video's details JSON behind as "untracked"** when the file's name didn't match the video's
+  (e.g. a video first fetched while the site had no uploader name, saved as `unknown/- <date> - <title> [id].json`):
+  it wrote a new JSON under the video's name and moved over to it. It now updates the video's own JSON. A download
+  does the same with the JSON written when the details were fetched. A new JSON is recorded the moment it's
+  written, and a failure while reading it is logged with its details.
+
+### Added
+- **Untracked files:** a thumbnail, preview, details JSON or funscript carrying a library video's id is marked:
+  "the library video has none — link back" (Link back gives it to the video; Delete skips it), or "older copy — the
+  video uses another" (safe to delete).
+
 ## [3.11.0] - 2026-11-28
 
 ### Added

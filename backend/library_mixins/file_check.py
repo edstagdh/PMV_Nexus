@@ -29,6 +29,9 @@ from .adopt import video_id_in_name
 from .untracked_files import _kind, _norm
 
 PROBLEMS = ("missing", "empty", "unreadable", "damaged")
+# Untracked files kinds -> the field of the library video that uses such a file (3.11.1)
+COMPANION_FIELDS = {"thumbnail": "thumbnail_path", "preview": "preview_path", "metadata": "metadata_path",
+                    "funscript": "funscript_path"}
 
 
 def file_state(path: Optional[str]) -> Optional[str]:
@@ -247,6 +250,41 @@ class FileCheckMixin:
         logger.info("Linked '{}' [{}] to {} (its file {} was missing)", item.title, video_id, new, before)
         self.request_repair(video_id)
         self.request_storyboard(video_id)
+        return item.model_dump()
+
+    async def link_file(self, video_id: str, path: str) -> dict:
+        """Link back from Untracked files / the check: a video file, or (3.11.1) a thumbnail,
+        preview, details JSON or funscript the library video doesn't have."""
+        kind = _kind(Path(path))
+        if kind not in COMPANION_FIELDS:
+            return await self.link_video_file(video_id, path)
+        item = self._items.get(video_id)
+        if not item or item.status == "merged":
+            raise KeyError(video_id)
+        field = COMPANION_FIELDS[kind]
+        if file_state(getattr(item, field, None)) is None:
+            raise ValueError(L("That video has one already -- this is an older copy"))
+        new = Path(path)
+        key = _norm(new)
+        roots = [_norm(self.settings.output_dir), _norm(self.settings.cache_dir)]
+        if not any(key.startswith(r + os.sep) for r in roots):
+            raise ValueError(L("not in the download or cache folder"))
+        if file_state(path) is not None:
+            raise ValueError(L("not there any more, or empty"))
+        tracked, keep = self._tracked_paths()
+        if key in tracked or key in keep:
+            raise ValueError(L("another library video uses that file"))
+        if video_id_in_name(new.name) != video_id:
+            raise ValueError(L("its name doesn't have this video's id"))
+        async with self._lock:
+            setattr(item, field, str(new))
+            if field == "thumbnail_path":
+                item.thumbnail_updated_at = time.time()
+            elif field == "preview_path":
+                item.preview_updated_at = time.time()
+            item.touch()
+            self.db.save_item(item)
+        logger.info("Linked the {} {} back to '{}' [{}]", kind, new, item.title, video_id)
         return item.model_dump()
 
     async def redownload(self, video_id: str, replace_damaged: bool = False) -> dict:

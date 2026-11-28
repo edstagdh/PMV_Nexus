@@ -619,7 +619,11 @@ class RepairWorkerMixin:
         # doesn't misleadingly say "Fixed: metadata" every single time.
         await self._set_repair_progress(item, "Refreshing metadata\u2026")
         logger.info("Repair/Update for {}: refreshing metadata JSON / tags / performers / ratings", item.id)
-        meta_path = cache_creator_dir / f"{base_name}.json"
+        # 3.11.1: the video's own details file when it has one (its name can differ from the
+        # video's, e.g. downloaded while the site had no uploader name: "unknown/- <date> - ...").
+        # A new name here left the old file behind as "untracked".
+        own_meta = Path(item.metadata_path) if item.metadata_path else None
+        meta_path = own_meta if own_meta is not None and own_meta.parent.is_dir() else cache_creator_dir / f"{base_name}.json"
 
         if raw_json is not None:
             # Merge onto whatever's already on disk (if readable) so this
@@ -642,6 +646,12 @@ class RepairWorkerMixin:
         meta_dict["video_details"].update(tech_info)
         try:
             meta_path.write_text(json.dumps(meta_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+            if item.metadata_path != str(meta_path):
+                # recorded at once, so a problem reading the details below can't leave the file untracked
+                async with self._lock:
+                    item.metadata_path = str(meta_path)
+                    item.touch()
+                    self.db.save_item(item)
             new_tags, new_performers, new_music = extract_tags_performers_music_from_meta_dict(meta_dict)
             new_description = meta_dict.get("description") or item.description
             new_ratings = meta.rating_percent or item.ratings
@@ -670,6 +680,6 @@ class RepairWorkerMixin:
             if metadata_changed:
                 fixed.append("metadata")
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Repair/Update: metadata write failed for {}: {}", item.id, exc)
+            logger.opt(exception=exc).warning("Repair/Update: metadata write failed for {}: {}", item.id, exc)
 
         await self._finish_repair(item, "done", fixed=fixed)
