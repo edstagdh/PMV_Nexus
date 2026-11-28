@@ -49,6 +49,15 @@ if not "%PLAN%"=="3" goto :plan_done
 choice /c YN /m "       The library is changed when the app starts. Continue"
 if errorlevel 2 goto :not_now
 :plan_done
+rem 3.13.0: a backup of the library first (database, settings, own photos, covers; Server Settings - Backups)
+if not exist config.yaml goto :backup_done
+set /p APPVER=<VERSION
+"%VPY%" -m Tools.pre_install_backup --to %APPVER%
+if not errorlevel 1 goto :backup_done
+if errorlevel 2 goto :backup_done
+choice /c YN /n /m "       No backup could be made (see above). Go on without it? [Y/N] "
+if errorlevel 2 goto :not_now
+:backup_done
 
 rem ---- 3. ffmpeg ---------------------------------------------------------
 where ffmpeg >nul 2>&1

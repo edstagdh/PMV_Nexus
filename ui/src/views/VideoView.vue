@@ -1,7 +1,7 @@
 <script setup>
 import { t, tn, N_ } from "../lib/i18n.js";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import Icon from "../components/Icon.vue";
 import MediaInfoDialog from "../components/dialogs/MediaInfoDialog.vue";
 import PlayQueue from "../components/PlayQueue.vue";
@@ -26,6 +26,15 @@ import { makers, creatorText, uploadedBy } from "../lib/creators.js";
 
 const props = defineProps({ id: String });
 const router = useRouter();
+const route = useRoute();
+// 3.13.0: /video/<id>?t=<seconds> (e.g. from Management -> Faces) opens it at that moment
+let startedAt = null;
+function startTime(id) {
+  const t0 = Number(route.query.t);
+  if (route.query.t == null || !Number.isFinite(t0) || t0 < 0 || startedAt === `${id}@${route.query.t}`) return null;
+  startedAt = `${id}@${route.query.t}`;
+  return t0;
+}
 const item = ref(null);
 const meta = ref(null);
 const syncInfo = ref({});
@@ -109,6 +118,7 @@ const flags = computed(() => item.value?.user_edits?.flags ?? view.value?.flags 
 // Fields changed by hand (Edit details) -- kept through syncs and repairs.
 function edited(field) { return !!item.value?.user_edits && field in item.value.user_edits; }
 const canEdit = computed(() => hasPermission("videos.edit"));
+const faceAdded = ref({});   // 3.13.0: performers an approved face match added {folded name: score}
 // 3.12.1: gone from the site -- from the video itself (marked by a sync or a repair), so it shows
 // even when the video has no details file
 const isGone = computed(() => (item.value?.site_status ?? syncInfo.value.status) === "removed");
@@ -134,7 +144,13 @@ async function redownload() {
 // Hand the player this page's slot once the video can play; if it can't (still
 // downloading, removed), a video playing elsewhere carries on in the mini-player.
 watch([slot, () => item.value?.id, playable], () => {
-  if (playable.value && slot.value) openOnPage(item.value, slot.value);
+  if (playable.value && slot.value) {
+    const same = player.item?.id === item.value.id;
+    const t0 = startTime(item.value.id);
+    if (t0 != null && !same) player.resume = { id: item.value.id, time: t0 };   // a new video starts there
+    openOnPage(item.value, slot.value);
+    if (t0 != null && same) seekPlayer(t0);                                      // the one playing jumps there
+  }
   else if (item.value && !playable.value && player.mode === "page") leavePage();
 }, { flush: "post" });
 watch(error, (e) => { if (e && player.mode === "page") leavePage(); });
@@ -265,7 +281,7 @@ function viewAllFrom(names) {
           <div v-if="performers.length" class="group">
             <h4>{{ $t("Performers") }}<span v-if="edited('performers')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
             <div class="chips"><RouterLink v-for="p in performers" :key="p" :to="{ name: 'performer', params: { name: p } }" class="chip chip-performer"
-                                           :class="perfClass(p)" :title="$t('{name} — profile and videos', { name: perfTitle(p) })">{{ p }}</RouterLink></div>
+                                           :class="perfClass(p)" :title="faceAdded[p.toLowerCase()] != null ? $t('{name} — added because their face was recognised (score {score})', { name: perfTitle(p), score: Math.round(faceAdded[p.toLowerCase()]) }) : $t('{name} — profile and videos', { name: perfTitle(p) })">{{ p }}<span v-if="faceAdded[p.toLowerCase()] != null" class="face-mark" aria-hidden="true">☺</span></RouterLink></div>
           </div>
           <div v-if="tags.length" class="group">
             <h4>{{ $t("Tags") }}<span v-if="edited('tags')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
@@ -292,8 +308,8 @@ function viewAllFrom(names) {
           <div v-if="syncInfo.synced_at" class="muted small">{{ $t("Last synced with PMVHaven {time}", { time: formatDateTime(syncInfo.synced_at) }) }}</div>
         </section>
 
-        <section v-if="shared.length" class="card shared">
-          <h3>{{ $t("Shares scenes with") }}</h3>
+        <details v-if="shared.length && session.prefs.sharedScenes !== 'hidden'" class="card shared" :open="session.prefs.sharedScenes === 'open'">
+          <summary><h3>{{ $t("Shares scenes with") }} <span class="muted small">({{ shared.length }})</span></h3></summary>
           <p class="muted small">{{ $t("Videos with the same footage, found by comparing frames. A time jumps there in this video.") }}</p>
           <ul>
             <li v-for="s in shared" :key="s.id">
@@ -309,9 +325,9 @@ function viewAllFrom(names) {
               </div>
             </li>
           </ul>
-        </section>
+        </details>
 
-        <FacesOnVideo :id="props.id" />
+        <FacesOnVideo :id="props.id" @added="faceAdded = $event" />
 
         <section v-if="sameCreator.length" class="same">
           <div class="section-head">
@@ -338,7 +354,9 @@ function viewAllFrom(names) {
 <style scoped>
 .video-page { padding: 0.75rem 1.5rem 2rem; }
 .shared { padding: 0.9rem 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.shared h3 { margin: 0; font-size: 1rem; }
+.shared h3 { margin: 0; font-size: 1rem; display: inline; }
+.shared summary { cursor: pointer; }
+.shared[open] summary { margin-bottom: 0.25rem; }
 .shared ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
 .shared li { display: flex; gap: 0.75rem; align-items: flex-start; }
 .sh-thumb { flex: none; width: 8rem; aspect-ratio: 16 / 9; border-radius: 0.4rem; overflow: hidden; background: var(--panel-2); }
@@ -370,6 +388,7 @@ function viewAllFrom(names) {
 .gone { padding: 0.75rem 0.875rem; border-radius: var(--radius); border: 1px solid var(--gone-bg, #dc2626); background: color-mix(in srgb, var(--gone-bg, #dc2626) 14%, transparent); font-size: 0.84rem; }
 .details { padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.875rem; }
 .no-details { display: flex; flex-direction: column; gap: 0.35rem; }
+.face-mark { margin-inline-start: 0.3rem; opacity: 0.75; font-size: 0.85em; }
 .no-details p { margin: 0; }
 .group { display: flex; flex-direction: column; gap: 0.5rem; }
 .group h4, .side-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }

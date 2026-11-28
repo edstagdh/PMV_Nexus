@@ -120,7 +120,8 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **ThePornDB, FansDB and StashDB together:** link a performer to all three, with photos from each (up to 10 site
   photos) and a table of the details the sites disagree on.
 - **Recognised by face:** finds performers in videos by comparing the faces in each video's pictures with their
-  photos — **completely offline** (OpenCV). Nothing is added without your OK; every decision can be undone.
+  photos — **completely offline** (OpenCV). Nothing is added without your OK (an approval adds the performer to the
+  video); every decision can be undone. Sortable, in pages, with where in the video each face is.
 - **Not on ThePornDB?** Search **FansDB** or **StashDB** by hand, or type their details, links and up to 30 photos in
   yourself — from your computer or from a link the server fetches safely.
 - **The Wall:** a 3D (or 2D) graph of who appears with whom; click a performer to see them with all their videos,
@@ -295,7 +296,8 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 - **Updating:** run the newer Setup over it — it finds the install by itself (same folder, same options), so choose
   the same "only for me" / "all users" mode as the first time. `config.yaml`, `data`, `extensions` and the service
   setting are kept and the set-up pages skipped. If the app is running (tray, console window or service), Setup says
-  so and closes it — work in progress stops safely and continues later — and starts it again afterwards. The app's
+  so and closes it — work in progress stops safely and continues later — **backs up the library** (3.13.0; deleted
+  after 90 days, Management → Backups) and starts it again afterwards. The app's
   code folders (`backend`, `frontend`, `Tools`, `userscript`, `docs`) are replaced as a whole, so nothing old stays
   behind. Going back to an older version isn't supported (restore a backup instead).
 - **Uninstall** (Settings → Apps): removes the app, then asks what else to delete — ticked separately, each with
@@ -313,14 +315,15 @@ and run it. Windows may say it protected your PC — the installer isn't code-si
 
 ### Linux / macOS: `install.sh`
 Get the code (download the release's source zip, or `git clone`), then run **`./install.sh`**: Python check (with the
-command to install it if missing), `.venv` and packages, an ffmpeg check, then a new library
+command to install it if missing), `.venv` and packages, an ffmpeg check, on an update a backup of the library
+(3.13.0), then a new library
 (folders + port) or one from a backup zip, and — on Linux with systemd — optionally a **user service**
 (`systemctl --user status pmv-nexus`) that keeps it running and starts it with the computer.
 
 ### Windows without Setup: `install.bat`
 Get the code (`git clone`, or download the zip and extract it), then double-click **`install.bat`**. It checks for
 Python, creates `.venv`, installs the Python packages, checks for ffmpeg, on an update says what it changes in the
-library (3.12.1; you can stop there), and asks:
+library (3.12.1; you can stop there), backs up the library before an update (3.13.0), and asks:
 - **a backup zip** (drag the file into the window) — to set up from a backup, see
   [Setting up from a backup](#setting-up-from-a-backup-new-computer-or-reinstall); or, for a new setup,
 - **the folders** — where the videos, thumbnails & previews, sign-ins, database, backups and logs go (Enter keeps
@@ -466,7 +469,8 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 ## Backups & restore
 
 **Management → Backups** makes and restores backups; a weekly backup is a built-in job on the Scheduler page and
-the newest 10 are kept (`backup.keep`). The user guide (Help → Guide, or `docs/GUIDE.md`, "Backups") has the full
+the newest 10 are kept (`backup.keep`). Setup.exe, `install.sh` and `install.bat` also make one before installing
+an update (3.13.0), deleted after 90 days (a setting). The user guide (Help → Guide, or `docs/GUIDE.md`, "Backups") has the full
 details and step-by-step scenarios.
 
 **What's in a backup** (one `.zip`, in `data/backups` by default):

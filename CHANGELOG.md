@@ -4,6 +4,41 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.13.0] - 2026-11-28
+
+### Added
+- **A backup before installing an update.** Setup.exe, `install.sh` and `install.bat` back up the library before they
+  install an update, with the installed version's own code: the database, the settings, the installed languages,
+  your own performer photos and the playlist covers (encrypted when a backup password is set; checked after it's
+  written). If it can't be made, the installer says why and asks whether to go on (No by default). Listed under
+  Management → Backups as "before installing an update"; the app deletes them after **90 days** (a setting there, 1 to
+  3650, with a switch to stop making them). Only those backups, and only from the backups folder, are ever deleted by
+  this.
+- **Faces, much more configurable:** a margin (how much closer a face must be to one performer than to anyone else),
+  at most N suggestions per video, enlarging small pictures before reading, the smallest face in performer photos
+  and how many photos are read per performer.
+- **Faces page:** search, **sort** (score, performer, video, when found / decided, faces, time in the video,
+  ascending or descending), **pages** (« ‹ Page n of N ›), **Approve this page / Not them: this page**, **Remove all
+  below** a score, much **bigger pictures** (the face found next to the performer's photo; click it for the whole
+  picture with the face marked) and **where in the video** the face is ("at 1:00" opens the video there). A link on a
+  performer's page shows only their matches.
+- **My Settings → Faces:** matches per page, picture size, hide matches below a score (only for you), the sort; and
+  for the video page: Faces found closed (default), open or hidden, and how many at a time.
+- **My Settings → Video page → Shares scenes with:** closed (default), open or hidden.
+- A video link with `?t=` (seconds) opens the video at that moment.
+
+### Changed
+- **Approving a face match adds the performer to the video's performers** (like Edit details, so syncs and repairs
+  keep them; marked ☺ on the video's page) instead of a separate "Recognised by face" list. Undo or Not them takes the
+  performer off again — only when the approval added them. Approvals made with 3.12.x are added to their videos once,
+  at the first start.
+- **Far fewer, better face suggestions.** Each face counts for one performer only (the one it looks most like, by a
+  margin); faces of performers a video already lists suggest nobody else; at most 3 per video; suggested from a score
+  of 45 (was 36). The first start compares the faces found so far again, and the waiting suggestions that no longer
+  qualify are removed (one library had 200,000 from 300 videos). Approved and Not them stay as they are.
+- On the video page, **Faces found** (people with the Performers permission) shows only the waiting matches, in pages,
+  closed until clicked.
+
 ## [3.12.1] - 2026-11-28
 
 ### Fixed

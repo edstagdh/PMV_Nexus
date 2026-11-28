@@ -127,7 +127,16 @@ class SystemWorkerMixin:
         elif result.get("error"):
             logger.warning("Update check failed: {}", result["error"])
         self.update_notices(result)
+        await self.prune_installer_backups()   # 3.13.0: once a day with the update check
         return result
+
+    async def prune_installer_backups(self) -> int:
+        """3.13.0: backups made by Setup / the install scripts, deleted after the days set."""
+        try:
+            return await asyncio.to_thread(backup.prune_installer_backups, self.settings)
+        except Exception as exc:  # noqa: BLE001 -- never stops the app or the update check
+            logger.warning("Backups: couldn't check the installer's backups: {}", exc)
+            return 0
 
     def update_notices(self, result: dict | None = None) -> None:
         """3.11.5: one highlighted "new version" notification per release, for the admins (made once:

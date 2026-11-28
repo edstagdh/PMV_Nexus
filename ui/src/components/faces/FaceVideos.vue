@@ -1,40 +1,28 @@
 <script setup>
-// Performer page -> "Recognised by face in" (3.12.0): videos where this performer's face was found
-// and approved (Management -> Faces), which don't list them in their details.
+// Performer page (3.12.0; 3.13.0): an approved face match now adds the performer to the video, so
+// those videos are in the list below like any other. Here: how many videos wait for you on the
+// Faces page with this performer's face possibly in them (people who manage performers).
 import { ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { api, qs } from "../../lib/api.js";
+import { hasPermission } from "../../stores/session.js";
 
 const props = defineProps({ name: String });
-const items = ref([]);
+const info = ref(null);
 watch(() => props.name, async (name) => {
+  if (!hasPermission("performers.manage")) return;
   const d = await api(`/api/performers/faces?${qs({ name })}`).catch(() => null);
-  if (name === props.name) items.value = d?.items || [];
+  if (name === props.name) info.value = d;
 }, { immediate: true });
 </script>
 
 <template>
-  <section v-if="items.length" class="card panel fv">
-    <h3 class="sub">{{ $t("Recognised by face in ({n})", { n: items.length }) }}</h3>
-    <p class="muted small">{{ $t("Videos that don't list them, where their face was found and approved.") }}</p>
-    <ul>
-      <li v-for="v in items" :key="v.id">
-        <RouterLink :to="{ name: 'video', params: { id: v.id } }" class="th"><img v-if="v.thumb" :src="v.thumb" alt="" loading="lazy"></RouterLink>
-        <RouterLink :to="{ name: 'video', params: { id: v.id } }" class="title">{{ v.title }}</RouterLink>
-        <span class="muted small">{{ v.creator }}</span>
-      </li>
-    </ul>
-  </section>
+  <p v-if="info?.waiting" class="fv muted small">
+    {{ $tn("Their face may be in {n} more video, waiting for you:", "Their face may be in {n} more videos, waiting for you:", info.waiting) }}
+    <RouterLink :to="{ name: 'portal', params: { tab: 'faces' }, query: { performer: info.performer_id } }">{{ $t("check them on the Faces page") }}</RouterLink>
+  </p>
 </template>
 
 <style scoped>
-.fv { display: flex; flex-direction: column; gap: 0.5rem; }
-.sub { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 0; }
-.fv p { margin: 0; }
-.small { font-size: 0.8rem; }
-ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.75rem; }
-li { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-.th { aspect-ratio: 16 / 9; border-radius: 0.4rem; overflow: hidden; background: var(--panel-2); }
-.th img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.title { color: var(--text); font-weight: 600; font-size: 0.85rem; overflow-wrap: anywhere; }
+.fv { margin: 0; font-size: 0.85rem; }
 </style>

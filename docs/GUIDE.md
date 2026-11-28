@@ -343,7 +343,8 @@ video; by default the cache folder, see *Folders of their own* below), deleted w
 and only in backups that include them (they can be made again).
 
 **Shared scenes** (3.9.0): videos that use the same footage are listed under the video, in **Shares scenes with**,
-with roughly how many seconds they have in common and where (click a time to jump there in this video). They're found by
+with roughly how many seconds they have in common and where (click a time to jump there in this video). The list is closed until
+clicked (3.13.0); **My Settings → Video page → Shares scenes with** can show it open or hide it. They're found by
 comparing the frames of the seekbar previews — nothing is read from the video files again: black, white and nearly
 flat frames, the first and last 4 seconds, and frames found in a dozen or more videos (intros, logos, title cards) are
 left out, and a match only counts when several frames play in step in both videos. It runs by itself after new
@@ -839,31 +840,57 @@ permission).
 - **Find faces now** reads the videos not read yet (and those whose pictures changed); **Read every video again**
   reads all of them. It's a job on Tasks (**Stop** works), and takes its turn like the other heavy work. With **Read
   new videos by themselves** on, a video is read after its seekbar previews or frames are made.
-- **Waiting:** each match shows the face found in the video, the performer's photo, the video and the **score** (how
-  alike the faces are, 0–100: 36 is OpenCV's line for "the same person"; faces from the same photo shoot score in
-  the 60s and up; small, blurred or turned faces lower). **Approve**, or **Not them** — never suggested again for
-  that video. **Approve all with a score of N or more** approves the waiting ones at or above N.
+- **Waiting:** each match shows the face found in the video next to the performer's photo, the video, the **score**
+  (how alike the faces are, 0–100: 36 is OpenCV's line for "the same person"; faces from the same photo shoot score
+  in the 60s and up; small, blurred or turned faces lower), how many of the video's faces look like them, and
+  **where**: "at 1:00" opens the video at that moment (3.13.0); the thumbnail has no time. Click the face to see the
+  whole picture it was found in, with the face marked. **Approve**, or **Not them** — never suggested again for that
+  video.
+- **Approve adds the performer to the video's performers** (3.13.0) — the same as adding them with Edit details, so
+  a sync or repair keeps them. On the video's page they're marked ☺ ("added by a face match"). **Undo** of an approval
+  or **Not them** takes the performer off again — only when the approval added them, never one the video already
+  listed. Approvals made before 3.13.0 are added to their videos once, at the first start of 3.13.0.
+- **Finding your way in many matches** (3.13.0): search by performer or video name; **Sort** by score, performer,
+  video, when found / decided, number of faces or time in the video, ascending or descending; a link from a performer's page shows
+  only theirs. The list comes in **pages** with « ‹ Page n of N › ». Approve or **Not them** for the whole page,
+  **Approve all from** a score, or **Remove all below** a score (removes the waiting ones below it for everyone; they
+  come back only if the matching is changed and finds them again).
+- **My Settings → Faces** (each person's own): matches per page (10–500, default 50), picture size (small / medium /
+  large / very large), **Hide matches below this score** (only hides them for you), the sort, and on the video page:
+  **Faces found** closed (default), open or hidden, and how many are shown at a time (default 6).
 - **Approved / Not them:** every decision can be undone (**Undo** puts it back to waiting).
-- An approved match shows as **Recognised by face** on the video's page (people with the Performers permission also
-  see the waiting ones there, with Approve / Not them) and on the performer's page. The video's own performers are
-  never changed, and performers a video already lists aren't suggested for it.
+- On a video's page, people with the Performers permission see the waiting matches for it in **Faces found**, with
+  Approve / Not them and a time to jump to. On a performer's page they see how many more videos may have their face,
+  with a link to those on the Faces page.
+
+**How matches are made** (3.13.0): each face found in a video counts for **one** performer only — the one it looks
+most like, when that's at least the "suggest" score and a few points (the margin) closer than anyone else. A face
+that looks most like a performer the video already lists counts for them and suggests nobody else. Only the best few
+performers per video are suggested. (Before 3.13.0 every performer whose photo looked even a little like any face was
+suggested, which made tens of thousands of weak matches; the first start of 3.13.0 compares again with the new rules
+and removes the waiting ones that no longer qualify. Approved and Not them stay as they are.)
 
 | Setting | Default | Meaning |
 |---|---|---|
 | Read the seekbar previews / thumbnail / frames | on | Which pictures of a video are read |
+| Enlarge small pictures before reading | on | finds smaller faces in seekbar previews and frames; slower |
 | Seekbar previews: every n-th picture | 3 | 1 reads all 100 |
 | Faces smaller than | 32 px | are left out (too little detail) |
 | Face found when the detector is at least | 0.85 sure | lower finds more faces, and more mistakes |
 | At most … different faces kept per video | 40 | the clearest different ones |
-| Suggest from a score of | 36 | |
-| Approve by itself from a score of | 100 | 100 = never |
+| Faces in photos smaller than | 48 px | performer photos with only a small face are left out |
+| Photos read per performer | 0 (all) | fewer is faster, more finds more |
+| Suggest from a score of | 45 | waiting ones below it are removed |
+| A face counts when it's … points closer to them than to anyone else | 5 | 0 = always the closest |
+| At most … suggestions per video | 3 | the best ones |
 | At least … faces in the video that look like them | 1 | |
+| Approve by itself from a score of | 100 | 100 = never; adds the performer to the video |
 
-Changing which pictures are read (the first five) reads every video again at the next scan; changing the scores only
-compares again. The faces found are kept in `data/derived.db` (they can be made again); your decisions are in the
-library database and every backup. The two model files — OpenCV's YuNet face detector (MIT license) and SFace
-recognizer (Apache-2.0) — come with Setup.exe and `install.sh`; a git checkout gets them once with
-`python -m Tools.get_face_models` (it checks their SHA-256). If they're missing, the tab says so.
+Changing which pictures are read reads every video again at the next scan; changing the photo settings reads the
+photos again; changing the matching only compares again. The faces found are kept in `data/derived.db` (they can be
+made again); your decisions are in the library database and every backup. The two model files — OpenCV's YuNet face
+detector (MIT license) and SFace recognizer (Apache-2.0) — come with Setup.exe and `install.sh`; a git checkout gets
+them once with `python -m Tools.get_face_models` (it checks their SHA-256). If they're missing, the tab says so.
 
 ## Credentials
 
@@ -1022,6 +1049,17 @@ each with its own bar — and a notification says how it went. It's checked agai
 scheduled backups: one that wouldn't fit fails at once and says why), and it stops by itself, removing the
 unfinished file, if the disk fills up while it's being written. Pictures and videos are stored as they are (they're
 compressed already), so a backup with the videos is about as big as the videos.
+
+**Backup before installing an update** (3.13.0): Setup.exe, `install.sh` and `install.bat` make a backup before
+they install an update (when a library is there), using the installed version's own code: the database, the
+settings, the installed languages, your own performer photos and the playlist covers — the rest (thumbnails,
+previews, frames, details files) can be made again by Repair/Update, and the videos aren't touched by an update.
+It's encrypted when a backup password is set, checked after it's written, and listed as "before installing an
+update". If it can't be made, the installer says why and asks whether to go on anyway (No by default). The switch and
+**Delete them after N days** (default 90) are on this page; only these backups are deleted by that, and only from the
+backups folder (backups you made, scheduled ones and copies elsewhere are never touched). The app checks once at
+start and with the daily update check. To undo a bad update: install the version you had, then **Restore** that
+backup, then run Repair/Update if pictures or details are missing.
 
 **Where it goes:** **Save to** shows the folder this backup goes to — the backups folder unless you **Choose a
 folder…** (e.g. a bigger or external drive; not inside the videos or thumbnails folders). The free space and the
@@ -1204,7 +1242,8 @@ restart the app. Browser tabs that were open during the update show a **Reload**
 **What an update changes** (3.12.0): when a new version changes how the library is stored, it does so in numbered
 steps at the first start, after copying the database to `data/backups/before-upgrade` (the last 3 copies are kept).
 A long step shows an **Upgrading** screen until it's done; a step that fails is tried again at the next start and
-the app keeps working with what it has. Setup.exe, `install.sh` and (3.12.1) `install.bat` say beforehand which
+the app keeps working with what it has. Before installing, Setup.exe and the install scripts also make a
+**backup** of the library (3.13.0, see Backups). Setup.exe, `install.sh` and (3.12.1) `install.bat` say beforehand which
 changes an update makes and about how long they take, and you can cancel — after a `git pull`, run the install script
 again before starting the app to see it (or `python -m Tools.upgrade_plan`, which only reads). If the library was
 already used by a **newer** version, an older one refuses to open it (Setup and the install scripts stop too), so it can't damage it; to force it anyway, start the app with

@@ -24,6 +24,7 @@ const TABS = [
   { key: "library", label: t("Library") },
   { key: "video", label: t("Video page") },
   { key: "wall", label: t("The Wall") },
+  { key: "faces", label: t("Faces"), show: () => hasPermission("performers.manage") },
   { key: "notifications", label: t("Notifications") },
   { key: "language", label: t("Language") },
   { key: "account", label: t("Account"), show: () => hasPermission("self.password_reset") || !isAdmin() },
@@ -110,6 +111,25 @@ function toggleDetail(k, on) {
   if (on) now.add(k); else now.delete(k);
   savePref("wallDetails", WALL_DETAILS.filter((x) => now.has(x)));
 }
+// 3.13.0: Management -> Faces (people who manage performers)
+const SHOWN = [["open", t("Open")], ["collapsed", t("Closed, open with a click")], ["hidden", t("Hidden")]];
+const FACES_GROUPS = [
+  { title: t("Management → Faces"), items: [
+    { key: "facesPageSize", kind: "range", label: t("Matches per page"), min: 10, max: 500, step: 10 },
+    { key: "facesPictureSize", kind: "select", number: true, label: t("Picture size"), help: t("The face found in the video, and the performer's photo next to it."),
+      options: [[96, t("Small")], [160, t("Medium")], [240, t("Large")], [320, t("Very large")]] },
+    { key: "facesMinScore", kind: "range", label: t("Hide matches below this score"), min: 0, max: 100, step: 1,
+      help: t("Only hides them for you; Remove below… on the Faces page deletes waiting ones for everyone."), show: (v) => (v ? `${v}` : t("Show all")) },
+    { key: "facesSort", kind: "select", label: t("Sorted by"), options: [["score", t("Score")], ["performer", t("Performer")], ["video", t("Video")],
+      ["found", t("When found / decided")], ["faces", t("Faces that look like them")], ["time", t("Time in the video")]] },
+    { key: "facesDesc", kind: "switch", label: t("Highest / newest / Z first") },
+  ] },
+  { title: t("Video page"), items: [
+    { key: "videoFaces", kind: "select", label: t("Faces found (waiting for you)"), options: SHOWN },
+    { key: "videoFacesPageSize", kind: "range", label: t("Faces shown at a time there"), min: 1, max: 50, step: 1 },
+  ] },
+];
+const GROUPS = computed(() => (tab.value === "faces" ? FACES_GROUPS : WALL_GROUPS));
 const WALL_GROUPS = [
   { title: t("Opening it"), items: [
     { key: "wallStartView", kind: "select", label: t("Opens in"), options: [["last", t("The view used last")], ["3d", "3D"], ["2d", "2D"]] },
@@ -163,9 +183,10 @@ function resetTab() {
   const keys = {
     appearance: ["textScale", "goneColor", "chipColorsOn", "chipColors", "customTheme"],
     library: ["defaultSort", "defaultDir", "badges", "tablePreviewScale", "groupCodecs"],
-    video: ["relatedCount", "relatedOrder", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
+    video: ["sharedScenes", "relatedCount", "relatedOrder", "relatedBadges", "suggestKeepOpen", "miniPlayer", "abRepeat", "touchSides", "resumePlayback", "videoFrames", "frameSearch", "rememberVolume", "startVolume", "watchedBar", "panicKeys"],
     notifications: ["toasts"],
     wall: WALL_GROUPS.flatMap((g) => g.items.map((it) => it.key)),
+    faces: FACES_GROUPS.flatMap((g) => g.items.map((it) => it.key)),
   }[tab.value] || [];
   for (const k of keys) {
     const v = DEFAULT_UI[k];
@@ -414,6 +435,15 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
       </div>
       <div class="row">
         <div class="label">
+          <strong>{{ $t("Shares scenes with") }}</strong>
+          <span class="muted">{{ $t("Other videos that use the same footage, under the details.") }}</span>
+        </div>
+        <select class="select" :value="session.prefs.sharedScenes" :aria-label="$t('Shares scenes with')" @change="savePref('sharedScenes', $event.target.value)">
+          <option v-for="[v, l] in SHOWN" :key="v" :value="v">{{ l }}</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="label">
           <strong>{{ $t("Frames under the player") }}</strong>
           <span class="muted">{{ $t("A row of pictures from across the video, with their time, under the player — click one to jump there. PMVHaven's own timeline frames when the video has them, otherwise 8 made from the file. Off by default: the seek bar's previews do the same.") }}</span>
         </div>
@@ -491,8 +521,8 @@ function commitVolume() { if (volumeDraft.value !== null) { savePref("startVolum
 
     <!-- ================= Notifications ================= -->
     <!-- ================= The Wall (3.9.1; every option 3.9.2) ================= -->
-    <section v-else-if="tab === 'wall'" class="card group">
-      <template v-for="g in WALL_GROUPS" :key="g.title">
+    <section v-else-if="tab === 'wall' || tab === 'faces'" class="card group">
+      <template v-for="g in GROUPS" :key="g.title">
         <h3 class="wall-group">{{ g.title }}</h3>
         <div v-for="it in g.items" :key="it.key" class="row">
           <div class="label"><strong>{{ it.label }}</strong><span v-if="it.help" class="muted">{{ it.help }}</span></div>

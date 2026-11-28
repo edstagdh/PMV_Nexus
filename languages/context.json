@@ -11,10 +11,10 @@
  "% — {n} of {total} cores": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "(100 = never)": [
+ "(0 = all)": [
   "ui/src/views/admin/FacesView.vue"
  ],
- "(36: the same person, by OpenCV)": [
+ "(100 = never; adds the performer to the video)": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "(not applied)": [
@@ -29,11 +29,11 @@
  "(Server Settings → Re-encode).": [
   "ui/src/components/dialogs/BulkActionDialog.vue"
  ],
+ "(waiting ones below are removed)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "(you)": [
   "ui/src/views/admin/UsersView.vue"
- ],
- "({n} on this page)": [
-  "ui/src/views/admin/FacesView.vue"
  ],
  "+ New folder": [
   "ui/src/components/admin/FolderPicker.vue"
@@ -73,6 +73,9 @@
  ],
  "1 is right for most computers.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "1 to 3650 days": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "100 % = everything fits": [
   "ui/src/views/WallView.vue"
@@ -139,6 +142,9 @@
  ],
  "A copy folder needs its full path (e.g. E:\\PMV backups): {folder}": [
   "backend/backup_jobs.py"
+ ],
+ "A face counts for a performer when it's": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "A file with that name already exists": [
   "backend/library_mixins/item_extras.py"
@@ -447,8 +453,14 @@
  "Added to the library": [
   "ui/src/views/SettingsView.vue"
  ],
+ "added to the video": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Added to {name}": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
+ ],
+ "Added to {n} videos' performers": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Added {added} to {name}": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
@@ -550,6 +562,9 @@
  ],
  "All music": [
   "ui/src/views/admin/NamesView.vue"
+ ],
+ "All on the Faces page": [
+  "ui/src/components/faces/FacesOnVideo.vue"
  ],
  "All performers": [
   "ui/src/views/admin/NamesView.vue"
@@ -738,13 +753,19 @@
   "ui/src/components/faces/FacesOnVideo.vue",
   "ui/src/views/admin/FacesView.vue"
  ],
- "Approve all with a score of": [
+ "Approve all from": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "Approve by itself from a score of": [
   "ui/src/views/admin/FacesView.vue"
  ],
- "Approve every waiting match with a score of {score} or more?": [
+ "Approve every waiting match with a score of {score} or more? Each performer is added to the video's performers.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approve these {n} matches? Each performer is added to the video's performers.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approve this page": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "Approved ({n})": [
@@ -779,7 +800,8 @@
  ],
  "Ascending": [
   "ui/src/views/LibraryView.vue",
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Ask each time (Get it back or Swap)": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -820,6 +842,10 @@
  ],
  "at {times}": [
   "ui/src/components/songs/SongSuggestion.vue"
+ ],
+ "at {time}": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Audio": [
   "ui/src/views/VideoView.vue"
@@ -923,6 +949,9 @@
  "Backup": [
   "backend/library_mixins/scheduler_worker.py"
  ],
+ "Backup before installing an update": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Backup deleted": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -979,11 +1008,17 @@
  "Before each re-encode.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "before installing an update": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "being added…": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Being made…": [
   "ui/src/components/upload/ThumbnailStep.vue"
+ ],
+ "below {score} hidden": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Best matches": [
   "ui/src/views/SettingsView.vue"
@@ -1277,6 +1312,9 @@
  "Check the {n} videos and fix what's missing or broken (file, thumbnail, preview, details from the site). They're queued like a single repair.": [
   "ui/src/components/dialogs/BulkActionDialog.vue"
  ],
+ "check them on the Faces page": [
+  "ui/src/components/faces/FaceVideos.vue"
+ ],
  "Check video files": [
   "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/views/VideoView.vue"
@@ -1410,10 +1448,14 @@
   "ui/src/components/playlists/CoverDialog.vue",
   "ui/src/views/PlaylistView.vue",
   "ui/src/views/WallView.vue",
-  "ui/src/views/admin/BackupsView.vue"
+  "ui/src/views/admin/BackupsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Close the player": [
   "ui/src/components/PlayerHost.vue"
+ ],
+ "Closed, open with a click": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Codec": [
   "ui/src/components/ReencodeOptions.vue",
@@ -2132,10 +2174,14 @@
   "ui/src/views/SettingsView.vue"
  ],
  "days": [
+  "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "days (0 = never)": [
   "ui/src/views/admin/SongsView.vue"
+ ],
+ "Days to keep backups made before installing": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "days, at most": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -2197,6 +2243,9 @@
  "Delete the role “{name}”?": [
   "ui/src/components/admin/AccessPanel.vue"
  ],
+ "Delete them after": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Delete these files?": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
@@ -2211,6 +2260,9 @@
  ],
  "deleted": [
   "backend/activity.py"
+ ],
+ "deleted {days} days after it was made": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "Deleted {name}": [
   "ui/src/views/admin/UsersView.vue"
@@ -2228,7 +2280,8 @@
  ],
  "Descending": [
   "ui/src/views/LibraryView.vue",
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Description": [
   "ui/src/components/admin/AccessPanel.vue",
@@ -2653,6 +2706,9 @@
  "Enhanced breasts": [
   "ui/src/views/PerformersView.vue"
  ],
+ "Enlarge small pictures before reading (finds smaller faces, slower)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "entries": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -2804,9 +2860,19 @@
   "ui/src/views/admin/FacesView.vue"
  ],
  "Faces": [
-  "ui/src/lib/portalTabs.js"
+  "ui/src/lib/portalTabs.js",
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Faces found": [
+  "ui/src/components/faces/FacesOnVideo.vue"
  ],
  "faces found": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces found (waiting for you)": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Faces in photos smaller than": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "faces in the video that look like them": [
@@ -2821,7 +2887,14 @@
  "Faces is switched off (Management → Faces → Settings)": [
   "backend/routers/faces.py"
  ],
+ "Faces shown at a time there": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Faces smaller than": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces that look like them": [
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/admin/FacesView.vue"
  ],
  "Faces: OpenCV's YuNet face detector (MIT license) and SFace face recognizer (Apache-2.0 license), from the OpenCV Zoo.": [
@@ -3041,6 +3114,9 @@
   "ui/src/views/WallView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
+ "Find a performer or video": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Find a playlist": [
   "ui/src/components/dialogs/PlaylistDialog.vue"
  ],
@@ -3181,6 +3257,10 @@
  "Frame at {time}": [
   "ui/src/components/dialogs/ThumbnailDialog.vue",
   "ui/src/components/upload/ThumbnailStep.vue"
+ ],
+ "frame under the player": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "frame ›": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
@@ -3430,8 +3510,14 @@
  "Here, outside text fields, the browser won't act on them — e.g. Firefox's “search for text when you start typing” — so the panic is never missed. With another Ctrl / Alt / Shift / ⌘ held (Ctrl + F, Ctrl + A…) the browser still gets them. Other sites aren't affected.": [
   "ui/src/components/PanicKeysSetting.vue"
  ],
+ "Hidden": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Hide": [
   "ui/src/components/admin/CredentialsPanel.vue"
+ ],
+ "Hide below": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Hide details": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -3439,11 +3525,19 @@
  "Hide history": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "Hide matches below this score": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Hide panel": [
   "ui/src/views/WallView.vue"
  ],
  "High (512 px)": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Highest / newest / Z first": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Highest rated": [
   "ui/src/lib/wallPick.js"
@@ -3534,6 +3628,9 @@
  ],
  "in the library, its file is missing, and the site doesn't have it any more — look for it in Maintenance → Check video files": [
   "ui/src/components/AddVideoDialog.vue"
+ ],
+ "In the video": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "in under a minute": [
   "ui/src/components/JobList.vue"
@@ -3716,6 +3813,9 @@
  "Jobs finished / failed (scans, syncs, backups, performer matching)": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Jump there": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
  "jump to that tenth of the video": [
   "ui/src/lib/panic.js"
  ],
@@ -3805,7 +3905,8 @@
   "ui/src/components/LanguageSettings.vue"
  ],
  "Large": [
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Largest file (GB)": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -4114,6 +4215,9 @@
  "Lower = slower, smaller file at the same quality.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Lowest / oldest / A first": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Luna Prism": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -4127,6 +4231,9 @@
  ],
  "Maintenance → Untracked files can delete them later.": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Make a backup before installing an update": [
+  "ui/src/views/admin/BackupsView.vue"
  ],
  "Make audio playable (convert audio browsers can't play to AAC)": [
   "backend/library_mixins/scheduler_worker.py"
@@ -4218,6 +4325,9 @@
   "ui/src/router.js",
   "ui/src/views/admin/AdminPortalView.vue"
  ],
+ "Management → Faces": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Management → Maintenance → Performers": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -4229,6 +4339,9 @@
  ],
  "Mark read": [
   "ui/src/components/NotificationBell.vue"
+ ],
+ "Mark these {n} matches as Not them?": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Marked as not duplicates": [
   "ui/src/views/admin/DuplicatesView.vue"
@@ -4253,7 +4366,11 @@
  "matched": [
   "backend/activity.py"
  ],
+ "Matches per page": [
+  "ui/src/views/SettingsView.vue"
+ ],
  "Matching": [
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Matching performers": [
@@ -4285,7 +4402,8 @@
   "ui/src/views/VideoView.vue"
  ],
  "Medium": [
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Members": [
   "ui/src/components/admin/AccessPanel.vue"
@@ -4650,7 +4768,8 @@
  ],
  "Next": [
   "ui/src/components/PlayQueue.vue",
-  "ui/src/components/PlayerHost.vue"
+  "ui/src/components/PlayerHost.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Next page": [
   "ui/src/components/PageNav.vue"
@@ -5064,6 +5183,9 @@
  "Not them ({n})": [
   "ui/src/views/admin/FacesView.vue"
  ],
+ "Not them: this page": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "not there any more": [
   "backend/library_mixins/adopt.py"
  ],
@@ -5240,6 +5362,9 @@
  "One of your favourites": [
   "ui/src/views/PerformersView.vue"
  ],
+ "One performer": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "One time": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -5278,6 +5403,9 @@
  ],
  "Only failures.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Only hides them for you; Remove below… on the Faces page deletes waiting ones for everyone.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Only http:// and https:// addresses can be used": [
   "backend/safe_fetch.py"
@@ -5321,6 +5449,9 @@
  "Only the usual web ports (80, 443, 8080, 8443) are used": [
   "backend/safe_fetch.py"
  ],
+ "Only these backups are deleted by this, and only from the backups folder; the others follow their own rules.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Only these video files can be uploaded: {formats}": [
   "backend/library_mixins/local_upload.py"
  ],
@@ -5357,6 +5488,7 @@
  "Open": [
   "ui/src/components/NotificationBell.vue",
   "ui/src/components/songs/SongSuggestion.vue",
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Open a prefilled GitHub issue": [
@@ -5462,9 +5594,6 @@
  "or drop it here": [
   "ui/src/views/UploadView.vue"
  ],
- "or more": [
-  "ui/src/views/admin/FacesView.vue"
- ],
  "Or one video's cover": [
   "ui/src/components/playlists/CoverDialog.vue"
  ],
@@ -5485,6 +5614,9 @@
  ],
  "Other names": [
   "ui/src/components/PerformerDetailsForm.vue"
+ ],
+ "Other videos that use the same footage, under the details.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "Other way": [
   "ui/src/views/admin/NamesView.vue"
@@ -5508,8 +5640,13 @@
   "ui/src/router.js",
   "ui/src/views/NotFoundView.vue"
  ],
+ "Page {n} of {total}": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Pages": [
-  "ui/src/components/PageNav.vue"
+  "ui/src/components/PageNav.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Panels": [
   "ui/src/views/SettingsView.vue"
@@ -5594,6 +5731,10 @@
  "Perceptual hash quorum": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Performer": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Performer data rarely changes; 30 days is plenty.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -5605,6 +5746,12 @@
  ],
  "Performer not found": [
   "backend/library_mixins/performers.py"
+ ],
+ "Performer or video…": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Performer photos": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "performer photos": [
   "ui/src/views/admin/BackupsView.vue"
@@ -5643,10 +5790,10 @@
  "Performers (ThePornDB)": [
   "ui/src/components/admin/PerformersPanel.vue"
  ],
- "Performers recognised in videos by their face: the faces in each video's seekbar previews, thumbnail and frames are compared with the photos of the performers in your library. Everything happens on this computer; nothing is sent anywhere. A match only shows on the video's and the performer's page once approved — the video's own details are never changed.": [
+ "Performers recognised in videos by their face: the faces in each video's seekbar previews, thumbnail and frames are compared with the photos of the performers in your library. Everything happens on this computer; nothing is sent anywhere. Approving a match adds the performer to the video's performers; Undo or Not them takes them off again.": [
   "ui/src/views/admin/FacesView.vue"
  ],
- "Performers whose face was found in this video's pictures (not listed in its details).": [
+ "Performers whose face may be in this video, waiting for you. Approve adds them to the video's performers.": [
   "ui/src/components/faces/FacesOnVideo.vue"
  ],
  "performers with a usable photo": [
@@ -5686,6 +5833,9 @@
  "photos": [
   "backend/activity.py"
  ],
+ "Photos read per performer": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Photos you added. They can't be downloaded again, so they're in every backup.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -5722,6 +5872,10 @@
  ],
  "Picture detail": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Picture size": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "picture-in-picture": [
   "ui/src/lib/panic.js"
@@ -5862,6 +6016,9 @@
  "Pointing at a video with the mouse plays its preview, muted like in the library.": [
   "ui/src/views/SettingsView.vue"
  ],
+ "points closer to them than to anyone else": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Pop-ups (toasts)": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -5926,7 +6083,8 @@
  ],
  "Previous": [
   "ui/src/components/PlayQueue.vue",
-  "ui/src/components/PlayerHost.vue"
+  "ui/src/components/PlayerHost.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Previous page": [
   "ui/src/components/PageNav.vue"
@@ -5983,6 +6141,9 @@
  ],
  "Public playlists from other users": [
   "ui/src/views/PlaylistsView.vue"
+ ],
+ "Put these {n} matches back to waiting?": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Python": [
   "ui/src/views/admin/ToolsView.vue"
@@ -6224,6 +6385,9 @@
  "Reading performer photos": [
   "backend/library_mixins/faces.py"
  ],
+ "Reading the videos": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Reading upload dates": [
   "backend/library_mixins/core.py"
  ],
@@ -6242,12 +6406,6 @@
  ],
  "Recognise performers by their face": [
   "ui/src/views/admin/FacesView.vue"
- ],
- "Recognised by face": [
-  "ui/src/components/faces/FacesOnVideo.vue"
- ],
- "Recognised by face in ({n})": [
-  "ui/src/components/faces/FaceVideos.vue"
  ],
  "Record to": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -6322,7 +6480,11 @@
   "ui/src/views/TasksView.vue",
   "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/DuplicatesView.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Remove all below": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Remove and delete files": [
   "ui/src/components/dialogs/RemoveDialog.vue"
@@ -6330,6 +6492,9 @@
  "Remove chapters": [
   "ui/src/components/ReencodeOptions.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Remove every waiting match with a score below {score}, for everyone? Approved and Not them stay. They can come back only if a later scan finds them at or above “Suggest from”.": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Remove from the library": [
   "ui/src/lib/actions.js"
@@ -6869,12 +7034,12 @@
   "ui/src/views/admin/SchedulerView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
- "Score {score}": [
-  "ui/src/components/faces/FacesOnVideo.vue"
+ "Score": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "score {score}": [
-  "ui/src/components/faces/FacesOnVideo.vue",
-  "ui/src/views/admin/FacesView.vue"
+  "ui/src/components/faces/FacesOnVideo.vue"
  ],
  "Search": [
   "backend/permissions.py",
@@ -6966,6 +7131,10 @@
  ],
  "See which videos are being played right now (never who plays them)": [
   "backend/permissions.py"
+ ],
+ "seekbar picture": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Seekbar previews": [
   "backend/backup.py",
@@ -7112,6 +7281,9 @@
  "Setup.exe brings them. Otherwise run this once in the app's folder (it downloads two files from OpenCV and checks them):": [
   "ui/src/views/admin/FacesView.vue"
  ],
+ "Setup.exe, install.sh and install.bat make a backup of the database, the settings, your own performer photos and the playlist covers before they install an update — so if an update goes wrong, the library can be put back as it was (Restore), and the rest (thumbnails, previews, frames) made again by Repair/Update. It's encrypted when a backup password is set, and listed here as “before installing an update”.": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
  "Several people on ThePornDB could be this performer — pick the right one.": [
   "ui/src/views/PerformerView.vue"
  ],
@@ -7135,6 +7307,7 @@
   "ui/src/views/WallView.vue"
  ],
  "Shares scenes with": [
+  "ui/src/views/SettingsView.vue",
   "ui/src/views/VideoView.vue"
  ],
  "Sharing the computer": [
@@ -7180,6 +7353,12 @@
  "Show again": [
   "ui/src/components/admin/DuplicateHistory.vue"
  ],
+ "Show all": [
+  "ui/src/views/SettingsView.vue"
+ ],
+ "Show all performers": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Show all {n}": [
   "ui/src/components/JobList.vue"
  ],
@@ -7208,7 +7387,6 @@
  ],
  "Show more ({n} left)": [
   "ui/src/views/PerformersView.vue",
-  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
  "Show older entries": [
@@ -7222,6 +7400,9 @@
  ],
  "Show the A-B button": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Show the picture it was found in": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Show the way there": [
   "ui/src/views/SettingsView.vue"
@@ -7310,6 +7491,7 @@
   "ui/src/components/VideoTable.vue",
   "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/DuplicatesView.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "size (bytes)": [
@@ -7356,7 +7538,8 @@
   "ui/src/components/ReencodeOptions.vue"
  ],
  "Small": [
-  "ui/src/views/SettingsView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Smaller at the same quality; slower, and some older devices can't play it.": [
   "ui/src/lib/reencodeOptions.js"
@@ -7442,9 +7625,15 @@
  "songs waiting ({n} videos)": [
   "ui/src/views/admin/SongsView.vue"
  ],
+ "Sort": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Sort by": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/PerformersView.vue"
+ ],
+ "Sorted by": [
+  "ui/src/views/SettingsView.vue"
  ],
  "sorted by {field}": [
   "ui/src/lib/libraryQuery.js"
@@ -7620,6 +7809,9 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Suggest from a score of": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "suggestions per video (the best ones)": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "Sunday": [
@@ -7975,8 +8167,8 @@
  "The end of its video id was cut off with a long title (before 3.11.2), and no library video has an id starting that way — it cannot be looked up on the site": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
- "The face in the video": [
-  "ui/src/views/admin/FacesView.vue"
+ "The face found in the video, and the performer's photo next to it.": [
+  "ui/src/views/SettingsView.vue"
  ],
  "The face models are missing or damaged: {files}": [
   "backend/routers/faces.py"
@@ -8112,6 +8304,9 @@
  "The picture is uploaded to that site, in a new tab.": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "The picture it was found in": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "The player's {menu} — and any video the browser can't play — streams a copy the server converts on the fly (H.264, like Plex / Jellyfin). Nothing is stored: the pieces are deleted when playback stops. FFmpeg pauses itself once it's about a minute ahead of the viewer, so a paused video costs nothing.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -8136,7 +8331,7 @@
  "The Scheduler job is missing — restart the app.": [
   "ui/src/components/admin/PerformersPanel.vue"
  ],
- "The score is how alike two faces are (0–100). Faces from the same photo shoot score in the 60s and up; small, blurred or turned faces score lower, so check those. Changing what's read (the first settings) reads every video again at the next scan; changing the scores only compares again. Not them is never asked again for that video.": [
+ "The score is how alike two faces are (0–100; 36 is where OpenCV says “the same person”). Faces from the same photo shoot score in the 60s and up; small, blurred or turned faces score lower. Each face counts for one performer only — the one it looks most like — and a face of a performer the video already lists suggests nobody else. Changing what's read reads every video again at the next scan; changing the matching only compares again. Not them is never asked again for that video.": [
   "ui/src/views/admin/FacesView.vue"
  ],
  "The server is low on disk space — uploads wait until there's room again": [
@@ -8288,6 +8483,9 @@
  ],
  "The {site} address isn't a web address (Server Settings → Credentials)": [
   "backend/stashbox.py"
+ ],
+ "Their face may be in {n} more videos, waiting for you:": [
+  "ui/src/components/faces/FaceVideos.vue"
  ],
  "Their files are deleted from disk. Each stays linked to the video you keep, so it won't be downloaded again and the userscript reports it as a duplicate — until you remove the kept video, which removes these links too.": [
   "ui/src/views/admin/DuplicatesView.vue"
@@ -8503,11 +8701,18 @@
  "Thorough": [
   "ui/src/components/admin/FileCheckPanel.vue"
  ],
+ "Those matches aren't there any more": [
+  "backend/routers/faces.py"
+ ],
  "Through the proxy at once": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
  "Thumbnail": [
   "ui/src/components/upload/ThumbnailStep.vue"
+ ],
+ "thumbnail": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Thumbnail badges": [
   "ui/src/views/SettingsView.vue"
@@ -8545,6 +8750,10 @@
  ],
  "Time actually played (not paused or skipped); a play counts after 10 seconds.": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "Time in the video": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Title": [
   "ui/src/components/VideoTable.vue",
@@ -8706,6 +8915,9 @@
  ],
  "Unknown job type: {type}": [
   "backend/library_mixins/scheduler_worker.py"
+ ],
+ "Unknown order": [
+  "backend/library_mixins/faces.py"
  ],
  "Unknown performer": [
   "backend/library_mixins/performers.py"
@@ -9036,10 +9248,16 @@
  "Version {version} is available.": [
   "ui/src/views/HelpView.vue"
  ],
+ "Very large": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Video": [
   "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/router.js",
-  "ui/src/views/VideoView.vue"
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/VideoView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "video": [
   "backend/library_mixins/local_upload.py",
@@ -9132,9 +9350,6 @@
  ],
  "Videos still waiting leave the queue; the ones being repaired now finish.": [
   "ui/src/components/JobList.vue"
- ],
- "Videos that don't list them, where their face was found and approved.": [
-  "ui/src/components/faces/FaceVideos.vue"
  ],
  "Videos that use the same footage, found by comparing the frames of their seekbar previews (black, white and nearly flat frames, the first and last seconds, and frames found in many videos — intros, logos — are left out). Shown on the video page, and they rank higher among related videos. It runs by itself after new seekbar previews are made; videos without seekbar previews aren't compared.": [
   "ui/src/components/admin/SharedScenesPanel.vue"
@@ -9237,9 +9452,6 @@
  "waiting for you": [
   "ui/src/views/admin/FacesView.vue"
  ],
- "Waiting for you:": [
-  "ui/src/components/faces/FacesOnVideo.vue"
- ],
  "Waiting for {what}": [
   "ui/src/lib/turns.js"
  ],
@@ -9318,6 +9530,10 @@
  ],
  "What you add is added to each video; what you remove is taken off the ones that have it. Everything else on them stays as it is.": [
   "ui/src/components/dialogs/BulkEditDialog.vue"
+ ],
+ "When found / decided": [
+  "ui/src/views/SettingsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "When it starts": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -9442,7 +9658,8 @@
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue",
   "ui/src/views/VideoView.vue",
-  "ui/src/views/admin/DuplicatesView.vue"
+  "ui/src/views/admin/DuplicatesView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "yes": [
   "ui/src/views/admin/StatsView.vue"
@@ -9725,6 +9942,9 @@
  "{m}m {s}s": [
   "ui/src/components/JobList.vue"
  ],
+ "{name} added to the video's performers": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
  "{name} from": [
   "ui/src/views/PerformersView.vue"
  ],
@@ -9742,6 +9962,9 @@
  ],
  "{name} to": [
   "ui/src/views/PerformersView.vue"
+ ],
+ "{name} — added because their face was recognised (score {score})": [
+  "ui/src/views/VideoView.vue"
  ],
  "{name} — profile and videos": [
   "ui/src/views/VideoView.vue"
@@ -9775,6 +9998,9 @@
  ],
  "{n} entries match": [
   "ui/src/views/admin/LogsView.vue"
+ ],
+ "{n} faces": [
+  "ui/src/components/faces/FacesOnVideo.vue"
  ],
  "{n} faces look like them": [
   "ui/src/views/admin/FacesView.vue"
@@ -9812,6 +10038,9 @@
  ],
  "{n} likes": [
   "ui/src/views/VideoView.vue"
+ ],
+ "{n} matches": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "{n} matches approved": [
   "ui/src/views/admin/FacesView.vue"
@@ -9933,6 +10162,9 @@
  "{n} views": [
   "ui/src/components/VideoRow.vue",
   "ui/src/views/VideoView.vue"
+ ],
+ "{n} waiting matches removed": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "{n} with a problem": [
   "ui/src/components/admin/FileCheckPanel.vue"

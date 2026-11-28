@@ -1091,6 +1091,8 @@ class CoreMixin:
         self._ensure_disk_guard()
         self.clean_incoming_uploads()
         self.update_notices()   # 3.11.5: drop a "new version" notice the app is now at (after an update)
+        self._prune_task = asyncio.create_task(self.prune_installer_backups())   # 3.13.0: the installer's backups after N days
+        self._faces_start_task = asyncio.create_task(self.faces_at_start())      # 3.13.0: approvals before it; new matching
         from ..transcode import live_transcoder
         live_transcoder.clean(self.settings)
         activity.set_notifier(lambda: self.db._note_change(["activity"]))

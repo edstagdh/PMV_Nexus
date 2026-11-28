@@ -180,6 +180,21 @@ class DerivedDB:
                                  (detection_id,)).fetchone()
         return dict(row) if row else None
 
+    def face_detections_info(self, ids: list[int]) -> dict[int, dict]:
+        """3.13.0: where each face was found -- {id: {video_id, source, at_seconds, box}} (no pictures)."""
+        out: dict[int, dict] = {}
+        for i in range(0, len(ids), 500):
+            chunk = ids[i:i + 500]
+            for r in self._conn.execute(f"SELECT id, video_id, source, at_seconds, box FROM face_detections WHERE id IN "
+                                        f"({','.join('?' * len(chunk))})", chunk):
+                d = dict(r)
+                try:
+                    d["box"] = json.loads(d["box"]) if d["box"] else None
+                except ValueError:
+                    d["box"] = None
+                out[d["id"]] = d
+        return out
+
     def delete_face_videos(self, video_ids: Iterable[str]) -> None:
         ids = [(v,) for v in video_ids]
         self._conn.executemany("DELETE FROM face_detections WHERE video_id = ?", ids)

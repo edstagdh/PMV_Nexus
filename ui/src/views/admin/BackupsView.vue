@@ -89,7 +89,8 @@ async function loadSpace() {
 }
 let timer = null, stop = null;
 onMounted(() => {
-  load().then(() => { splitText.value = splitGb.value ? String(splitGb.value) : ""; }); loadPlan(); loadOffsite();
+  load().then(() => { splitText.value = splitGb.value ? String(splitGb.value) : ""; inst.value.days = String(data.value?.installer_keep_days ?? 90); });
+  loadPlan(); loadOffsite();
   timer = setInterval(loadSpace, 3000);
   stop = onLibraryChange((c) => { if (!c || c.includes("activity")) { load(); loadOffsite(); } });  // a backup finished
 });
@@ -208,7 +209,24 @@ async function test(b) {
   finally { testing.value = ""; }
 }
 const cancelRestore = () => act(() => api("/api/backups-restore", { method: "DELETE" }), t("Restore cancelled"));
-const TRIGGERS = { scheduled: t("scheduled"), manual: t("by hand"), auto: t("automatic"), restore: t("before a restore") };
+const TRIGGERS = { scheduled: t("scheduled"), manual: t("by hand"), auto: t("automatic"), restore: t("before a restore"),
+  installer: t("before installing an update") };
+// 3.13.0: the backup Setup / the install scripts make before an update, kept for N days
+const inst = ref({ saving: false, error: "", days: "" });
+async function saveInstaller(body) {
+  inst.value.saving = true; inst.value.error = "";
+  try {
+    const r = await api("/api/backups/settings", { method: "POST", body });
+    data.value = { ...data.value, installer_backup: r.installer_backup, installer_keep_days: r.installer_keep_days };
+    inst.value.days = String(r.installer_keep_days);
+  } catch (err) { inst.value.error = err.message || t("That didn't work"); }
+  finally { inst.value.saving = false; }
+}
+function saveInstallerDays() {
+  const d = Math.round(Number(inst.value.days));
+  if (!(d >= 1 && d <= 3650)) { inst.value.error = t("1 to 3650 days"); return; }
+  saveInstaller({ installer_keep_days: d });
+}
 const PART_SHORT = { secrets: N_("secrets"), performer_photos: N_("performer photos"), thumbnails: N_("thumbnails"),
   frames: N_("frames"), storyboards: N_("seekbar previews"), videos: N_("videos"), derived: N_("rebuildable data") };
 const contents = (b) => [t("database + settings"),
@@ -269,6 +287,20 @@ const pendingName = (p) => p.name || fileName(p.zip);
           : $t("Encrypted, never with the credentials or the videos, in parts of up to {gb} GB.", { gb: offsite.filester.max_part_gb }) }}</p>
       </div>
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="creating || !plan || !enough" @click="create"><Icon name="download" />{{ creating ? $t("Starting…") : $t("Create backup now") }}</button></div>
+    </section>
+
+    <section v-if="data" class="card panel">
+      <h2>{{ $t("Backup before installing an update") }}</h2>
+      <p class="help-text">{{ $t("Setup.exe, install.sh and install.bat make a backup of the database, the settings, your own performer photos and the playlist covers before they install an update — so if an update goes wrong, the library can be put back as it was (Restore), and the rest (thumbnails, previews, frames) made again by Repair/Update. It's encrypted when a backup password is set, and listed here as “before installing an update”.") }}</p>
+      <label class="switch"><input type="checkbox" :checked="data.installer_backup" :disabled="inst.saving" @change="saveInstaller({ installer_backup: $event.target.checked })">{{ $t("Make a backup before installing an update") }}</label>
+      <div class="form-actions">
+        <span>{{ $t("Delete them after") }}</span>
+        <input v-model="inst.days" class="input input-num" type="number" min="1" max="3650" :placeholder="String(data.installer_keep_days)"
+               :aria-label="$t('Days to keep backups made before installing')" @change="saveInstallerDays">
+        <span>{{ $t("days") }}</span>
+      </div>
+      <small v-if="inst.error" class="error-text">{{ inst.error }}</small>
+      <small class="muted">{{ $t("Only these backups are deleted by this, and only from the backups folder; the others follow their own rules.") }}</small>
     </section>
 
     <section v-if="data" class="card panel">
@@ -350,7 +382,8 @@ const pendingName = (p) => p.name || fileName(p.zip);
             <tr v-for="b in data.backups" :key="b.name">
               <td>
                 <div class="nowrap">{{ formatDateTime(b.created_at) }}</div>
-                <div class="muted small">{{ TRIGGERS[b.trigger] || b.trigger || $t("unknown") }}<template v-if="b.app_version"> · v{{ b.app_version }}</template></div>
+                <div class="muted small">{{ b.job === "installer" ? TRIGGERS.installer : TRIGGERS[b.trigger] || b.trigger || $t("unknown") }}<template v-if="b.app_version"> · v{{ b.app_version }}</template></div>
+                <div v-if="b.job === 'installer' && b.default" class="muted small">{{ $t("deleted {days} days after it was made", { days: data.installer_keep_days }) }}</div>
               </td>
               <td>
                 <div>{{ contents(b) }}<span v-if="b.encrypted" class="lock" :title="$t('Protected with a password (AES-256)')"> 🔒</span></div>

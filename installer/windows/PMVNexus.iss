@@ -86,6 +86,7 @@ Source: "..\..\Tools\stop_app.py"; Flags: dontcopy
 ; What the update will change in the library, shown before anything is replaced (3.12.0): run from {tmp}
 ; with the installed app's Python, with this version's upgrade steps.
 Source: "..\..\Tools\upgrade_plan.py"; Flags: dontcopy
+Source: "..\..\Tools\pre_install_backup.py"; Flags: dontcopy
 Source: "..\..\backend\upgrades\steps.py"; Flags: dontcopy
 
 [Icons]
@@ -1471,6 +1472,41 @@ begin
     Result := 'The update was cancelled. Nothing was changed.';
 end;
 
+{ 3.13.0: a backup of the library before anything is replaced (Tools\pre_install_backup.py, run
+  with the installed app's Python and code, after the app was closed): the database, the settings,
+  own photos and covers, in the backups folder; the app deletes it after the days set in Server
+  Settings -> Backups. '' = go on (made, switched off, or a first install), otherwise why Setup stops. }
+function PreInstallBackup: String;
+var
+  Code: Integer;
+  Script, Args, ReportFile: String;
+  Report: AnsiString;
+begin
+  Result := '';
+  if not FileExists(AppDir + '\config.yaml') then
+    Exit;                      { a first install: nothing to back up }
+  Report := '';
+  ExtractTemporaryFile('pre_install_backup.py');
+  Script := ExpandConstant('{tmp}\pre_install_backup.py');
+  ReportFile := ExpandConstant('{tmp}\pre_install_backup.txt');
+  Args := '"' + Script + '" --root "' + AppDir + '" --to {#AppVersion} --report "' + ReportFile + '"';
+  WizardForm.PreparingLabel.Caption := 'Making a backup of your library first (database and settings)...';
+  ForceDirectories(ExtractFileDir(LogFile));
+  if FileExists(VenvPython) and Exec(VenvPython, Args, AppDir, SW_HIDE, ewWaitUntilTerminated, Code) then
+  begin
+    LoadStringFromFile(ReportFile, Report);
+    SaveStringToFile(LogFile, #13#10 + '> backup before installing (code ' + IntToStr(Code) + '): ' + String(Report) + #13#10, True);
+    if (Code = 0) or (Code = 2) then
+      Exit;                    { made (or switched off in Server Settings -> Backups) }
+  end
+  else
+    Report := 'the installed app''s Python didn''t start';
+  if SuppressibleMsgBox('Setup couldn''t make a backup of your library before installing:' + #13#10 + String(Report) + #13#10#13#10 +
+      'Install anyway, without that backup?', mbError, MB_YESNO or MB_DEFBUTTON2, IDNO) <> IDYES then
+    Result := 'The update was cancelled because no backup could be made first. Nothing was changed. ' +
+      'Check the free space where backups go (Management -> Backups), then run Setup again.';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
@@ -1512,6 +1548,8 @@ begin
     JServiceStopped := True;
   end;
   Result := CloseRunningApp;
+  if Result = '' then
+    Result := PreInstallBackup;   { 3.13.0: with the app closed, before any file is replaced }
   if Result <> '' then
   begin
     if ServiceWasThere then

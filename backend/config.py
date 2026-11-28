@@ -357,6 +357,11 @@ class BackupConfig(BaseModel):
     # (3.7.0) Split backups bigger than this into parts of at most this many GB (GiB):
     # 0 = one file; else 1.9 .. 50 (backend/backup.py SPLIT_MIN_GB / SPLIT_MAX_GB).
     split_gb: float = 0
+    # (3.13.0) Setup / install.sh / install.bat make a backup (database, settings, own photos,
+    # covers) before installing an update (Tools/pre_install_backup.py); the app deletes those
+    # after installer_keep_days.
+    installer_backup: bool = True
+    installer_keep_days: int = Field(90, ge=1, le=3650)
 
     @field_validator("split_gb")
     @classmethod
@@ -454,9 +459,17 @@ class FacesConfig(BaseModel):
       min_face_px        -- smaller faces are ignored (too few details to tell people apart)
       min_quality        -- the detector's certainty, 0..1, for a face to count
       max_faces_per_video
-      suggest_score      -- matches at or above this (0-100) are suggested for you to check
+      suggest_score      -- matches at or above this (0-100) are suggested for you to check;
+                            waiting ones below it are removed at the next compare
       auto_approve_score -- at or above this they're approved by themselves (100 = never)
-      min_support        -- faces in the video that must look like the performer"""
+      min_support        -- faces in the video that must look like the performer
+      (3.13.0)
+      margin             -- a face counts for the performer it looks most like only when that's this
+                            many points more than the next one (0 = always the closest)
+      max_per_video      -- at most this many suggestions per video (the best ones)
+      upscale_small      -- small pictures (seekbar previews, frames) are enlarged 2x before reading
+      photo_min_face_px  -- smaller faces in performer photos are left out
+      max_photos_per_performer -- photos read per performer (0 = all of them)"""
     enabled: bool = False
     scan_new: bool = True
     use_storyboards: bool = True
@@ -466,9 +479,14 @@ class FacesConfig(BaseModel):
     min_face_px: int = Field(32, ge=16, le=256)
     min_quality: float = Field(0.85, ge=0.5, le=0.99)
     max_faces_per_video: int = Field(40, ge=5, le=200)
-    suggest_score: int = Field(36, ge=20, le=100)
+    suggest_score: int = Field(45, ge=20, le=100)
     auto_approve_score: int = Field(100, ge=20, le=100)
     min_support: int = Field(1, ge=1, le=20)
+    margin: int = Field(5, ge=0, le=30)
+    max_per_video: int = Field(3, ge=1, le=50)
+    upscale_small: bool = True
+    photo_min_face_px: int = Field(48, ge=16, le=512)
+    max_photos_per_performer: int = Field(0, ge=0, le=50)
 
 
 class Settings(BaseModel):

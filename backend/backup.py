@@ -65,6 +65,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
+from loguru import logger
+
 try:
     import pyzipper  # AES-encrypted zips (2.25.0)
 except ImportError:  # in requirements.txt; without it, backups can't have a password
@@ -726,6 +728,61 @@ def prune_backups(settings, job: Optional[str] = None, keep: Optional[int] = Non
             removed += 1
         except OSError:
             pass
+    return removed
+
+
+INSTALLER_JOB = "installer"
+INSTALLER_RECORD = "installer_backups.json"   # in the library's data folder (Tools/pre_install_backup.py)
+
+
+def installer_backups(settings) -> list[dict]:
+    """3.13.0: the backups Setup / the install scripts made before installing an update:
+    [{name, dir, created_at, from_version, to_version, exists}] (newest first)."""
+    try:
+        rows = json.loads((settings.library_db_file.parent / INSTALLER_RECORD).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if not isinstance(r, dict) or not BACKUP_NAME_RE.match(str(r.get("name") or "")) or not r.get("dir"):
+            continue
+        out.append({**r, "exists": exists(Path(r["dir"]) / r["name"])})
+    return sorted(out, key=lambda r: r.get("created_at") or 0, reverse=True)
+
+
+def prune_installer_backups(settings, now: Optional[float] = None) -> int:
+    """3.13.0: deletes the installer's backups older than backup.installer_keep_days. Only the
+    ones in its record (data/installer_backups.json), only in the backups folder, and only when
+    the backup itself says the installer made it -- never another backup. -> how many."""
+    now = now or time.time()
+    keep_days = settings.backup.installer_keep_days
+    path = settings.library_db_file.parent / INSTALLER_RECORD
+    rows = installer_backups(settings)
+    if not rows:
+        return 0
+    home = settings.backup_dir.resolve()
+    removed, kept = 0, []
+    for r in rows:
+        folder = Path(r["dir"])
+        target = folder / r["name"]
+        if not r["exists"]:
+            continue                              # gone already (deleted by hand): forgotten
+        old = (now - float(r.get("created_at") or now)) > keep_days * 86400
+        if old and folder.resolve() == home and _summary(target).get("job") == INSTALLER_JOB:
+            try:
+                for f in files_of(target):
+                    f.unlink()
+                removed += 1
+                logger.info("Backups: {} (made before installing {}) deleted after {} days", r["name"],
+                            r.get("to_version") or "an update", keep_days)
+                continue
+            except OSError as exc:
+                logger.warning("Backups: couldn't delete {}: {}", target, exc)
+        kept.append({k: v for k, v in r.items() if k != "exists"})
+    if removed or len(kept) != len(rows):
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(sorted(kept, key=lambda r: r.get("created_at") or 0), indent=2), encoding="utf-8")
+        tmp.replace(path)
     return removed
 
 

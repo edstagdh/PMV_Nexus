@@ -6,13 +6,14 @@ import asyncio
 
 import json
 import re
+from typing import Optional
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..i18n import L
 from .. import app_info, backup
@@ -33,7 +34,9 @@ class BackupRequest(BaseModel):
 
 
 class BackupSettings(BaseModel):
-    split_gb: float = 0  # (3.7.0) 0 = one file, else 1.9..50 (checked by BackupConfig)
+    split_gb: Optional[float] = None  # (3.7.0) 0 = one file, else 1.9..50 (checked by BackupConfig)
+    installer_backup: Optional[bool] = None             # (3.13.0) Setup / install scripts back up first
+    installer_keep_days: Optional[int] = Field(None, ge=1, le=3650)   # ... and those are deleted after this
 
 
 class BackupPassword(BaseModel):
@@ -223,6 +226,9 @@ def list_backups(user: AuthContext = Depends(require_permission("settings.manage
         "dir": str(settings.backup_dir),
         "keep": settings.backup.keep,
         "split_gb": settings.backup.split_gb,
+        "installer_backup": settings.backup.installer_backup,
+        "installer_keep_days": settings.backup.installer_keep_days,
+        "installer_backups": [r["name"] for r in backup.installer_backups(settings)],
         "locations": [str(d) for d in backup.backup_dirs(settings)],
         "pending_restore": backup.get_pending_restore(),
         "password_set": bool(backup.saved_password()),
@@ -298,14 +304,23 @@ async def create_backup(payload: BackupRequest, user: AuthContext = Depends(requ
 
 @router.post("/api/backups/settings")
 def save_backup_settings(payload: BackupSettings, user: AuthContext = Depends(require_permission("settings.manage"))):
-    """Split size for new backups (3.7.0); scheduled backups use it too."""
+    """Split size for new backups (3.7.0; scheduled backups use it too); 3.13.0: the backup the
+    installer makes before an update, and how long it's kept. Only the fields sent change."""
     from ..config import BackupConfig, save_overrides
-    try:
-        value = BackupConfig(split_gb=payload.split_gb).split_gb
-    except ValueError:
-        raise HTTPException(status_code=400, detail=L("Parts can be 1.9 to 50 GB (or 0: one file)"))
-    save_overrides(backup={"split_gb": value})
-    return {"split_gb": value}
+    changes: dict = {}
+    if payload.split_gb is not None:
+        try:
+            changes["split_gb"] = BackupConfig(split_gb=payload.split_gb).split_gb
+        except ValueError:
+            raise HTTPException(status_code=400, detail=L("Parts can be 1.9 to 50 GB (or 0: one file)"))
+    if payload.installer_backup is not None:
+        changes["installer_backup"] = payload.installer_backup
+    if payload.installer_keep_days is not None:
+        changes["installer_keep_days"] = payload.installer_keep_days
+    if changes:
+        save_overrides(backup=changes)
+    b = get_settings().backup
+    return {"split_gb": b.split_gb, "installer_backup": b.installer_backup, "installer_keep_days": b.installer_keep_days}
 
 
 @router.post("/api/backups/{name}/test")

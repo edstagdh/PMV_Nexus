@@ -53,6 +53,16 @@ export const DEFAULT_UI = Object.freeze({
   tablePreviewScale: 200,
   relatedCount: 15,
   relatedOrder: "best",   // 3.9.0: "best" matches first, or "random" among all related ones
+  // 3.13.0: the video page's "Faces found" and "Shares scenes with": "open" | "collapsed" | "hidden"
+  videoFaces: "collapsed",
+  videoFacesPageSize: 6,  // faces waiting for you shown at a time on the video page (1-50)
+  sharedScenes: "collapsed",
+  // 3.13.0: Management -> Faces
+  facesPageSize: 50,      // matches per page (10-500)
+  facesPictureSize: 160,  // px of the pictures (96 / 160 / 240 / 320)
+  facesMinScore: 0,       // matches below this score aren't shown (0-100)
+  facesSort: "score",     // score | performer | video | found | faces | time
+  facesDesc: true,
   wallPick: "random",     // 3.9.1 what The Wall's Random button picks: lib/wallPick.js PICK_MODES
   wallPickAnimate: true,  // ... with the search-and-zoom animation (else straight to the video)
   wallPickSeconds: 4,     // ... how long the animation takes (2-12 s)
@@ -137,6 +147,14 @@ export function normalizeUi(raw) {
     tablePreviewScale: clampNum(r.tablePreviewScale, 100, 400, DEFAULT_UI.tablePreviewScale),
     relatedCount: Math.round(clampNum(r.relatedCount, 0, 40, DEFAULT_UI.relatedCount)),
     relatedOrder: r.relatedOrder === "random" ? "random" : "best",
+    videoFaces: pick(r.videoFaces, ["open", "collapsed", "hidden"], DEFAULT_UI.videoFaces),
+    videoFacesPageSize: Math.round(clampNum(r.videoFacesPageSize, 1, 50, DEFAULT_UI.videoFacesPageSize)),
+    sharedScenes: pick(r.sharedScenes, ["open", "collapsed", "hidden"], DEFAULT_UI.sharedScenes),
+    facesPageSize: Math.round(clampNum(r.facesPageSize, 10, 500, DEFAULT_UI.facesPageSize)),
+    facesPictureSize: pick(r.facesPictureSize, [96, 160, 240, 320], DEFAULT_UI.facesPictureSize),
+    facesMinScore: Math.round(clampNum(r.facesMinScore, 0, 100, DEFAULT_UI.facesMinScore)),
+    facesSort: pick(r.facesSort, ["score", "performer", "video", "found", "faces", "time"], DEFAULT_UI.facesSort),
+    facesDesc: typeof r.facesDesc === "boolean" ? r.facesDesc : DEFAULT_UI.facesDesc,
     wallPick: WALL_PICKS.includes(r.wallPick) ? r.wallPick : DEFAULT_UI.wallPick,
     wallPickAnimate: typeof r.wallPickAnimate === "boolean" ? r.wallPickAnimate : DEFAULT_UI.wallPickAnimate,
     wallPickSeconds: clampNum(r.wallPickSeconds, 2, 12, DEFAULT_UI.wallPickSeconds),
@@ -264,7 +282,9 @@ function uiSnapshot() {
   return normalizeUi({
     view: p.view, pageSize: p.pageSize, textScale: p.textScale, badges: p.badges, goneColor: p.goneColor,
     backMode: p.backMode, suggestKeepOpen: p.suggestKeepOpen, groupCodecs: p.groupCodecs, miniPlayer: p.miniPlayer, abRepeat: p.abRepeat, touchSides: p.touchSides, resumePlayback: p.resumePlayback, videoFrames: p.videoFrames, tabOrder: p.tabOrder, savedSearches: p.savedSearches, frameSearch: p.frameSearch, rememberVolume: p.rememberVolume, startVolume: p.startVolume, watchedBar: p.watchedBar, panicKeys: p.panicKeys, language: p.language, toasts: p.toasts, defaultSort: p.defaultSort, defaultDir: p.defaultDir, tablePreviewScale: p.tablePreviewScale,
-    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMovePct: p.wallMovePct, wallArrows: p.wallArrows, wallDblClick: p.wallDblClick, wallHoverGrow: p.wallHoverGrow, wallHoverTitle: p.wallHoverTitle, wallDetails: p.wallDetails, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
+    relatedCount: p.relatedCount, relatedOrder: p.relatedOrder,
+    videoFaces: p.videoFaces, videoFacesPageSize: p.videoFacesPageSize, sharedScenes: p.sharedScenes, facesPageSize: p.facesPageSize,
+    facesPictureSize: p.facesPictureSize, facesMinScore: p.facesMinScore, facesSort: p.facesSort, facesDesc: p.facesDesc, wallPick: p.wallPick, wallPickAnimate: p.wallPickAnimate, wallPickSeconds: p.wallPickSeconds, wallZoomStep: p.wallZoomStep, wallZoomStart: p.wallZoomStart, wallStartView: p.wallStartView, wallPanel: p.wallPanel, wallMinShared: p.wallMinShared, wallWithCo: p.wallWithCo, wallMaxVideos: p.wallMaxVideos, wallTurnSpeed: p.wallTurnSpeed, wallMovePct: p.wallMovePct, wallArrows: p.wallArrows, wallDblClick: p.wallDblClick, wallHoverGrow: p.wallHoverGrow, wallHoverTitle: p.wallHoverTitle, wallDetails: p.wallDetails, wallGlide: p.wallGlide, wallKeySpeed: p.wallKeySpeed, wallPictureSize: p.wallPictureSize, wallDetail: p.wallDetail, wallLines: p.wallLines, wallTitles: p.wallTitles, wallBackground: p.wallBackground, wallHover: p.wallHover, wallHoverDelay: p.wallHoverDelay, wallHoverSize: p.wallHoverSize, relatedBadges: p.relatedBadges, chipColorsOn: p.chipColorsOn, chipColors: p.chipColors,
     customTheme: p.customTheme,
   });
 }

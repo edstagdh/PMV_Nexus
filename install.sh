@@ -59,6 +59,15 @@ if [ -f config.yaml ]; then
     GO="$(ask '      The library is changed when the app starts. Continue? [Y/n]: ')"
     if [[ "$GO" =~ ^[Nn] ]]; then say "Stopped. The library wasn't changed; the app won't upgrade it until it starts."; exit 0; fi
   fi
+  # 3.13.0: a backup of the library first (database, settings, own photos, covers; Server Settings -> Backups)
+  set +e
+  "$VPY" -m Tools.pre_install_backup --to "$(tr -d '[:space:]' < VERSION)"
+  BK=$?
+  set -e
+  if [ "$BK" = "1" ]; then
+    GO="$(ask '      No backup could be made (see above). Go on without it? [y/N]: ')"
+    if [[ ! "$GO" =~ ^[Yy] ]]; then say "Stopped. The library wasn't changed."; exit 1; fi
+  fi
 fi
 
 # ---- 3. ffmpeg -------------------------------------------------------------------

@@ -602,6 +602,11 @@ class LibraryDB:
         self._ensure_column("duplicate_matches", "details", "TEXT")
         # 2.5.0: built-in playlists ("favorites", one per user) can't be deleted or renamed.
         self._ensure_column("playlists", "system_key", "TEXT")
+        # 3.13.0: an approved face match adds the performer to the video's performers: applied =
+        # 1 (added, applied_name is the name added; Undo removes it again), 0 (was there already),
+        # NULL (approved before 3.13.0: added at the next start).
+        self._ensure_column("face_matches", "applied", "INTEGER")
+        self._ensure_column("face_matches", "applied_name", "TEXT")
         # 3.7.0: the English templates of a notification / a job run's summary, so they can be
         # shown in each reader's language later (backend/i18n.py to_stored / from_stored).
         self._ensure_column("notifications", "msg", "TEXT")
@@ -1068,6 +1073,18 @@ class LibraryDB:
         self._conn.commit()
         self._note_change(["faces", video_id])
         return cur.rowcount > 0
+
+    def set_face_applied(self, video_id: str, performer_id: str, applied: Optional[int], name: Optional[str]) -> None:
+        self._conn.execute("UPDATE face_matches SET applied = ?, applied_name = ? WHERE video_id = ? AND performer_id = ?",
+                           (applied, name, video_id, performer_id))
+        self._conn.commit()
+
+    def delete_face_matches_below(self, score: float) -> int:
+        """Waiting suggestions below `score` (decisions are never touched)."""
+        cur = self._conn.execute("DELETE FROM face_matches WHERE status = 'suggested' AND score < ?", (score,))
+        self._conn.commit()
+        self._note_change(["faces"])
+        return cur.rowcount
 
     def delete_face_matches_of(self, video_ids: Iterable[str]) -> None:
         self._conn.executemany("DELETE FROM face_matches WHERE video_id = ?", [(v,) for v in video_ids])

@@ -182,6 +182,41 @@ class RefIndex:
         return out
 
 
+    def assign(self, detections: list, skip: frozenset = frozenset(), line: float = 0.36,
+               margin: float = 0.05) -> dict:
+        """3.13.0: each face of the video counts for ONE performer only -- the one it looks most
+        like, when that's at or above `line` (cosine) and at least `margin` more than the next
+        performer. A face that looks most like a performer the video already lists counts for
+        them (so it can't suggest anyone else). -> {performer_id: {"score", "support", "detection"}}
+        for the others (`skip` left out); score = the best of its faces, support = how many."""
+        import numpy as np
+        if not detections or not self.ids:
+            return {}
+        det_ids = [d for d, _e in detections]
+        D = np.stack([e for _d, e in detections]).astype(np.float32)
+        per_perf = np.maximum.reduceat(D @ self._R.T, self._starts, axis=1)   # faces x performers
+        if per_perf.shape[1] > 1:
+            top2 = np.sort(per_perf, axis=1)[:, -2:]
+            best_s, second = top2[:, 1], top2[:, 0]
+        else:
+            best_s, second = per_perf[:, 0], np.full(per_perf.shape[0], -1.0, dtype=np.float32)
+        best_j = per_perf.argmax(axis=1)
+        out: dict = {}
+        for f in range(len(det_ids)):
+            if best_s[f] < line or best_s[f] - second[f] < margin:
+                continue
+            pid = self.ids[int(best_j[f])]
+            if pid in skip:
+                continue
+            m = out.setdefault(pid, {"score": -1.0, "support": 0, "detection": None})
+            m["support"] += 1
+            if best_s[f] > m["score"]:
+                m["score"], m["detection"] = float(best_s[f]), det_ids[f]
+        for m in out.values():
+            m["score"] = round(m["score"] * 100, 1)
+        return out
+
+
 def best_matches(detections: list, references: dict) -> dict:
     return RefIndex(references).best_matches(detections)
 
