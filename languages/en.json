@@ -4,7 +4,7 @@
   "name": "English",
   "native": "English",
   "direction": "ltr",
-  "version": "3.11.2"
+  "version": "3.11.3"
  },
  "messages": {
   " (thorough)": " (thorough)",
@@ -673,6 +673,7 @@
   "Delete the playlist “{name}”? The videos themselves stay in the library.": "Delete the playlist “{name}”? The videos themselves stay in the library.",
   "Delete the role “{name}”?": "Delete the role “{name}”?",
   "Delete these files?": "Delete these files?",
+  "Delete this notification": "Delete this notification",
   "Delete {name}?": "Delete {name}?",
   "Delete {n} files ({size}) from disk? This can't be undone.": {
    "one": "Delete {n} file ({size}) from disk? This can't be undone.",

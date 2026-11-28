@@ -1341,9 +1341,14 @@ class LibraryDB:
         self._conn.execute(sql, args)
         self._conn.commit()
 
-    def clear_notifications(self, user_id: str, admin: bool) -> None:
+    def clear_notifications(self, user_id: str, admin: bool, ids: Optional[list[int]] = None) -> None:
+        """All the ones this person sees, or (3.11.3) just `ids` among them."""
         where, args = self._notif_where(user_id, admin)
-        self._conn.execute(f"DELETE FROM notifications WHERE {where}", args)
+        sql = f"DELETE FROM notifications WHERE {where}"
+        if ids is not None:
+            sql += f" AND id IN ({','.join('?' * len(ids)) or 'NULL'})"
+            args = list(args) + list(ids)
+        self._conn.execute(sql, args)
         self._conn.commit()
 
     def prune_notifications(self, older_than: float, keep: int) -> None:

@@ -158,6 +158,7 @@ _LABELS = {
     "check_for_update": "Check for updates",
     "capture_snapshot_now": "Stats snapshot",
     "clear": "Clear notifications",
+    "delete_notification": "Delete a notification",
     "mark_read": "Mark notifications read",
     # server settings
     "set_download_settings": "Server Settings: Download",

@@ -2086,6 +2086,9 @@
  "Delete these files?": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
+ "Delete this notification": [
+  "ui/src/components/NotificationBell.vue"
+ ],
  "Delete {name}?": [
   "ui/src/views/admin/UsersView.vue"
  ],

@@ -169,7 +169,8 @@ The **bell** (top of the sidebar; top right on a phone) keeps what happened in t
 Its badge counts unread **problems**. **Problems** shows only failures and warnings; **All** shows everything.
 Clicking one opens its menu: **Open the video** (or the page it's about), **Open Tasks** for downloads,
 re-encodes, repairs, uploads and jobs, **See the log from then** (for those allowed to view logs: the couple of
-minutes before it, only warnings and errors for a problem) and **Copy**. Each person is told about the videos they added; videos from
+minutes before it, only warnings and errors for a problem) and **Copy**. The **✕** on one deletes it (3.11.3);
+**Clear** deletes them all. Each person is told about the videos they added; videos from
 before 2.10.0, and ones added through the API, notify the admins.
 
 New ones also pop up in the corner. **My Settings → Notifications** turns the pop-ups off per kind: downloads,

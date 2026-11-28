@@ -47,3 +47,10 @@ def mark_read(body: ReadRequest, user: AuthContext = Depends(get_current_user)):
 def clear(user: AuthContext = Depends(get_current_user)):
     library_manager.db.clear_notifications(user.id, _admin(user))
     return {"ok": True}
+
+
+@router.delete("/api/notifications/{notification_id}")
+def delete_notification(notification_id: int, user: AuthContext = Depends(get_current_user)):
+    """3.11.3: one notification (only one this person can see)."""
+    library_manager.db.clear_notifications(user.id, _admin(user), [notification_id])
+    return library_manager.db.notification_counts(user.id, _admin(user))

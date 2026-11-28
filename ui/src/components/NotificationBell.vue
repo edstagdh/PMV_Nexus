@@ -7,7 +7,7 @@ import { askConfirm, confirmState } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import Icon from "./Icon.vue";
-import { notes, markAllRead, clearNotifications } from "../stores/notifications.js";
+import { notes, markAllRead, clearNotifications, deleteNotification } from "../stores/notifications.js";
 import { toast } from "../stores/toast.js";
 import { formatDateTime } from "../lib/format.js";
 import { hasPermission } from "../stores/session.js";
@@ -51,6 +51,10 @@ function go(to) {
 async function copyNote(n) {
   const ok = await copyText([n.title, n.body, formatDateTime(n.created_at)].filter(Boolean).join("\n"));
   toast(ok ? t("Copied") : t("The browser blocked copying"), { type: ok ? "success" : "error" });
+}
+async function dismiss(n) {   // 3.11.3: one at a time
+  if (openId.value === n.id) openId.value = null;
+  try { await deleteNotification(n.id); } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
 }
 async function readAll() {
   try { await markAllRead(); } catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }
@@ -98,6 +102,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
                 <span class="when">{{ formatDateTime(n.created_at) }}</span>
               </span>
             </button>
+            <button class="dismiss btn btn-ghost btn-icon btn-sm" type="button" :title="$t('Delete this notification')"
+                    :aria-label="$t('Delete this notification')" @click="dismiss(n)"><Icon name="x" :size="14" /></button>
             <div v-if="openId === n.id" class="nmenu" role="menu">
               <button v-for="l in linksOf(n)" :key="l.label" class="btn btn-sm" role="menuitem" type="button" @click="go(l.to)">{{ l.label }}</button>
               <button class="btn btn-ghost btn-sm" role="menuitem" type="button" @click="copyNote(n)">{{ $t("Copy") }}</button>
@@ -130,6 +136,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 .row { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0.5rem; width: 100%; padding: 0.625rem 1rem; border: 0;
   background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .row:hover, li.open .row { background: var(--panel-hover); }
+.nc-list li { position: relative; }
+.nc-list .row { padding-inline-end: 2.5rem; }
+.dismiss { position: absolute; top: 0.4rem; inset-inline-end: 0.5rem; opacity: 0; }
+.nc-list li:hover .dismiss, .dismiss:focus-visible { opacity: 1; }
+@media (hover: none) { .dismiss { opacity: 0.7; } }
 .row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .txt { display: flex; flex-direction: column; min-width: 0; }
 .nmenu { display: flex; flex-wrap: wrap; gap: 0.35rem; padding-block: 0 0.65rem; padding-inline: 3.25rem 1rem; background: var(--panel-hover); }
