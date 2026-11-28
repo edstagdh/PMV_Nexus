@@ -26,6 +26,21 @@ def safe_name(text: str, max_len: int = 120) -> str:
     return text[:max_len] or "untitled"
 
 
+NAME_MAX = 120   # characters of a file name before its extension
+
+
+def video_base_name(head: str, video_id: str, max_len: int = NAME_MAX) -> str:
+    """'<head> [<id>]' for a video's files (3.11.2). A long head (creator - date - title) is
+    shortened, ending in '...', so the id always fits: before, the whole name was cut at
+    max_len and long titles lost the end of the id."""
+    tail = f" [{video_id}]"
+    head = safe_name(head, max_len=10_000)
+    room = max_len - len(tail)
+    if len(head) > room:
+        head = head[:max(1, room - 3)].rstrip(" -_") + "..."
+    return head + tail
+
+
 def parse_duration_seconds(duration_str: Optional[str]) -> Optional[int]:
     """'4:05' / '1:02:03' -> total seconds, so HLS download progress can be
     reported as a percentage (ffmpeg gives elapsed stream time, not bytes,

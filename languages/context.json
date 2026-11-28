@@ -3461,6 +3461,9 @@
  "Its thumbnail, preview clip and details file are deleted too.": [
   "ui/src/components/dialogs/RemoveDialog.vue"
  ],
+ "its video id is cut off in the name, so it can't be looked up": [
+  "backend/library_mixins/adopt.py"
+ ],
  "its video id is in the name": [
   "ui/src/components/admin/FileCheckPanel.vue"
  ],
@@ -7494,6 +7497,9 @@
  "The downloaded file doesn't match GitHub's list (size or SHA-256) — not installed. Try again later.": [
   "backend/routers/i18n.py"
  ],
+ "The end of its video id was cut off with a long title (before 3.11.2), and no library video has an id starting that way — it cannot be looked up on the site": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "The file couldn't be virus-scanned ({detail}), so it wasn't accepted.": [
   "backend/library_mixins/local_upload.py"
  ],
@@ -8492,6 +8498,9 @@
   "backend/backup.py",
   "ui/src/components/VideoFrames.vue",
   "ui/src/components/admin/FramesPanel.vue"
+ ],
+ "video id cut off": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Video not found": [
   "backend/routers/library.py",

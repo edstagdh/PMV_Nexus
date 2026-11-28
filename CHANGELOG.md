@@ -4,6 +4,21 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.11.2] - 2026-11-28
+
+### Fixed
+- **Long titles cut the video id off the end of file names** (`… Flashing Warning [6af773f5e000aa9.mp4`): names were
+  cut at 120 characters as a whole. Now the title is shortened instead, ending in `...`, so `[<id>]` is always
+  complete (`… just gimme more Fla... [6af773f5e000aa928fba901e].mp4`). Applies to new downloads, their thumbnail,
+  preview and details files, uploads, and renamed videos.
+- Files named before this with a cut-off id are recognised when one library video's id starts that way: in Untracked
+  files (link back, older copy, never deleted when they're the video's own) and in Check video files. Untracked
+  videos whose cut-off id matches no library video are marked "video id cut off" (they can't be looked up on the site).
+
+### Changed
+- Renaming a video keeps its id at the end of the file name (`<new title> [<id>]`); before, the file got only the
+  new title, and a lost video file could no longer be matched to its video.
+
 ## [3.11.1] - 2026-11-28
 
 ### Fixed

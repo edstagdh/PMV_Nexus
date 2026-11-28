@@ -43,7 +43,7 @@ from ..i18n import L
 from .. import media_tools, stats_store, upload_safety
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
-from ._helpers import safe_name
+from ._helpers import safe_name, video_base_name
 
 VIDEO_EXTENSIONS = set(upload_safety.VIDEO_EXTENSIONS)
 UPLOAD_TTL_SECONDS = 6 * 3600
@@ -192,7 +192,7 @@ class LocalUploadMixin:
             staged.unlink(missing_ok=True)
             up.update(receiving=False, state="waiting_file")
             raise
-        base_name = safe_name(f"{up['creator']} - {up['upload_date'] or 'unknown-date'} - {up['title']} [{item_id}]")
+        base_name = video_base_name(f"{up['creator']} - {up['upload_date'] or 'unknown-date'} - {up['title']}", item_id)
         up.update(receiving=False, staged=str(staged), item_id=item_id, base_name=base_name, written=written,
                   state="queued")
         logger.info("Received upload '{}' from {} ({:,} bytes); in line to be checked", up["title"], up["user"], written)

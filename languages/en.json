@@ -4,7 +4,7 @@
   "name": "English",
   "native": "English",
   "direction": "ltr",
-  "version": "3.11.1"
+  "version": "3.11.2"
  },
  "messages": {
   " (thorough)": " (thorough)",
@@ -1115,6 +1115,7 @@
   "its name has neither this video's id nor its old file name": "its name has neither this video's id nor its old file name",
   "Its own codec: stays {codec}, only made 1080p": "Its own codec: stays {codec}, only made 1080p",
   "Its thumbnail, preview clip and details file are deleted too.": "Its thumbnail, preview clip and details file are deleted too.",
+  "its video id is cut off in the name, so it can't be looked up": "its video id is cut off in the name, so it can't be looked up",
   "its video id is in the name": "its video id is in the name",
   "Job": "Job",
   "Job created": "Job created",
@@ -2386,6 +2387,7 @@
   "The database and settings always; tick what else.": "The database and settings always; tick what else.",
   "The disk the backups go to is almost full -- the backup was stopped": "The disk the backups go to is almost full -- the backup was stopped",
   "The downloaded file doesn't match GitHub's list (size or SHA-256) — not installed. Try again later.": "The downloaded file doesn't match GitHub's list (size or SHA-256) — not installed. Try again later.",
+  "The end of its video id was cut off with a long title (before 3.11.2), and no library video has an id starting that way — it cannot be looked up on the site": "The end of its video id was cut off with a long title (before 3.11.2), and no library video has an id starting that way — it cannot be looked up on the site",
   "The file couldn't be virus-scanned ({detail}), so it wasn't accepted.": "The file couldn't be virus-scanned ({detail}), so it wasn't accepted.",
   "The file from GitHub is bigger than expected": "The file from GitHub is bigger than expected",
   "The file from GitHub is for another language — not installed": "The file from GitHub is for another language — not installed",
@@ -2707,6 +2709,7 @@
   "Video": "Video",
   "video": "video",
   "Video frames": "Video frames",
+  "video id cut off": "video id cut off",
   "Video not found": "Video not found",
   "Video page": "Video page",
   "Video page URLs (one per line)": "Video page URLs (one per line)",

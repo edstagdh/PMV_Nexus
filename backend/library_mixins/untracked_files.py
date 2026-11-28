@@ -177,9 +177,8 @@ class UntrackedFilesMixin:
         if _norm(path) in being_added:
             return L("it's being added to the library")
         if _kind(path) in ("video", "re-encode backup"):
-            from .adopt import video_id_in_name
             from .file_check import file_state
-            vid = video_id_in_name(path.name)
+            vid = self._video_id_of(path.name)
             item = self._items.get(vid) if vid else None
             if item and item.status == "done" and file_state(item.video_path):
                 return L("it's probably the file of a library video whose own file is missing -- link it back instead")

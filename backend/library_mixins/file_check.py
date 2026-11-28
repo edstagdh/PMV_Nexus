@@ -25,7 +25,6 @@ from loguru import logger
 
 from ..i18n import L
 from .. import activity, media_tools
-from .adopt import video_id_in_name
 from .untracked_files import _kind, _norm
 
 PROBLEMS = ("missing", "empty", "unreadable", "damaged")
@@ -191,7 +190,7 @@ class FileCheckMixin:
                     if _kind(p) != "video" or _norm(p) in tracked or _norm(p) in keep:
                         continue
                     by_name.setdefault(name.lower(), []).append(p)
-                    vid = video_id_in_name(name)
+                    vid = self._video_id_of(name)   # 3.11.2: also a cut-off id
                     if vid:
                         by_id.setdefault(vid, []).append(p)
         for entry in missing:
@@ -236,7 +235,7 @@ class FileCheckMixin:
                                          or new.name.lower() == f"{old.stem}_old{old.suffix}".lower())
         if key == _norm(item.video_path or "") and item.status == "failed":
             pass   # a download again that failed, and its file turned up where it was
-        elif video_id_in_name(new.name) != video_id and not same_name:
+        elif self._video_id_of(new.name) != video_id and not same_name:
             raise ValueError(L("its name has neither this video's id nor its old file name"))
         async with self._lock:
             before = item.video_path
@@ -274,7 +273,7 @@ class FileCheckMixin:
         tracked, keep = self._tracked_paths()
         if key in tracked or key in keep:
             raise ValueError(L("another library video uses that file"))
-        if video_id_in_name(new.name) != video_id:
+        if self._video_id_of(new.name) != video_id:
             raise ValueError(L("its name doesn't have this video's id"))
         async with self._lock:
             setattr(item, field, str(new))

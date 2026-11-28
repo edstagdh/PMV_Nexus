@@ -19,7 +19,7 @@ from .. import storyboard, video_frames
 from ..media_tools import convert_preview_for_browser, generate_thumbnail, is_browser_playable
 from ..models import EDITABLE_DETAIL_FIELDS, EDITABLE_ITEM_FIELDS, LibraryItem
 from .. import sources
-from ._helpers import extract_tags_performers_music_from_meta_dict, safe_name
+from ._helpers import extract_tags_performers_music_from_meta_dict, safe_name, video_base_name
 
 
 def _find_moved(value: str, old_root, new_root: Path) -> Optional[Path]:
@@ -52,7 +52,10 @@ class ItemExtrasMixin:
                 raise ValueError(L('Only completed downloads can be renamed'))
 
             old_path = Path(item.video_path)
-            safe_new_name = safe_name(new_name)
+            # 3.11.2: the name keeps the video's id (it's how a file is matched to its video
+            # again), shortened like a download's name when long
+            head = new_name.replace(f"[{video_id}]", " ")
+            safe_new_name = video_base_name(head, video_id)
             new_path = old_path.with_name(f"{safe_new_name}{old_path.suffix}")
 
             if new_path.exists():

@@ -22,8 +22,7 @@ from ._helpers import (
     extract_tags_performers_music_from_meta_dict,
     parse_duration_seconds,
     parse_iso_to_epoch,
-    safe_name,
-)
+    safe_name, video_base_name)
 
 
 class DownloadWorkerMixin:
@@ -236,7 +235,7 @@ class DownloadWorkerMixin:
         creator_dir = self.settings.output_dir / creator_name
         cache_creator_dir = self.settings.cache_dir / creator_name
         cache_creator_dir.mkdir(parents=True, exist_ok=True)
-        base_name = safe_name(f"{meta.creator_name} - {meta.upload_date or 'unknown-date'} - {meta.title} [{item.id}]")
+        base_name = video_base_name(f"{meta.creator_name} - {meta.upload_date or 'unknown-date'} - {meta.title}", item.id)
         # What we write to disk is always a real video file, but the source
         # URL doesn't always look like one: HLS sources are a .m3u8
         # *playlist* URL (remuxed to .mp4 by ffmpeg, not saved as-is), and

@@ -750,7 +750,9 @@ while it's being written; one left over from an interrupted re-encode is listed 
 previews of videos no longer in the library are listed as "seekbar preview", their video frames as "video frame".
 
 **Add to the library** (3.10.0): a video the app downloaded keeps its PMVHaven video id in its name
-(`<creator> - <date> - <title> [<id>].mp4`). If the library lost track of it — an older backup restored, a lost or
+(`<creator> - <date> - <title> [<id>].mp4`; since 3.11.2 a long title is shortened with `...` so the id is always
+complete — names from before that may have lost the end of the id, and are matched by its start when one library
+video's id begins that way). If the library lost track of it — an older backup restored, a lost or
 damaged database — it's listed with **can be added**. Pick it (or **Select the … that can be added**) and **Add to
 the library**: nothing is downloaded and nothing is moved or renamed. Its details come from the site's API, as for a
 new download; its leftovers of the same id — the thumbnail, preview clip and details (JSON) in the cache folder, a

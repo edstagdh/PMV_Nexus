@@ -12,7 +12,7 @@ from ..models import LibraryItem
 from .. import sources
 from ..video_meta import VideoMetadata
 from ..log_store import get_log_store
-from ._helpers import cleanup_partial_download_file, safe_name
+from ._helpers import cleanup_partial_download_file, safe_name, video_base_name
 
 
 class MetadataWorkerMixin:
@@ -103,7 +103,7 @@ class MetadataWorkerMixin:
         creator_name = safe_name(meta.creator_name or "unknown")
         cache_creator_dir = self.settings.cache_dir / creator_name
         cache_creator_dir.mkdir(parents=True, exist_ok=True)
-        base_name = safe_name(f"{meta.creator_name} - {meta.upload_date or 'unknown-date'} - {meta.title} [{item.id}]")
+        base_name = video_base_name(f"{meta.creator_name} - {meta.upload_date or 'unknown-date'} - {meta.title}", item.id)
 
         # Precomputed thumbnail/preview destination paths -- known up
         # front (even though the actual download for each only happens

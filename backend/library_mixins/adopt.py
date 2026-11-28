@@ -45,6 +45,19 @@ def video_id_in_name(name: str) -> Optional[str]:
     return m.group(1).lower() if m else None
 
 
+# 3.11.2: names cut at 120 characters before 3.11.2 lost the end of the id: "... [6af773f5e000aa9.mp4"
+CUT_ID = re.compile(r"\[([a-f0-9]{8,23})$", re.IGNORECASE)
+
+
+def cut_id_in_name(name: str) -> Optional[str]:
+    """The start of a cut-off id at the end of a file name (no extension), or None."""
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    if stem.endswith("_preview"):
+        stem = stem[:-len("_preview")]
+    m = CUT_ID.search(stem)
+    return m.group(1).lower() if m and not ID_IN_NAME.search(name) else None
+
+
 def _from_name(path: Path) -> dict:
     """"Creator - 2024-05-01 - Title [id].mp4" -> creator, upload date, title (best effort)."""
     stem = ID_IN_NAME.sub("", path.stem).strip()
@@ -61,12 +74,26 @@ class AdoptMixin:
     _adopt_stop = False
     _adopt_queued: set = set()
 
+    def _video_id_of(self, name: str) -> Optional[str]:
+        """The video id in a file name; for a name whose id was cut off (before 3.11.2), the one
+        library video whose id starts that way."""
+        vid = video_id_in_name(name)
+        if vid:
+            return vid
+        cut = cut_id_in_name(name)
+        if not cut:
+            return None
+        found = [k for k in self._items if k.startswith(cut)]
+        return found[0] if len(found) == 1 else None
+
     def untracked_video_info(self, path: Path) -> dict:
         """Extra fields for an untracked video in the list: its id, and whether it can be added
         (or, 3.11.0, linked back: the library has the video but its own file is missing)."""
         from .file_check import file_state
-        vid = video_id_in_name(path.name)
+        vid = self._video_id_of(path.name)
         if not vid:
+            if cut_id_in_name(path.name):
+                return {"video_id": None, "can_add": False, "why_not": "id_cut_off"}
             return {"video_id": None, "can_add": False}
         item = self._items.get(vid)
         if item is not None:
@@ -82,7 +109,7 @@ class AdoptMixin:
         video: the one it lacks (link it back), or an older copy (it uses another file)."""
         from .file_check import COMPANION_FIELDS, file_state
         field = COMPANION_FIELDS.get(kind)
-        vid = video_id_in_name(path.name)
+        vid = self._video_id_of(path.name)
         item = self._items.get(vid) if vid and field else None
         if item is None or item.status == "merged":
             return None
@@ -136,7 +163,8 @@ class AdoptMixin:
             else:
                 vid = video_id_in_name(path.name)
                 if not vid:
-                    why = L("no video id in its name")
+                    why = (L("its video id is cut off in the name, so it can't be looked up") if cut_id_in_name(path.name)
+                           else L("no video id in its name"))
                 elif vid in self._items:
                     why = L("that video is already in the library (another file)")
                 elif vid in seen:
