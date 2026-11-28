@@ -299,6 +299,9 @@
  "Add a creator…": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
+ "Add a description, performers, tags or music by hand.": [
+  "ui/src/views/VideoView.vue"
+ ],
  "Add a FansDB or StashDB API key in Server Settings → Credentials to search them.": [
   "ui/src/components/StashBoxPanel.vue"
  ],
@@ -2571,7 +2574,8 @@
   "backend/permissions.py",
   "ui/src/components/dialogs/EditDetailsDialog.vue",
   "ui/src/lib/actions.js",
-  "ui/src/views/PerformerView.vue"
+  "ui/src/views/PerformerView.vue",
+  "ui/src/views/VideoView.vue"
  ],
  "Edit details, rename, thumbnails, previews, bulk edit": [
   "backend/permissions.py"
@@ -4712,6 +4716,9 @@
  "No data": [
   "ui/src/views/admin/StatsView.vue"
  ],
+ "No details available.": [
+  "ui/src/views/VideoView.vue"
+ ],
  "No details to filter by yet — they come from ThePornDB profiles.": [
   "ui/src/views/PerformersView.vue"
  ],
@@ -6477,6 +6484,9 @@
  "Repair/Update failed: {title}": [
   "backend/library_mixins/repair_worker.py"
  ],
+ "Repair/Update fetches them from the site; you can also add them by hand.": [
+  "ui/src/views/VideoView.vue"
+ ],
  "Repair/Update queued": [
   "ui/src/lib/actions.js"
  ],
@@ -8153,8 +8163,8 @@
  "The site doesn't have this video any more": [
   "backend/library_mixins/file_check.py"
  ],
- "The site's API didn't return this video (removed, private, a link the API doesn't know, or the site is unreachable).": [
-  "backend/sources/pmv_platform.py"
+ "The site doesn't have this video any more, so they can't be fetched again — add them by hand.": [
+  "ui/src/views/VideoView.vue"
  ],
  "The site's API gave no download for this video.": [
   "backend/sources/pmv_platform.py"
@@ -9979,6 +9989,9 @@
  "{relinked} found so far": [
   "backend/library_mixins/item_extras.py"
  ],
+ "{site} answered without usable details for this video.": [
+  "backend/sources/pmv_platform.py"
+ ],
  "{site} can't download files": [
   "backend/sources/__init__.py"
  ],
@@ -9988,17 +10001,26 @@
  "{site} can't read a video id from {url}": [
   "backend/sources/__init__.py"
  ],
+ "{site} couldn't be reached (no answer, a server error or too many requests) -- try again later.": [
+  "backend/sources/pmv_platform.py"
+ ],
  "{site} couldn't be reached ({error})": [
   "backend/stashbox.py"
  ],
  "{site} didn't answer within {s} seconds": [
   "backend/stashbox.py"
  ],
+ "{site} doesn't have this video any more (it answered \"not found\").": [
+  "backend/sources/pmv_platform.py"
+ ],
  "{site} error {status}": [
   "backend/stashbox.py"
  ],
  "{site} refused the API key (check it in Server Settings → Credentials)": [
   "backend/stashbox.py"
+ ],
+ "{site} refused this video (HTTP 401/403): it may be private, or need your API key (Server Settings → Credentials).": [
+  "backend/sources/pmv_platform.py"
  ],
  "{site} skipped: {reason}": [
   "ui/src/components/admin/SiteSyncPanel.vue"
@@ -10157,7 +10179,7 @@
  "💀 Removed from PMVHaven": [
   "ui/src/views/SettingsView.vue"
  ],
- "💀 This video is no longer available on PMVHaven (not found during the last sync). Your downloaded copy is unaffected.": [
+ "💀 This video is gone from PMVHaven: the site doesn't have it any more. Your downloaded copy is unaffected.": [
   "ui/src/views/VideoView.vue"
  ],
  "📱 Vertical": [

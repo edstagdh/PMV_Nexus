@@ -109,6 +109,11 @@ const flags = computed(() => item.value?.user_edits?.flags ?? view.value?.flags 
 // Fields changed by hand (Edit details) -- kept through syncs and repairs.
 function edited(field) { return !!item.value?.user_edits && field in item.value.user_edits; }
 const canEdit = computed(() => hasPermission("videos.edit"));
+// 3.12.1: gone from the site -- from the video itself (marked by a sync or a repair), so it shows
+// even when the video has no details file
+const isGone = computed(() => (item.value?.site_status ?? syncInfo.value.status) === "removed");
+const hasDetails = computed(() => !!(view.value?.description || performers.value.length || tags.value.length
+  || music.value.length || flags.value.length));
 const playable = computed(() => item.value?.status === "done" && item.value?.video_path && !item.value?.file_missing);
 // 3.11.0: in the library, but its file is missing or empty
 const fileMissing = computed(() => item.value?.status === "done" && item.value?.file_missing);
@@ -236,7 +241,7 @@ function viewAllFrom(names) {
         </div>
         <ActionBar :item="item" context="page" />
         <div v-if="status" class="work" :class="status.kind">{{ status.label }}<span v-if="status.detail" class="muted"> — {{ status.detail }}</span></div>
-        <div v-if="syncInfo.status === 'removed'" class="gone">{{ $t("💀 This video is no longer available on PMVHaven (not found during the last sync). Your downloaded copy is unaffected.") }}</div>
+        <div v-if="isGone" class="gone">{{ $t("💀 This video is gone from PMVHaven: the site doesn't have it any more. Your downloaded copy is unaffected.") }}</div>
 
         <section class="card details">
           <div v-if="view?.description" class="group">
@@ -249,6 +254,13 @@ function viewAllFrom(names) {
           <div v-if="item.user_edits && Object.keys(item.user_edits).length" class="muted small">
             ✎ {{ $t("Edited by hand: {fields} — kept when syncing or repairing.", { fields: Object.keys(item.user_edits).map(fieldName).join(", ") }) }}
             <button v-if="canEdit" class="btn btn-ghost btn-sm" @click="openDialog('details', item)">{{ $t("Edit") }}</button>
+          </div>
+          <div v-if="!hasDetails" class="no-details">
+            <p>{{ $t("No details available.") }}</p>
+            <p class="muted small">{{ isGone ? $t("The site doesn't have this video any more, so they can't be fetched again — add them by hand.")
+              : item.site === "local" ? $t("Add a description, performers, tags or music by hand.")
+              : $t("Repair/Update fetches them from the site; you can also add them by hand.") }}</p>
+            <div v-if="canEdit"><button class="btn btn-sm" @click="openDialog('details', item)"><Icon name="edit" :size="14" />{{ $t("Edit details") }}</button></div>
           </div>
           <div v-if="performers.length" class="group">
             <h4>{{ $t("Performers") }}<span v-if="edited('performers')" class="edited" :title="$t('Edited by hand')">✎</span></h4>
@@ -357,6 +369,8 @@ function viewAllFrom(names) {
 .work.failed { color: var(--danger); }
 .gone { padding: 0.75rem 0.875rem; border-radius: var(--radius); border: 1px solid var(--gone-bg, #dc2626); background: color-mix(in srgb, var(--gone-bg, #dc2626) 14%, transparent); font-size: 0.84rem; }
 .details { padding: 1rem 1.125rem; display: flex; flex-direction: column; gap: 0.875rem; }
+.no-details { display: flex; flex-direction: column; gap: 0.35rem; }
+.no-details p { margin: 0; }
 .group { display: flex; flex-direction: column; gap: 0.5rem; }
 .group h4, .side-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
 .description { margin: 0; white-space: pre-line; color: var(--text-2); font-size: 0.875rem; }

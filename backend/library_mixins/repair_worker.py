@@ -479,6 +479,18 @@ class RepairWorkerMixin:
             meta, raw_json = await sources.get(item.site).details(item, need_file=False)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Repair/Update for {}: could not re-fetch metadata: {}", item.id, exc)
+            if isinstance(exc, sources.VideoGone) and item.site_status != "removed":
+                # 3.12.1: the site said clearly that it's gone (not "couldn't reach it"): marked
+                # gone from the site (💀), like Sync with PMVHaven does. Only a flag -- no file is
+                # touched, and the next sync or repair that finds it again clears it.
+                async with self._lock:
+                    if item.id in self._items:
+                        item.site_status = "removed"
+                        item.site_synced_at = time.time()
+                        item.touch()
+                        self.db.save_item(item)
+                logger.info("Repair/Update for {}: marked as gone from {} ({})", item.id, item.site, item.title)
+                fixed.append("marked as gone from the site")
             if item.site_status == "removed":
                 # 3.10.0: gone from the site (e.g. added back from an untracked file): what's
                 # missing is made from the file, like for an upload, instead of failing.
@@ -490,6 +502,16 @@ class RepairWorkerMixin:
                 error=(f"Fixed {', '.join(fixed)}, but couldn't re-fetch metadata: {exc}" if fixed else f"Could not re-fetch metadata: {exc}"),
             )
             return
+
+        if item.site_status == "removed":   # 3.12.1: it's on the site again
+            async with self._lock:
+                if item.id in self._items:
+                    item.site_status = "available"
+                    item.site_synced_at = time.time()
+                    item.touch()
+                    self.db.save_item(item)
+            logger.info("Repair/Update for {}: the site has it again -- no longer marked as gone", item.id)
+            fixed.append("found on the site again")
 
         # Same directory/naming the original download used -- keyed off the
         # existing video filename (not the freshly-fetched title), so a

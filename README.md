@@ -319,7 +319,8 @@ command to install it if missing), `.venv` and packages, an ffmpeg check, then a
 
 ### Windows without Setup: `install.bat`
 Get the code (`git clone`, or download the zip and extract it), then double-click **`install.bat`**. It checks for
-Python, creates `.venv`, installs the Python packages, checks for ffmpeg, and asks:
+Python, creates `.venv`, installs the Python packages, checks for ffmpeg, on an update says what it changes in the
+library (3.12.1; you can stop there), and asks:
 - **a backup zip** (drag the file into the window) — to set up from a backup, see
   [Setting up from a backup](#setting-up-from-a-backup-new-computer-or-reinstall); or, for a new setup,
 - **the folders** — where the videos, thumbnails & previews, sign-ins, database, backups and logs go (Enter keeps

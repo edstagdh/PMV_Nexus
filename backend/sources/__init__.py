@@ -21,6 +21,11 @@ from ..video_meta import VideoMetadata  # noqa: F401 -- re-exported: what detail
 ProgressCallback = Optional[Callable[[int, Optional[int]], None]]
 
 
+class VideoGone(RuntimeError):
+    """3.12.1: raised by details() when the site said, clearly, that the video doesn't exist
+    any more (not when it couldn't be reached). Repair marks the video "gone from the site"."""
+
+
 class Source:
     """Override what the source supports; the defaults say "not supported"."""
     key: str = ""
@@ -37,7 +42,7 @@ class Source:
     async def details(self, item, need_file: bool = True) -> tuple[VideoMetadata, Optional[dict]]:
         """(details, raw data to save next to the video or None). need_file: the result
         must include the file's link (meta.video_url). Raises RuntimeError with a message
-        for the user when it can't."""
+        for the user when it can't -- VideoGone when the site says the video is gone."""
         raise RuntimeError(L("{site} can't fetch video details", site=self.label or self.key))
 
     async def download(self, url: str, dest: Path, progress: ProgressCallback = None,

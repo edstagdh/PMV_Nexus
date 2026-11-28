@@ -4,6 +4,24 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.12.1] - 2026-11-28
+
+### Fixed
+- **A video gone from PMVHaven is recognised by Repair/Update**, not only by Sync with PMVHaven. When the site clearly
+  answers that it doesn't have the video (HTTP 404 / 410, or "not found"), asked twice, the video is marked 💀 gone
+  from PMVHaven, what's missing is made from your file, and the repair ends as done ("marked as gone from the site").
+  A site that can't be reached, a server error, "too many requests" or a refused (private) video never marks it; the
+  repair then fails with that reason instead of one message for everything. The mark clears itself when a later sync
+  or repair finds the video on the site again. No file is touched.
+- The video page shows "gone from PMVHaven" for every video marked so — before, only for videos that had a details
+  file.
+- A video without any details (description, performers, tags, music) says **No details available**, with what can be
+  done (Repair/Update, or Edit details), instead of an empty box.
+
+### Added
+- `install.bat` says what an update will change in the library before going on, like `install.sh` and Setup
+  (stops when the library was used by a newer version).
+
 ## [3.12.0] - 2026-11-28
 
 ### Added

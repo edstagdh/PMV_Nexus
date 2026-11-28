@@ -928,6 +928,11 @@ current data:
 - Video files, file names and titles are never changed. Title changes on the site are only reported.
 - Your own edits (Edit details) are kept.
 - Videos flagged as removed show a 💀 badge in the library and a notice on their page.
+- **Repair/Update** (3.12.1) flags a video as removed too when the site clearly answers that it doesn't have it (HTTP
+  404 / 410, or "not found"), asked twice. A site that can't be reached, a server error, "too many requests" or a
+  refused (private) video never flags it — the repair fails with that reason instead. A removed video's repair makes
+  what's missing from your file (thumbnail, preview) and ends as done. The flag is only a mark: no file is touched,
+  and the next sync or repair that finds the video on the site again clears it.
 - The result lists changes per field. Tags marked *reordered* kept the same entries in a new vote ranking.
 
 To run it regularly, add a **Sync library with PMVHaven** job on the Scheduler page. Videos from
@@ -1199,9 +1204,10 @@ restart the app. Browser tabs that were open during the update show a **Reload**
 **What an update changes** (3.12.0): when a new version changes how the library is stored, it does so in numbered
 steps at the first start, after copying the database to `data/backups/before-upgrade` (the last 3 copies are kept).
 A long step shows an **Upgrading** screen until it's done; a step that fails is tried again at the next start and
-the app keeps working with what it has. Setup.exe and `install.sh` say beforehand which changes an update makes and
-about how long they take, and you can cancel. If the library was already used by a **newer** version, an older one
-refuses to open it (Setup and `install.sh` stop too), so it can't damage it; to force it anyway, start the app with
+the app keeps working with what it has. Setup.exe, `install.sh` and (3.12.1) `install.bat` say beforehand which
+changes an update makes and about how long they take, and you can cancel — after a `git pull`, run the install script
+again before starting the app to see it (or `python -m Tools.upgrade_plan`, which only reads). If the library was
+already used by a **newer** version, an older one refuses to open it (Setup and the install scripts stop too), so it can't damage it; to force it anyway, start the app with
 the environment variable `PMV_ALLOW_OLDER_APP=1`. The steps done so far are listed in **Help → About** (admins).
 
 ## Troubleshooting

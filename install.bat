@@ -37,6 +37,19 @@ echo        Installing the Python packages - this takes a few minutes the first 
 rem Face models (3.12.0, the Faces tab of Management): downloaded once, checked by SHA-256
 "%VPY%" -m Tools.get_face_models >nul 2>&1 || echo        The face models could not be downloaded now: run  .venv\Scripts\python.exe -m Tools.get_face_models  later.
 
+rem ---- 2b. An update: what it changes in the library (3.12.1, like install.sh) --
+rem Exit codes of Tools.upgrade_plan: 0 nothing to change, 3 steps to run, 4 the library was used
+rem by a newer version, 1 the check itself failed (then the install goes on, as Setup does).
+if not exist config.yaml goto :plan_done
+echo.
+"%VPY%" -m Tools.upgrade_plan
+set "PLAN=%errorlevel%"
+if "%PLAN%"=="4" goto :too_new
+if not "%PLAN%"=="3" goto :plan_done
+choice /c YN /m "       The library is changed when the app starts. Continue"
+if errorlevel 2 goto :not_now
+:plan_done
+
 rem ---- 3. ffmpeg ---------------------------------------------------------
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
@@ -88,6 +101,18 @@ echo  Installed. Start the app any time with start.bat.
 choice /c YN /m " Start it now"
 if errorlevel 2 goto :end
 call start.bat
+goto :end
+
+:too_new
+echo.
+echo  Stopped: nothing was changed. Use the newer version of the app with this library.
+pause
+exit /b 1
+
+:not_now
+echo.
+echo  Stopped. The library wasn't changed: the app upgrades it when it next starts.
+pause
 goto :end
 
 :fail
