@@ -227,6 +227,28 @@ export function releasePlayerItem(itemId) {
   if (player.item?.id === itemId) closePlayer();
 }
 
+/** 3.11.4: a video is being renamed -- note where it was playing (page or mini-player, the moment,
+ * the playlist), then let go of its file like releasePlayerItem(). null when it isn't loaded. */
+export function holdPlayerItem(itemId) {
+  if (player.item?.id !== itemId) return null;
+  const held = { id: itemId, mode: player.mode, time: els.video?.currentTime || 0, playing: player.playing,
+                 queue: player.queue, slot: els.slot };
+  player.queue = null;   // closePlayer() would end the playlist
+  closePlayer();
+  return held;
+}
+
+/** ...and brings it back afterwards (renamed or not), at the same moment, playing if it was. */
+export function resumeHeldItem(held, item) {
+  if (!held || player.item) return;   // another video took the player meanwhile
+  player.queue = held.queue;
+  player.resume = { id: held.id, time: held.time };
+  player.autoplay = held.playing;
+  if (held.mode === "page" && held.slot?.isConnected) els.slot = held.slot;
+  player.item = item;
+  player.mode = held.mode === "page" && els.slot ? "page" : "mini";
+}
+
 // ------------------------------------------------- surviving a page reload
 // What's playing (video, position, mini or page, playlist and its order) is
 // kept in sessionStorage, so reloading the tab brings the mini-player back --

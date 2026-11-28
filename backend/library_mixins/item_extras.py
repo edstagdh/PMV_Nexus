@@ -54,11 +54,13 @@ class ItemExtrasMixin:
             old_path = Path(item.video_path)
             # 3.11.2: the name keeps the video's id (it's how a file is matched to its video
             # again), shortened like a download's name when long
-            head = new_name.replace(f"[{video_id}]", " ")
+            # 3.11.4: and the same "<creator> - <date> - <title>" as a download's name
+            title = " ".join(new_name.replace(f"[{video_id}]", " ").split())
+            head = f"{item.creator or 'unknown'} - {item.upload_date or 'unknown-date'} - {title}"
             safe_new_name = video_base_name(head, video_id)
             new_path = old_path.with_name(f"{safe_new_name}{old_path.suffix}")
 
-            if new_path.exists():
+            if new_path.exists() and not new_path.samefile(old_path):   # same file: e.g. only the case changed
                 raise ValueError(L('A file with that name already exists'))
 
             # Our own open streams would block the rename on Windows.
@@ -95,7 +97,7 @@ class ItemExtrasMixin:
                     item.preview_path = str(new_preview)
                     item.preview_updated_at = time.time()  # new URL, so browsers don't show the old clip
 
-            item.title = new_name
+            item.title = title
             item.touch()
             self.db.save_item(item)
             logger.info("Renamed item [{}] -> '{}'", item.id, new_name)

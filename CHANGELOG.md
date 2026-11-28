@@ -4,6 +4,18 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.11.4] - 2026-11-28
+
+### Fixed
+- **After a rename, the video page's player stayed empty** (the file had to be let go of to rename it, and nothing
+  started it again). It now comes back by itself at the same moment, playing if it was, in the page or the
+  mini-player, with its playlist.
+- Renaming to the same name (or a change of upper/lower case only) said "A file with that name already exists".
+
+### Changed
+- A renamed video's files keep the download's naming: `<creator> - <date> - <new title> [<id>]` (3.11.2 gave them
+  only `<new title> [<id>]`).
+
 ## [3.11.3] - 2026-11-28
 
 ### Added

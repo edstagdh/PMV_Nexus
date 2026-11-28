@@ -4,6 +4,7 @@ import { ref } from "vue";
 import ModalDialog from "../ModalDialog.vue";
 import { api } from "../../lib/api.js";
 import { releaseMedia } from "../../lib/media.js";
+import { holdPlayerItem, resumeHeldItem } from "../../stores/player.js";
 import { toast } from "../../stores/toast.js";
 
 const props = defineProps({ item: Object });
@@ -15,15 +16,20 @@ const busy = ref(false);
 async function submit() {
   error.value = "";
   busy.value = true;
-  releaseMedia(props.item.id); // an open stream keeps the file locked on Windows
+  // An open stream keeps the file locked on Windows: let go of it, and (3.11.4) play it again
+  // afterwards from the same moment -- before, the player stayed empty after a rename.
+  const held = holdPlayerItem(props.item.id);
+  releaseMedia(props.item.id);
+  let item = props.item;
   try {
-    await api(`/api/library/${encodeURIComponent(props.item.id)}/rename`, { method: "POST", body: { new_name: name.value.trim() } });
+    item = await api(`/api/library/${encodeURIComponent(props.item.id)}/rename`, { method: "POST", body: { new_name: name.value.trim() } });
     toast(t("Renamed"), { type: "success" });
     emit("close");
   } catch (err) {
     error.value = err.message || t("Could not rename that file");
   } finally {
     busy.value = false;
+    resumeHeldItem(held, item);
   }
 }
 </script>

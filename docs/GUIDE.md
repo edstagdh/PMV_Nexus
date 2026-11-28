@@ -299,6 +299,9 @@ app starts.
   video page, in **Edit details** (also right after you add one) and everywhere else. Music keeps its own writing.
 - Click a video to open its page with the player, details and actions (rename, thumbnail, re-encode,
   repair, remove, and any extensions' actions).
+- **Rename** changes the title and the names of the video's files, which keep the download's naming
+  (`<creator> - <date> - <title> [<id>]`, the title shortened when long). A video that's playing pauses for the
+  rename and continues from the same moment.
 
 ### The player
 
