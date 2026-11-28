@@ -139,6 +139,8 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Repair / update** missing thumbnails, previews and details. **Make audio playable** (AAC) for files with
   audio a browser can't play. Hover previews are made **H.264**, with a graphics card's encoder when it's faster.
   **Untracked files** finds leftovers to delete, and adds videos the library lost track of back without downloading them.
+  **Check video files** finds videos whose file is missing, empty or damaged, finds moved or renamed ones again, and
+  downloads the rest again.
 
 ### Running it
 - **Multi-user:** accounts with **roles, groups and per-person permissions** (e.g. a helper who may only fix names).
@@ -446,7 +448,7 @@ is needed to run it. To change the interface itself, see `ui/README.md` (require
 - **Upload** — add videos from your own computer with all their details; thumbnail, preview and technical details are made from the file.
 - **Queues** — waiting downloads can be moved to the front/back or up/down on the Tasks page; waiting re-encodes up/down.
 - **My Settings** (sidebar) — your own interface preferences. App-wide settings (folders, downloads, re-encode, duplicate scan, credentials, opening the app) are under **Server Settings**.
-- **Maintenance** — **Management → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames and untracked files.
+- **Maintenance** — **Management → Maintenance** has sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames, untracked files and the video file check.
 - **Everything else** — performers, songs, names, duplicates, the Scheduler, users and permissions, backups, stats and logs: see the [Guide](docs/GUIDE.md).
 
 ---

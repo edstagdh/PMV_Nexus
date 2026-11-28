@@ -4,7 +4,7 @@
 // that no library item points to.
 import { t, formatNumber, tn, locale } from "../../lib/i18n.js";
 import { hasPermission } from "../../stores/session.js";
-import { ref, computed } from "vue";
+import { ref, computed, onBeforeUnmount } from "vue";
 import Icon from "../../components/Icon.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import SiteSyncPanel from "../../components/admin/SiteSyncPanel.vue";
@@ -12,6 +12,7 @@ import PerformersPanel from "../../components/admin/PerformersPanel.vue";
 import StoryboardsPanel from "../../components/admin/StoryboardsPanel.vue";
 import SharedScenesPanel from "../../components/admin/SharedScenesPanel.vue";
 import FramesPanel from "../../components/admin/FramesPanel.vue";
+import FileCheckPanel from "../../components/admin/FileCheckPanel.vue";
 import { api } from "../../lib/api.js";
 import { toast } from "../../stores/toast.js";
 
@@ -89,19 +90,47 @@ const adding = ref(false);
 function selectAddable() {
   selected.value = new Set((scan.value?.files || []).filter((f) => f.can_add).map((f) => f.path));
 }
+let waitForAdding = false;
+const addTimer = setInterval(async () => {
+  if (!waitForAdding) return;
+  const r = await api("/api/maintenance/untracked-files/add").catch(() => null);
+  if (r && !r.running) { waitForAdding = false; runScan(); }
+}, 3000);
+onBeforeUnmount(() => clearInterval(addTimer));
 async function doAdd() {
   adding.value = true;
+  const addableSelected0 = addableSelected.value.map((f) => f.path);
   try {
-    const r = await api("/api/maintenance/untracked-files/add", { method: "POST", body: { paths: addableSelected.value.map((f) => f.path) } });
+    const r = await api("/api/maintenance/untracked-files/add", { method: "POST", body: { paths: addableSelected0 } });
     const parts = r.queued ? [tn("Adding {n} video to the library — follow it on Tasks", "Adding {n} videos to the library — follow it on Tasks", r.queued)] : [];
     if (r.refused.length) parts.push(t("{n} skipped: {why}", { n: r.refused.length, why: [...new Set(r.refused.map((x) => x.reason))].join("; ") }));
     toast(parts.join(" · "), { type: r.queued ? "success" : "error", timeout: 8000 });
     selected.value = new Set();
+    if (r.queued) {   // 3.11.0: shown as "being added", and the list is read again once the job is done
+      const queued = new Set(addableSelected0.filter((p) => !r.refused.some((x) => x.path === p)));
+      for (const f of scan.value?.files || []) if (queued.has(f.path)) { f.can_add = false; f.adding = true; }
+      waitForAdding = true;
+    }
   } catch (err) {
     toast(err.message || t("Could not add them"), { type: "error" });
   } finally {
     adding.value = false;
   }
+}
+
+// 3.11.0: the library has the video, but its own file is missing -> use this one
+const linkableSelected = computed(() => (scan.value?.files || []).filter((f) => f.can_link && selected.value.has(f.path)));
+const linkableCount = computed(() => (scan.value?.files || []).filter((f) => f.can_link).length);
+async function doLink() {
+  let ok = 0;
+  const errors = [];
+  for (const f of linkableSelected.value) {
+    try { await api(`/api/library/${encodeURIComponent(f.video_id)}/link-file`, { method: "POST", body: { path: f.path } }); ok++; }
+    catch (err) { errors.push(`${f.relative}: ${err.message}`); }
+  }
+  if (ok) toast(tn("Linked {n} video back to its file", "Linked {n} videos back to their files", ok), { type: "success" });
+  if (errors.length) toast(errors.slice(0, 3).join(" · "), { type: "error", timeout: 9000 });
+  await runScan();
 }
 
 async function doDelete() {
@@ -111,7 +140,8 @@ async function doDelete() {
     const parts = [t("Deleted {n}", { n: r.deleted.length })];
     if (r.failed.length) parts.push(t("{n} still in use", { n: r.failed.length }));
     if (r.refused.length) parts.push(t("{n} skipped (now part of the library)", { n: r.refused.length }));
-    toast(parts.join(" · "), { type: r.failed.length ? "error" : "success", timeout: r.failed.length ? 8000 : 3500 });
+    if (r.kept?.length) parts.push(t("{n} kept: {why}", { n: r.kept.length, why: [...new Set(r.kept.map((x) => x.reason))].join("; ") }));
+    toast(parts.join(" · "), { type: r.failed.length || r.kept?.length ? "error" : "success", timeout: r.failed.length || r.kept?.length ? 10000 : 3500 });
     confirming.value = false;
     await runScan();
   } catch (err) {
@@ -137,6 +167,8 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
       <h1>{{ $t("Maintenance") }}</h1>
       <p class="muted small"><Tx msg="Library-wide jobs. Duplicate detection has its own {link1} page."><template #link1><RouterLink to="/admin/duplicates">{{ $t("Duplicates") }}</RouterLink></template></Tx></p>
     </header>
+
+    <FileCheckPanel v-if="hasPermission('maintenance.run')" />
 
     <section v-if="hasPermission('settings.manage')" class="card block">
       <div class="block-head">
@@ -205,6 +237,9 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
           <button v-if="addableCount" class="btn btn-sm" :disabled="!addableSelected.length || adding"
                   :title="$t('Videos with a PMVHaven video id in their name: their details come from the site, the file stays where it is — nothing is downloaded')"
                   @click="doAdd"><Icon name="plus" />{{ $t("Add to the library ({n})", { n: addableSelected.length }) }}</button>
+          <button v-if="linkableCount" class="btn btn-sm" :disabled="!linkableSelected.length"
+                  :title="$t('The library has these videos, but their own files are missing: use these files instead')"
+                  @click="doLink"><Icon name="check" />{{ $t("Link back ({n})", { n: linkableSelected.length }) }}</button>
           <button class="btn btn-danger btn-sm" :disabled="!selected.size" @click="confirming = true"><Icon name="trash" />{{ $t("Delete selected") }}</button>
         </div>
         <div v-if="scan.files.length" class="table-wrap">
@@ -222,7 +257,10 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
                 <td class="muted">{{ f.location }}</td>
                 <td class="path" :title="f.path">{{ f.relative }}
                   <span v-if="f.can_add" class="pill pill-accent" :title="$t('Add to the library brings it back with its details from the site, without downloading it')">{{ $t("can be added") }}</span>
-                  <span v-else-if="f.why_not === 'in_library'" class="pill" :title="$t('The library already has this video, in another file — this one is a second copy')">{{ $t("already in the library") }}</span>
+                  <span v-else-if="f.adding" class="pill">{{ $t("being added…") }}</span>
+                  <span v-else-if="f.can_link" class="pill pill-warn" :title="$t('The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.')">{{ $t("the library's file is missing — link back") }}</span>
+                  <span v-else-if="f.why_not === 'merged'" class="pill" :title="$t('This video was merged into another one as its duplicate — this is a leftover copy')">{{ $t("a merged duplicate") }}</span>
+                  <span v-else-if="f.why_not === 'in_library'" class="pill" :title="$t('The library already has this video, in another file that is there — this one is a second copy')">{{ $t("second copy of a library video") }}</span>
                 </td>
                 <td class="num">{{ size(f.size) }}</td>
                 <td class="muted nowrap">{{ when(f.modified) }}</td>
@@ -270,5 +308,6 @@ tbody tr:hover, tbody tr.on { background: var(--panel-2); }
 .kind.video { background: var(--accent-soft); color: var(--accent); }
 .kind.re-encode-backup, .kind.partial-download { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
 .error { color: var(--danger); }
+.pill-warn { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
 @media (max-width: 56rem) { .maint { padding: 0.75rem 1rem 1.5rem; } .block-head { flex-direction: column; } }
 </style>

@@ -99,6 +99,11 @@ JOB_REGISTRY: dict[str, dict] = {
         "method": "run_preview_fix",  # see library_mixins/preview_fix.py (3.3.0)
         "category": "non_invasive",
     },
+    "file_check": {
+        "label": L('Check video files (missing, empty or unreadable)'),
+        "method": "run_file_check",  # see library_mixins/file_check.py (3.11.0)
+        "category": "non_invasive",
+    },
     "backup": {
         "label": L('Backup'),
         "method": "run_backup",  # see library_mixins/system_worker.py; options: backend/backup_jobs.py (3.8.0)

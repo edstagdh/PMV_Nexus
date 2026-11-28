@@ -20,6 +20,7 @@ from .library_mixins.songs import SongsMixin
 from .library_mixins.storyboards import StoryboardsMixin
 from .library_mixins.scenes import ScenesMixin
 from .library_mixins.adopt import AdoptMixin
+from .library_mixins.file_check import FileCheckMixin
 from .library_mixins.frames import FramesMixin
 from .library_mixins.audio_fix import AudioFixMixin
 from .library_mixins.preview_fix import PreviewFixMixin
@@ -67,6 +68,7 @@ class LibraryManager(
     StoryboardsMixin,
     ScenesMixin,
     AdoptMixin,
+    FileCheckMixin,
     FramesMixin,
     AudioFixMixin,
     PreviewFixMixin,

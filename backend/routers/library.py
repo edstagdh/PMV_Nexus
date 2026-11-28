@@ -23,6 +23,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from loguru import logger
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
+
+from ..library_mixins.file_check import file_state
 from starlette.requests import ClientDisconnect
 
 from ..i18n import L
@@ -323,6 +325,62 @@ async def add_untracked_files(payload: DeleteFilesRequest, user: AuthContext = D
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+# ------------------------------------------------- Check video files (3.11.0)
+class FileCheckRequest(BaseModel):
+    thorough: bool = False
+
+
+class LinkFileRequest(BaseModel):
+    path: str
+
+
+class RedownloadRequest(BaseModel):
+    replace_damaged: bool = False
+
+
+@router.get("/api/maintenance/file-check")
+def get_file_check(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """The last check's videos with a problem (the ones fixed since left out)."""
+    return library_manager.file_check_report()
+
+
+@router.post("/api/maintenance/file-check")
+async def start_file_check(payload: FileCheckRequest, user: AuthContext = Depends(require_permission("maintenance.run"))):
+    if not library_manager.request_file_check(payload.thorough):
+        raise HTTPException(status_code=409, detail=L("The check is running already -- see Tasks"))
+    return {"started": True}
+
+
+@router.post("/api/library/{video_id}/link-file")
+async def link_video_file(video_id: str, payload: LinkFileRequest,
+                          user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """A video whose file is missing: use this file in the download folder (found by the check or in Untracked files)."""
+    try:
+        return await library_manager.link_video_file(video_id, payload.path)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=L("Video not found")) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/api/library/{video_id}/redownload")
+async def redownload_video(video_id: str, payload: RedownloadRequest,
+                           user: AuthContext = Depends(require_permission("videos.add"))):
+    """Downloads a library video again whose file is missing or empty (or damaged, when asked)."""
+    try:
+        return await library_manager.redownload(video_id, payload.replace_damaged)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=L("Video not found")) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/api/maintenance/untracked-files/add")
+def adding_untracked_files(user: AuthContext = Depends(require_permission("maintenance.run"))):
+    """3.11.0: whether Add to the library is still at work (the list is read again after)."""
+    return {"running": library_manager.adopt_running()}
+
+
 @router.post("/api/maintenance/untracked-files/delete")
 async def delete_untracked_files(payload: DeleteFilesRequest, user: AuthContext = Depends(require_permission("maintenance.run"))):
     return await library_manager.delete_untracked_files(payload.paths[:5000])
@@ -394,10 +452,10 @@ def get_library_tasks(user: AuthContext = Depends(require_permission("tasks.view
 @router.post("/api/library")
 async def add_to_library(payload: AddRequest, user: AuthContext = Depends(require_permission("videos.add"))):
     try:
-        item = await library_manager.add(payload.url, added_by=user.id)
+        item, outcome = await library_manager.add_with_outcome(payload.url, added_by=user.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return item.model_dump()
+    return {**item.model_dump(), "outcome": outcome}
 
 
 @router.delete("/api/library/{video_id}")
@@ -564,7 +622,10 @@ def get_library_item(video_id: str, user: AuthContext = Depends(require_permissi
     item = library_manager.get_item_dict(video_id)
     if item is None:
         raise HTTPException(status_code=404, detail=L('Not found'))
-    return library_manager.with_watch([scrub_item(item, user)], user)[0]
+    out = library_manager.with_watch([scrub_item(item, user)], user)[0]
+    if item.get("status") == "done":   # 3.11.0: the page offers Download again instead of a player that can't play
+        out["file_missing"] = file_state(item.get("video_path")) is not None
+    return out
 
 
 class PositionReport(BaseModel):

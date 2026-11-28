@@ -13,6 +13,7 @@ import ActionBar from "../components/ActionBar.vue";
 import FavoriteButton from "../components/FavoriteButton.vue";
 import VideoFrames from "../components/VideoFrames.vue";
 import { api, qs } from "../lib/api.js";
+import { toast } from "../stores/toast.js";
 import { normalizeMetadata } from "../lib/metadata.js";
 import { thumbUrl, compactNumber, workStatus, formatDateTime, formatDuration } from "../lib/format.js";
 import { onLibraryChange } from "../stores/live.js";
@@ -107,7 +108,23 @@ const flags = computed(() => item.value?.user_edits?.flags ?? view.value?.flags 
 // Fields changed by hand (Edit details) -- kept through syncs and repairs.
 function edited(field) { return !!item.value?.user_edits && field in item.value.user_edits; }
 const canEdit = computed(() => hasPermission("videos.edit"));
-const playable = computed(() => item.value?.status === "done" && item.value?.video_path);
+const playable = computed(() => item.value?.status === "done" && item.value?.video_path && !item.value?.file_missing);
+// 3.11.0: in the library, but its file is missing or empty
+const fileMissing = computed(() => item.value?.status === "done" && item.value?.file_missing);
+const canRedownload = computed(() => fileMissing.value && hasPermission("videos.add") && item.value.site !== "local" && item.value.site_status !== "removed");
+const redownloading = ref(false);
+async function redownload() {
+  redownloading.value = true;
+  try {
+    await api(`/api/library/${encodeURIComponent(item.value.id)}/redownload`, { method: "POST", body: {} });
+    toast(t("Downloading it again — see Tasks"), { type: "success" });
+    load(false);
+  } catch (err) {
+    toast(err.message, { type: "error" });
+  } finally {
+    redownloading.value = false;
+  }
+}
 // Hand the player this page's slot once the video can play; if it can't (still
 // downloading, removed), a video playing elsewhere carries on in the mini-player.
 watch([slot, () => item.value?.id, playable], () => {
@@ -154,6 +171,11 @@ const canMediaInfo = computed(() => item.value?.status === "done" && (hasPermiss
 const longDescription = computed(() => (view.value?.description || "").length > 300);
 const downloadStatus = computed(() => {
   const it = item.value;
+  if (it?.status === "done" && it.file_missing) {
+    if (it.site === "local") return t("The video file is missing, and it was uploaded from a computer — upload it again, or look for it in Maintenance → Check video files.");
+    if (it.site_status === "removed") return t("The video file is missing, and the site doesn't have it any more — look for it in Maintenance → Check video files.");
+    return t("The video file is missing — download it again, or look for it in Maintenance → Check video files.");
+  }
   if (!it || it.status === "done") return null;
   if (it.status === "fetching") return t("Fetching details…");
   if (it.status === "pending") return t("Queued for download");
@@ -189,8 +211,14 @@ function viewAllFrom(names) {
         <VideoFrames v-if="playable && session.prefs.videoFrames === true" :item-id="item.id" />
         <div v-if="!playable" class="poster">
           <img v-if="thumbUrl(item)" :src="thumbUrl(item)" alt="">
-          <div class="poster-status" :class="{ failed: item.status === 'failed' }">
+          <div class="poster-status" :class="{ failed: item.status === 'failed' || fileMissing }">
             {{ downloadStatus }}
+            <div v-if="fileMissing" class="missing-actions">
+              <button v-if="canRedownload" class="btn btn-primary btn-sm" :disabled="redownloading" @click="redownload">
+                <Icon name="download" />{{ $t("Download again") }}
+              </button>
+              <RouterLink v-if="hasPermission('maintenance.run')" class="btn btn-sm" to="/admin/portal/maintenance#file-check">{{ $t("Check video files") }}</RouterLink>
+            </div>
             <div v-if="item.status === 'downloading'" class="progress"><div :style="{ width: `${item.progress_percent || 0}%` }" /></div>
           </div>
         </div>
@@ -318,6 +346,7 @@ function viewAllFrom(names) {
 .poster img { width: 100%; height: 100%; object-fit: contain; opacity: 0.55; }
 .poster-status { position: absolute; inset-inline-start: 1rem; inset-inline-end: 1rem; bottom: 1rem; padding: 0.75rem 0.875rem; border-radius: var(--radius); background: rgba(0, 0, 0, 0.75); color: #fff; font-weight: 600; }
 .poster-status.failed { color: #fca5a5; }
+.missing-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.625rem; }
 .progress { height: 0.375rem; border-radius: 3px; background: rgba(255, 255, 255, 0.2); margin-top: 0.5rem; overflow: hidden; }
 .progress div { height: 100%; background: var(--accent); transition: width 0.4s; }
 .work { font-weight: 600; font-size: 0.875rem; }

@@ -122,6 +122,11 @@ details are fetched and the file downloads, then moves to the **Library**. As so
 fetched, **Details** on the task opens the full video page (description, tags, performers, music, rating)
 with the download status, before the file has finished downloading.
 
+A link the library has already isn't added twice: the window says what it found instead — already in the library,
+merged into another video as its duplicate, or on its way already. When the library has the video but its file is
+missing or empty, adding the link downloads it again (3.11.0), keeping its details, tags, ratings and watch history.
+The video's page offers the same (**Download again**) instead of a player that can't play.
+
 ### Tasks
 
 ![Tasks: what's running, what's coming up and what finished](screenshots/tasks.webp)
@@ -754,9 +759,24 @@ technical details, fingerprint) and seekbar previews and frames are made. A vide
 added too, from its file name and its old details JSON when that's there, marked as removed from the site, with a
 thumbnail and preview made from the file. Its date added is the file's date. It runs as one job on Tasks (it can be
 stopped), one site look-up a second. Not offered: a video the library already has (the file is a second copy —
-"already in the library"), and files without an id in their name (renamed by hand). Adding the link again instead
-(Add videos) downloads the whole video again — into the same file name, replacing it, or next to it when the site
-changed its title.
+"second copy of a library video"), and files without an id in their name (renamed by hand). Adding the link again
+instead (Add videos) downloads the whole video again — into the same file name, replacing it, or next to it when the
+site changed its title. The list is read again by itself once the job is done.
+
+**Link back** (3.11.0): when the library has the video but its own file is missing, a file with its id is marked
+**the library's file is missing — link back**: it's most likely that very video, renamed or moved. **Link back**
+makes the library video use it. Such files are never deleted from this list (Delete selected skips them and says
+why), and neither are files being added. Every file deleted here is written to the log by name.
+
+**Check video files** (3.11.0) goes through every downloaded video and checks that its file is there, isn't empty
+(0 bytes) and that ffprobe can read a video track from it. **Thorough** also reads the whole file through and
+decodes a few seconds at three places (the check a re-encode makes first), which finds cut-off and damaged files but
+takes about as long as reading the whole library. For a missing file it looks in the download folder for a file
+no other video uses: the same name in another folder (moved), its video id in the name (renamed), or the `…_old`
+copy a re-encode keeps. **Link this file** (or **Link the … found**) uses it; **Download again** gets the video
+from the site again, keeping its details (not offered for uploads, nor for videos the site no longer has). Nothing
+is deleted, moved or renamed by the check. The last result stays (in `data/file_check.json`), without the videos
+fixed since; each problem is also written to the log. It can be scheduled too (Scheduler → Check video files).
 
 ## Credentials
 

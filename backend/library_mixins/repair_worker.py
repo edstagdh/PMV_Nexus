@@ -313,7 +313,8 @@ class RepairWorkerMixin:
             )
             await self._finish_repair(
                 item, "failed",
-                error="Video file is missing or 0 bytes -- needs a manual re-download, not a repair",
+                error=str(L("The video file is missing or empty -- use Download again on the video's page, or "
+                        "Maintenance -> Check video files (it also looks for the file in the download folder)")),
             )
             return
 

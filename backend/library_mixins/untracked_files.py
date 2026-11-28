@@ -12,6 +12,7 @@ import asyncio
 import os
 import time
 from pathlib import Path
+from typing import Optional
 
 from loguru import logger
 
@@ -127,14 +128,20 @@ class UntrackedFilesMixin:
         download or cache folder; anything else is refused, not deleted."""
         tracked, keep = self._tracked_paths()
         roots = [_norm(self.settings.output_dir), _norm(self.settings.cache_dir)]
+        being_added = set(getattr(self, "_adopt_queued", None) or ())
 
         def run() -> dict:
-            deleted, refused, failed = [], [], []
+            deleted, refused, failed, kept = [], [], [], []
             for raw in paths:
                 key = _norm(raw)
                 inside = any(key.startswith(root + os.sep) for root in roots)
                 if not inside or key in tracked or key in keep:
                     refused.append(raw)
+                    continue
+                # 3.11.0: never the file a library video has lost (link it back instead), nor one being added
+                why = self.untracked_protected(Path(raw), being_added)
+                if why:
+                    kept.append({"path": raw, "reason": why})
                     continue
                 path = Path(raw)
                 open_files.release(path)
@@ -151,10 +158,27 @@ class UntrackedFilesMixin:
                         path.parent.rmdir()
                 except OSError:
                     pass
-            return {"deleted": deleted, "refused": refused, "failed": failed}
+            return {"deleted": deleted, "refused": refused, "failed": failed, "kept": kept}
 
         async with activity.track("untracked_files", L('Deleting {count} untracked file(s)', count=len(paths))):
             result = await asyncio.to_thread(run)
-        logger.info("Untracked files: deleted {}, refused {}, failed {}",
-                    len(result["deleted"]), len(result["refused"]), len(result["failed"]))
+        logger.info("Untracked files: deleted {}, refused {}, kept {}, failed {}",
+                    len(result["deleted"]), len(result["refused"]), len(result["kept"]), len(result["failed"]))
+        for raw in result["deleted"]:   # 3.11.0: which ones, so a deletion can always be traced
+            logger.info("Untracked files: deleted {}", raw)
+        for k in result["kept"]:
+            logger.info("Untracked files: not deleted {} ({})", k["path"], k["reason"])
         return result
+
+    def untracked_protected(self, path: Path, being_added: set) -> Optional[str]:
+        """Why this untracked file mustn't be deleted, or None (3.11.0)."""
+        if _norm(path) in being_added:
+            return L("it's being added to the library")
+        if _kind(path) in ("video", "re-encode backup"):
+            from .adopt import video_id_in_name
+            from .file_check import file_state
+            vid = video_id_in_name(path.name)
+            item = self._items.get(vid) if vid else None
+            if item and item.status == "done" and file_state(item.video_path):
+                return L("it's probably the file of a library video whose own file is missing -- link it back instead")
+        return None

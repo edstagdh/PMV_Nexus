@@ -124,6 +124,9 @@ _LABELS = {
     "performers_add_photo_url": "Add performer photo from a link",
     "find_shared_scenes": "Find shared scenes",
     "add_untracked_files": "Add untracked videos to the library",
+    "start_file_check": "Check video files",
+    "link_video_file": "Link a video to a found file",
+    "redownload_video": "Download a video again",
     "performers_stashbox_link": "Link performer to FansDB / StashDB",
     "performers_stashbox_unlink": "Unlink performer from FansDB / StashDB",
     # playlists

@@ -59,13 +59,21 @@ def _from_name(path: Path) -> dict:
 class AdoptMixin:
     _adopt_task: Optional[asyncio.Task] = None
     _adopt_stop = False
+    _adopt_queued: set = set()
 
     def untracked_video_info(self, path: Path) -> dict:
-        """Extra fields for an untracked video in the list: its id, and whether it can be added."""
+        """Extra fields for an untracked video in the list: its id, and whether it can be added
+        (or, 3.11.0, linked back: the library has the video but its own file is missing)."""
+        from .file_check import file_state
         vid = video_id_in_name(path.name)
         if not vid:
             return {"video_id": None, "can_add": False}
-        if vid in self._items:
+        item = self._items.get(vid)
+        if item is not None:
+            if item.status == "done" and file_state(item.video_path):
+                return {"video_id": vid, "can_add": False, "can_link": True, "why_not": "library_file_missing"}
+            if item.status == "merged":
+                return {"video_id": vid, "can_add": False, "why_not": "merged"}
             return {"video_id": vid, "can_add": False, "why_not": "in_library"}
         return {"video_id": vid, "can_add": True}
 
@@ -125,6 +133,7 @@ class AdoptMixin:
                 refused.append({"path": raw, "reason": why})
         if ok:
             self._adopt_stop = False
+            self._adopt_queued = {_norm(p) for _, p in ok}   # Untracked files won't delete these meanwhile
             self._adopt_task = asyncio.create_task(self._adopt_all(ok, user_id))
         logger.info("Add to the library: {} file(s) queued, {} refused", len(ok), len(refused))
         return {"queued": len(ok), "refused": refused}
@@ -175,6 +184,8 @@ class AdoptMixin:
             act.finish("failed", L("Stopped by an error (see the log)"))
             if not isinstance(exc, Exception):
                 raise
+        finally:
+            self._adopt_queued = set()
 
     def _untracked_with_ids(self, tracked: set, keep: set) -> list[Path]:
         """BLOCKING: untracked files with a video id in their name, in both folders."""
@@ -208,6 +219,8 @@ class AdoptMixin:
         """Adds one file; True when the site still has the video."""
         if vid in self._items:
             raise ValueError("already in the library")
+        if not path.is_file():
+            raise ValueError("the file isn't there any more")
         leftovers = self._leftovers(vid, untracked)
         named = _from_name(path)
         old_json: dict = {}

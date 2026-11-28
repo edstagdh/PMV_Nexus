@@ -19,6 +19,7 @@ from ..config import get_settings
 from ..spellings import fold, spellings
 from ..db import LibraryDB
 from ..models import LibraryItem
+from .file_check import file_state
 from .. import sources
 from ._helpers import (
     codec_family,
@@ -786,6 +787,13 @@ class CoreMixin:
         }
 
     async def add(self, url: str, added_by: Optional[str] = None) -> LibraryItem:
+        return (await self.add_with_outcome(url, added_by))[0]
+
+    async def add_with_outcome(self, url: str, added_by: Optional[str] = None) -> tuple[LibraryItem, str]:
+        """add(), plus what happened (3.11.0): "added", "again" (it had failed), "redownload"
+        (it was in the library but its file is missing or empty -- downloaded again, keeping
+        its details), "missing_removed" / "missing_local" (its file is missing and there's
+        nothing to download it from), "busy" (already on its way), "merged", "exists"."""
         # Raises ValueError (caught by main.py's route handlers -> 400) if
         # the URL doesn't match any configured site -- e.g. a typo'd
         # domain, or a site that isn't in config.yaml's `sites` block yet.
@@ -803,8 +811,25 @@ class CoreMixin:
             # which checks status === "merged" on the response) so the
             # person sees a clear "already merged" message instead of it
             # looking like a normal successful add.
-            if existing and existing.status not in ("failed",):
-                return existing
+            redownload = False
+            if existing and existing.status == "done" and file_state(existing.video_path):
+                # 3.11.0: in the library, but its file is missing or empty -> download it again
+                if existing.site == "local":
+                    return existing, "missing_local"
+                if existing.site_status == "removed":
+                    return existing, "missing_removed"
+                redownload = True
+            elif existing and existing.status not in ("failed",):
+                busy = existing.status in ("pending", "fetching", "downloading")
+                return existing, ("merged" if existing.status == "merged" else "busy" if busy else "exists")
+        if redownload:
+            await self._queue_redownload(existing)
+            return existing, "redownload"
+        async with self._lock:
+            now = self._items.get(video_id)
+            if now is not existing:   # added meanwhile
+                return now, "busy"
+            again = existing is not None
             item = LibraryItem(id=video_id, url=url, site=site_key, status="fetching", title="Fetching details...",
                                added_by=added_by)
             self._items[video_id] = item
@@ -812,7 +837,7 @@ class CoreMixin:
         # A brand-new item starts in "fetching", not "pending" -- it needs
         # the metadata worker, not the download worker, to pick it up.
         self._ensure_metadata_worker()
-        return item
+        return item, ("again" if again else "added")
 
     async def _cancel_in_flight(self, video_id: str) -> None:
         """Actively stops whatever background operation is currently

@@ -4,6 +4,32 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.11.0] - 2026-11-28
+
+### Added
+- **Maintenance → Check video files:** checks every downloaded video's file — there, not empty, readable by ffprobe
+  (**Thorough**: read through and partly decoded, finds cut-off and damaged files). A missing file is looked for in
+  the download folder (moved: same name elsewhere; renamed: its video id in the name; a re-encode's `…_old` copy) and
+  can be linked back; the others can be downloaded again, keeping their details. Nothing is deleted or moved. One job
+  on Tasks, also on the Scheduler; the last result is kept.
+- **Download again** on the page of a video whose file is missing (instead of a player that can't play).
+- **Untracked files → Link back:** a file with the id of a library video whose own file is missing is marked as
+  such and can be linked back to it.
+
+### Fixed
+- **Add videos with a link already in the library did nothing but said "Added".** When that video's file is missing
+  or empty it's now downloaded again; otherwise the window says what it found (already in the library, merged as a
+  duplicate, on its way already, not on the site any more).
+- **Untracked files called the file of a library video whose own file is missing "already in the library"**, which
+  read like a spare copy that's safe to delete. It's now "the library's file is missing — link back", and Delete
+  selected refuses such files, as well as files being added to the library at that moment.
+- The Untracked files list showed videos that were just added until it was scanned again; it's read again once
+  Add to the library is done.
+- Repair/Update of a video whose file is missing points to Download again / Check video files.
+
+### Changed
+- Every file deleted from Untracked files is written to the log by name.
+
 ## [3.10.0] - 2026-11-28
 
 ### Added

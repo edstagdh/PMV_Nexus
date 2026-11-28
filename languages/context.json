@@ -1,4 +1,7 @@
 {
+ " (thorough)": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "#{n} of {total} · {queue}": [
   "ui/src/views/TasksView.vue"
  ],
@@ -28,6 +31,9 @@
  ],
  "+{n} in this range": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ ", {n} more": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "0 — slowest, smallest": [
   "ui/src/lib/reencodeOptions.js"
@@ -133,6 +139,9 @@
  ],
  "A match by either method counts. Finds the most, with a slightly higher risk of false matches.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "a merged duplicate": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "a performer with {details}": [
   "ui/src/lib/libraryQuery.js"
@@ -542,8 +551,8 @@
  "Already given by the role or a group": [
   "ui/src/components/admin/PermissionPicker.vue"
  ],
- "already in the library": [
-  "ui/src/views/admin/MaintenanceView.vue"
+ "already in the library (“{title}”), and its file is there": [
+  "ui/src/components/AddVideoDialog.vue"
  ],
  "Already last in the queue": [
   "backend/library_mixins/core.py"
@@ -597,6 +606,9 @@
  ],
  "An encode uses {used} of {total} cores.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "another library video uses that file": [
+  "backend/library_mixins/file_check.py"
  ],
  "another picked file is the same video": [
   "backend/library_mixins/adopt.py"
@@ -905,6 +917,9 @@
  "Before each re-encode.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "being added…": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Being made…": [
   "ui/src/components/upload/ThumbnailStep.vue"
  ],
@@ -1163,6 +1178,7 @@
   "backend/library_mixins/system_worker.py"
  ],
  "Check now": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/views/HelpView.vue"
  ],
  "Check the file first": [
@@ -1174,11 +1190,19 @@
  "Check the {n} videos and fix what's missing or broken (file, thumbnail, preview, details from the site). They're queued like a single repair.": [
   "ui/src/components/dialogs/BulkActionDialog.vue"
  ],
+ "Check video files": [
+  "ui/src/components/admin/FileCheckPanel.vue",
+  "ui/src/views/VideoView.vue"
+ ],
+ "Check video files (missing, empty or unreadable)": [
+  "backend/library_mixins/scheduler_worker.py"
+ ],
  "checked": [
   "backend/activity.py"
  ],
  "Checking": [
   "backend/library_mixins/audio_fix.py",
+  "backend/library_mixins/file_check.py",
   "backend/library_mixins/preview_fix.py"
  ],
  "Checking files": [
@@ -1199,10 +1223,20 @@
  "Checking the file…": [
   "ui/src/views/UploadView.vue"
  ],
+ "Checking the video files — follow it on Tasks": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
+ "Checking thoroughly": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "Checking video files": [
+  "backend/library_mixins/file_check.py"
+ ],
  "Checking what goes in and the free space": [
   "backend/backup.py"
  ],
  "Checking…": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/views/HelpView.vue",
   "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/ToolsView.vue"
@@ -1794,6 +1828,7 @@
   "backend/library_mixins/audio_fix.py"
  ],
  "Couldn't start it": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/components/admin/FramesPanel.vue",
   "ui/src/components/admin/SharedScenesPanel.vue",
   "ui/src/components/admin/StoryboardsPanel.vue"
@@ -1937,6 +1972,10 @@
  ],
  "Daily stats snapshot": [
   "backend/library_mixins/system_worker.py"
+ ],
+ "damaged": [
+  "backend/activity.py",
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Dark": [
   "ui/src/views/SettingsView.vue"
@@ -2173,6 +2212,10 @@
  "Download & cache folders (same drive)": [
   "ui/src/views/admin/StatsView.vue"
  ],
+ "Download again": [
+  "ui/src/components/admin/FileCheckPanel.vue",
+  "ui/src/views/VideoView.vue"
+ ],
  "Download failed": [
   "ui/src/views/TasksView.vue",
   "ui/src/views/VideoView.vue"
@@ -2205,6 +2248,9 @@
  "Download the matching entries as JSON Lines (one JSON object per line)": [
   "ui/src/views/admin/LogsView.vue"
  ],
+ "Download the missing ones again ({n})": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "Download the video": [
   "ui/src/lib/pmvSkin.js"
  ],
@@ -2221,8 +2267,17 @@
   "ui/src/views/TasksView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "downloading": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
+ "Downloading it again — see Tasks": [
+  "ui/src/views/VideoView.vue"
+ ],
  "Downloading now": [
   "ui/src/components/admin/ProxyPanel.vue"
+ ],
+ "Downloading {n} videos again — see Tasks": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Downloading {percent}%": [
   "ui/src/views/VideoView.vue"
@@ -2415,7 +2470,11 @@
   "ui/src/views/BlankView.vue"
  ],
  "empty": [
+  "backend/activity.py",
   "backend/i18n.py"
+ ],
+ "empty (0 bytes)": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Empty. Add videos from their ⋮ menu ({b1}) or with the {b2} button in the library.": [
   "ui/src/views/PlaylistView.vue"
@@ -2592,7 +2651,6 @@
   "ui/src/views/PerformersView.vue"
  ],
  "Failed": [
-  "ui/src/components/AddVideoDialog.vue",
   "ui/src/components/JobList.vue",
   "ui/src/components/admin/ExtensionsPanel.vue",
   "ui/src/views/TasksView.vue"
@@ -2715,7 +2773,11 @@
  "FFmpeg stopped (exit code {returncode})": [
   "backend/transcode.py"
  ],
+ "ffprobe can't read a video track from it": [
+  "backend/library_mixins/file_check.py"
+ ],
  "File": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "File field": [
@@ -2918,6 +2980,9 @@
  "found": [
   "backend/activity.py"
  ],
+ "found elsewhere": [
+  "backend/activity.py"
+ ],
  "Found on the server: {scanner}.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -3057,6 +3122,9 @@
  ],
  "go to the start": [
   "ui/src/lib/panic.js"
+ ],
+ "Goes through every downloaded video and checks that its file is there, isn't empty and can be read. Thorough also reads the whole file and decodes a few seconds of it, which finds cut-off and damaged files but takes about as long as reading the whole library. For a missing file it looks in the download folder for it (moved, renamed, or the copy a re-encode keeps), so you can link it back; the rest can be downloaded again. Nothing is deleted or moved.": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Gone from PMVHaven": [
   "ui/src/components/FilterPanel.vue"
@@ -3233,6 +3301,12 @@
  "In its Music now": [
   "ui/src/components/dialogs/SongsDialog.vue"
  ],
+ "in the library, but its file was missing — downloading it again": [
+  "ui/src/components/AddVideoDialog.vue"
+ ],
+ "in the library, its file is missing, and the site doesn't have it any more — look for it in Maintenance → Check video files": [
+  "ui/src/components/AddVideoDialog.vue"
+ ],
  "in under a minute": [
   "ui/src/components/JobList.vue"
  ],
@@ -3336,6 +3410,9 @@
  "it can't be recovered": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "it had failed — trying again": [
+  "ui/src/components/AddVideoDialog.vue"
+ ],
  "It needs a free API key in Server Settings → Credentials (not saved yet); the free tier allows a limited number of requests a day, and Google may use free-tier requests to improve its products.": [
   "ui/src/views/admin/SongsView.vue"
  ],
@@ -3351,14 +3428,32 @@
  "It's applied the next time the app is started (start.bat / run.py). The current database and settings are kept next to the originals as *.pre-restore files.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "it's being added to the library": [
+  "backend/library_mixins/untracked_files.py"
+ ],
+ "It's being downloaded already": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "it's probably the file of a library video whose own file is missing -- link it back instead": [
+  "backend/library_mixins/untracked_files.py"
+ ],
  "Item {id} not found": [
   "backend/library_mixins/issues.py"
+ ],
+ "Its file is there -- use Repair / Update, or Check video files (thorough)": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "its name has neither this video's id nor its old file name": [
+  "backend/library_mixins/file_check.py"
  ],
  "Its own codec: stays {codec}, only made 1080p": [
   "ui/src/components/ReencodeOptions.vue"
  ],
  "Its thumbnail, preview clip and details file are deleted too.": [
   "ui/src/components/dialogs/RemoveDialog.vue"
+ ],
+ "its video id is in the name": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Job": [
   "ui/src/views/admin/BackupsView.vue"
@@ -3484,6 +3579,9 @@
  "Last check {when}: {result}": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
+ "Last checked {time}{how}: {n} videos": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "Last compared {time} ({s} s)": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
@@ -3592,11 +3690,20 @@
  "Lines shown to start with. Auto: 1, or 2 in a very large library.": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Link back ({n})": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "Link name": [
   "ui/src/components/PerformerDetailsForm.vue"
  ],
  "Link performers to ThePornDB, split names, run matching": [
   "backend/permissions.py"
+ ],
+ "Link the {n} found": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
+ "Link this file": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Link to a picture": [
   "ui/src/components/PerformerPhotos.vue"
@@ -3609,6 +3716,12 @@
  ],
  "Linked to {site}: {n} details filled in, {p} photos saved": [
   "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Linked {n} videos back to their files": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "Linked {n} videos to their files": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Linking…": [
   "ui/src/components/PerformerPicker.vue",
@@ -3930,6 +4043,9 @@
  "Merge “{old}” into “{new}”? Every video with “{old}” gets “{new}” instead ({new} already has {n} videos).": [
   "ui/src/views/admin/NamesView.vue"
  ],
+ "merged into another video as its duplicate — not downloaded": [
+  "ui/src/components/AddVideoDialog.vue"
+ ],
  "Method": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -3960,6 +4076,10 @@
  ],
  "Missing": [
   "ui/src/views/admin/ToolsView.vue"
+ ],
+ "missing": [
+  "backend/activity.py",
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "missing or unplayable": [
   "ui/src/components/PreviewVideo.vue"
@@ -4524,7 +4644,11 @@
   "backend/routers/_common.py"
  ],
  "not a video file": [
-  "backend/library_mixins/adopt.py"
+  "backend/library_mixins/adopt.py",
+  "backend/library_mixins/file_check.py"
+ ],
+ "Not added": [
+  "ui/src/components/AddVideoDialog.vue"
  ],
  "Not allowed": [
   "backend/routers/health.py",
@@ -4537,6 +4661,7 @@
   "backend/security.py"
  ],
  "Not checked yet.": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/views/HelpView.vue"
  ],
  "Not duplicates": [
@@ -4583,7 +4708,8 @@
   "backend/stashbox.py"
  ],
  "not in the download folder": [
-  "backend/library_mixins/adopt.py"
+  "backend/library_mixins/adopt.py",
+  "backend/library_mixins/file_check.py"
  ],
  "Not installed": [
   "ui/src/components/LanguageSettings.vue"
@@ -4599,6 +4725,9 @@
  ],
  "Not looked up on ThePornDB yet.": [
   "ui/src/views/PerformerView.vue"
+ ],
+ "not on the site any more": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Not on ThePornDB": [
   "ui/src/views/PerformersView.vue"
@@ -4740,6 +4869,9 @@
   "ui/src/components/VideoPlayer.vue",
   "ui/src/views/SettingsView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "on its way already — see Tasks": [
+  "ui/src/components/AddVideoDialog.vue"
  ],
  "On PMVHaven": [
   "ui/src/components/FilterPanel.vue"
@@ -5456,6 +5588,9 @@
   "ui/src/views/PlaylistView.vue",
   "ui/src/views/PlaylistsView.vue"
  ],
+ "Problem": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "Problems": [
   "ui/src/components/NotificationBell.vue"
  ],
@@ -6159,6 +6294,9 @@
  "Same as uploader: {creator}": [
   "ui/src/components/dialogs/EditDetailsDialog.vue"
  ],
+ "same file name, another folder": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "Same quality, codec, size and duration": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
@@ -6376,6 +6514,9 @@
  ],
  "Search… (try performer:, tag:, creator:, title:)": [
   "ui/src/views/LibraryView.vue"
+ ],
+ "second copy of a library video": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "seconds": [
   "backend/activity.py",
@@ -6982,6 +7123,9 @@
  "Stopped after {done} videos: {error}": [
   "backend/library_mixins/songs.py"
  ],
+ "stopped before the end": [
+  "ui/src/components/admin/FileCheckPanel.vue"
+ ],
  "Stopped by an error (see the log)": [
   "backend/library_mixins/adopt.py",
   "backend/library_mixins/frames.py",
@@ -7226,6 +7370,12 @@
  "that video is already in the library (another file)": [
   "backend/library_mixins/adopt.py"
  ],
+ "That video is being downloaded right now": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "That video's own file is there -- nothing to link": [
+  "backend/library_mixins/file_check.py"
+ ],
  "That's switched off in Server Settings": [
   "backend/routers/bulk.py"
  ],
@@ -7284,6 +7434,9 @@
  "The browser must be one line": [
   "backend/routers/settings.py"
  ],
+ "The check is running already -- see Tasks": [
+  "backend/routers/library.py"
+ ],
  "The connection was lost during the upload": [
   "ui/src/views/UploadView.vue"
  ],
@@ -7298,6 +7451,9 @@
  ],
  "The converted stream stopped": [
   "ui/src/lib/livePlayback.js"
+ ],
+ "the copy a re-encode kept (…_old)": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "The copy in {folder} doesn't match the backup (the disk may be failing)": [
   "backend/backup.py"
@@ -7370,14 +7526,23 @@
  "The last sync failed: {error}": [
   "ui/src/components/admin/SiteSyncPanel.vue"
  ],
- "The library already has this video, in another file — this one is a second copy": [
+ "The library already has this video, in another file that is there — this one is a second copy": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "The library has no downloaded videos yet": [
   "backend/routers/library.py"
  ],
+ "The library has these videos, but their own files are missing: use these files instead": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "The library has this video, but its own file is missing — this is probably it. Link back uses this file; it is never deleted from here.": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "The library now": [
   "ui/src/views/admin/StatsView.vue"
+ ],
+ "the library's file is missing — link back": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "The log store is not running": [
   "backend/routers/logs.py"
@@ -7460,6 +7625,9 @@
  "The site didn't return tag votes, so tags were left as they are": [
   "ui/src/components/admin/SiteSyncPanel.vue"
  ],
+ "The site doesn't have this video any more": [
+  "backend/library_mixins/file_check.py"
+ ],
  "The site's API didn't return this video (removed, private, a link the API doesn't know, or the site is unreachable).": [
   "backend/sources/pmv_platform.py"
  ],
@@ -7525,6 +7693,18 @@
  ],
  "The video file is missing on disk": [
   "backend/library_mixins/item_extras.py"
+ ],
+ "The video file is missing or empty -- use Download again on the video's page, or Maintenance -> Check video files (it also looks for the file in the download folder)": [
+  "backend/library_mixins/repair_worker.py"
+ ],
+ "The video file is missing — download it again, or look for it in Maintenance → Check video files.": [
+  "ui/src/views/VideoView.vue"
+ ],
+ "The video file is missing, and it was uploaded from a computer — upload it again, or look for it in Maintenance → Check video files.": [
+  "ui/src/views/VideoView.vue"
+ ],
+ "The video file is missing, and the site doesn't have it any more — look for it in Maintenance → Check video files.": [
+  "ui/src/views/VideoView.vue"
  ],
  "The video file isn't there": [
   "backend/library_mixins/item_extras.py"
@@ -7758,11 +7938,17 @@
  "This video needs converting": [
   "ui/src/components/upload/ConvertStep.vue"
  ],
+ "This video was merged into another one as its duplicate — this is a leftover copy": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "This video's file isn't available": [
   "backend/library_mixins/songs.py"
  ],
  "This video's source ({key}) isn't available -- its extension may be missing": [
   "backend/sources/__init__.py"
+ ],
+ "Thorough": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Through the proxy at once": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -8008,7 +8194,8 @@
   "ui/src/views/admin/BackupsView.vue"
  ],
  "unreadable": [
-  "backend/activity.py"
+  "backend/activity.py",
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Unset first": [
   "ui/src/components/PerformerPhotos.vue"
@@ -8120,6 +8307,12 @@
  ],
  "uploaded by {name}": [
   "ui/src/views/WallView.vue"
+ ],
+ "Uploaded from a computer -- there's nothing to download it from": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "uploaded from a computer — its file is missing": [
+  "ui/src/components/AddVideoDialog.vue"
  ],
  "uploaded to Filester": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -8260,6 +8453,7 @@
   "ui/src/views/HelpView.vue"
  ],
  "Video": [
+  "ui/src/components/admin/FileCheckPanel.vue",
   "ui/src/router.js",
   "ui/src/views/VideoView.vue"
  ],
@@ -8968,6 +9162,9 @@
  "{n} had no metadata file": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
+ "{n} kept: {why}": [
+  "ui/src/views/admin/MaintenanceView.vue"
+ ],
  "{n} likes": [
   "ui/src/views/VideoView.vue"
  ],
@@ -9082,6 +9279,9 @@
  "{n} views": [
   "ui/src/components/VideoRow.vue",
   "ui/src/views/VideoView.vue"
+ ],
+ "{n} with a problem": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "{n} without seekbar previews": [
   "ui/src/components/admin/SharedScenesPanel.vue"
@@ -9269,6 +9469,9 @@
  ],
  "⚠️ Some required components are missing or outdated — see the hints below.": [
   "ui/src/views/admin/ToolsView.vue"
+ ],
+ "✅ all fine": [
+  "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "✅ Everything in those folders belongs to a video in the library.": [
   "ui/src/views/admin/MaintenanceView.vue"
