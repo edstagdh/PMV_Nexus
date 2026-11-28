@@ -12,6 +12,7 @@ from typing import Optional
 from loguru import logger
 
 from ..config import get_settings, save_overrides
+from ..resources import JOB, VIDEO, resources
 from .. import open_files
 from .. import activity
 from .. import media_tools
@@ -115,8 +116,10 @@ class ItemExtrasMixin:
         moved = 0
 
         if move_existing and old_output_dir != new_path:
+            # 3.12.0: waits until the heavy steps running now are done, and nothing heavy starts while files move
             async with activity.track("move_folder", L('Moving videos to the new download folder'),
-                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), self._lock:
+                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), \
+                    resources.use({"cpu", "disk"}, L('Moving videos to the new download folder'), JOB), self._lock:
                 changed_items: dict[str, LibraryItem] = {}
                 for item in self._items.values():
                     for attr in ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path"):
@@ -220,7 +223,8 @@ class ItemExtrasMixin:
 
         if move_existing and old_cache_dir != new_path:
             async with activity.track("move_folder", L('Moving thumbnails and previews to the new cache folder'),
-                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), self._lock:
+                                      progress=lambda: {"stage": L('Moving files'), "detail": L('{moved} moved so far', moved=moved)}), \
+                    resources.use({"cpu", "disk"}, L('Moving thumbnails and previews to the new cache folder'), JOB), self._lock:   # 3.12.0
                 changed_items: dict[str, LibraryItem] = {}
                 for item in self._items.values():
                     for attr in ("thumbnail_path", "preview_path", "metadata_path"):
@@ -247,7 +251,8 @@ class ItemExtrasMixin:
                     self.db.save_items(changed_items.values())
                 # Seekbar previews (2.21.0): one folder, found by video id.
                 # ... and the video frames under the player (3.2.0).
-                for folder in (storyboard.FOLDER, video_frames.FOLDER):
+                # 3.12.0: not when they have a Generated files folder of their own
+                for folder in (storyboard.FOLDER, video_frames.FOLDER) if not self.settings.download.generated_dir else ():
                     if (old_cache_dir / folder).is_dir() and not (new_path / folder).exists():
                         await asyncio.to_thread(shutil.move, str(old_cache_dir / folder), str(new_path / folder))
 
@@ -513,8 +518,9 @@ class ItemExtrasMixin:
                 folder = Path(item.thumbnail_path).parent if item.thumbnail_path else self.settings.cache_dir / safe_name(item.creator or "unknown")
                 target = folder / f"{base}_preview.mp4"
         target.parent.mkdir(parents=True, exist_ok=True)
-        ok = await asyncio.to_thread(media_tools.generate_preview_clip, video, str(target), len(timestamps),
-                                     clip_seconds, 480, 24, timestamps)
+        async with resources.use({"cpu"}, L("Making a preview: {title}", title=item.title), VIDEO, {"item": item.id}):   # 3.12.0
+            ok = await asyncio.to_thread(media_tools.generate_preview_clip, video, str(target), len(timestamps),
+                                         clip_seconds, 480, 24, timestamps)
         if not ok:
             raise ValueError(L('Could not make the preview (see the log)'))
         async with self._lock:
@@ -597,7 +603,8 @@ class ItemExtrasMixin:
             if playable is False:
                 logger.info("Preview of [{}] isn't 8-bit H.264; converting it", video_id)
                 try:
-                    converted = await asyncio.to_thread(convert_preview_for_browser, path, path)
+                    async with resources.use({"cpu"}, L("Converting a preview to H.264"), VIDEO):   # 3.12.0
+                        converted = await asyncio.to_thread(convert_preview_for_browser, path, path)
                 except OSError as exc:  # e.g. the file is open elsewhere on Windows
                     logger.warning("Could not replace the preview of [{}]: {}", video_id, exc)
                     converted = False

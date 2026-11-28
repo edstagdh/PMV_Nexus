@@ -9,6 +9,7 @@ import shutil
 from typing import Literal, Optional
 
 import yaml
+from loguru import logger
 from dotenv import load_dotenv
 
 from . import secrets_store
@@ -39,7 +40,10 @@ def save_overrides(**sections: dict) -> None:
     current = _load_overrides()
     for section, values in sections.items():
         current.setdefault(section, {}).update(values)
-    OVERRIDES_FILE.write_text(json.dumps(current, indent=2), encoding="utf-8")
+    # 3.12.0: written whole or not at all (a crash mid-write can't leave half a settings file)
+    tmp = OVERRIDES_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(current, indent=2), encoding="utf-8")
+    os.replace(tmp, OVERRIDES_FILE)
     get_settings.cache_clear()
 
 
@@ -78,6 +82,10 @@ class DownloadConfig(BaseModel):
     download_funscripts: bool = True
     save_metadata_json: bool = True
     min_free_percent: int = 10  # disk-space guard: downloads stop below this much free space (0 = off)
+    # 3.12.0: folders of their own (Server Settings -> Download -> Folders); "" = where they were before
+    performer_photos_dir: str = ""   # photos from ThePornDB / stash-box ("": <data>/performers)
+    own_photos_dir: str = ""         # photos you added ("": <data>/performer_photos) -- can't be downloaded again
+    generated_dir: str = ""          # seekbar previews, video frames, conversions for watching ("": the cache folder)
     # PMVHaven & sister sites are used through their API only (details + the
     # /api/videos/<id>/download endpoint); 2.32.0 removed reading their web pages.
 
@@ -304,6 +312,9 @@ class DuplicateScanConfig(BaseModel):
     audio_min_similarity: float = Field(70.0, ge=55.0, le=100.0)
     # Files sampled in parallel (each runs a few short ffmpeg processes).
     workers: int = Field(2, ge=1, le=16)
+    # 3.12.0: Duplicates -> Merged -> switching a pair: "ask" each time, "swap" (get the removed one
+    # back, then merge the kept one into it) or "undo" (get it back and keep both)
+    switch_mode: str = Field("ask", pattern="^(ask|swap|undo)$")
 
     @model_validator(mode="before")
     @classmethod
@@ -425,6 +436,41 @@ class ProxyConfig(BaseModel):
         return urlunsplit(parts)
 
 
+class TasksConfig(BaseModel):
+    """Server Settings -> Background work (3.12.0, backend/resources.py): heavy steps take turns
+    for the CPU and the disk; background ffmpeg uses at most this share of the CPU."""
+    cpu_percent: int = Field(50, ge=5, le=100)
+    cpu_slots: int = Field(1, ge=1, le=8)      # heavy CPU steps at once
+    disk_slots: int = Field(1, ge=1, le=8)     # heavy disk steps at once (reading counts too)
+
+
+class FacesConfig(BaseModel):
+    """Management -> Faces (3.12.0, backend/faces.py, library_mixins/faces.py): faces in videos
+    compared with the photos of performers, completely offline.
+      enabled            -- off until switched on (nothing is read before that)
+      scan_new           -- videos are read by themselves once their seekbar previews / frames are made
+      use_storyboards / use_thumbnail / use_frames -- which pictures of a video are read
+      storyboard_every   -- every n-th seekbar tile (1 = all 100)
+      min_face_px        -- smaller faces are ignored (too few details to tell people apart)
+      min_quality        -- the detector's certainty, 0..1, for a face to count
+      max_faces_per_video
+      suggest_score      -- matches at or above this (0-100) are suggested for you to check
+      auto_approve_score -- at or above this they're approved by themselves (100 = never)
+      min_support        -- faces in the video that must look like the performer"""
+    enabled: bool = False
+    scan_new: bool = True
+    use_storyboards: bool = True
+    use_thumbnail: bool = True
+    use_frames: bool = True
+    storyboard_every: int = Field(3, ge=1, le=20)
+    min_face_px: int = Field(32, ge=16, le=256)
+    min_quality: float = Field(0.85, ge=0.5, le=0.99)
+    max_faces_per_video: int = Field(40, ge=5, le=200)
+    suggest_score: int = Field(36, ge=20, le=100)
+    auto_approve_score: int = Field(100, ge=20, le=100)
+    min_support: int = Field(1, ge=1, le=20)
+
+
 class Settings(BaseModel):
     # Every configured site (PMVHaven, porntubeai.com, ...), keyed by a
     # short id (e.g. "pmvhaven", "porntubeai") -- see backend/sites.py for
@@ -447,6 +493,8 @@ class Settings(BaseModel):
     backup: BackupConfig
     tray: TrayConfig = TrayConfig()
     language: LanguageConfig = LanguageConfig()
+    tasks: TasksConfig = TasksConfig()
+    faces: FacesConfig = FacesConfig()
 
     # --- credentials, from the encrypted store (secrets_store.py) ---
     #
@@ -488,6 +536,36 @@ class Settings(BaseModel):
         p = (ROOT_DIR / self.download.cache_dir).resolve()
         p.mkdir(parents=True, exist_ok=True)
         return p
+
+    def _own_folder(self, raw: str, default: Path, what: str) -> Path:
+        """3.12.0: a folder setting of its own; one that can't be made here (a drive this computer
+        doesn't have, e.g. after a restore) falls back to the default, so the app still starts."""
+        if raw:
+            p = (ROOT_DIR / raw).resolve()
+            try:
+                p.mkdir(parents=True, exist_ok=True)
+                return p
+            except OSError as exc:
+                logger.warning("The folder for {} ({}) can't be used here: {} -- using {} instead", what, p, exc, default)
+        default.mkdir(parents=True, exist_ok=True)
+        return default
+
+    @property
+    def performer_photos_dir(self) -> Path:
+        """3.12.0: ThePornDB / stash-box photos (can be downloaded again)."""
+        return self._own_folder(self.download.performer_photos_dir, self.library_db_file.parent / "performers",
+                                "performer photos")
+
+    @property
+    def own_photos_dir(self) -> Path:
+        """3.12.0: performer photos you added (in every backup: they can't be downloaded again)."""
+        return self._own_folder(self.download.own_photos_dir, self.library_db_file.parent / "performer_photos",
+                                "your own performer photos")
+
+    @property
+    def generated_dir(self) -> Path:
+        """3.12.0: where .storyboards, .frames and .transcode are (the cache folder unless set)."""
+        return self._own_folder(self.download.generated_dir, self.cache_dir, "generated files")
 
     @property
     def session_dir(self) -> Path:
@@ -552,6 +630,15 @@ def _ensure_config_file() -> Path:
     return path
 
 
+def _section(cls, raw: dict, overrides: dict, key: str):
+    """A settings section from config.yaml + the overrides; a bad value never stops the app (its defaults)."""
+    try:
+        return cls(**{**(raw.get(key) or {}), **overrides.get(key, {})})
+    except Exception:  # noqa: BLE001
+        logger.warning("Settings: the {} section has a value that can't be used -- its defaults are used", key)
+        return cls()
+
+
 def _language(raw: dict, overrides: dict) -> "LanguageConfig":
     try:
         return LanguageConfig(**{**(raw.get("language") or {}), **overrides.get("language", {})})
@@ -605,6 +692,8 @@ def get_settings() -> Settings:
         backup=BackupConfig(**{**raw.get("backup", {}), **overrides.get("backup", {})}),
         tray=TrayConfig(**{**(raw.get("tray") or {}), **overrides.get("tray", {})}),
         language=_language(raw, overrides),
+        tasks=_section(TasksConfig, raw, overrides, "tasks"),
+        faces=_section(FacesConfig, raw, overrides, "faces"),
         app_secret_key=creds["app_secret_key"],
         app_api_key=creds["app_api_key"],
         pmvhaven_api_key=creds["pmvhaven_api_key"],

@@ -44,6 +44,8 @@ class LibraryItem(BaseModel):
     # already-handled instead of being silently re-downloaded (see
     # LibraryManager.add()).
     merged_into: Optional[str] = None
+    merged_title: Optional[str] = None   # 3.12.0: the removed copy's title (Duplicates -> Merged)
+    merged_at: Optional[float] = None
     # Id of the user who added it (2.10.0) -- who gets its notifications;
     # None (older videos, the external API) = the admins.
     added_by: Optional[str] = None
@@ -443,6 +445,7 @@ class DuplicateScanSettingsRequest(BaseModel):
     use_audio: Optional[bool] = None
     audio_min_similarity: Optional[float] = Field(None, ge=55.0, le=100.0)
     workers: Optional[int] = Field(None, ge=1, le=16)
+    switch_mode: Optional[str] = Field(None, pattern="^(ask|swap|undo)$")   # 3.12.0
 
 
 class RepairSyncRequest(BaseModel):

@@ -23,6 +23,7 @@ const BASE_TABS = [
   { key: "reencode", label: t("Re-encode") },
   { key: "uploads", label: t("Uploads") },
   { key: "duplicates", label: t("Duplicate scan") },
+  { key: "work", label: t("Background work") },
   { key: "logging", label: t("Logging") },
   { key: "proxy", label: t("Proxy") },
   { key: "performers", label: t("Performers") },
@@ -113,7 +114,10 @@ async function load() {
     lg.value = { ...s.logging };
     perf.value = { ...s.performers };
     tray.value = { ...s.tray };
-    folders.value = { output: s.download.output_dir, outputMove: true, cache: s.download.cache_dir, cacheMove: true };
+    work.value = { ...s.tasks };
+    folders.value = { output: s.download.output_dir, outputMove: true, cache: s.download.cache_dir, cacheMove: true,
+      performer_photos: s.download.performer_photos, own_photos: s.download.own_photos,
+      generated: s.download.generated_in_cache ? "" : s.download.generated, appMove: true };
     error.value = "";
   } catch (err) {
     error.value = err.message || t("Could not load the settings");
@@ -145,6 +149,27 @@ async function saveFolder(kind) {
   api(isOut ? "/api/settings/download-dir" : "/api/settings/cache-dir", { method: "POST", body: { new_dir: dir, move_existing: move } })
     .then((r) => { toast(move ? t("Folder changed · {n} files moved", { n: r?.moved_files ?? 0 })
       : r?.relinked_files ? t("Folder changed · {n} files found there and linked", { n: r.relinked_files }) : t("Folder changed"), { type: "success" }); return load(); })
+    .catch((err) => toast(err.message || t("Could not change the folder"), { type: "error", timeout: 8000 }))
+    .finally(() => { busy.value = ""; });
+}
+// 3.12.0: performer photos (from the sites / your own) and generated files in folders of their own
+const APP_FOLDERS = [
+  { key: "performer_photos", label: t("Performer photos from the sites"), help: t("ThePornDB and stash-box photos. They can be downloaded again.") },
+  { key: "own_photos", label: t("Your own performer photos"), help: t("Photos you added. They can't be downloaded again, so they're in every backup.") },
+  { key: "generated", label: t("Generated files"), help: t("Seekbar previews, video frames and the pieces of a video converted for watching — all made again when missing. Empty = inside the cache folder. A fast drive helps.") },
+];
+function appFolderCurrent(key) {
+  const d = settings.value?.download || {};
+  return key === "generated" ? (d.generated_in_cache ? "" : d.generated) : d[key];
+}
+async function saveAppFolder(key) {
+  const dir = (folders.value[key] || "").trim();
+  const move = folders.value.appMove;
+  const where = dir || t("the cache folder");
+  if (move && !(await askConfirm(t("Move what's there to {folder}?", { folder: `\n${where}` }) + "\n" + t("Nothing is overwritten: a file already there stays in the old folder."), { ok: t("Move") }))) return;
+  busy.value = key;
+  api("/api/settings/app-folder", { method: "POST", body: { kind: key, new_dir: dir, move_existing: move } })
+    .then((r) => { toast(move ? t("Folder changed · {n} files moved", { n: r?.moved_files ?? 0 }) + (r?.kept ? " · " + t("{n} left where they were", { n: r.kept }) : "") : t("Folder changed"), { type: r?.failed ? "error" : "success" }); return load(); })
     .catch((err) => toast(err.message || t("Could not change the folder"), { type: "error", timeout: 8000 }))
     .finally(() => { busy.value = ""; });
 }
@@ -212,6 +237,7 @@ function saveDuplicates() {
       scan_after_repair: !!d.scan_after_repair, algorithm: d.algorithm, percent: clamp(d.percent, 80, 100), samples: int(d.samples, 4, 30),
       phash_quorum: clamp(d.phash_quorum, 0.1, 1), duration_tolerance_percent: clamp(d.duration_tolerance_percent, 0, 50),
       use_audio: !!d.use_audio, audio_min_similarity: clamp(d.audio_min_similarity, 55, 100), workers: int(d.workers, 1, 16),
+      switch_mode: d.switch_mode || "ask",
     },
   }));
 }
@@ -229,6 +255,14 @@ function saveUploads() {
     body: { convert_codec: u.convert_codec, h264_crf: int(u.h264_crf, 0, 51), h264_preset: u.h264_preset, auto_convert: !!u.auto_convert,
       virus_scan: u.virus_scan || "auto", hash_check: u.hash_check || "off", max_size_gb: int(u.max_size_gb, 1, 1000), max_waiting: int(u.max_waiting, 1, 100) },
   }));
+}
+// 3.12.0: Background work (backend/resources.py)
+const work = ref({ cpu_percent: 50, cpu_slots: 1, disk_slots: 1 });
+const workCores = computed(() => Math.max(1, Math.min(cpuCount.value, Math.round(cpuCount.value * (work.value.cpu_percent || 50) / 100))));
+function saveWork() {
+  const w = work.value;
+  return run("work", () => api("/api/settings/tasks", { method: "POST",
+    body: { cpu_percent: int(w.cpu_percent, 5, 100), cpu_slots: int(w.cpu_slots, 1, 8), disk_slots: int(w.disk_slots, 1, 8) } }));
 }
 async function saveLogging() {
   const l = lg.value;
@@ -293,6 +327,21 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
               <span style="flex: 1" />
               <button class="btn btn-primary btn-sm" :disabled="busy === 'cache' || folders.cache === settings.download.cache_dir" @click="saveFolder('cache')">
                 {{ busy === "cache" ? $t("Changing…") : $t("Change folder") }}</button>
+            </div>
+          </div>
+        </div>
+        <div v-for="f in APP_FOLDERS" :key="f.key" class="form-row">
+          <label class="label" :for="`dir-${f.key}`">{{ f.label }}<small>{{ f.help }}</small></label>
+          <div class="field-col">
+            <div class="inline-input">
+              <input :id="`dir-${f.key}`" v-model="folders[f.key]" class="input mono" :placeholder="f.key === 'generated' ? $t('Inside the cache folder') : ''">
+              <button class="btn btn-sm" @click="picking = f.key">{{ $t("Browse…") }}</button>
+            </div>
+            <div class="form-actions">
+              <label class="switch"><input v-model="folders.appMove" type="checkbox">{{ $t("Move what's there") }}</label>
+              <span style="flex: 1" />
+              <button class="btn btn-primary btn-sm" :disabled="busy === f.key || (folders[f.key] || '') === (appFolderCurrent(f.key) || '')" @click="saveAppFolder(f.key)">
+                {{ busy === f.key ? $t("Changing…") : $t("Change folder") }}</button>
             </div>
           </div>
         </div>
@@ -640,6 +689,27 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
       <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="busy === 'logging'" @click="saveLogging">{{ $t("Save") }}</button></div>
     </section>
 
+    <!-- ================= Background work (3.12.0) ================= -->
+    <section v-else-if="tab === 'work'" class="card panel">
+      <p class="help-text">{{ $t("Heavy background work takes turns instead of running all at once: steps that keep the CPU busy (seekbar previews, fingerprints, re-encodes, the duplicate scan, faces) one at a time, and steps that read or write whole video files one at a time, video by video, so long jobs share the computer and none waits for hours. While a video is converted for watching, new heavy steps wait. Downloads don't wait: the network and Downloads at once limit them. Tasks shows what each job waits for.") }}</p>
+      <div class="form-row">
+        <label class="label" for="work-cpu">{{ $t("CPU share for background work") }}<small>{{ $t("Every background FFmpeg runs on the same cores, at low priority, so together they never use more than this.") }}</small></label>
+        <div class="inline-input">
+          <input id="work-cpu" v-model.number="work.cpu_percent" class="input input-num" style="max-width: 6rem" type="number" min="5" max="100" step="5">
+          <span class="muted">{{ $t("% — {n} of {total} cores", { n: workCores, total: cpuCount }) }}</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="label" for="work-cpu-slots">{{ $t("Heavy CPU steps at once") }}<small>{{ $t("1 is right for most computers.") }}</small></label>
+        <input id="work-cpu-slots" v-model.number="work.cpu_slots" class="input input-num" style="max-width: 6rem" type="number" min="1" max="8">
+      </div>
+      <div class="form-row">
+        <label class="label" for="work-disk-slots">{{ $t("Heavy disk steps at once") }}<small>{{ $t("Reading counts too. 1 for a hard disk; an SSD can take 2.") }}</small></label>
+        <input id="work-disk-slots" v-model.number="work.disk_slots" class="input input-num" style="max-width: 6rem" type="number" min="1" max="8">
+      </div>
+      <div class="form-actions"><button class="btn btn-primary btn-sm" :disabled="busy === 'work'" @click="saveWork">{{ $t("Save") }}</button></div>
+    </section>
+
     <!-- ================= Duplicate scan ================= -->
     <section v-else-if="tab === 'duplicates'" class="card panel">
       <p class="help-text"><Tx msg="How the duplicate scan on the {link1} page compares videos. Changing the method or thresholds makes the next scan compare everything again; changing the sample count or audio check also re-reads every file."><template #link1><RouterLink to="/admin/duplicates">{{ $t("Duplicates") }}</RouterLink></template></Tx></p>
@@ -689,13 +759,21 @@ function resetDuplicates() { dup.value = { ...dup.value, ...DUP_DEFAULTS }; }
         <label class="label" for="dup-workers">{{ $t("Files read at the same time") }}<small>{{ $t("1–16. More is faster on SSDs, slower on hard drives. Default 2.") }}</small></label>
         <input id="dup-workers" v-model.number="dup.workers" class="input input-num" type="number" min="1" max="16">
       </div>
+      <div class="form-row">
+        <label class="label" for="dup-switch">{{ $t("Switching a merged pair") }}<small>{{ $t("Duplicates → Merged. A removed copy comes back from its file when it's still in the download folder; otherwise it's downloaded again — only while the site still has it.") }}</small></label>
+        <select id="dup-switch" v-model="dup.switch_mode" class="select" style="max-width: 22rem">
+          <option value="ask">{{ $t("Ask each time (Get it back or Swap)") }}</option>
+          <option value="swap">{{ $t("Swap: keep it instead of the other one") }}</option>
+          <option value="undo">{{ $t("Get it back: keep both") }}</option>
+        </select>
+      </div>
       <div class="form-actions">
         <button class="btn btn-primary btn-sm" :disabled="busy === 'duplicates'" @click="saveDuplicates">{{ $t("Save") }}</button>
         <button class="btn btn-ghost btn-sm" @click="resetDuplicates">{{ $t("Restore defaults") }}</button>
       </div>
     </section>
 
-    <FolderPicker v-if="picking" :start="folders[picking]" :title="picking === 'output' ? $t('Download folder') : $t('Cache folder')"
+    <FolderPicker v-if="picking" :start="folders[picking] || folders.cache" :title="picking === 'output' ? $t('Download folder') : picking === 'cache' ? $t('Cache folder') : (APP_FOLDERS.find((f) => f.key === picking)?.label || '')"
                   @close="picking = ''" @pick="picked" />
   </div>
 </template>

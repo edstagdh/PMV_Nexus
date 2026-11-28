@@ -39,6 +39,7 @@ from typing import Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import JOB, resources
 from .. import tpdb
 from .. import stashbox
 from .. import activity
@@ -179,6 +180,76 @@ def _editable(details: dict) -> dict:
     return out
 
 
+def _safe_photo_name(name) -> bool:
+    """A photo name a FansDB / StashDB link saved (3.12.0): never a path, never anything else."""
+    return isinstance(name, str) and re.fullmatch(r"sb-(fansdb|stashdb)-[0-9A-Za-z-]{1,64}-\d{1,2}\.webp", name) is not None
+
+
+def _photo_hash(data: bytes) -> Optional[int]:
+    """A 64-bit difference hash of a picture: near-identical pictures differ in a few bits."""
+    import io
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            g = im.convert("L").resize((9, 8))
+            px = list(g.getdata())
+    except Exception:  # noqa: BLE001
+        return None
+    bits = 0
+    for r in range(8):
+        for c in range(8):
+            bits = (bits << 1) | (px[r * 9 + c] > px[r * 9 + c + 1])
+    return bits
+
+
+def _photo_hash_file(path: str) -> Optional[int]:
+    try:
+        return _photo_hash(Path(path).read_bytes())
+    except OSError:
+        return None
+
+
+def _hamming(a: int, b: int) -> int:
+    return bin(a ^ b).count("1")
+
+
+# 3.12.0: the details compared between ThePornDB, FansDB and StashDB on the profile page
+COMPARED = (("name", L("Name")), ("gender", L("Gender")), ("birthday", L("Birthday")), ("deathday", L("Died")),
+            ("nationality", L("Nationality")), ("ethnicity", L("Ethnicity")), ("hair_colour", L("Hair")),
+            ("eye_colour", L("Eyes")), ("height", L("Height")), ("measurements", L("Measurements")),
+            ("cupsize", L("Cup size")), ("fake_boobs", L("Enhanced")), ("tattoos", L("Tattoos")),
+            ("piercings", L("Piercings")), ("career_start_year", L("Career start")), ("career_end_year", L("Career end")))
+
+
+def _compare_value(field: str, value):
+    """A value as it's compared (None: not given). Free text is compared without case / spacing;
+    tattoos and piercings by whether there are any (the sites word them differently)."""
+    if value is None or value == "" or value == []:
+        return None
+    if field == "height":
+        return _to_cm(value)
+    if field in ("birthday", "deathday"):
+        return str(value)[:10]
+    if field in ("career_start_year", "career_end_year"):
+        m = re.match(r"^\d{4}", str(value))
+        return int(m.group(0)) if m else None
+    if field in ("fake_boobs", "tattoos", "piercings"):
+        return _yes_no(value)
+    if field in ("measurements", "cupsize"):
+        return re.sub(r"\s+", "", str(value)).upper() or None
+    return " ".join(str(value).replace("-", " ").split()).casefold() or None
+
+
+def _shown_value(field: str, value):
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return L("Yes") if value else L("No")
+    if field == "height" and isinstance(value, int):
+        return f"{value} cm"
+    return str(value)
+
+
 def _cup(cupsize, measurements) -> Optional[str]:
     for text in (cupsize, measurements):
         m = re.match(r"^\s*\d*\s*([A-Ka-k]{1,4})\b", str(text or ""))
@@ -198,6 +269,7 @@ class PerformersMixin:
     _perf_custom: dict = {}  # owner id -> photos added by hand (2.16.0)
     _perf_local: dict = {}   # name key -> performer_local row (2.17.0)
     _perf_sb: dict = {}      # (name key, fansdb | stashdb) -> performer_stashbox row (3.9.0)
+    _perf_sb_photos: dict = {}  # profile id -> FansDB / StashDB photos shown after ThePornDB's (3.12.0)
     _perf_by_tpdb: dict = {}
     _perf_names: dict = {}
     _perf_busy: Optional[str] = None
@@ -233,6 +305,20 @@ class PerformersMixin:
                 r["data"] = {}
             sb[(r["name_key"], r["box"])] = r
         self._perf_sb = sb
+        # 3.12.0: photos of FansDB / StashDB for names linked to a ThePornDB profile (file names in
+        # the performer-photos folder, kept in the link's row), FansDB first
+        folder = self.performer_photos_dir()
+        sb_photos: dict[str, list[str]] = {}
+        for (key, box), r in sorted(sb.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+            nrow = names.get(key)
+            pid = nrow.get("performer_id") if nrow and nrow.get("status") == "linked" else None
+            if pid not in by_id:
+                continue
+            for n in (r["data"] or {}).get("photos") or []:
+                f = folder / n
+                if _safe_photo_name(n) and str(f) not in sb_photos.get(pid, []) and f.is_file():
+                    sb_photos.setdefault(pid, []).append(str(f))
+        self._perf_sb_photos = sb_photos
         self._perf_by_id = by_id
         self._perf_by_tpdb = {r["tpdb_id"]: r for r in by_id.values() if r.get("tpdb_id")}
         self._perf_names = names
@@ -312,7 +398,7 @@ class PerformersMixin:
                                       stop=True) as act:
                 self._perf_load()
                 result = {"matched": await self.match_new_performers(), "refreshed": await self.refresh_stale_performers(),
-                          "photos": await self._backfill_photos()}
+                          "photos": await self._backfill_photos() + await self.fill_stashbox_photos()}
                 act.summary = act.summary or activity.summarize(result)
                 return result
         except tpdb.TPDBError as exc:
@@ -557,6 +643,7 @@ class PerformersMixin:
                 out["local"] = self._local_info(key, lib[key][0])
             out["stashbox"] = self._stashbox_links([key])
             out["stashbox_sites"] = stashbox.boxes()
+            out["differences"] = self._site_differences(None, [key])
             return out
         d = p["data"]
         extras = d.get("extras") or {}
@@ -602,6 +689,7 @@ class PerformersMixin:
                     known.add(link["url"])
                     more.append(link)
         out["performer"]["more_links"] = more[:MAX_LINKS]
+        out["differences"] = self._site_differences(p, keys)
         for s in p.get("similar") or []:
             other = self._perf_by_tpdb.get(s.get("tpdb_id"))
             if other and other["id"] != p["id"]:
@@ -612,28 +700,66 @@ class PerformersMixin:
                                            if self._all_photos(other) else None})
         return out
 
+    def _site_differences(self, p: Optional[dict], keys: list[str]) -> Optional[dict]:
+        """3.12.0: the details each linked site gives (ThePornDB, FansDB, StashDB) side by side,
+        and which differ. None when fewer than two sites are linked."""
+        sources = []
+        if p:
+            sources.append(("tpdb", "ThePornDB", {"name": p["name"], **((p.get("data") or {}).get("extras") or {})}))
+        for link in self._stashbox_links(keys):
+            r = self._perf_sb.get((link["name_key"], link["box"])) or {}
+            data = r.get("data") or {}
+            sources.append((link["box"], link["label"], {"name": r.get("name"), "gender": data.get("gender"),
+                                                           **(data.get("details") or {})}))
+        if len(sources) < 2:
+            return None
+        fields = []
+        for field, label in COMPARED:
+            values = {key: _shown_value(field, d.get(field)) for key, _label, d in sources}
+            if not any(v is not None for v in values.values()):
+                continue
+            compared = [_compare_value(field, d.get(field)) for _key, _label, d in sources]
+            given = [c for c in compared if c is not None]
+            if field == "height":
+                differs = bool(given) and max(given) - min(given) > 2
+            elif field == "nationality" and any(len(str(d.get(field) or "")) == 2 for _k, _l, d in sources):
+                differs = None    # a country code next to a name: not compared
+            else:
+                differs = len(set(given)) > 1
+            fields.append({"field": field, "label": label, "values": values, "differs": differs})
+        return {"sites": [{"key": key, "label": label} for key, label, _d in sources], "fields": fields,
+                "differing": sum(1 for f in fields if f["differs"])}
+
     # ---------------------------------------------------------------- photos as WebP (2.15.0)
     def _photos_of(self, p: dict) -> list[str]:
         """The ThePornDB photos (saved in data/performers; before 3.2.0 cache/performers)."""
         return list(p.get("photos") or ([p["photo_path"]] if p.get("photo_path") else []))
 
+    def _site_photos(self, p: dict) -> list[str]:
+        """3.12.0: the ThePornDB photos, then those of FansDB / StashDB while there's room (MAX_PHOTOS)."""
+        own = self._photos_of(p)
+        return own + self._perf_sb_photos.get(p["id"], [])[:max(0, MAX_PHOTOS - len(own))]
+
     def _all_photos(self, p: dict) -> list[str]:
         """What the profile shows, in order (2.16.0): a photo added by hand marked
-        "show first", the ThePornDB photos, then the other photos added by hand."""
+        "show first", the site photos (_site_photos), then the other photos added by hand."""
         custom = self._perf_custom.get(p["id"], [])
-        return ([c["path"] for c in custom if c["main"]] + self._photos_of(p)
+        return ([c["path"] for c in custom if c["main"]] + self._site_photos(p)
                 + [c["path"] for c in custom if not c["main"]])
 
     def _photo_version(self, p: dict) -> int:
         """Changes whenever the list changes, so browsers don't show a cached photo for a moved index."""
         custom = self._perf_custom.get(p["id"], [])
-        mark = sum(hash((c["id"], c["main"])) for c in custom) & 0xFFFF
+        mark = (sum(hash((c["id"], c["main"])) for c in custom) + sum(hash(f) for f in self._perf_sb_photos.get(p["id"], []))) & 0xFFFF
         return int(p.get("fetched_at") or 0) * 100000 + len(custom) * 65536 + mark
 
     def performer_photo_files(self) -> list[str]:
-        """Every saved ThePornDB performer photo (Maintenance -> Untracked files keeps them)."""
+        """Every saved site photo of a performer (Maintenance -> Untracked files keeps them):
+        ThePornDB's, and (3.12.0) those of FansDB / StashDB links -- shown or not."""
         self._perf_load()
-        return [f for p in self._perf_by_id.values() for f in self._photos_of(p)]
+        folder = self.performer_photos_dir()
+        sb = [str(folder / n) for r in self._perf_sb.values() for n in (r["data"] or {}).get("photos") or [] if _safe_photo_name(n)]
+        return [f for p in self._perf_by_id.values() for f in self._photos_of(p)] + sb
 
     def performer_photos_to_convert(self) -> int:
         self._perf_load()
@@ -653,7 +779,7 @@ class PerformersMixin:
         def mb(n: int) -> str:
             n = n / 1024 / 1024
             return f"{n / 1024:,.2f} GB" if n >= 1024 else f"{n:,.1f} MB" if n < 10 else f"{n:,.0f} MB"
-        workers = max(1, (os.cpu_count() or 2) // 2)
+        workers = resources.cpu_cores()   # 3.12.0: the background CPU share (Server Settings -> Background work)
         loop = asyncio.get_running_loop()
 
         def convert(path: str):
@@ -696,12 +822,13 @@ class PerformersMixin:
                 for i in range(0, len(todo), workers):
                     # A few performers at once. Shielded: Stop waits for the ones being
                     # converted, so the database never points to a replaced original.
-                    batch = asyncio.gather(*(one(p) for p in todo[i:i + workers]))
-                    try:
-                        await asyncio.shield(batch)
-                    except asyncio.CancelledError:
-                        await batch
-                        raise
+                    async with resources.use({"cpu"}, L('Converting performer photos to WebP'), JOB):   # 3.12.0: takes turns
+                        batch = asyncio.gather(*(one(p) for p in todo[i:i + workers]))
+                        try:
+                            await asyncio.shield(batch)
+                        except asyncio.CancelledError:
+                            await batch
+                            raise
             saved = st["before"] - st["after"]
             act.summary = (f"{st['done'] - st['failed']} photos converted, {mb(st['before'])} → {mb(st['after'])} "
                            f"({mb(saved)} saved)" + (f"; {st['failed']} couldn't be converted (see the log)" if st["failed"] else ""))
@@ -834,8 +961,12 @@ class PerformersMixin:
             raise PerformerError(str(exc), 502) from None
         label = stashbox.BOXES[box]["label"]
         sbd = stashbox.details(p)
+        before = self._perf_sb.get((key, box)) or {}
+        kept = [n for n in (before.get("data") or {}).get("photos") or []
+                if before.get("sb_id") == p["id"] and _safe_photo_name(n) and (self.performer_photos_dir() / n).is_file()]
         self.db.set_performer_stashbox(key, box, p["id"], p.get("name") or name,
-                                       {"details": sbd, "images": stashbox.images(p)[:10], "gender": stashbox.gender(p)}, user)
+                                       {"details": sbd, "images": stashbox.images(p)[:10], "gender": stashbox.gender(p),
+                                        **({"photos": kept} if kept else {})}, user)
         row = self._perf_names.get(key)
         on_tpdb = bool(row and row.get("status") == "linked" and row.get("performer_id") in self._perf_by_id)
         added_photos = filled = 0
@@ -864,6 +995,12 @@ class PerformersMixin:
             self._perf_load(force=True)
             if photos:
                 added_photos = await self._stashbox_photos(self._local_id(key), stashbox.images(p), label)
+        else:
+            self._perf_load(force=True)
+            if photos and not kept:   # 3.12.0: shown after ThePornDB's while there's room
+                added_photos = await self._stashbox_site_photos(key, box, row["performer_id"], stashbox.images(p), label)
+            old = [n for n in (before.get("data") or {}).get("photos") or [] if n not in kept]
+            self._remove_sb_photo_files(old)       # an earlier link of this site to someone else
         self._perf_load(force=True)
         logger.info("Performer {} linked to {} {} by {} ({} details filled, {} photos)", name, label, p["id"], user, filled, added_photos)
         return {"ok": True, "box": box, "id": p["id"], "name": p.get("name"), "filled": filled, "photos": added_photos,
@@ -884,17 +1021,94 @@ class PerformersMixin:
                 logger.warning("{} photo not saved: {}", label, exc)
         return added
 
+    async def _stashbox_site_photos(self, key: str, box: str, profile_id: str, urls: list[str], label: str) -> int:
+        """3.12.0, a name on ThePornDB: the site's photos are saved in the performer-photos folder
+        and shown after ThePornDB's, as many as there's room for (MAX_PHOTOS in all); a photo that
+        looks like one already shown is skipped. Recorded in the link's row (data["photos"])."""
+        from .. import images, safe_fetch
+        p = self._perf_by_id.get(profile_id)
+        row = self._perf_sb.get((key, box))
+        if not p or not row:
+            return 0
+        room = MAX_PHOTOS - len(self._site_photos(p))
+        if room <= 0:
+            return 0
+        folder = self.performer_photos_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        shown = self._site_photos(p)
+        seen = [h for h in await asyncio.to_thread(lambda: [_photo_hash_file(f) for f in shown]) if h is not None]
+        sid = re.sub(r"[^0-9A-Za-z-]", "", str(row["sb_id"]))[:64] or "x"
+        names: list[str] = []
+        for n, url in enumerate(urls[:10]):
+            if len(names) >= room:
+                break
+            try:
+                webp = await asyncio.to_thread(images.to_webp, await safe_fetch.fetch_image(url))
+            except (safe_fetch.FetchRefused, ValueError) as exc:
+                logger.warning("{} photo of {} not saved: {}", label, p["name"], exc)
+                continue
+            h = await asyncio.to_thread(_photo_hash, webp)
+            if h is not None and any(_hamming(h, o) <= 6 for o in seen):
+                continue     # the same picture as one shown already
+            name = f"sb-{box}-{sid}-{n}.webp"
+            tmp = folder / (name + ".part")
+            await asyncio.to_thread(tmp.write_bytes, webp)
+            os.replace(tmp, folder / name)
+            names.append(name)
+            if h is not None:
+                seen.append(h)
+        if names:
+            self.db.set_performer_stashbox(key, box, row["sb_id"], row["name"], {**(row["data"] or {}), "photos": names},
+                                           row.get("linked_by"))
+        return len(names)
+
+    def _remove_sb_photo_files(self, names: list[str]) -> None:
+        """Only photos a FansDB / StashDB link saved (their recorded names), only in the photos folder."""
+        folder = self.performer_photos_dir()
+        for n in names:
+            if _safe_photo_name(n):
+                try:
+                    (folder / n).unlink(missing_ok=True)
+                except OSError as exc:
+                    logger.warning("Couldn't delete the photo {}: {}", folder / n, exc)
+
+    async def fill_stashbox_photos(self) -> int:
+        """3.12.0, Scheduler job "Match & refresh performers": links made before 3.12.0 (or while
+        there was no room) of names on ThePornDB get the site's photos saved at linking. -> performers."""
+        self._perf_load()
+        done = 0
+        for (key, box), r in list(self._perf_sb.items()):
+            nrow = self._perf_names.get(key)
+            pid = nrow.get("performer_id") if nrow and nrow.get("status") == "linked" else None
+            data = r["data"] or {}
+            if pid not in self._perf_by_id or "photos" in data or not data.get("images") or box not in stashbox.BOXES:
+                continue
+            if self._shutting_down:
+                break
+            self._perf_step = {"stage": L("Fetching photos"), "detail": self._perf_by_id[pid]["name"]}
+            n = await self._stashbox_site_photos(key, box, pid, data["images"], stashbox.BOXES[box]["label"])
+            if not n:   # nothing new (no room, or all shown already): not tried again
+                self.db.set_performer_stashbox(key, box, r["sb_id"], r["name"], {**data, "photos": []}, r.get("linked_by"))
+            done += bool(n)
+            self._perf_load(force=True)
+        return done
+
     def stashbox_unlink(self, name: str, box: str) -> dict:
-        """Forgets the link; details and photos already copied stay (they can be edited / removed)."""
+        """Forgets the link; details and photos copied as the performer's own stay (they can be
+        edited / removed). 3.12.0: the site's photos shown with a ThePornDB profile go with it."""
         self._perf_load()
         key = fold(name)
         keys = [key]
         row = self._perf_names.get(key)
         if row and row.get("performer_id"):
             keys += [r["name_key"] for r in self._perf_names.values() if r.get("performer_id") == row["performer_id"]]
+        photos = [n for k in dict.fromkeys(keys) for n in ((self._perf_sb.get((k, box)) or {}).get("data") or {}).get("photos") or []]
         gone = any([self.db.delete_performer_stashbox(k, box) for k in dict.fromkeys(keys)])
         if not gone:
             raise PerformerError(L("Not linked to that site"), 404)
+        still = {n for (k, b), r in self._perf_sb.items() if (k, b) not in {(kk, box) for kk in keys}
+                 for n in (r["data"] or {}).get("photos") or []}
+        self._remove_sb_photo_files([n for n in photos if n not in still])
         self._perf_load(force=True)
         return {"ok": True}
 
@@ -1108,7 +1322,7 @@ class PerformersMixin:
         """ThePornDB photos (3.2.0): their own folder in the app's data folder.
         Before, they were in the cache folder's "performers" folder, among a folder
         per creator."""
-        return self.settings.library_db_file.parent / "performers"
+        return self.settings.performer_photos_dir   # 3.12.0: its own folder setting
 
     def relocate_performer_photos(self) -> None:
         """At every start (3.2.0), quick when there's nothing to do:
@@ -1168,7 +1382,7 @@ class PerformersMixin:
     def _custom_photo_dir(self):
         """In the app's data folder (not the cache): they can't be downloaded again,
         so they're in every backup (backup.py)."""
-        return self.settings.library_db_file.parent / "performer_photos"
+        return self.settings.own_photos_dir   # 3.12.0: its own folder setting
 
     def custom_photo_file(self, performer_id: str, photo_id: str) -> Optional[str]:
         self._perf_load()

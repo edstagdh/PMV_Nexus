@@ -21,6 +21,8 @@ from .. import activity, open_files, storyboard, video_frames
 
 _PATH_FIELDS = ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path")
 _IGNORED_NAMES = {"desktop.ini", "thumbs.db", ".ds_store"}
+# 3.12.0: what a file in one of these folders is, whatever its name
+_LOCATION_KIND = {"performer photos": "performer photo", "own photos": "your performer photo", "covers": "playlist cover"}
 _VIDEO_EXT = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v", ".ts"}
 _IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -63,6 +65,13 @@ class UntrackedFilesMixin:
         keep: set[str] = set()
         for photo in self.performer_photo_files():  # cache/performers (2.15.0)
             tracked.add(_norm(photo))
+        # 3.12.0: your own performer photos and playlist covers in use (their folders are scanned too)
+        for c in self.db.custom_photo_rows():
+            tracked.add(_norm(c["path"]))
+        for pl in self.db.list_playlists():
+            if pl.get("cover_path"):
+                tracked.add(_norm(pl["cover_path"]))
+            tracked.add(_norm(self._cover_file(pl["id"])))
         for item in self._items.values():
             for field in _PATH_FIELDS:
                 value = getattr(item, field, None)
@@ -79,10 +88,28 @@ class UntrackedFilesMixin:
                     keep.add(_norm(thumb.with_name(f"{base}_original{ext}")))
         return tracked, keep
 
+    def _untracked_roots(self) -> list[tuple[str, Path]]:
+        """(location, folder) to look in: the download and cache folders and (3.12.0) the performer
+        photo folders, playlist covers and a Generated files folder of its own. A folder inside
+        another one in the list is looked at once, as part of that one."""
+        s = self.settings
+        cand = [("downloads", s.output_dir), ("cache", s.cache_dir), ("performer photos", s.performer_photos_dir),
+                ("own photos", s.own_photos_dir), ("covers", s.library_db_file.parent / "playlist_covers")]
+        if s.download.generated_dir:   # only the app's own subfolders there: the folder may hold other things
+            cand += [("generated", s.generated_dir / storyboard.FOLDER), ("generated", s.generated_dir / video_frames.FOLDER)]
+        out: list[tuple[str, Path]] = []
+        for loc, root in cand:
+            r = root.resolve()
+            if any(r == o or o in r.parents for _l, o in out):
+                continue
+            out = [(l2, o) for l2, o in out if r not in o.parents]   # this one holds an earlier one
+            out.append((loc, r))
+        return out
+
     def _scan_untracked(self) -> dict:
-        """BLOCKING -- walks both folders."""
+        """BLOCKING -- walks the folders of _untracked_roots()."""
         tracked, keep = self._tracked_paths()
-        roots = [("downloads", self.settings.output_dir), ("cache", self.settings.cache_dir)]
+        roots = self._untracked_roots()
         files, errors = [], []
         for location, root in roots:
             if not root.is_dir():
@@ -107,9 +134,13 @@ class UntrackedFilesMixin:
                         continue
                     entry = {
                         "path": str(path), "relative": str(path.relative_to(root)), "location": location,
-                        "kind": _kind(path), "size": st.st_size, "modified": st.st_mtime,
+                        "kind": _LOCATION_KIND.get(location) or _kind(path), "size": st.st_size, "modified": st.st_mtime,
                     }
-                    if location == "downloads" and entry["kind"] == "video":
+                    if location in ("own photos", "covers"):
+                        entry["irreplaceable"] = True   # 3.12.0: can't be downloaded again
+                    if location in _LOCATION_KIND:
+                        pass
+                    elif location == "downloads" and entry["kind"] == "video":
                         entry.update(self.untracked_video_info(path))   # 3.10.0: can it be added back?
                     elif entry["kind"] in ("thumbnail", "preview", "metadata", "funscript"):
                         entry.update(self.untracked_companion_info(path, entry["kind"]) or {})   # 3.11.1
@@ -129,7 +160,7 @@ class UntrackedFilesMixin:
         """Deletes the given files if each is still untracked and inside the
         download or cache folder; anything else is refused, not deleted."""
         tracked, keep = self._tracked_paths()
-        roots = [_norm(self.settings.output_dir), _norm(self.settings.cache_dir)]
+        roots = [_norm(r) for _loc, r in self._untracked_roots()]   # 3.12.0: every folder the list shows
         being_added = set(getattr(self, "_adopt_queued", None) or ())
 
         def run() -> dict:

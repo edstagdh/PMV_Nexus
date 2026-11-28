@@ -17,12 +17,13 @@ import string
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 from loguru import logger
 
 from ..i18n import L
 from .. import upload_safety
 from .. import ip_privacy, proxy
-from ..config import get_settings, save_overrides
+from ..config import TasksConfig, get_settings, save_overrides
 from ..logging_setup import apply_logging
 from ..library_manager import library_manager
 from ..media_tools import UPLOAD_ENCODERS, available_encoders
@@ -45,6 +46,7 @@ def get_app_settings(request: Request, user: AuthContext = Depends(require_permi
         "download": {
             "output_dir": str(settings.output_dir),
             "cache_dir": str(settings.cache_dir),
+            **library_manager.app_folders(),   # 3.12.0: performer_photos, own_photos, generated
             "max_concurrent_downloads": settings.download.max_concurrent_downloads,
             "max_retries": settings.download.max_retries,
             "chunk_size_kb": settings.download.chunk_size_kb,
@@ -64,6 +66,7 @@ def get_app_settings(request: Request, user: AuthContext = Depends(require_permi
                   "url": settings.proxy.url or "", "username": settings.proxy.username or "",
                   "password_set": bool(settings.proxy.password)},
         "duplicate_scan": settings.duplicate_scan.model_dump(),
+        "tasks": settings.tasks.model_dump(),   # 3.12.0: Background work
         "system": {
             "cpu_count": os.cpu_count() or 1,
             # Which re-encode codecs the installed ffmpeg can produce.
@@ -182,6 +185,18 @@ def set_features(payload: FeaturesSettingsRequest, user: AuthContext = Depends(r
     return {"ok": True, "features": get_settings().features.model_dump()}
 
 
+@router.post("/api/settings/tasks")
+def set_tasks_settings(payload: TasksConfig, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """3.12.0: Background work -- the CPU share of background ffmpeg, heavy steps at once."""
+    save_overrides(tasks=payload.model_dump())
+    logger.info("Background work set by {}: {}% of the CPU, {} CPU / {} disk step(s) at once",
+                user.username, payload.cpu_percent, payload.cpu_slots, payload.disk_slots)
+    from ..resources import resources
+    with resources._mutex:   # more slots: let waiting steps go now
+        resources._grant_waiting()
+    return {"ok": True, "tasks": get_settings().tasks.model_dump()}
+
+
 @router.post("/api/settings/reencode")
 def set_reencode_settings(payload: ReencodeSettingsRequest, user: AuthContext = Depends(require_permission("settings.manage"))):
     save_overrides(reencode=payload.model_dump())
@@ -209,6 +224,21 @@ async def set_cache_dir(payload: DownloadDirRequest, user: AuthContext = Depends
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return result
+
+
+class AppFolderRequest(BaseModel):
+    kind: str = Field(..., pattern="^(performer_photos|own_photos|generated)$")
+    new_dir: str = Field("", max_length=1000)   # generated: "" = back into the cache folder
+    move_existing: bool = True
+
+
+@router.post("/api/settings/app-folder")
+async def set_app_folder(payload: AppFolderRequest, user: AuthContext = Depends(require_permission("settings.manage"))):
+    """3.12.0: performer photos (from the sites / your own) and generated files get folders of their own."""
+    try:
+        return await library_manager.change_app_folder(payload.kind, payload.new_dir, payload.move_existing)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/api/settings/sync-metadata")

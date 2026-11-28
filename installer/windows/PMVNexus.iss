@@ -83,6 +83,10 @@ Source: "build\PMVNexusService.exe"; DestDir: "{app}\runtime\service"; Flags: ig
 Source: "PMVNexusService.xml"; DestDir: "{app}\runtime\service"; Flags: ignoreversion; Tasks: service
 ; Closes a running app before an update (PrepareToInstall), run from {tmp} with the installed app's Python (2.33.0).
 Source: "..\..\Tools\stop_app.py"; Flags: dontcopy
+; What the update will change in the library, shown before anything is replaced (3.12.0): run from {tmp}
+; with the installed app's Python, with this version's upgrade steps.
+Source: "..\..\Tools\upgrade_plan.py"; Flags: dontcopy
+Source: "..\..\backend\upgrades\steps.py"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\PMVNexus.exe"; \
@@ -1430,6 +1434,43 @@ begin
   end;
 end;
 
+{ 3.12.0: what updating this library will change, and about how long it takes (Tools\upgrade_plan.py
+  with this version's steps, run with the installed app's Python, read-only). Asked before anything
+  is replaced; '' = go on, otherwise why Setup stops. }
+function CheckUpgradePlan: String;
+var
+  Code: Integer;
+  Script, Args, ReportFile: String;
+  Report: AnsiString;
+begin
+  Result := '';
+  if not FileExists(VenvPython) or not FileExists(AppDir + '\config.yaml') then
+    Exit;                      { a first install: nothing to upgrade }
+  ExtractTemporaryFile('upgrade_plan.py');
+  ExtractTemporaryFile('steps.py');
+  Script := ExpandConstant('{tmp}\upgrade_plan.py');
+  ReportFile := ExpandConstant('{tmp}\upgrade_plan.txt');
+  Args := '"' + Script + '" --root "' + AppDir + '" --to {#AppVersion} --steps "' + ExpandConstant('{tmp}\steps.py') +
+    '" --report "' + ReportFile + '"';
+  if not Exec(VenvPython, Args, '', SW_HIDE, ewWaitUntilTerminated, Code) then
+    Exit;                      { the installed Python doesn't run: the update repairs it }
+  Report := '';
+  LoadStringFromFile(ReportFile, Report);
+  if Code = 4 then
+  begin
+    Result := String(Report) + #13#10#13#10 + 'Nothing was changed.';
+    Exit;
+  end;
+  if (Code = 3) and (SuppressibleMsgBox(String(Report) + #13#10#13#10 +
+      'Your library is changed when the app starts after the update. Continue?',
+      mbConfirmation, MB_OKCANCEL, IDOK) <> IDOK) then
+    Result := 'The update was cancelled. Nothing was changed.';
+  if (Code = 1) and (SuppressibleMsgBox('Setup couldn''t check what the update changes in your library:' + #13#10 +
+      String(Report) + #13#10#13#10 + 'The app makes a copy of its database before it changes anything. Continue?',
+      mbConfirmation, MB_OKCANCEL, IDOK) <> IDOK) then
+    Result := 'The update was cancelled. Nothing was changed.';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
@@ -1437,6 +1478,10 @@ var
 begin
   Result := '';
   IsUpgrade := FileExists(AppDir + '\config.yaml');
+  { 3.12.0: what the update changes in the library -- asked before anything changes. }
+  Result := CheckUpgradePlan;
+  if Result <> '' then
+    Exit;
   { What's there before anything changes, so Cancel can undo this run (3.7.0). }
   AppDirExisted := DirExists(AppDir);
   PreExisting := '|';

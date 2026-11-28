@@ -16,6 +16,7 @@ The lookups return {"title", "artist", "url", "source"} or None; the caller
 (library_mixins/songs.py) adds up the samples per song.
 """
 from __future__ import annotations
+from .resources import run_background
 from .i18n import L
 
 import asyncio
@@ -67,7 +68,7 @@ def cut_sample(path: str, at: float, seconds: int = SAMPLE) -> Optional[bytes]:
            "-i", path, "-vn", "-sn", "-dn", "-ac", "1", "-ar", str(RATE), "-f", "s16le", "pipe:1"]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=120, creationflags=flags)
+        r = run_background(cmd, capture_output=True, timeout=120, creationflags=flags)   # 3.12.0
     except (OSError, subprocess.SubprocessError) as exc:
         logger.warning("Song scan: couldn't cut a sample at {}s of {}: {}", at, path, exc)
         return None

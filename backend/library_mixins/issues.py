@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -182,9 +184,18 @@ class IssuesMixin:
             if not item:
                 continue  # already gone -- nothing to merge
 
+            # 3.12.0: never a file another video uses too (two library entries on one file: deleting
+            # it would take the kept video's file with it)
+            in_use = {os.path.normcase(os.path.abspath(v)) for other in self._items.values()
+                      if other.id != merge_id and other.status != "merged"
+                      for v in (other.video_path, other.funscript_path, other.metadata_path, other.thumbnail_path,
+                                other.preview_path) if v}
             for attr in ("video_path", "funscript_path", "metadata_path", "thumbnail_path", "preview_path"):
                 file_path_str = getattr(item, attr, None)
                 if not file_path_str:
+                    continue
+                if os.path.normcase(os.path.abspath(file_path_str)) in in_use:
+                    logger.warning("Merge: {} of [{}] is also another video's file -- not deleted", file_path_str, merge_id)
                     continue
                 if not await asyncio.to_thread(delete_with_retry, Path(file_path_str), merge_id) \
                         and Path(file_path_str).exists():
@@ -209,10 +220,13 @@ class IssuesMixin:
             self.db.delete_dup_samples_for_item(merge_id)
             # Playlists that held the removed copy now hold the kept one.
             self.db.repoint_playlist_items(merge_id, keep_id)
+            self.db.carry_over_watching(merge_id, keep_id)   # 3.12.0: and where people were in it, its history
 
             async with self._lock:
                 item.status = "merged"
                 item.merged_into = keep_id
+                item.merged_title = item.title or item.merged_title   # 3.12.0: Duplicates -> Merged shows it
+                item.merged_at = time.time()
                 item.title = ""
                 item.creator = ""
                 item.progress_percent = None

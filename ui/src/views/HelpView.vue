@@ -62,6 +62,8 @@ const updateLine = computed(() => {
   if (u.checked_at) return t("Up to date (checked {time}).", { time: new Date(u.checked_at * 1000).toLocaleString(locale()) });
   return t("Not checked yet.");
 });
+// 3.12.0: the upgrade steps this library went through (admins; "not needed" ones left out)
+const upgradesDone = computed(() => (info.value?.upgrades || []).filter((u) => u.summary !== "not needed"));
 const issueUrl = computed(() => {
   const i = info.value || {};
   // The issue goes to the project on GitHub, so it's written in English whatever the app's language.
@@ -148,6 +150,10 @@ function onArticleClick(e) {
           <dt>{{ $t("Report a bug") }}</dt><dd><a :href="issueUrl" target="_blank" rel="noopener noreferrer">{{ $t("Open a prefilled GitHub issue") }}</a></dd>
           <dt>{{ $t("Server") }}</dt><dd>{{ `Python ${info.python || "?"} · ${info.platform || "?"}` }}</dd>  <!-- i18n-ignore -->
           <dt>FFmpeg</dt><dd>{{ info.ffmpeg || $t("not found") }}</dd>
+          <template v-if="upgradesDone.length">
+            <dt>{{ $t("Upgrades of the library") }}</dt>
+            <dd><span v-for="u in upgradesDone" :key="u.id" class="upg">{{ u.id }} · {{ u.app_version }} · {{ new Date(u.done_at * 1000).toLocaleDateString() }} · {{ $t("{s} s", { s: Math.round(u.seconds) }) }}</span></dd>
+          </template>
         </dl>
         <div class="card credits">
           <h3>{{ $t("Credits") }}</h3>
@@ -155,6 +161,7 @@ function onArticleClick(e) {
             <li>{{ $t("Duplicate detection follows the approach of") }} <a href="https://github.com/0x90d/videoduplicatefinder" target="_blank" rel="noopener noreferrer">{{ $t("VideoDuplicateFinder") }}</a> {{ $t("(re-implemented, no code copied).") }}</li>
             <li><Tx msg="Video playback by {link1}; media processing by {link2} and {link3}."><template #link1><a href="https://videojs.org" target="_blank" rel="noopener noreferrer">{{ $t("Video.js") }}</a></template><template #link2><a href="https://ffmpeg.org" target="_blank" rel="noopener noreferrer">FFmpeg</a></template><template #link3><a href="https://mediaarea.net/en/MediaInfo" target="_blank" rel="noopener noreferrer">{{ $t("MediaInfo") }}</a></template></Tx></li>
             <li>{{ $t("Built with FastAPI, SQLite, OpenCV/NumPy, Vue and Vite.") }}</li>
+            <li>{{ $t("Faces: OpenCV's YuNet face detector (MIT license) and SFace face recognizer (Apache-2.0 license), from the OpenCV Zoo.") }}</li>
           </ul>
           <details>
             <summary>{{ $t("License text") }}</summary>
@@ -230,4 +237,5 @@ function onArticleClick(e) {
   .toc { display: none; }
 }
 @media (max-width: 56rem) { .help { padding: 0.75rem 1rem 1.5rem; } .facts { grid-template-columns: 1fr; gap: 0.125rem 0; } .facts dd { margin-bottom: 0.5rem; } }
+.upg { display: block; }
 </style>

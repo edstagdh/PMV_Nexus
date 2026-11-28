@@ -12,6 +12,7 @@ import RelatedList from "../components/RelatedList.vue";
 import ActionBar from "../components/ActionBar.vue";
 import FavoriteButton from "../components/FavoriteButton.vue";
 import VideoFrames from "../components/VideoFrames.vue";
+import FacesOnVideo from "../components/faces/FacesOnVideo.vue";
 import { api, qs } from "../lib/api.js";
 import { toast } from "../stores/toast.js";
 import { normalizeMetadata } from "../lib/metadata.js";
@@ -297,6 +298,8 @@ function viewAllFrom(names) {
             </li>
           </ul>
         </section>
+
+        <FacesOnVideo :id="props.id" />
 
         <section v-if="sameCreator.length" class="same">
           <div class="section-head">

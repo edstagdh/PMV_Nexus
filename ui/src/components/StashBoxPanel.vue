@@ -39,7 +39,7 @@ async function link(b, id, photos) {
   finally { busy.value = ""; }
 }
 async function unlink(l) {
-  if (!(await askConfirm(t("Unlink {name} from {site}? Details and photos already copied stay; edit or remove them by hand.", { name: props.name, site: l.label }), { ok: t("Unlink") }))) return;
+  if (!(await askConfirm(t("Unlink {name} from {site}? Details and photos copied as their own stay (edit or remove them by hand); the site's photos shown next to ThePornDB's go with the link.", { name: props.name, site: l.label }), { ok: t("Unlink") }))) return;
   busy.value = `un:${l.box}`;
   try { await api("/api/performers/stashbox/unlink", { method: "POST", body: { name: props.name, box: l.box } }); emit("changed"); }
   catch (err) { toast(err.message || t("That didn't work"), { type: "error" }); }

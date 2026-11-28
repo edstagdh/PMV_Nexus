@@ -9,6 +9,7 @@ import numpy as np
 from loguru import logger
 
 from ..i18n import L
+from ..resources import AUTO, JOB, resources
 from .. import dupfinder
 from ..config import get_settings
 from .. import activity, notifications
@@ -312,6 +313,7 @@ class DuplicateWorkerMixin:
         # notifications, every pair already found counts as known -- read before the
         # scan stores its own new ones (or a full re-compare empties the table).
         self._known_duplicate_pairs()
+        self._dup_priority = AUTO if source == "auto" else JOB   # 3.12.0: an automatic scan goes after the rest
         async with activity.track("duplicate_scan", title, progress=self._duplicate_scan_activity, source=source,
                                   stop=True) as act:
             result = await self._duplicate_scan(verbose, full)
@@ -389,9 +391,14 @@ class DuplicateWorkerMixin:
                     if self._shutting_down:
                         return
                     try:
-                        sample = await asyncio.to_thread(
-                            dupfinder.sample_file, item.video_path, cfg.samples, cfg.use_audio
-                        )
+                        # 3.12.0: one video's reading takes its turn with other heavy work
+                        async with resources.use({"cpu", "disk"}, L("Duplicate scan: reading {title}", title=item.title or item.id),
+                                                 getattr(self, "_dup_priority", JOB)):
+                            if self._shutting_down:
+                                return
+                            sample = await asyncio.to_thread(
+                                dupfinder.sample_file, item.video_path, cfg.samples, cfg.use_audio
+                            )
                     except Exception as exc:  # noqa: BLE001
                         failures[item.id] = {"size": st.st_size, "mtime": st.st_mtime,
                                              "samples": cfg.samples, "error": str(exc)[:200]}
@@ -455,7 +462,8 @@ class DuplicateWorkerMixin:
                 for k in delta:
                     if self._shutting_down:
                         break
-                    found, rej = await asyncio.to_thread(_compare_delta_item, k, data, cfg)
+                    async with resources.use({"cpu"}, L("Duplicate scan: comparing"), getattr(self, "_dup_priority", JOB)):   # 3.12.0
+                        found, rej = await asyncio.to_thread(_compare_delta_item, k, data, cfg)
                     rejected_audio += rej
                     for m in found:
                         self.db.upsert_duplicate_match(

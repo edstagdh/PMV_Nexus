@@ -178,6 +178,16 @@ class CoreMixin:
         # "uptime" figure (see stats_worker.py's compute_system_stats()).
         self._start_time: float = time.time()
         self.db = LibraryDB(self.settings.library_db_file)
+        # 3.12.0: upgrade the data first (backend/upgrades): refuse data a newer app upgraded, copy
+        # the database, run the quick steps; long ones wait for start() (the app shows "Upgrading").
+        from ..app_info import APP_VERSION
+        from ..derived_db import DerivedDB
+        from ..upgrades import runner as upgrades
+        ctx = upgrades.ctx_for(self.settings.library_db_file)
+        upgrades.check_not_newer(ctx)
+        self._upgrades_left = upgrades.run_quick(ctx, APP_VERSION)
+        self.db.set_app_state("app_version_seen", APP_VERSION)
+        self.derived = DerivedDB(ctx.derived_db)   # rebuildable data (shared scenes, faces)
         self._load()
 
     def _try_acquire_invasive_lock(self, operation_name: str) -> bool:
@@ -1053,7 +1063,24 @@ class CoreMixin:
         even when there's nothing to do: _ensure_worker()/
         _ensure_metadata_worker()/_ensure_reencode_worker()/
         _ensure_repair_worker() are no-ops if their queue is empty, same as
-        when a request handler calls them mid-run."""
+        when a request handler calls them mid-run.
+
+        3.12.0: long upgrade steps first, if any (the app answers "upgrading" meanwhile); the
+        work starts once they're done."""
+        from ..resources import resources
+        from ..upgrades import runner as upgrades
+        resources.bind_loop(asyncio.get_running_loop())   # 3.12.0: worker threads (backups) take turns through it
+        if upgrades.has_blocking(getattr(self, "_upgrades_left", {}) or {}):
+            async def upgrade_then_start() -> None:
+                from ..app_info import APP_VERSION
+                await asyncio.to_thread(upgrades.run_blocking, upgrades.ctx_for(self.settings.library_db_file), APP_VERSION)
+                self._upgrades_left = {}
+                self._start_work()
+            self._upgrade_task = asyncio.create_task(upgrade_then_start())
+            return
+        self._start_work()
+
+    def _start_work(self) -> None:
         self._ensure_worker()
         self._ensure_metadata_worker()
         self._ensure_reencode_worker()

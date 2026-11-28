@@ -20,7 +20,9 @@ import Icon from "./components/Icon.vue";
 import AuthView from "./views/AuthView.vue";
 import { session, loadSession, hasAny, isAdmin, refreshPermissions } from "./stores/session.js";
 import { live, connectLive, disconnectLive, onLibraryChange } from "./stores/live.js";
-import { setUnauthorizedHandler } from "./lib/api.js";
+import { setUnauthorizedHandler, setUpgradingHandler } from "./lib/api.js";
+import UpgradingScreen from "./components/UpgradingScreen.vue";
+import { upgrade, checkUpgrade, upgradingSeen } from "./stores/upgrade.js";
 import { discover } from "./lib/discover.js";
 import NotificationBell from "./components/NotificationBell.vue";
 import { startNotifications, stopNotifications } from "./stores/notifications.js";
@@ -67,6 +69,8 @@ watchEffect(() => {
 });
 
 setUnauthorizedHandler(() => { session.user = null; });
+setUpgradingHandler(upgradingSeen);
+checkUpgrade();   // 3.12.0: long upgrade steps running -> the Upgrading screen
 loadSession();
 watch(() => session.user, (user) => {
   if (user) { connectLive(); startNotifications(); loadExtensions(true); loadFavorites(true); } else { disconnectLive(); stopNotifications(); }
@@ -85,7 +89,8 @@ const disk = computed(() => live.summary?.disk);
 </script>
 
 <template>
-  <div v-if="!session.ready" class="boot"><div class="spinner" /></div>
+  <UpgradingScreen v-if="upgrade.active" />
+  <div v-else-if="!session.ready" class="boot"><div class="spinner" /></div>
   <AuthView v-else-if="!session.user" />
   <BlankView v-else-if="route.meta?.bare" />
   <div v-else class="shell" :class="{ collapsed: session.prefs.sidebarCollapsed }">

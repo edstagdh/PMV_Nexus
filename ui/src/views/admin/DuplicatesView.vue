@@ -10,6 +10,7 @@ import Icon from "../../components/Icon.vue";
 import VideoThumb from "../../components/VideoThumb.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import CompareDialog from "../../components/CompareDialog.vue";
+import DuplicateHistory from "../../components/admin/DuplicateHistory.vue";
 import { api } from "../../lib/api.js";
 import { releaseMedia } from "../../lib/media.js";
 import { itemUrlTitle, codecLabel, qualityInfo, parseSizeBytes, bitrateKbps, parseDurationSeconds, formatDate, siteLabel } from "../../lib/format.js";
@@ -19,6 +20,10 @@ import { toast } from "../../stores/toast.js";
 
 const route = useRoute();
 const router = useRouter();
+// 3.12.0: Found / Merged / Not duplicates
+const VIEWS = [{ key: "found", label: t("Possible duplicates") }, { key: "merged", label: t("Merged") }, { key: "notdup", label: t("Not duplicates") }];
+const view = computed(() => (VIEWS.some((v) => v.key === route.query.view) ? route.query.view : "found"));
+const openView = (key) => router.replace({ query: { ...route.query, view: key === "found" ? undefined : key } });
 const canManage = computed(() => hasPermission("duplicates.manage"));
 
 const minMatch = computed(() => Math.min(100, Math.max(50, Number(route.query.min) || 75)));
@@ -198,6 +203,13 @@ watch(minMatch, load);
       </div>
     </header>
 
+    <!-- 3.12.0: what was merged, and what was marked "not duplicates" -->
+    <div class="seg views" role="tablist">
+      <button v-for="v in VIEWS" :key="v.key" role="tab" class="btn btn-sm" :class="{ 'btn-primary': view === v.key }" :aria-selected="view === v.key" @click="openView(v.key)">{{ v.label }}</button>
+    </div>
+    <DuplicateHistory v-if="view !== 'found'" :view="view" />
+
+    <template v-if="view === 'found'">
     <section class="card bar">
       <div class="scan">
         <div class="status-lines">
@@ -283,6 +295,8 @@ watch(minMatch, load);
       </template>
     </ModalDialog>
 
+    </template>
+
     <ModalDialog v-if="confirmRemove" :title="$t('Remove this video?')" @close="confirmRemove = null">
       <p><Tx msg="Remove {b1} from the library and delete its files?"><template #b1><strong>{{ itemUrlTitle(confirmRemove) }}</strong></template></Tx></p>
       <template #footer>
@@ -298,6 +312,7 @@ watch(minMatch, load);
 <style scoped>
 .dups { padding: 1rem 1.5rem 2rem; display: flex; flex-direction: column; gap: 0.875rem; }
 .head h1 { font-size: 1.4rem; }
+.views { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .head p { margin: 0.25rem 0 0; }
 .small { font-size: 0.8rem; }
 .bar { padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; align-items: center; justify-content: space-between; }

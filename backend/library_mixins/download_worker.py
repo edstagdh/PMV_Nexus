@@ -13,6 +13,7 @@ from typing import Optional
 import httpx
 from loguru import logger
 
+from ..resources import VIDEO, resources
 from .. import media_tools, proxy, stats_store
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
@@ -413,26 +414,30 @@ class DownloadWorkerMixin:
             # likely reason; running Repair/Update on the affected item(s)
             # replaces PMVHaven's value with our own locally-computed one
             # for a consistent comparison.
-            source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
-            source_size = video_path.stat().st_size
-            if meta.phash:
-                item.local_phash = meta.phash
-                item.local_phash_generated_at = parse_iso_to_epoch(meta.phash_generated_at) or time.time()
-                item.local_phash_source_hash = source_hash
-                item.local_phash_source_size = source_size
-            else:
-                # No phash on record from PMVHaven (e.g. an unprocessed/new
-                # video, or the v1 HTML-fallback path, which has no access to
-                # this field at all) -- compute our own right away so the
-                # item isn't left out of duplicate detection entirely.
-                local_phash = await asyncio.to_thread(media_tools.generate_stash_phash, str(video_path))
-                if local_phash:
-                    item.local_phash = local_phash
-                    item.local_phash_generated_at = time.time()
+            # 3.12.0: reading the whole file (and the perceptual hash) takes its turn with other heavy work
+            item.progress_label = "Checking the file"
+            async with resources.use({"disk"} if meta.phash else {"disk", "cpu"},
+                                     L("Checking the downloaded file: {title}", title=title_of(item)), VIDEO, {"item": item.id}):
+                source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
+                source_size = video_path.stat().st_size
+                if meta.phash:
+                    item.local_phash = meta.phash
+                    item.local_phash_generated_at = parse_iso_to_epoch(meta.phash_generated_at) or time.time()
                     item.local_phash_source_hash = source_hash
                     item.local_phash_source_size = source_size
                 else:
-                    logger.warning("Could not compute a local phash for {} after download", item.id)
+                    # No phash on record from PMVHaven (e.g. an unprocessed/new
+                    # video, or the v1 HTML-fallback path, which has no access to
+                    # this field at all) -- compute our own right away so the
+                    # item isn't left out of duplicate detection entirely.
+                    local_phash = await asyncio.to_thread(media_tools.generate_stash_phash, str(video_path))
+                    if local_phash:
+                        item.local_phash = local_phash
+                        item.local_phash_generated_at = time.time()
+                        item.local_phash_source_hash = source_hash
+                        item.local_phash_source_size = source_size
+                    else:
+                        logger.warning("Could not compute a local phash for {} after download", item.id)
 
             async with self._lock:
                 if item.id not in self._items:
@@ -449,6 +454,8 @@ class DownloadWorkerMixin:
                 item.touch()
                 self.db.save_item(item)
                 logger.info("Download complete for '{}' [{}] -> {}", item.title, item.id, video_path)
+            # 3.12.0: a copy brought back from Duplicates -> Merged to swap: the other one is merged into it now
+            asyncio.get_running_loop().create_task(self.complete_dup_swap(item.id))
             notify("download", "success", L('Downloaded {title}', title=title_of(item)), link=video_link(item), user_id=item.added_by)
             try:
                 stats_store.bump("download_bytes", Path(video_path).stat().st_size)

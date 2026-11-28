@@ -25,6 +25,7 @@ from loguru import logger
 
 from ..i18n import L
 from .. import activity, media_tools
+from ..resources import JOB, resources
 from .untracked_files import _kind, _norm
 
 PROBLEMS = ("missing", "empty", "unreadable", "damaged")
@@ -132,7 +133,10 @@ class FileCheckMixin:
                     break
                 state["current"] = item.title
                 state["item"] = activity.item_ref(item)
-                found = await asyncio.to_thread(self._check_one_file, item, thorough, holder)
+                # 3.12.0: the thorough check reads whole files -- it takes its turn for the disk and CPU
+                async with resources.use({"cpu", "disk"} if thorough else set(),
+                                         L("Checking video files: {title}", title=item.title or item.id), JOB):
+                    found = await asyncio.to_thread(self._check_one_file, item, thorough, holder)
                 if found:
                     problems.append(found)
                     state["bad"] += 1

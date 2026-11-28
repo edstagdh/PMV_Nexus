@@ -118,6 +118,7 @@ async function doAdd() {
   }
 }
 
+const selectedIrreplaceable = computed(() => (scan.value?.files || []).filter((f) => f.irreplaceable && selected.value.has(f.path)).length);
 // 3.11.0: the library has the video, but its own file is missing -> use this one
 const linkableSelected = computed(() => (scan.value?.files || []).filter((f) => f.can_link && selected.value.has(f.path)));
 const linkableCount = computed(() => (scan.value?.files || []).filter((f) => f.can_link).length);
@@ -212,6 +213,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
         <div>
           <h2>{{ $t("Untracked files") }}</h2>
           <p class="muted small">{{ $t("Files in the download and cache folders that no video in the library points to — for example a removed duplicate whose file was in use at the time, or something copied there by hand. Nothing is deleted until you choose.") }}</p>
+          <p class="muted small">{{ $t("Also the app's other folders: performer photos (from the sites and your own), playlist covers, and the Generated files folder when it has its own — files there that no performer, playlist or video uses.") }}</p>
           <p class="muted small">{{ $t("Videos the app downloaded carry their PMVHaven video id in their name. If the library lost them (an older backup restored, a lost database), Add to the library brings them back without downloading: the details come from the site, the file stays where it is, and their leftover thumbnail, preview and details in the cache are linked again.") }}</p>
         </div>
         <button class="btn btn-primary btn-sm" :disabled="scanning" @click="runScan"><Icon name="search" />{{ scanning ? $t("Scanning…") : scan ? $t("Scan again") : $t("Scan folders") }}</button>
@@ -256,6 +258,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
                 <td><span class="kind" :class="f.kind.replace(/\s/g, '-')">{{ f.kind }}</span></td>
                 <td class="muted">{{ f.location }}</td>
                 <td class="path" :title="f.path">{{ f.relative }}
+                  <span v-if="f.irreplaceable" class="pill pill-warn" :title="$t('Your own picture: it can\'t be downloaded again')">{{ $t("can't be downloaded again") }}</span>
                   <span v-if="f.can_add" class="pill pill-accent" :title="$t('Add to the library brings it back with its details from the site, without downloading it')">{{ $t("can be added") }}</span>
                   <span v-else-if="f.adding" class="pill">{{ $t("being added…") }}</span>
                   <span v-else-if="f.can_link && f.why_not === 'library_lacks'" class="pill pill-warn" :title="$t('A library video with this id has none (or its file is missing) — this is probably its own. Link back gives it to the video; it is never deleted from here.')">{{ $t("the library video has none — link back") }}</span>
@@ -277,6 +280,7 @@ const when = (ts) => new Date(ts * 1000).toLocaleString(locale(), { dateStyle: "
 
     <ModalDialog v-if="confirming" :title="$t('Delete these files?')" @close="confirming = false">
       <p>{{ $tn("Delete {n} file ({size}) from disk? This can't be undone.", "Delete {n} files ({size}) from disk? This can't be undone.", selected.size, { size: size(selectedSize) }) }}</p>
+      <p v-if="selectedIrreplaceable" class="error">{{ $tn("{n} of them is your own picture, which can't be downloaded again.", "{n} of them are your own pictures, which can't be downloaded again.", selectedIrreplaceable) }}</p>
       <template #footer>
         <button class="btn" @click="confirming = false">{{ $t("Cancel") }}</button>
         <button class="btn btn-danger" :disabled="deleting" @click="doDelete">{{ deleting ? $t("Deleting…") : $t("Delete") }}</button>

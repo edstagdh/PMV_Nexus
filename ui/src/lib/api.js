@@ -4,6 +4,8 @@ import { i18n, t, N_ } from "./i18n.js";
 
 let onUnauthorized = () => {};
 export function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
+let onUpgrading = () => {};
+export function setUpgradingHandler(fn) { onUpgrading = fn; }
 
 export class ApiError extends Error {
   constructor(message, status) { super(message); this.status = status; }
@@ -36,6 +38,7 @@ export async function api(path, { method = "GET", body, signal } = {}) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!resp.ok) {
+    if (resp.status === 503 && data && data.upgrading) onUpgrading();   // 3.12.0
     const detail = data && typeof data === "object" ? data.detail : null;
     const message = Array.isArray(detail) ? detail.map((d) => d.msg).join("; ") : detail || t("Request failed ({status})", { status: resp.status });
     throw new ApiError(message, resp.status);

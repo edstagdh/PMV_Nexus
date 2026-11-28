@@ -7,6 +7,7 @@ progress via a callback instead of a tqdm bar.
 """
 from __future__ import annotations
 from .i18n import L
+from .resources import background_limits, run_background
 
 import json
 import os
@@ -272,7 +273,7 @@ def generate_stash_phash(file_path: str) -> Optional[str]:
         "-",
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        result = run_background(cmd, capture_output=True, timeout=300)
     except subprocess.TimeoutExpired:
         logger.error("Stash-style phash sprite generation timed out for {}", file_path)
         return None
@@ -628,7 +629,8 @@ def reencode_video(
 
     if proc_holder is not None:
         proc_holder["proc"] = proc
-    limit_process_cores(proc.pid, cpu_cores)
+    # 3.12.0: the encode's own core limit, within the background share (Server Settings), low priority
+    background_limits(proc.pid, cpu_cores)
 
     start = time.time()
     stderr_lines: list[str] = []
@@ -769,7 +771,7 @@ def generate_thumbnail(file_path: str, output_path: str, seek_seconds: Optional[
         tmp_output,
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=60)
+        result = run_background(cmd, capture_output=True, timeout=60)
     except subprocess.TimeoutExpired:
         logger.error("Thumbnail generation timed out for {}", file_path)
         if os.path.exists(tmp_output):
@@ -816,7 +818,7 @@ def grab_frame_jpeg(file_path: str, seconds: float, width: int = 480) -> Optiona
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{max(0.0, seconds):.3f}", "-i", file_path,
            "-map", "0:V:0", "-frames:v", "1", "-vf", f"scale={int(width)}:-2", "-q:v", "4", "-f", "image2pipe", "-c:v", "mjpeg", "-"]
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=30)
+        result = run_background(cmd, capture_output=True, timeout=30)
     except (OSError, subprocess.SubprocessError) as exc:
         logger.warning("Could not grab a frame at {}s of {}: {}", seconds, file_path, exc)
         return None
@@ -877,6 +879,7 @@ def check_video_integrity(file_path: str, stop: Optional[dict] = None) -> dict:
         except OSError as exc:
             problems.append(f"FFmpeg couldn't be started: {exc}")
             return ""
+        background_limits(proc.pid)   # 3.12.0
         if stop is not None:
             stop["check"] = proc
         try:
@@ -979,7 +982,7 @@ def remux_to_mp4(src: str, dst: str, audio_codec: Optional[str], video_codec: Op
         cmd += ["-c:a", "aac", "-b:a", "192k"]
     cmd += ["-map_metadata", "0", "-movflags", "+faststart", "-dn", "-sn", tmp]
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        result = run_background(cmd, capture_output=True, timeout=timeout)
     except (OSError, subprocess.SubprocessError) as exc:
         logger.warning("Re-packing {} into MP4 failed: {}", src, exc)
         result = None
@@ -1109,7 +1112,7 @@ def _run_preview_ffmpeg(file_path: str, output_path: str, timestamps: list, clip
         run = cmd + _h264_args(encoder, 28) + [tmp_output]
         logger.debug("FFmpeg preview-generation command: {}", " ".join(run))
         try:
-            result = subprocess.run(run, capture_output=True, timeout=180)
+            result = run_background(run, capture_output=True, timeout=180)
         except subprocess.TimeoutExpired:
             logger.error("Preview generation timed out for {}", file_path)
             if os.path.exists(tmp_output):
@@ -1326,10 +1329,12 @@ def probe_duration_tolerant(file_path: str) -> Optional[float]:
         "-i", file_path, "-map", "0:v:0", "-f", "null", "-",
     ]
     try:
-        proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace")
+        proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace",
+                                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
     except Exception:
         logger.warning("Could not start the tolerant decode-based duration probe for {}", file_path)
         return None
+    background_limits(proc.pid)   # 3.12.0
 
     last_seconds = 0.0
     for line in proc.stderr:
@@ -1390,7 +1395,7 @@ def sample_frame_hashes_ffmpeg_fallback(file_path: str, num_samples: int = 48, h
         "-",
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        result = run_background(cmd, capture_output=True, timeout=300)
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError(f"ffmpeg fallback frame sampling timed out for {file_path}") from exc
 
@@ -1506,7 +1511,7 @@ def convert_audio_to_aac(path: str, info: dict, timeout: Optional[int] = None) -
     if timeout is None:
         timeout = 600 + src.stat().st_size // (2 * 1024 * 1024)  # 10 min + 1 s per 2 MB
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        result = run_background(cmd, capture_output=True, timeout=timeout)
     except (OSError, subprocess.SubprocessError) as exc:
         logger.warning("Converting the audio of {} failed: {}", src, exc)
         result = None
@@ -1614,7 +1619,7 @@ def convert_preview_for_browser(src_path: str, dst_path: str) -> bool:
         cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", src_path, "-map", "0:v:0", "-an",
                *_h264_args(encoder, 23), "-movflags", "+faststart", tmp_output]
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=180)
+            result = run_background(cmd, capture_output=True, timeout=180)
         except subprocess.TimeoutExpired:
             logger.error("Preview conversion timed out for {}", src_path)
             result = None

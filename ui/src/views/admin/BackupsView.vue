@@ -123,6 +123,7 @@ const PART_HELP = {
   frames: N_("can be made again"),
   storyboards: N_("can be made again"),
   videos: N_("needs as much space as the library itself"),
+  derived: N_("can be made again; your face approvals are in the database anyway"),
 };
 
 async function create() {
@@ -209,7 +210,7 @@ async function test(b) {
 const cancelRestore = () => act(() => api("/api/backups-restore", { method: "DELETE" }), t("Restore cancelled"));
 const TRIGGERS = { scheduled: t("scheduled"), manual: t("by hand"), auto: t("automatic"), restore: t("before a restore") };
 const PART_SHORT = { secrets: N_("secrets"), performer_photos: N_("performer photos"), thumbnails: N_("thumbnails"),
-  frames: N_("frames"), storyboards: N_("seekbar previews"), videos: N_("videos") };
+  frames: N_("frames"), storyboards: N_("seekbar previews"), videos: N_("videos"), derived: N_("rebuildable data") };
 const contents = (b) => [t("database + settings"),
   ...(b.include ? b.include.map((k) => t(PART_SHORT[k] || k)) : [b.include_cache && t("cache"), b.include_secrets && t("secrets")])]
   .filter(Boolean).join(" + ");

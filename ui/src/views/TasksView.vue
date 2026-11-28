@@ -2,7 +2,7 @@
 // Tasks: everything the app is working on or waiting to do. Library-wide
 // jobs first (Scheduler runs, scans, syncs, backups, performer matching,
 // uploads... -- components/JobList.vue), then each video's downloads, detail
-// fetches, re-encodes and repairs, grouped as Running now /
+// fetches, re-encodes and repairs, grouped as Videos being worked on (3.12.0; was "Running now") /
 // Waiting / Failed, with live progress; then the next scheduled runs and
 // the jobs that finished in the last day. Queue positions:
 // downloads run one at a time in the order they were added; re-encode and
@@ -19,6 +19,7 @@ import { hasPermission } from "../stores/session.js";
 import { onLibraryChange } from "../stores/live.js";
 import { toast } from "../stores/toast.js";
 import { creatorText } from "../lib/creators.js";
+import { waitingFor } from "../lib/turns.js";
 
 const canManage = computed(() => hasPermission("tasks.manage"));
 const items = ref(null);
@@ -41,7 +42,7 @@ async function load() {
   }
   // Progress isn't always pushed live, so poll while something is running.
   clearTimeout(pollTimer);
-  if (running.value.length || jobs.value?.running?.length) pollTimer = setTimeout(load, 2000);
+  if (running.value.length || jobs.value?.running?.length || jobs.value?.resources?.waiting?.length) pollTimer = setTimeout(load, 2000);
 }
 
 function isRunning(it) {
@@ -83,6 +84,8 @@ function eta(seconds) {
 }
 // { text, percent, detail } describing what's happening to an item.
 function state(it) {
+  const turn = waitingFor(jobs.value?.resources, { item: it.id });   // 3.12.0: waits for the CPU / disk
+  if (turn) return { text: turn.text, detail: turn.detail };
   if (it.status === "downloading") {
     return { text: t("Downloading"), percent: it.progress_percent, detail: [it.speed, it.progress_label].filter(Boolean).join(" · ") };
   }
@@ -116,9 +119,12 @@ const cancelRepair = (it) => act(it, "repair", () => api(`/api/library/${encodeU
 const move = (it, direction) => act(it, direction, () => api(`/api/library/${encodeURIComponent(it.id)}/reencode/move`, { method: "POST", body: { direction } }));
 const moveDownload = (it, direction) => act(it, direction, () => api(`/api/library/${encodeURIComponent(it.id)}/download/move`, { method: "POST", body: { direction } }));
 const reencodeOrder = computed(() => summary.value.reencode_queue_order || []);
+const res = computed(() => jobs.value?.resources || null);
+const holders = (kind) => (res.value?.holding || []).filter((h) => h.needs.includes(kind));
+const canSettings = computed(() => hasPermission("settings.manage"));
 
 const sections = computed(() => [
-  { key: "running", title: t("Running now"), list: running.value },
+  { key: "running", title: t("Videos being worked on"), list: running.value },
   { key: "waiting", title: t("Waiting"), list: waiting.value },
   { key: "failed", title: t("Failed"), list: failed.value },
 ].filter((s) => s.list.length));
@@ -138,8 +144,30 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
     <div v-if="error" class="empty"><div class="empty-icon">⚠️</div>{{ error }}<button class="btn" @click="load">{{ $t("Try again") }}</button></div>
     <div v-else-if="!items" class="skeleton list-skel" />
     <template v-else>
+    <!-- 3.12.0: heavy work takes turns for the CPU and the disk (Server Settings -> Background work) -->
+    <section v-if="res && (res.holding.length || res.waiting.length || res.live)" class="card turns" aria-live="polite">
+      <div class="turns-head">
+        <strong>{{ $t("Sharing the computer") }}</strong>
+        <span class="muted small">{{ $t("Background FFmpeg uses up to {n} of {total} cores", { n: res.cpu_cores, total: res.total_cores }) }}</span>
+        <router-link v-if="canSettings" :to="{ name: 'server', query: { tab: 'work' } }" class="small">{{ $t("Settings") }}</router-link>
+      </div>
+      <div class="turns-grid">
+        <div v-for="kind in ['cpu', 'disk']" :key="kind" class="turn">
+          <span class="turn-k">{{ kind === "cpu" ? $t("CPU") : $t("Disk") }}</span>
+          <template v-if="holders(kind).length">
+            <span v-for="(h, i) in holders(kind)" :key="i" class="turn-who">{{ h.label }}</span>
+          </template>
+          <span v-else-if="kind === 'cpu' && res.live" class="turn-who">{{ $t("Kept free while a video is converted for watching") }}</span>
+          <span v-else class="muted">{{ $t("free") }}</span>
+        </div>
+      </div>
+      <p v-if="res.waiting.length" class="muted small turns-wait">
+        {{ $tn("{n} step waits for its turn:", "{n} steps wait for their turn:", res.waiting.length) }}
+        {{ res.waiting.slice(0, 6).map((w) => w.label).join(" · ") }}<template v-if="res.waiting.length > 6"> …</template>
+      </p>
+    </section>
     <section v-if="jobs?.running?.length" class="section">
-      <h2>{{ $t("Jobs running now") }} <span class="count">{{ jobs.running.length }}</span></h2>
+      <h2>{{ $t("Library jobs") }} <span class="count">{{ jobs.running.length }}</span></h2>
       <JobList :data="jobs" part="running" @changed="load" />
     </section>
     <div v-if="!sections.length && !jobs?.running?.length" class="empty"><div class="empty-icon">✅</div>{{ $t("Nothing running — no jobs, downloads, re-encodes, repairs or uploads.") }}</div>
@@ -205,6 +233,15 @@ onBeforeUnmount(() => { clearTimeout(pollTimer); clearTimeout(reloadTimer); stop
 </template>
 
 <style scoped>
+/* 3.12.0: who has the CPU / disk */
+.turns { padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.turns-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.875rem; }
+.turns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.5rem; }
+.turn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; min-width: 0; font-size: 0.85rem; }
+.turn-k { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); min-width: 2.5rem; }
+.turn-who { overflow-wrap: anywhere; }
+.turns-wait { margin: 0; overflow-wrap: anywhere; }
+.small { font-size: 0.8rem; }
 .tasks { padding: 1rem 1.5rem 2rem; display: flex; flex-direction: column; gap: 1rem; }
 .head h1 { font-size: 1.4rem; }
 .head p { margin: 0.25rem 0 0; }

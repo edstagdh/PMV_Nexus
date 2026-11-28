@@ -10,6 +10,7 @@ import DuplicatesView from "./DuplicatesView.vue";
 import MaintenanceView from "./MaintenanceView.vue";
 import NamesView from "./NamesView.vue";
 import SongsView from "./SongsView.vue";
+import FacesView from "./FacesView.vue";
 import SchedulerView from "./SchedulerView.vue";
 import BackupsView from "./BackupsView.vue";
 import StatsView from "./StatsView.vue";
@@ -21,7 +22,7 @@ import { orderTabs } from "../../lib/tabOrder.js";
 import TabBar from "../../components/TabBar.vue";
 
 const VIEWS = {
-  users: UsersView, duplicates: DuplicatesView, names: NamesView, songs: SongsView, maintenance: MaintenanceView, scheduler: SchedulerView,
+  users: UsersView, duplicates: DuplicatesView, names: NamesView, songs: SongsView, faces: FacesView, maintenance: MaintenanceView, scheduler: SchedulerView,
   backups: BackupsView, stats: StatsView, logs: LogsView, tools: ToolsView,
 };
 

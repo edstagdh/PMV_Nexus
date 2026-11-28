@@ -415,6 +415,46 @@ def ignore_library_issue(payload: IgnoreIssueRequest, user: AuthContext = Depend
     return {"ok": True}
 
 
+# ------------------------------------------------- 3.12.0: Duplicates -> Merged / Not duplicates
+class BringBackRequest(BaseModel):
+    mode: str = Field(..., pattern="^(undo|swap)$")
+
+
+class ShowAgainRequest(BaseModel):
+    item_ids: list[str] = Field(..., min_length=2, max_length=50)
+
+
+@router.get("/api/library/issues/merged")
+def list_merged_duplicates(user: AuthContext = Depends(require_permission("duplicates.manage"))):
+    """The copies removed as duplicates, with the video each was merged into."""
+    from ..config import get_settings
+    return {"items": library_manager.merged_list(), "switch_mode": get_settings().duplicate_scan.switch_mode}
+
+
+@router.post("/api/library/issues/merged/{video_id}/bring-back")
+async def bring_back_merged(video_id: str, payload: BringBackRequest,
+                            user: AuthContext = Depends(require_permission("duplicates.manage"))):
+    """undo: it's a library video again (the pair is then "not duplicates"); swap: it comes back and the
+    video it was merged into is merged into it. Its file is used when it's still there, else downloaded."""
+    try:
+        return await library_manager.bring_back_merged(video_id, payload.mode, user.id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=L("Not found")) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/api/library/issues/not-duplicates")
+def list_not_duplicates(user: AuthContext = Depends(require_permission("duplicates.manage"))):
+    return {"items": library_manager.not_duplicates_list()}
+
+
+@router.post("/api/library/issues/not-duplicates/show-again")
+def show_duplicates_again(payload: ShowAgainRequest, user: AuthContext = Depends(require_permission("duplicates.manage"))):
+    library_manager.show_again(payload.item_ids)
+    return {"ok": True}
+
+
 @router.get("/api/library/activity")
 def get_library_activity(user: AuthContext = Depends(require_permission("tasks.view"))):
     """Tasks page: library-wide jobs (Scheduler runs, scans, syncs, backups,

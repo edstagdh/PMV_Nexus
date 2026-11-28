@@ -64,6 +64,12 @@ jobs:
           $hash = (Get-FileHash "$env:RUNNER_TEMP/python.exe" -Algorithm SHA256).Hash.ToLower()
           "PY_SHA256=$hash" >> $env:GITHUB_ENV
 
+      - name: Face models (3.12.0, shipped in Setup.exe; checked by SHA-256)
+        shell: pwsh
+        run: |
+          python -m Tools.get_face_models
+          if ($LASTEXITCODE -ne 0) { throw "The face models couldn't be downloaded or didn't match their SHA-256" }
+
       - name: Build PMVNexus.exe (the shortcuts' program)
         shell: pwsh
         run: ./installer/windows/build_launcher.ps1 -Version $env:APP_VERSION

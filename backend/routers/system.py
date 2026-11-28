@@ -53,7 +53,21 @@ def get_system_info(user: AuthContext = Depends(get_current_user)):
         # Exact Python / OS / FFmpeg versions are for the admin only (they help an attacker pick an exploit).
         for key in ("python", "platform", "ffmpeg"):
             info.pop(key, None)
+    else:   # 3.12.0: the upgrades this library went through
+        from ..upgrades import runner as upgrades
+        info["upgrades"] = upgrades.history(upgrades.ctx_for(library_manager.settings.library_db_file))
     return info
+
+
+@router.get("/api/system/upgrade")
+def get_upgrade_state():
+    """3.12.0: whether long upgrade steps are running, and how far (no sign-in needed: the
+    Upgrading screen shows it to anyone; nothing in it is private)."""
+    from ..upgrades import runner as upgrades
+    s = upgrades.state()
+    return {"active": s["active"], "current": s.get("current"), "done": s.get("done", 0), "total": s.get("total", 0),
+            "step_done": s.get("step_done"), "step_total": s.get("step_total"), "error": s.get("error"),
+            "started_at": s.get("started_at"), "seconds": s.get("seconds")}
 
 
 @router.post("/api/system/check-update")

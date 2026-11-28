@@ -41,6 +41,7 @@ from typing import Optional
 from loguru import logger
 
 from .i18n import L
+from .resources import resources
 from . import activity, media_tools, open_files
 
 SEG = 6                 # seconds per segment
@@ -135,7 +136,7 @@ class LiveTranscoder:
 
     # ------------------------------------------------------------------ setup
     def root(self, settings) -> Path:
-        root = Path(settings.cache_dir) / ".transcode"
+        root = Path(settings.generated_dir) / ".transcode"   # 3.12.0: Generated files folder
         if self._root != root:
             self._root = root
         return root
@@ -200,6 +201,7 @@ class LiveTranscoder:
         s = Session(sid, item_id, user_id, source, duration, folder, height)
         s.has_audio = bool(info.get("audio"))
         self._sessions[sid] = s
+        resources.live_started()   # 3.12.0: new heavy CPU steps wait while someone watches this
         open_files.register(source, s)
         self._ensure_reaper()
         # On Tasks while it runs (2.18.0); Stop there ends it (the player falls back to the original).
@@ -228,6 +230,7 @@ class LiveTranscoder:
     def end(self, sid: str, reason: str = "stopped") -> None:
         s = self._sessions.pop(sid, None)
         if s:
+            resources.live_ended()
             s.close()
             if "Tasks" in reason:
                 now = time.time()

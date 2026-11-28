@@ -41,6 +41,26 @@ VPY="$APP_DIR/.venv/bin/python"
 echo "      Installing the Python packages - a few minutes the first time ..."
 "$VPY" -m pip install --disable-pip-version-check --quiet -r requirements.txt
 
+# ---- 2a. Face models (3.12.0, Management -> Faces): downloaded once, checked by SHA-256 -------
+set +e
+"$VPY" -m Tools.get_face_models >/dev/null 2>&1 || say "      The face models couldn't be downloaded now (Faces won't work until they are): run  .venv/bin/python -m Tools.get_face_models  later."
+set -e
+
+# ---- 2b. An update: what it changes in the library (3.12.0) ---------------------------
+if [ -f config.yaml ]; then
+  set +e
+  "$VPY" -m Tools.upgrade_plan
+  PLAN=$?
+  set -e
+  if [ "$PLAN" = "4" ]; then
+    say "Stopped: nothing was changed."; exit 1
+  fi
+  if [ "$PLAN" = "3" ]; then
+    GO="$(ask '      The library is changed when the app starts. Continue? [Y/n]: ')"
+    if [[ "$GO" =~ ^[Nn] ]]; then say "Stopped. The library wasn't changed; the app won't upgrade it until it starts."; exit 0; fi
+  fi
+fi
+
 # ---- 3. ffmpeg -------------------------------------------------------------------
 if command -v ffmpeg >/dev/null 2>&1; then
   echo "[3/4] ffmpeg found"

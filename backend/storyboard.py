@@ -26,8 +26,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from loguru import logger
-
+from .resources import background_limits
 from .i18n import L
 from . import media_tools
 
@@ -111,7 +110,7 @@ def _run(video_path: str, folder: Path, duration: float, interval: int, w: int, 
            "-start_number", "0", str(work / "%d.webp")]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, creationflags=flags)
-    _lower_priority(proc.pid)
+    background_limits(proc.pid, THREADS)   # 3.12.0: its 2 threads within the background share, low priority
     started = time.monotonic()
     try:
         while proc.poll() is None:
@@ -161,12 +160,3 @@ def vtt(info: dict, sheet_url: str) -> str:
         x, y = (n % info["cols"]) * w, (n // info["cols"]) * h
         out += [f"{ts(start)} --> {ts(end)}", f"{sheet_url.format(n=sheet)}#xywh={x},{y},{w},{h}", ""]
     return "\n".join(out)
-
-
-def _lower_priority(pid: int) -> None:
-    try:
-        import psutil
-        p = psutil.Process(pid)
-        p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS if sys.platform == "win32" else 10)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("Could not lower the priority of FFmpeg {}: {}", pid, exc)

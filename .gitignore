@@ -181,5 +181,8 @@ ui/node_modules/
 runtime/
 installer/windows/build/
 
+# Face models (3.12.0): downloaded and checked by Tools/get_face_models.py, shipped in the installer
+models/
+
 # Optional add-ons (2.30.0): never part of this repository -- see backend/extensions.py
 extensions/

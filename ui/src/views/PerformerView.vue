@@ -14,6 +14,8 @@ import PhotoSlideshow from "../components/PhotoSlideshow.vue";
 import PerformerPhotos from "../components/PerformerPhotos.vue";
 import PerformerDetailsForm from "../components/PerformerDetailsForm.vue";
 import StashBoxPanel from "../components/StashBoxPanel.vue";
+import FaceVideos from "../components/faces/FaceVideos.vue";
+import SiteDifferences from "../components/SiteDifferences.vue";
 import PerformerPlaceholder from "../components/PerformerPlaceholder.vue";
 import { api, qs } from "../lib/api.js";
 import { hasPermission } from "../stores/session.js";
@@ -163,6 +165,8 @@ const STATUS_TEXT = {
         <PerformerPicker :name="props.name" :candidates="prof.candidates" @done="changing = false; load()" />
       </section>
 
+      <SiteDifferences v-if="prof.differences" :diff="prof.differences" />
+
       <section v-if="shownBio" class="card panel">
         <h3 class="sub">{{ $t("Bio") }}</h3>
         <p class="bio" :class="{ clamp: longBio && !showBio }">{{ shownBio }}</p>
@@ -190,6 +194,8 @@ const STATUS_TEXT = {
           </RouterLink>
         </div>
       </section>
+
+      <FaceVideos :name="props.name" />
 
       <section class="vids">
         <h3 class="sub">{{ $t("Videos ({n})", { n: videos?.total ?? "…" }) }}</h3>

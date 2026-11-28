@@ -31,6 +31,7 @@ from typing import Callable, Optional
 
 from loguru import logger
 
+from .resources import run_background
 from .i18n import L
 from . import images, media_tools
 
@@ -150,7 +151,7 @@ def from_video(video_path: str, folder: Path, stop=None, count: int = COUNT, max
                    "-i", video_path, "-map", "0:V:0", "-frames:v", "1", "-an", "-sn", "-dn", "-vf", vf,
                    "-c:v", "libwebp", "-quality", str(QUALITY), str(work / name)]
             try:
-                result = subprocess.run(cmd, capture_output=True, timeout=60)
+                result = run_background(cmd, capture_output=True, timeout=60)   # 3.12.0: background share, low priority
             except (OSError, subprocess.SubprocessError) as exc:
                 logger.debug("Frame at {}s of {}: {}", seconds, video_path, exc)
                 continue

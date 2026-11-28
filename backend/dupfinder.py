@@ -34,6 +34,8 @@ import json
 import math
 import os
 import subprocess
+
+from .resources import run_background
 from pathlib import Path
 from typing import Optional
 
@@ -62,9 +64,8 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 
 
 # ------------------------------------------------------------------ ffmpeg I/O
 def _run(cmd: list[str], timeout: int) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        cmd, capture_output=True, timeout=timeout, stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW
-    )
+    # 3.12.0: background share of the CPU, low priority (backend/resources.py)
+    return run_background(cmd, capture_output=True, timeout=timeout, stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW)
 
 
 def probe(path: str) -> tuple[float, bool]:

@@ -4,6 +4,58 @@ All notable changes to PMV Nexus are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/). The current version is in the `VERSION` file.
 
+## [3.12.0] - 2026-11-28
+
+### Added
+- **Faces** (Management → Faces): performers recognised in videos by their face, **completely offline** (OpenCV's
+  YuNet face detector and SFace recognizer; the two model files come with Setup.exe and `install.sh`, a git checkout
+  gets them with `python -m Tools.get_face_models`, checked by SHA-256). The faces in each video's seekbar previews,
+  thumbnail and frames are compared with the photos of the performers in your library (ThePornDB's, the sites' and
+  your own). A match waits for you: **Approve**, **Not them** (never suggested again for that video) or, later,
+  **Undo**; **Approve all with a score of N or more** in one go. Approved matches show as **Recognised by face** on the
+  video's page and on the performer's page; the video's own performers are never changed. Off until switched on;
+  everything is a setting (which pictures, every n-th seekbar picture, smallest face, detector certainty, faces kept
+  per video, the score to suggest from, the score to approve by itself — 100 = never — and how many faces must look
+  alike). New videos are read by themselves after their seekbar previews or frames are made. Faces found are kept in
+  `data/derived.db`; your decisions in the library database.
+- **A performer can be linked to ThePornDB, FansDB and StashDB at once**, with photos from all of them: FansDB's and
+  StashDB's photos are shown after ThePornDB's until the 10 site photos are reached (a photo that's the same as one
+  already shown is skipped). Links made before this get their photos at the next **Match & refresh performers** run.
+  **The sites compared:** a performer on more than one site gets a table of what each one says (name, gender,
+  birthday, height, measurements, hair, eyes, tattoos …), the details they disagree on first and marked.
+- **Background work takes turns** (Server Settings → **Background work**): heavy steps — seekbar previews,
+  fingerprints, the duplicate scan, re-encodes, repairs, uploads being converted, backups, folder moves, faces — share
+  one CPU slot and one disk slot (reading whole files counts too; both configurable), video by video, by priority:
+  converting a video for watching first (new heavy steps wait while it runs), then what you started for one video,
+  then library jobs, then automatic follow-ups. Background FFmpeg runs at low CPU and disk priority on at most a
+  **CPU share** of the cores (default 50 %). **Tasks** shows what each one waits for ("Waiting for the CPU · … is using
+  it") and a **Sharing the computer** panel; its sections are now **Library jobs** and **Videos being worked on**.
+- **Duplicates → Merged** and **Not duplicates** tabs: every copy removed as a duplicate, with the video it was merged
+  into, can be brought back — from its file when that's still in the download folder, otherwise downloaded again while
+  the site still has it. **Server Settings → Duplicate scan → Switching a merged pair**: *Get it back* (keep both; the
+  pair isn't found again), *Swap* (keep it instead of the other one: the other is merged into it once it's back) or
+  *Ask each time*. Groups marked Not duplicates can be shown again.
+- **Folders of their own** (Server Settings → Download): performer photos from the sites, your own performer photos,
+  and **generated files** (seekbar previews, video frames, the pieces of a conversion for watching; default: in the
+  cache folder as before). Changing one moves what's there as a job on Tasks; a file already in the new folder is
+  never overwritten. **Untracked files** also checks these folders and playlist covers; your own photos and covers are
+  marked "can't be downloaded again".
+- **Safe upgrades:** changes a new version makes to the library run as numbered steps, after a copy of the database
+  (`data/backups/before-upgrade`, the last 3 kept). A long step shows an **Upgrading** screen until it's done.
+  Setup.exe and `install.sh` say beforehand what an update will change and about how long it takes, and stop when the
+  library was used by a newer version (an older app never opens it; `PMV_ALLOW_OLDER_APP=1` overrides). **Help →
+  About** lists the steps a library went through (admins). A GitHub check (`.github/workflows/upgrades.yml`,
+  `Tools/upgrade_ci.py`) opens libraries made by 3.6.0, the newest release and the previous commit.
+- **A second database, `data/derived.db`**, for what can be made again (shared-scene fingerprints, faces): long jobs
+  writing there no longer make the main database wait, and the main database and its backups stay small. The first
+  start moves the shared-scene tables there (upgrade step "derived_db"). Backups have it as an optional part.
+
+### Changed
+- **Merging duplicates never deletes a file another video still uses**, and moves the removed copy's watch positions
+  and watch history to the kept one.
+- Settings are saved whole or not at all (a crash mid-save can't leave half a settings file); a folder setting that
+  can't be used falls back to its default instead of stopping the app.
+
 ## [3.11.5] - 2026-11-28
 
 ### Changed

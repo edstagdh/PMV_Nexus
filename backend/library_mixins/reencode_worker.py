@@ -9,6 +9,7 @@ from typing import Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import VIDEO, resources
 from .. import media_tools, open_files, stats_store
 from ..config import HEVC_PRESETS
 from ..models import LibraryItem
@@ -153,6 +154,14 @@ class ReencodeWorkerMixin:
                        link=video_link(item), user_id=item.added_by)
 
     async def _reencode_item(self, item: LibraryItem) -> None:
+        """3.12.0: a re-encode keeps the CPU and the disk busy for its whole video: it waits for its
+        turn (backend/resources.py; Tasks shows what it waits for), then runs."""
+        async with resources.use({"cpu", "disk"}, L("Re-encoding {title}", title=title_of(item)), VIDEO, {"item": item.id}):
+            if item.id not in self._items or item.reencode_status != "queued":
+                return   # cancelled (or removed) while it waited
+            await self._reencode_item_now(item)
+
+    async def _reencode_item_now(self, item: LibraryItem) -> None:
         cfg = self.settings.reencode
         codec, crf, preset = cfg.codec_params(item.reencode_target)
         # This re-encode's own settings (Re-encode dialog), over the server's.

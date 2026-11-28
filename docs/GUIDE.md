@@ -132,12 +132,15 @@ The video's page offers the same (**Download again**) instead of a player that c
 ![Tasks: what's running, what's coming up and what finished](screenshots/tasks.webp)
 
 **Tasks** shows everything the app is working on, with live progress:
-- **Jobs running now:** work that isn't about one video. That covers Scheduler jobs, duplicate scans, syncs with
+- **Library jobs** (called "Jobs running now" before 3.12.0): work that isn't about one video. That covers Scheduler jobs, duplicate scans, syncs with
   PMVHaven, backups (including ones made with **Create backup**), performer matching, repair-all, metadata syncs,
   folder moves and uploads being converted. Each shows what it's doing, how far it got (e.g. "12 of 61 done ·
   20%"), how long it has been running, and whether it was scheduled, started by hand or started automatically.
-- **Running now / Waiting / Failed:** each video's download, re-encode or repair (and extensions' work). Failed downloads
-  can be retried.
+- **Videos being worked on** — **Running now / Waiting / Failed:** each video's download, re-encode or repair (and
+  extensions' work). Failed downloads can be retried.
+- **Sharing the computer** (3.12.0): which heavy steps hold the CPU and the disk now, and which wait for them. A job
+  or video waiting for its turn says so ("Waiting for the CPU · Seekbar previews: … is using it"). See *Background
+  work takes turns* below.
 - **Converting for watching:** every video being converted while someone watches it (**⚙ → 720p** in the player), with
   who's watching, the size and how far it got. **Stop** ends it; the viewer's player switches to the original file.
 - **Coming up:** the next Scheduler runs, and a duplicate scan about to start after downloads.
@@ -160,6 +163,22 @@ something else should go next. Waiting re-encodes have the same **First / Up / D
 next, right after the one encoding now). **Waiting** lists everything in the order it will run: the download queue,
 then the re-encode queue, then repairs, each by its #.
 Removing a video that hasn't finished downloading also deletes its thumbnail, preview clip and details file.
+
+#### Background work takes turns (3.12.0)
+
+Heavy steps share the computer instead of all running at once. **Server Settings → Background work**:
+- **Heavy CPU steps at once** (default 1): seekbar previews, fingerprints, the duplicate scan, re-encodes, repairs,
+  uploads being converted, faces.
+- **Heavy disk steps at once** (default 1; reading whole video files counts too — 1 for a hard disk, an SSD can
+  take 2): fingerprints, seekbar previews, backups, folder moves.
+- **CPU share for background work** (default 50 %): every background FFmpeg runs at low priority on the same cores,
+  so together they never use more than this share.
+
+Long jobs take turns video by video, so none waits for hours. Who goes first when several wait: converting a video
+for watching (while one runs, new heavy steps wait — the ones running finish), then what was started for one video
+(a re-encode, a repair, an upload, a download's checks), then library jobs (started by hand or by the Scheduler),
+then automatic follow-ups (seekbar previews, frames, shared scenes, faces). Downloads don't wait for a turn: the
+network and **Downloads at once** limit them, and a long backup would otherwise stop every download.
 
 ### Notifications
 The **bell** (top of the sidebar; top right on a phone) keeps what happened in the background:
@@ -319,8 +338,9 @@ next video. In fullscreen the video's title shows at the top along with the cont
 small frames every 2 seconds (less often in videos over ~13 minutes, at most 400 per video), made by the server at low
 priority: new videos right after they're downloaded or uploaded, any other video the first time it's played (it's
 there from the next time), or the whole library at once from **Management → Maintenance → Seekbar previews → Make the
-… missing** (one job on Tasks, can be stopped). They're kept in the cache folder (`.storyboards`, roughly 0.2–1 MB per
-video), deleted with the video, moved with the cache folder, and not included in backups (they can be made again).
+… missing** (one job on Tasks, can be stopped). They're kept in the generated-files folder (`.storyboards`, roughly 0.2–1 MB per
+video; by default the cache folder, see *Folders of their own* below), deleted with the video, moved with that folder,
+and only in backups that include them (they can be made again).
 
 **Shared scenes** (3.9.0): videos that use the same footage are listed under the video, in **Shares scenes with**,
 with roughly how many seconds they have in common and where (click a time to jump there in this video). They're found by
@@ -352,8 +372,8 @@ jump there (the one you're in is highlighted). They're PMVHaven's own timeline f
 the middle of each eighth of the video. **Vertical videos** (3.4.0) get 24 made from the file instead, so the row
 is about as tall as a horizontal video's (every third shows its time; point at one for its time); if those can't be
 made, the usual 8. Every frame is a small WebP (at most 320 pixels on its long side, bigger ones
-are scaled down) in the cache folder (`.frames`, about 20–60 KB per video), deleted with the video, moved with the cache
-folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
+are scaled down) in the generated-files folder (`.frames`, about 20–60 KB per video; by default the cache folder), deleted with the
+video, moved with that folder. New videos get them right after they're downloaded or uploaded, any other video when its page is opened, or
 the whole library at once from **Management → Maintenance → Video frames → Make the … missing** (one job on Tasks;
 older videos without saved timeline frames ask PMVHaven for them once). **Redo Frames** (with the video's other buttons,
 while the frames are shown; needs Edit details) makes them again **from the video file** (3.4.2) — e.g. when
@@ -496,6 +516,12 @@ How it works:
 - **Refreshing:** profiles and photos are kept locally — the photos in the app's `data/performers` folder (before 3.2.0 they
   were in the cache folder; the app moves them by itself), backed up along with the thumbnails. The same job refreshes each profile every 30 days (Server
   settings → Performers).
+- **Folders of their own** (3.12.0, **Server Settings → Download**): **Performer photos from the sites**, **Your own
+  performer photos** and **Generated files** (seekbar previews, video frames, the pieces of a conversion for
+  watching; by default inside the cache folder) can each have a folder of their own — on another drive, say. **Change
+  folder** checks the new one (not one of the app's other folders, not inside the old one; for photos, empty) and saves
+  it first, so new files already go there; with **Move what's there** the files follow as a job on Tasks. A file
+  that's already in the new folder is never overwritten — the one in the old folder stays where it was.
 - **Photos as WebP:** photos are saved as WebP (quality 80, at most 1600 pixels on the long side), usually a
   third to two thirds smaller than the JPEG/PNG ThePornDB sends. Photos saved before 2.15.0: **Maintenance →
   Performers → Convert photos to WebP** converts them all once (in the background, on Tasks; it can be stopped
@@ -579,6 +605,18 @@ How it works:
     Random picks, its animation on/off and length (2–12 s). **Reset this tab** puts them back.
   The graph library (three.js) loads only on this page; pictures are drawn from small copies, so hundreds of
   thumbnails stay smooth.
+- **ThePornDB, FansDB and StashDB together** (3.12.0): a performer on ThePornDB can also be linked to FansDB and
+  StashDB (**FansDB / StashDB** on the profile). Their photos are shown after ThePornDB's until there are 10 site
+  photos (FansDB's first; a photo that's the same as one already shown is skipped); links made before 3.12.0 get them
+  at the next **Match & refresh performers** run. **Unlink** removes the photos that link saved, nothing else.
+  **The sites compared** (on the profile, when two or more sites are linked) shows what each site says — name,
+  gender, birthday, died, nationality, ethnicity, hair, eyes, height, measurements, cup size, enhanced, tattoos,
+  piercings, career start and end — with the details they disagree on marked **≠**; **Every detail** shows the ones
+  they agree on too. Heights are compared in cm (5'5" = 165 cm, within 2 cm counts as the same), tattoos and
+  piercings by whether there are any (the sites word them differently), and a country code next to a country name
+  is shown but not compared.
+- **Recognised by face** (3.12.0): videos where the performer's face was found and approved (Management → Faces),
+  which don't list them in their details.
 - **Your own photo:** on a performer's profile, **Add your photo** (people with the Performers permission) adds a picture
   from your computer next to ThePornDB's — pick it or drop it on the panel; **Replace photo** swaps it (after asking). It's converted to WebP like the
   others (JPEG, PNG, WebP, GIF, BMP, TIFF; 30 MB at most; iPhone HEIC isn't readable — export it as JPEG). **Show
@@ -640,11 +678,12 @@ your account, and the first tab is the one that opens when you come to the page.
 
 | Page | What it does |
 |---|---|
-| Server Settings | Tabs: **Download** (folders, downloads at once, retries), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Opening the app** (browser, open on start) |
+| Server Settings | Tabs: **Download** (folders — also performer photos and generated files, 3.12.0 —, downloads at once, retries), **Background work** (3.12.0: heavy steps at once, CPU share), **Proxy** (where to use a proxy, speed test), **Re-encode** (codec, quality, CPU use), **Uploads** (what to convert files browsers can't play to, and whether to do it without asking), **Performers** (alias merging, how often profiles refresh), **Duplicate scan** (when it runs and how videos are compared), **Logging** (on/off, where to record, level, how long to keep, how addresses show), **Credentials**, **Opening the app** (browser, open on start) |
 | Users | Create, edit, disable and remove accounts; roles, groups and per-person permissions |
-| Duplicates | Duplicate groups found by the scan, side by side |
+| Duplicates | Duplicate groups found by the scan, side by side; **Merged** and **Not duplicates** (3.12.0) |
 | Names | Every tag, performer and music name: rename, merge misspellings, likely typos, remembered fixes, upper/lower case spellings |
 | Songs | Songs heard in videos, waiting to be added to their Music; find songs in videos without music; settings |
+| Faces | Performers recognised in videos by their face: matches waiting for you, approved ones, "Not them"; Scan; settings (3.12.0, see *Faces* below) |
 | Maintenance | Sync from metadata files, sync with PMVHaven, repair everything, seekbar previews, video frames, untracked files |
 | Scheduler | Run jobs on a schedule (every day, every week, every few hours, **one time** at a date and time — it switches itself off after it ran — or cron) or immediately, with run history and live progress. **System** jobs are built in — Daily backup, Weekly backup, Check for updates (daily), Daily duplicate scan, Match & refresh performers (daily) and Daily stats snapshot; they can be changed or disabled, not deleted. Backup jobs have their own options: parts, how many to keep, copy folders, upload to Filester |
 | Backups | Back up and restore the database and settings; **Copies elsewhere** shows where backup jobs copy and upload theirs |
@@ -747,8 +786,10 @@ and "Natural tits"). The app treats them as one and shows the spelling most vide
 it follows your library as new videos arrive; pick a spelling to always use that one, or **Automatic** to go back.
 The videos themselves keep what PMVHaven wrote.
 
-**Maintenance → Untracked files** finds files in your download and cache folders that no video in the
-library uses, so you can delete them. Performer photos in use are not listed (before 2.15.0 they were); a photo
+**Maintenance → Untracked files** finds files in your download and cache folders — and (3.12.0) the performer-photo
+folders, playlist covers and the generated-files folder — that no video, performer or playlist uses, so you can
+delete them. Your own photos and playlist covers can't be downloaded again: they're marked so, and deleting one asks
+first. Performer photos in use are not listed (before 2.15.0 they were); a photo
 no performer uses any more is listed as "performer photo". A re-encode's work file (`…_temp.mp4`) isn't listed
 while it's being written; one left over from an interrupted re-encode is listed as "unfinished re-encode". Seekbar
 previews of videos no longer in the library are listed as "seekbar preview", their video frames as "video frame".
@@ -786,6 +827,43 @@ copy a re-encode keeps. **Link this file** (or **Link the … found**) uses it; 
 from the site again, keeping its details (not offered for uploads, nor for videos the site no longer has). Nothing
 is deleted, moved or renamed by the check. The last result stays (in `data/file_check.json`), without the videos
 fixed since; each problem is also written to the log. It can be scheduled too (Scheduler → Check video files).
+
+### Faces
+
+**Management → Faces** (3.12.0, people with the Performers permission) recognises performers in videos by their face,
+**completely on this computer** — nothing is sent anywhere. The faces in each video's seekbar previews, thumbnail
+and frames under the player are compared with the photos of the performers in your library (ThePornDB's, FansDB's /
+StashDB's and your own). It's off until switched on in the settings at the bottom of the tab (Server Settings
+permission).
+
+- **Find faces now** reads the videos not read yet (and those whose pictures changed); **Read every video again**
+  reads all of them. It's a job on Tasks (**Stop** works), and takes its turn like the other heavy work. With **Read
+  new videos by themselves** on, a video is read after its seekbar previews or frames are made.
+- **Waiting:** each match shows the face found in the video, the performer's photo, the video and the **score** (how
+  alike the faces are, 0–100: 36 is OpenCV's line for "the same person"; faces from the same photo shoot score in
+  the 60s and up; small, blurred or turned faces lower). **Approve**, or **Not them** — never suggested again for
+  that video. **Approve all with a score of N or more** approves the waiting ones at or above N.
+- **Approved / Not them:** every decision can be undone (**Undo** puts it back to waiting).
+- An approved match shows as **Recognised by face** on the video's page (people with the Performers permission also
+  see the waiting ones there, with Approve / Not them) and on the performer's page. The video's own performers are
+  never changed, and performers a video already lists aren't suggested for it.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Read the seekbar previews / thumbnail / frames | on | Which pictures of a video are read |
+| Seekbar previews: every n-th picture | 3 | 1 reads all 100 |
+| Faces smaller than | 32 px | are left out (too little detail) |
+| Face found when the detector is at least | 0.85 sure | lower finds more faces, and more mistakes |
+| At most … different faces kept per video | 40 | the clearest different ones |
+| Suggest from a score of | 36 | |
+| Approve by itself from a score of | 100 | 100 = never |
+| At least … faces in the video that look like them | 1 | |
+
+Changing which pictures are read (the first five) reads every video again at the next scan; changing the scores only
+compares again. The faces found are kept in `data/derived.db` (they can be made again); your decisions are in the
+library database and every backup. The two model files — OpenCV's YuNet face detector (MIT license) and SFace
+recognizer (Apache-2.0) — come with Setup.exe and `install.sh`; a git checkout gets them once with
+`python -m Tools.get_face_models` (it checks their SHA-256). If they're missing, the tab says so.
 
 ## Credentials
 
@@ -906,6 +984,16 @@ The settings are on **Server Settings → Duplicate scan** (or under `duplicate_
 
 Changing any of them makes the next scan compare everything again.
 
+**Merged and Not duplicates** (3.12.0, tabs at the top of Duplicates):
+- **Merged** lists every copy removed as a duplicate, with the video it was merged into. One can be brought back:
+  from its file when that's still in the download folder, otherwise downloaded again — only while the site still has
+  it. **Server Settings → Duplicate scan → Switching a merged pair** decides how: **Get it back: keep both** (the
+  pair isn't found as duplicates again), **Swap: keep it instead of the other one** (once it's back, the other is
+  merged into it — playlists, favorites, watch positions and history move over) or **Ask each time**.
+- **Not duplicates** lists the groups marked so; **Show again** lets the next scan find them again.
+- A merge never deletes a file another video still uses, and the removed copy's watch positions and history move to
+  the kept one.
+
 ## Backups
 
 **Management → Backups → Create backup now** saves the library database and your settings into a zip file
@@ -915,6 +1003,10 @@ how much space each one is before you choose:
 - **secrets**: the encrypted credentials (with their key) and extensions' saved sign-ins. Keep such backups private.
 - **ThePornDB performer photos**, **thumbnails, previews and details files**, **video frames**, **seekbar previews**
   (all can be made or downloaded again; including them saves that time after a restore).
+- **rebuildable data** (3.12.0): `data/derived.db` — shared-scene fingerprints and the faces found in videos (your
+  face decisions are in the database, always included). Restoring a backup without it sets this computer's
+  `derived.db` aside as `derived.db.pre-restore` (it belonged to the replaced database); it's made again by the next
+  shared-scenes and faces scans.
 - **the videos — the whole library**: needs as much free space as the library itself and takes long; the page asks a
   second time before including them.
 
@@ -1103,6 +1195,14 @@ are several). It's shown once per release, replaced by the next one, and goes aw
 
 To update, download the new version (or `git pull`), then run `pip install -r requirements.txt` and
 restart the app. Browser tabs that were open during the update show a **Reload** notice.
+
+**What an update changes** (3.12.0): when a new version changes how the library is stored, it does so in numbered
+steps at the first start, after copying the database to `data/backups/before-upgrade` (the last 3 copies are kept).
+A long step shows an **Upgrading** screen until it's done; a step that fails is tried again at the next start and
+the app keeps working with what it has. Setup.exe and `install.sh` say beforehand which changes an update makes and
+about how long they take, and you can cancel. If the library was already used by a **newer** version, an older one
+refuses to open it (Setup and `install.sh` stop too), so it can't damage it; to force it anyway, start the app with
+the environment variable `PMV_ALLOW_OLDER_APP=1`. The steps done so far are listed in **Help → About** (admins).
 
 ## Troubleshooting
 

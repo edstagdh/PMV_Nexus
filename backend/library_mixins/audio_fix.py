@@ -22,6 +22,7 @@ from typing import Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import JOB, resources
 from .. import activity, media_tools, open_files
 from .core import JobBlockedError
 
@@ -48,7 +49,8 @@ class AudioFixMixin:
         free = shutil.disk_usage(Path(path).parent).free
         if free < size + 512 * 1024 * 1024:
             raise RuntimeError(L('Not enough free space to convert its audio ({mb} free, {needed} needed)', mb=_mb(free), needed=_mb(size)))
-        tmp = await asyncio.to_thread(media_tools.convert_audio_to_aac, path, info)
+        async with resources.use({"cpu", "disk"}, L("Making audio playable: {name}", name=Path(path).name), JOB):   # 3.12.0
+            tmp = await asyncio.to_thread(media_tools.convert_audio_to_aac, path, info)
         if tmp is None:
             raise RuntimeError(L("FFmpeg couldn't convert its {codecs} audio (see the log)", codecs=', '.join(bad)))
         try:
@@ -86,7 +88,8 @@ class AudioFixMixin:
                 logger.warning("Could not update the metadata file of {} after converting its audio", item.id)
         source_hash = None
         if item.local_phash:  # the picture is the same, so the fingerprint stays; only the file changed
-            source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, item.video_path)
+            async with resources.use({"disk"}, L("Making audio playable: {name}", name=item.title or item.id), JOB):   # 3.12.0
+                source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, item.video_path)
         async with self._lock:
             if item.id not in self._items:
                 return sizes

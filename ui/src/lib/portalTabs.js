@@ -9,6 +9,7 @@ export const PORTAL_TABS = [
   { key: "duplicates", get label() { return t("Duplicates"); }, permission: "duplicates.manage" },
   { key: "names", get label() { return t("Names"); }, permission: "names.manage" },
   { key: "songs", get label() { return t("Songs"); }, permission: "songs.manage" },
+  { key: "faces", get label() { return t("Faces"); }, permission: "performers.manage" },
   { key: "maintenance", get label() { return t("Maintenance"); }, permission: ["settings.manage", "maintenance.run", "performers.manage", "videos.maintain"] },
   { key: "scheduler", get label() { return t("Scheduler"); }, permission: "settings.manage" },
   { key: "backups", get label() { return t("Backups"); }, permission: "settings.manage" },

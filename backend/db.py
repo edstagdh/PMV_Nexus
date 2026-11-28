@@ -203,23 +203,7 @@ CREATE TABLE IF NOT EXISTS performer_custom_photos (
     created_by   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_perf_custom_photos ON performer_custom_photos(performer_id);
--- 3.9.0 shared scenes (backend/scene_match.py, library_mixins/scenes.py): frame hashes per
--- video (made from its seekbar previews) and the pairs of videos that share footage
-CREATE TABLE IF NOT EXISTS scene_hashes (
-    video_id   TEXT PRIMARY KEY,
-    version    INTEGER NOT NULL,
-    sb_made_at REAL,                   -- the seekbar previews they were made from
-    data       BLOB NOT NULL
-);
-CREATE TABLE IF NOT EXISTS scene_links (
-    a        TEXT NOT NULL,
-    b        TEXT NOT NULL,
-    frames_a INTEGER NOT NULL,
-    frames_b INTEGER NOT NULL,
-    scenes   TEXT NOT NULL,            -- JSON [[a_from, a_to, b_from, b_to], ...] seconds
-    PRIMARY KEY (a, b)
-);
-CREATE INDEX IF NOT EXISTS idx_scene_links_b ON scene_links(b);
+-- 3.9.0 shared scenes: in data/derived.db since 3.12.0 (backend/derived_db.py)
 -- 3.9.0 a performer name linked by hand to FansDB / StashDB (backend/stashbox.py); data is
 -- the profile as it came (JSON), kept for its page link, links and gaps in a ThePornDB profile
 CREATE TABLE IF NOT EXISTS performer_stashbox (
@@ -232,6 +216,24 @@ CREATE TABLE IF NOT EXISTS performer_stashbox (
     linked_by  TEXT,
     PRIMARY KEY (name_key, box)
 );
+-- 3.12.0 faces (library_mixins/faces.py): a performer recognised in a video by their face.
+-- Your decisions live here (the faces themselves are in data/derived.db and can be made again).
+-- performer_id: a ThePornDB profile id, or the local id of a name without one.
+CREATE TABLE IF NOT EXISTS face_matches (
+    video_id     TEXT NOT NULL,
+    performer_id TEXT NOT NULL,
+    status       TEXT NOT NULL,        -- suggested | approved | rejected
+    score        REAL NOT NULL,        -- 0-100, the best face
+    support      INTEGER NOT NULL DEFAULT 1,  -- faces in the video that look like them
+    detection_id INTEGER,              -- derived.db face_detections.id of the best face
+    auto         INTEGER NOT NULL DEFAULT 0,  -- approved by itself (score at or above the setting)
+    created_at   REAL NOT NULL,
+    decided_at   REAL,
+    decided_by   TEXT,
+    PRIMARY KEY (video_id, performer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_face_matches_status ON face_matches(status);
+CREATE INDEX IF NOT EXISTS idx_face_matches_performer ON face_matches(performer_id);
 -- 2.14.0 song recognition (library_mixins/songs.py)
 CREATE TABLE IF NOT EXISTS song_scans (
     item_id    TEXT PRIMARY KEY,
@@ -876,47 +878,6 @@ class LibraryDB:
         self._conn.commit()
         self._note_change([f"performer:{local_id}", "performers"])
 
-    # 3.9.0 shared scenes
-    def scene_hash_marks(self) -> dict[str, tuple[int, Optional[float]]]:
-        return {r["video_id"]: (r["version"], r["sb_made_at"])
-                for r in self._conn.execute("SELECT video_id, version, sb_made_at FROM scene_hashes")}
-
-    def scene_hash_blobs(self) -> dict[str, bytes]:
-        return {r["video_id"]: bytes(r["data"]) for r in self._conn.execute("SELECT video_id, data FROM scene_hashes")}
-
-    def set_scene_hash(self, video_id: str, version: int, sb_made_at: Optional[float], data: bytes) -> None:
-        self._conn.execute("INSERT OR REPLACE INTO scene_hashes (video_id, version, sb_made_at, data) VALUES (?, ?, ?, ?)",
-                           (video_id, version, sb_made_at, data))
-        self._conn.commit()
-
-    def delete_scene_hashes(self, video_ids: Iterable[str]) -> None:
-        self._conn.executemany("DELETE FROM scene_hashes WHERE video_id = ?", [(v,) for v in video_ids])
-        self._conn.commit()
-
-    def replace_scene_links(self, rows: list[tuple]) -> None:
-        """rows: (a, b, frames_a, frames_b, scenes list) -- the whole set, found again."""
-        with self._conn.lock:
-            try:
-                self._conn.execute("DELETE FROM scene_links")
-                self._conn.executemany("INSERT OR REPLACE INTO scene_links (a, b, frames_a, frames_b, scenes) VALUES (?, ?, ?, ?, ?)",
-                                       [(a, b, fa, fb, json.dumps(sc)) for a, b, fa, fb, sc in rows])
-                self._conn.commit()
-            except BaseException:
-                self._conn.rollback()
-                raise
-
-    def scene_link_rows(self) -> list[dict]:
-        out = []
-        for r in self._conn.execute("SELECT * FROM scene_links"):
-            d = dict(r)
-            d["scenes"] = json.loads(d["scenes"] or "[]")
-            out.append(d)
-        return out
-
-    def scene_data_size(self) -> int:
-        row = self._conn.execute("SELECT COALESCE(SUM(LENGTH(data)), 0) FROM scene_hashes").fetchone()
-        return int(row[0] or 0)
-
     # 3.9.0 FansDB / StashDB links
     def performer_stashbox_rows(self) -> list[dict]:
         return [dict(r) for r in self._conn.execute("SELECT * FROM performer_stashbox")]
@@ -1049,8 +1010,74 @@ class LibraryDB:
         self._conn.execute("DELETE FROM playlist_items WHERE item_id = ?", (item_id,))
         self._conn.execute("DELETE FROM song_scans WHERE item_id = ?", (item_id,))
         self._conn.execute("DELETE FROM song_suggestions WHERE item_id = ?", (item_id,))
+        self._conn.execute("DELETE FROM face_matches WHERE video_id = ?", (item_id,))
         self._conn.commit()
         self._note_change([item_id])
+
+    # ------------------------------------------------------- faces (3.12.0)
+    def face_match_rows(self, status: Optional[str] = None, video_id: Optional[str] = None,
+                        performer_ids: Optional[list[str]] = None) -> list[dict]:
+        sql, args = "SELECT * FROM face_matches WHERE 1 = 1", []
+        if status:
+            sql += " AND status = ?"
+            args.append(status)
+        if video_id:
+            sql += " AND video_id = ?"
+            args.append(video_id)
+        if performer_ids is not None:
+            if not performer_ids:
+                return []
+            sql += f" AND performer_id IN ({','.join('?' * len(performer_ids))})"
+            args.extend(performer_ids)
+        return [dict(r) for r in self._conn.execute(sql + " ORDER BY score DESC", args)]
+
+    def get_face_match(self, video_id: str, performer_id: str) -> Optional[dict]:
+        row = self._conn.execute("SELECT * FROM face_matches WHERE video_id = ? AND performer_id = ?",
+                                 (video_id, performer_id)).fetchone()
+        return dict(row) if row else None
+
+    def save_face_matches(self, video_id: str, found: list[dict], drop: list[str]) -> None:
+        """One video's matches after a scan. `found`: rows to write (new suggestions, auto-approved
+        ones, or a better score for one already there -- the caller never passes a decided row's
+        status over yours); `drop`: performer ids whose waiting suggestion no longer holds."""
+        with self._conn.lock:
+            try:
+                for m in found:
+                    self._conn.execute(
+                        "INSERT INTO face_matches (video_id, performer_id, status, score, support, detection_id, auto, created_at, decided_at, decided_by) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(video_id, performer_id) DO UPDATE SET "
+                        "status = excluded.status, score = excluded.score, support = excluded.support, "
+                        "detection_id = excluded.detection_id, auto = excluded.auto, decided_at = excluded.decided_at, "
+                        "decided_by = excluded.decided_by",
+                        (video_id, m["performer_id"], m["status"], m["score"], m["support"], m.get("detection_id"),
+                         1 if m.get("auto") else 0, time.time(), m.get("decided_at"), m.get("decided_by")))
+                if drop:
+                    self._conn.executemany("DELETE FROM face_matches WHERE video_id = ? AND performer_id = ? AND status = 'suggested'",
+                                           [(video_id, pid) for pid in drop])
+                self._conn.commit()
+            except BaseException:
+                self._conn.rollback()
+                raise
+        self._note_change(["faces"])
+
+    def decide_face_match(self, video_id: str, performer_id: str, status: str, by: Optional[str]) -> bool:
+        cur = self._conn.execute("UPDATE face_matches SET status = ?, auto = 0, decided_at = ?, decided_by = ? "
+                                 "WHERE video_id = ? AND performer_id = ?",
+                                 (status, time.time() if status != "suggested" else None, by if status != "suggested" else None,
+                                  video_id, performer_id))
+        self._conn.commit()
+        self._note_change(["faces", video_id])
+        return cur.rowcount > 0
+
+    def delete_face_matches_of(self, video_ids: Iterable[str]) -> None:
+        self._conn.executemany("DELETE FROM face_matches WHERE video_id = ?", [(v,) for v in video_ids])
+        self._conn.commit()
+
+    def face_match_counts(self) -> dict:
+        out = {"suggested": 0, "approved": 0, "rejected": 0}
+        for r in self._conn.execute("SELECT status, COUNT(*) AS n FROM face_matches GROUP BY status"):
+            out[r["status"]] = r["n"]
+        return out
 
     # ------------------------------------------------------- song recognition (2.14.0)
     def save_song_scan(self, item_id: str, samples: int, matched: int, status: str, detail: str | None) -> None:
@@ -1138,6 +1165,25 @@ class LibraryDB:
             (key, issue_type, json.dumps(sorted(item_ids)), time.time()),
         )
         self._conn.commit()
+
+    def carry_over_watching(self, from_id: str, to_id: str) -> None:
+        """3.12.0 (merging duplicates): where everyone was in the removed copy, and its watch
+        history, now count for the kept video (a position already there is kept)."""
+        with self._conn.lock:
+            try:
+                self._conn.execute("INSERT OR IGNORE INTO watch_positions (user_id, video_id, position, duration, updated_at) "
+                                   "SELECT user_id, ?, position, duration, updated_at FROM watch_positions WHERE video_id = ?",
+                                   (to_id, from_id))
+                self._conn.execute("DELETE FROM watch_positions WHERE video_id = ?", (from_id,))
+                self._conn.execute("INSERT INTO watch_log (day, user_id, item_id, seconds, plays) "
+                                   "SELECT day, user_id, ?, seconds, plays FROM watch_log WHERE item_id = ? "
+                                   "ON CONFLICT(day, user_id, item_id) DO UPDATE SET seconds = seconds + excluded.seconds, "
+                                   "plays = plays + excluded.plays", (to_id, from_id))
+                self._conn.execute("DELETE FROM watch_log WHERE item_id = ?", (from_id,))
+                self._conn.commit()
+            except BaseException:
+                self._conn.rollback()
+                raise
 
     def unignore_issue(self, issue_type: str, item_ids: list[str]) -> None:
         key = _ignored_issue_key(issue_type, item_ids)

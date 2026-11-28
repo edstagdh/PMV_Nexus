@@ -3,6 +3,7 @@
 // running now with its stage and progress, the next Scheduler runs, and
 // what finished in the last day. Videos' own downloads / re-encodes /
 // repairs are listed by TasksView itself.
+import { waitingFor } from "../lib/turns.js";
 import { t, formatNumber } from "../lib/i18n.js";
 import { askConfirm } from "../stores/confirm.js";
 import { ref, computed, onBeforeUnmount } from "vue";
@@ -49,6 +50,8 @@ function inTime(at) {
   return t("in {time}", { time: duration(s - (s % 60)) });
 }
 const running = computed(() => props.data?.running || []);
+// 3.12.0: a step of this job waits for the CPU / disk (lib/turns.js)
+const turn = (a) => waitingFor(props.data?.resources, { activity: a.id });
 const finished = computed(() => props.data?.finished || []);
 const upcoming = computed(() => props.data?.upcoming || []);
 const showAll = ref(false);
@@ -77,6 +80,7 @@ function logLink(a) {
           <router-link v-if="link(a)" :to="link(a)" class="title">{{ a.title }}</router-link>
           <span v-else class="title"><ItemText :text="a.title" :item="a.item" /></span>
           <span class="pill" :class="a.status === 'waiting' ? 'pos' : 'run'">{{ STATUS[a.status] || a.status }}</span>
+          <span v-if="turn(a)" class="pill pos" :title="turn(a).detail">{{ turn(a).text }}</span>
           <span class="muted small">{{ SOURCE[a.source] || "" }}<template v-if="a.started_at"> · {{ $t("for {time}", { time: duration(now - a.started_at) }) }}</template></span>
           <button v-if="a.can_stop" class="btn btn-sm stop" :disabled="stopping.has(a.id)" @click="stop(a)"><Icon name="stop" :size="14" />{{ $t("Stop") }}</button>
           <span v-else-if="a.stopped_by" class="muted small">{{ $t("Stopping…") }}</span>

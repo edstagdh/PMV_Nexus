@@ -34,6 +34,8 @@ set "VPY=.venv\Scripts\python.exe"
 "%VPY%" -m pip install --upgrade pip --quiet
 echo        Installing the Python packages - this takes a few minutes the first time ...
 "%VPY%" -m pip install -r requirements.txt --quiet || goto :fail
+rem Face models (3.12.0, the Faces tab of Management): downloaded once, checked by SHA-256
+"%VPY%" -m Tools.get_face_models >nul 2>&1 || echo        The face models could not be downloaded now: run  .venv\Scripts\python.exe -m Tools.get_face_models  later.
 
 rem ---- 3. ffmpeg ---------------------------------------------------------
 where ffmpeg >nul 2>&1

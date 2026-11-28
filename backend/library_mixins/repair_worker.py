@@ -10,6 +10,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..resources import JOB, VIDEO, resources
 from .. import media_tools
 from .. import activity, stats_store
 from ..models import LibraryItem
@@ -272,6 +273,10 @@ class RepairWorkerMixin:
             if status == "done":
                 self.request_duplicate_scan_after("repair")
 
+    def _repair_priority(self, item: LibraryItem) -> int:
+        """3.12.0: Repair all is a library job; one video's repair goes before it."""
+        return JOB if item.id in self._bulk_repair_ids else VIDEO
+
     async def _repair_item(self, item: LibraryItem) -> None:
         """Checks one completed item's cached assets on disk and repairs
         whatever's missing or 0 bytes: thumbnail, preview clip, and the
@@ -410,45 +415,49 @@ class RepairWorkerMixin:
         #     read, but still far cheaper than the phash computation it
         #     guards) to detect a genuinely changed file; only recompute
         #     the phash if the file has actually changed.
-        current_size = video_path.stat().st_size
-        backfill_stamp_only = False
-        if not item.local_phash:
-            needs_phash = True
-        elif item.local_phash_source_hash is None or item.local_phash_source_size is None:
-            needs_phash = False
-            backfill_stamp_only = True
-        elif item.local_phash_source_size != current_size:
-            needs_phash = True
-        else:
-            current_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
-            needs_phash = current_hash != item.local_phash_source_hash
+        # 3.12.0: reading the whole file (and the perceptual hash) takes its turn (backend/resources.py)
+        heavy_needs = {"disk"} if item.local_phash and item.local_phash_source_size == video_path.stat().st_size else {"cpu", "disk"}
+        async with resources.use(heavy_needs, L("Repair: fingerprint of {title}", title=title_of(item)),
+                                 self._repair_priority(item), {"item": item.id}):
+            current_size = video_path.stat().st_size
+            backfill_stamp_only = False
+            if not item.local_phash:
+                needs_phash = True
+            elif item.local_phash_source_hash is None or item.local_phash_source_size is None:
+                needs_phash = False
+                backfill_stamp_only = True
+            elif item.local_phash_source_size != current_size:
+                needs_phash = True
+            else:
+                current_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
+                needs_phash = current_hash != item.local_phash_source_hash
 
-        if backfill_stamp_only:
-            source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
-            async with self._lock:
-                item.local_phash_source_hash = source_hash
-                item.local_phash_source_size = current_size
-                item.touch()
-                self.db.save_item(item)
-            logger.debug("Repair/Update for {}: backfilled phash fingerprint (existing phash trusted, not recomputed)", item.id)
-        elif needs_phash:
-            logger.info("Repair/Update for {}: computing a local phash for duplicate detection", item.id)
-            await self._set_repair_progress(item, "Computing perceptual hash\u2026")
-            local_phash = await asyncio.to_thread(media_tools.generate_stash_phash, str(video_path))
-            if local_phash:
+            if backfill_stamp_only:
                 source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
                 async with self._lock:
-                    item.local_phash = local_phash
-                    item.local_phash_generated_at = time.time()
                     item.local_phash_source_hash = source_hash
                     item.local_phash_source_size = current_size
                     item.touch()
                     self.db.save_item(item)
-                fixed.append("perceptual hash")
+                logger.debug("Repair/Update for {}: backfilled phash fingerprint (existing phash trusted, not recomputed)", item.id)
+            elif needs_phash:
+                logger.info("Repair/Update for {}: computing a local phash for duplicate detection", item.id)
+                await self._set_repair_progress(item, "Computing perceptual hash\u2026")
+                local_phash = await asyncio.to_thread(media_tools.generate_stash_phash, str(video_path))
+                if local_phash:
+                    source_hash = await asyncio.to_thread(media_tools.compute_file_sha256, str(video_path))
+                    async with self._lock:
+                        item.local_phash = local_phash
+                        item.local_phash_generated_at = time.time()
+                        item.local_phash_source_hash = source_hash
+                        item.local_phash_source_size = current_size
+                        item.touch()
+                        self.db.save_item(item)
+                    fixed.append("perceptual hash")
+                else:
+                    logger.warning("Repair/Update for {}: could not compute a local phash", item.id)
             else:
-                logger.warning("Repair/Update for {}: could not compute a local phash", item.id)
-        else:
-            logger.debug("Repair/Update for {}: file unchanged since last phash computation -- skipping", item.id)
+                logger.debug("Repair/Update for {}: file unchanged since last phash computation -- skipping", item.id)
 
         # Uploaded from the computer: nothing to fetch, remake what's missing.
         if item.site == "local":
@@ -551,7 +560,9 @@ class RepairWorkerMixin:
                     item.id,
                 )
                 local_thumb_path = cache_creator_dir / f"{base_name}.jpg"
-                ok = await asyncio.to_thread(media_tools.generate_thumbnail, str(video_path), str(local_thumb_path))
+                async with resources.use({"cpu"}, L("Repair: thumbnail of {title}", title=title_of(item)),
+                                         self._repair_priority(item), {"item": item.id}):
+                    ok = await asyncio.to_thread(media_tools.generate_thumbnail, str(video_path), str(local_thumb_path))
                 if ok:
                     async with self._lock:
                         item.thumbnail_path = str(local_thumb_path)
@@ -593,14 +604,16 @@ class RepairWorkerMixin:
                 )
                 local_preview_path = cache_creator_dir / f"{base_name}_preview.mp4"
                 cfg = self.settings.download
-                ok = await asyncio.to_thread(
-                    media_tools.generate_preview_clip,
-                    str(video_path), str(local_preview_path),
-                    num_clips=cfg.generated_preview_num_clips,
-                    clip_duration_seconds=cfg.generated_preview_clip_duration_seconds,
-                    max_height=cfg.generated_preview_max_height,
-                    target_fps=cfg.generated_preview_fps,
-                )
+                async with resources.use({"cpu"}, L("Repair: preview of {title}", title=title_of(item)),
+                                         self._repair_priority(item), {"item": item.id}):
+                    ok = await asyncio.to_thread(
+                        media_tools.generate_preview_clip,
+                        str(video_path), str(local_preview_path),
+                        num_clips=cfg.generated_preview_num_clips,
+                        clip_duration_seconds=cfg.generated_preview_clip_duration_seconds,
+                        max_height=cfg.generated_preview_max_height,
+                        target_fps=cfg.generated_preview_fps,
+                    )
                 if ok:
                     async with self._lock:
                         item.preview_path = str(local_preview_path)

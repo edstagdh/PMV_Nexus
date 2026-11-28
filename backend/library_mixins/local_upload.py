@@ -40,6 +40,7 @@ from typing import AsyncIterator, Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import VIDEO, resources
 from .. import media_tools, stats_store, upload_safety
 from ..models import LibraryItem
 from ..notifications import notify, title_of, video_link
@@ -336,8 +337,9 @@ class LocalUploadMixin:
             remuxed = staged.with_name(f"{up['item_id']}.remux.mp4")
             up["files"].append(str(remuxed))
             limit = 600 + up["size"] // (2 * 1024 * 1024)  # 10 min + 1 s per 2 MB
-            ok = await asyncio.to_thread(media_tools.remux_to_mp4, str(staged), str(remuxed), info.get("audio"),
-                                         info.get("video"), limit)
+            async with resources.use({"disk"}, L("Upload: re-packing {title}", title=up["title"]), VIDEO):   # 3.12.0
+                ok = await asyncio.to_thread(media_tools.remux_to_mp4, str(staged), str(remuxed), info.get("audio"),
+                                             info.get("video"), limit)
             if upload_id not in self._uploads:
                 Path(remuxed).unlink(missing_ok=True)
                 return
@@ -393,9 +395,12 @@ class LocalUploadMixin:
             up["progress"] = p.get("percent", 0)
             up["message"] = f"Re-encoding to {label}… {p.get('percent', 0)}% · {p.get('speed', '')} · about {p.get('eta_seconds', 0) // 60} min left"
 
-        out = await asyncio.to_thread(
-            media_tools.reencode_video, up["staged"], codec, crf, preset, False, self.settings.reencode.cpu_cores(),
-            False, True, on_progress, holder, False, False)
+        async with resources.use({"cpu", "disk"}, L("Upload: converting {title}", title=up["title"]), VIDEO):   # 3.12.0
+            if upload_id not in self._uploads:   # cancelled while it waited
+                return
+            out = await asyncio.to_thread(
+                media_tools.reencode_video, up["staged"], codec, crf, preset, False, self.settings.reencode.cpu_cores(),
+                False, True, on_progress, holder, False, False)
         if out:
             up["files"].append(str(out))
         if upload_id not in self._uploads:  # cancelled meanwhile
@@ -482,8 +487,9 @@ class LocalUploadMixin:
             tech = await asyncio.to_thread(media_tools.get_technical_info, video)
             thumb = cache_dir / f"{base_name}.jpg"
             preview = cache_dir / f"{base_name}_preview.mp4"
-            thumb_ok = await asyncio.to_thread(media_tools.generate_thumbnail, video, str(thumb))
-            preview_ok = await asyncio.to_thread(media_tools.generate_preview_clip, video, str(preview))
+            async with resources.use({"cpu"}, L("Upload: thumbnail and preview of {title}", title=item.title), VIDEO, {"item": item.id}):
+                thumb_ok = await asyncio.to_thread(media_tools.generate_thumbnail, video, str(thumb))
+                preview_ok = await asyncio.to_thread(media_tools.generate_preview_clip, video, str(preview))
             meta_path = cache_dir / f"{base_name}.json"
             meta = {
                 "source": "local upload", "title": item.title, "creator": {"name": item.creator},
@@ -521,16 +527,19 @@ class LocalUploadMixin:
                          self.settings.cache_dir / safe_name(item.creator or "Unknown"))
         cache_dir.mkdir(parents=True, exist_ok=True)
         base = Path(video).stem
-        if thumb_broken:
-            thumb = Path(item.thumbnail_path) if item.thumbnail_path else cache_dir / f"{base}.jpg"
-            if await asyncio.to_thread(media_tools.generate_thumbnail, video, str(thumb)):
-                item.thumbnail_path, item.thumbnail_updated_at = str(thumb), time.time()
-                fixed.append("thumbnail (generated locally)")
-        if preview_broken:
-            preview = Path(item.preview_path) if item.preview_path else cache_dir / f"{base}_preview.mp4"
-            if await asyncio.to_thread(media_tools.generate_preview_clip, video, str(preview)):
-                item.preview_path, item.preview_updated_at = str(preview), time.time()
-                fixed.append("preview clip (generated locally)")
+        async with resources.use({"cpu"} if thumb_broken or preview_broken else set(),
+                                 L("Repair: thumbnail and preview of {title}", title=item.title),
+                                 self._repair_priority(item), {"item": item.id}):   # 3.12.0
+            if thumb_broken:
+                thumb = Path(item.thumbnail_path) if item.thumbnail_path else cache_dir / f"{base}.jpg"
+                if await asyncio.to_thread(media_tools.generate_thumbnail, video, str(thumb)):
+                    item.thumbnail_path, item.thumbnail_updated_at = str(thumb), time.time()
+                    fixed.append("thumbnail (generated locally)")
+            if preview_broken:
+                preview = Path(item.preview_path) if item.preview_path else cache_dir / f"{base}_preview.mp4"
+                if await asyncio.to_thread(media_tools.generate_preview_clip, video, str(preview)):
+                    item.preview_path, item.preview_updated_at = str(preview), time.time()
+                    fixed.append("preview clip (generated locally)")
         tech = await asyncio.to_thread(media_tools.get_technical_info, video)
         if tech:
             item.tech_codec = tech.get("Video Codec")

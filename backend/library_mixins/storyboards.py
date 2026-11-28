@@ -18,6 +18,7 @@ from typing import Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import AUTO, resources
 from .. import activity, storyboard
 
 
@@ -29,7 +30,7 @@ class StoryboardsMixin:
 
     # ---------------------------------------------------------------- files
     def storyboard_root(self) -> Path:
-        return self.settings.cache_dir / storyboard.FOLDER
+        return self.settings.generated_dir / storyboard.FOLDER   # 3.12.0: Generated files folder
 
     def storyboard_folder(self, video_id: str) -> Path:
         return self.storyboard_root() / video_id
@@ -118,8 +119,9 @@ class StoryboardsMixin:
                     continue
                 state["current"] = video_id
                 try:
-                    meta = await asyncio.to_thread(storyboard.make, item.video_path, self.storyboard_folder(video_id),
-                                                   lambda: self._sb_stop or video_id not in self._items)
+                    async with resources.use({"cpu", "disk"}, L("Seekbar previews: {title}", title=item.title or video_id), AUTO):   # 3.12.0
+                        meta = await asyncio.to_thread(storyboard.make, item.video_path, self.storyboard_folder(video_id),
+                                                       lambda: self._sb_stop or video_id not in self._items)
                     state["done"] += 1
                     logger.info("Seekbar previews made for '{}' [{}]: {} frames every {} s", item.title, video_id,
                                 meta["frames"], meta["interval"])
@@ -133,6 +135,7 @@ class StoryboardsMixin:
                     state["current"] = None
             if state["done"] and not self._sb_stop:  # 3.9.0: their frames, compared for shared scenes
                 self.request_shared_scenes()
+                self.request_face_scan_auto()          # 3.12.0: and the faces in them (when Faces is on)
             parts = [f"{state['done']} made"] + ([f"{state['failed']} failed (see the log)"] if state["failed"] else [])
             act.finish("cancelled" if self._sb_stop else ("failed" if state["failed"] and not state["done"] else "success"),
                        (f"Stopped by {act.stopped_by} · " if act.stopped_by else "") + ", ".join(parts))

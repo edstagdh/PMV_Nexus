@@ -117,6 +117,10 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Performer badges are coloured by gender** (female, male, trans / non-binary, unknown). For performers who aren't
   on ThePornDB, set it by hand.
 - **Favourite performers** (per user): ♥ on their badges, and a library sort that puts their videos first or last.
+- **ThePornDB, FansDB and StashDB together:** link a performer to all three, with photos from each (up to 10 site
+  photos) and a table of the details the sites disagree on.
+- **Recognised by face:** finds performers in videos by comparing the faces in each video's pictures with their
+  photos — **completely offline** (OpenCV). Nothing is added without your OK; every decision can be undone.
 - **Not on ThePornDB?** Search **FansDB** or **StashDB** by hand, or type their details, links and up to 30 photos in
   yourself — from your computer or from a link the server fetches safely.
 - **The Wall:** a 3D (or 2D) graph of who appears with whom; click a performer to see them with all their videos,
@@ -131,7 +135,8 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
 - **Sync with PMVHaven:** updates tags, performers, music, ratings and stats from the site, and flags videos the
   site removed (💀). There's a preview first, and your own edits are kept.
 - **Duplicate detection:** compares the pictures (perceptual hashes), not just the files. It runs daily and after
-  downloads, and you review the pairs side by side.
+  downloads, and you review the pairs side by side. A copy removed as a duplicate can be brought back, or swapped
+  with the one that was kept.
 - **Shared scenes:** finds videos that use the same footage by comparing their frames, and shows where.
 - **Re-encoding:** HEVC, AV1 or AVC (H.264), from any codec to any other. Downscale to 1080p, even keeping the same
   codec (e.g. 8K HEVC → 1080p HEVC). Choose quality and preset, limit CPU use, keep the original if you like.
@@ -147,6 +152,10 @@ More in the <a href="docs/GUIDE.md">Guide</a>.</sub></p>
   Everyone has their own settings, favourites, playlists, saved searches and watch history.
 - **Tasks:** everything running, with live progress, Stop buttons and links to the videos involved. A failed task
   links to the log entries from when it ran.
+- **Background work takes turns:** heavy jobs share the CPU and the disk video by video, at low priority and within a
+  CPU share you set, and give way while someone watches a converted video.
+- **Safe upgrades:** a new version changes the library in recorded steps after copying the database; the installers
+  say beforehand what an update changes and how long it takes, and an older version never opens a newer library.
 - **Scheduler** (daily, weekly, every few hours, one time or cron) for syncs, scans, backups, song finding and more.
 - **Notifications** (bell, plus pop-ups) for finished and failed downloads, re-encodes, uploads and jobs.
 - **Languages:** the interface and the server's messages in any language that has a file in
@@ -186,9 +195,9 @@ the forms it describes. See [Extensions](#extensions-1) below and the comments a
 | Layer | Tech |
 |---|---|
 | Backend | Python, FastAPI, Uvicorn |
-| Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`) |
+| Persistence | SQLite (via a thin custom wrapper — see `backend/db.py`); a second database for rebuildable data (`backend/derived_db.py`) |
 | Site access | httpx (the sites' API and downloads) |
-| Media | ffmpeg (re-encoding, live HLS conversion, previews, seekbar previews, frames), PyMediaInfo, OpenCV (duration/fps probing; frame hashes for shared scenes, with numpy) |
+| Media | ffmpeg (re-encoding, live HLS conversion, previews, seekbar previews, frames), PyMediaInfo, OpenCV (duration/fps probing; frame hashes for shared scenes, with numpy; face detection and recognition with the YuNet and SFace models) |
 | Logging | loguru, with stdlib logging (uvicorn/fastapi/httpx) redirected into it |
 | Song recognition | shazamio (Shazam); optional Google Gemini API (AI) |
 | Images | Pillow (performer photos stored as WebP) |
@@ -549,6 +558,8 @@ extensions/
 ```
 data/
 ├── library.db                 # SQLite database — the source of truth for the library
+├── derived.db                 # rebuildable data: shared-scene fingerprints, faces found (3.12.0)
+├── backups/before-upgrade/    # a copy of library.db before each upgrade step (the last 3)
 ├── settings_overrides.json    # UI-changed settings, layered over config.yaml
 ├── logs/
 │   └── backend.log            # rotated monthly, kept for 12 months, rotated files zipped
@@ -556,6 +567,10 @@ data/
 └── cache/                      # (path from config.download.cache_dir)
     └── <creator>/               # thumbnails, preview clips, metadata JSON
 ```
+
+The performer-photo folders and the generated-files folder (seekbar previews, frames) can be moved elsewhere
+(Server Settings → Download). The face models live next to the app in `models/faces/` (not in the repository:
+`python -m Tools.get_face_models` downloads them and checks their SHA-256; Setup.exe includes them).
 
 Downloaded videos themselves go to `<output_dir>/<creator>/<creator> - <upload date> - <title> [<id>].<ext>`, with matching sidecars (`.funscript`, `.json`) alongside. A re-encode backs up the pre-encode metadata as `<name>_original.json`, and — if "keep original file" is on — the pre-encode video as `<name>_old.<ext>`.
 
@@ -607,13 +622,18 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) — nothi
 1. Update `VERSION` and the `CHANGELOG.md` section for it; commit and push.
 2. Tag the commit and push the tag: `git tag v3.2.0 && git push origin v3.2.0`.
 3. The **Release** workflow checks that the tag matches `VERSION`, compiles the Python code, downloads WinSW and checks
-   the Python installer's signature, builds `Setup.exe` with Inno Setup, and publishes a GitHub Release with the
+   the Python installer's signature, downloads the face models (checked by SHA-256), builds `Setup.exe` with Inno Setup, and publishes a GitHub Release with the
    `.exe`, its `.sha256` and the release notes (the source zip is added by GitHub). The notes are every CHANGELOG
    section newer than the previous release tag, so versions that were never tagged on their own (e.g. 3.4.2 when
    tagging 3.5.0 right after 3.4.1) are included, newest first.
 4. If Discord is set up, it renames the server's version channel to "📦 Latest: v<version>". This needs the
    repository secret `DISCORD_BOT_TOKEN` (a bot with *Manage Channels* on that channel) and the repository variable
    `DISCORD_VERSION_CHANNEL_ID`. Without them the step is skipped, and a Discord problem never fails the release.
+
+The **Upgrades** workflow (`.github/workflows/upgrades.yml`, every push and pull request) makes a library with 3.6.0,
+the newest release tag and the previous commit — each with its own code and packages — and opens it with the new
+code (`Tools/upgrade_ci.py`): nothing may be lost. A change to how the library is stored is a new step in
+`backend/upgrades/steps.py`.
 
 To try the installer without releasing: **Actions → Release → Run workflow** — the `.exe` is attached to that run
 as an artifact. To build on a Windows PC instead: install Inno Setup 6, put WinSW-x64.exe at

@@ -1,0 +1,55 @@
+# Upgrade check (3.12.0): a library made by older versions is opened by this one, and nothing may
+# be lost (Tools/upgrade_ci.py). Older versions: 3.6.0, the newest release tag and the previous
+# commit, each run with its own code and its own packages.
+name: Upgrades
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  from-older-versions:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the tags and the previous commit
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: This version's packages
+        run: |
+          python -m venv "$RUNNER_TEMP/new-venv"
+          "$RUNNER_TEMP/new-venv/bin/python" -m pip install --disable-pip-version-check --quiet -r requirements.txt
+
+      - name: Open libraries made by older versions
+        run: |
+          set -euo pipefail
+          current="v$(cat VERSION | tr -d '[:space:]')"
+          latest="$(git tag -l 'v*.*.*' --sort=-v:refname | grep -vx "$current" | head -1 || true)"
+          refs="v3.6.0 ${latest} HEAD~1"
+          seen=""
+          for ref in $refs; do
+            git rev-parse --verify --quiet "$ref^{commit}" >/dev/null || { echo "skip $ref (not here)"; continue; }
+            sha="$(git rev-parse "$ref^{commit}")"
+            case " $seen " in *" $sha "*) continue;; esac
+            seen="$seen $sha"
+            echo "::group::from $ref ($(git show "$ref:VERSION" | tr -d '[:space:]'))"
+            old="$RUNNER_TEMP/old-$sha"; new="$RUNNER_TEMP/new-$sha"
+            mkdir -p "$old" "$new"
+            git archive "$ref" | tar -x -C "$old"
+            git archive HEAD | tar -x -C "$new"
+            python -m venv "$old/.venv"
+            "$old/.venv/bin/python" -m pip install --disable-pip-version-check --quiet -r "$old/requirements.txt"
+            (cd "$old" && .venv/bin/python "$new/Tools/upgrade_ci.py" old .)
+            cp -r "$old/data" "$new/data"
+            (cd "$new" && "$RUNNER_TEMP/new-venv/bin/python" Tools/upgrade_ci.py new .)
+            echo "::endgroup::"
+          done

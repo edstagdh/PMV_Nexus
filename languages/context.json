@@ -8,6 +8,15 @@
  "% of cores": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "% — {n} of {total} cores": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "(100 = never)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "(36: the same person, by OpenCV)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "(not applied)": [
   "ui/src/components/admin/SiteSyncPanel.vue"
  ],
@@ -22,6 +31,9 @@
  ],
  "(you)": [
   "ui/src/views/admin/UsersView.vue"
+ ],
+ "({n} on this page)": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "+ New folder": [
   "ui/src/components/admin/FolderPicker.vue"
@@ -57,6 +69,9 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "0–51. Lower = better and bigger. The video was already compressed, so keep it low (18–22) to lose nothing more you can see; default 20.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "1 is right for most computers.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "100 % = everything fits": [
@@ -554,6 +569,9 @@
  "Already converting — see Tasks": [
   "backend/routers/performers.py"
  ],
+ "Already finding faces: it runs once more after": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Already given by the role or a group": [
   "ui/src/components/admin/PermissionPicker.vue"
  ],
@@ -583,6 +601,9 @@
  ],
  "Also save up to 5 of their photos": [
   "ui/src/components/StashBoxPanel.vue"
+ ],
+ "Also the app's other folders: performer photos (from the sites and your own), playlist covers, and the Generated files folder when it has its own — files there that no performer, playlist or video uses.": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Also the folder it's saved in.": [
   "ui/src/views/UploadView.vue"
@@ -710,6 +731,25 @@
  "Applying…": [
   "ui/src/components/dialogs/ThumbnailDialog.vue"
  ],
+ "Approve": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approve all with a score of": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approve by itself from a score of": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approve every waiting match with a score of {score} or more?": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Approved ({n})": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "approved by itself": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Are you sure?": [
   "ui/src/stores/confirm.js"
  ],
@@ -738,16 +778,23 @@
   "ui/src/views/LibraryView.vue",
   "ui/src/views/SettingsView.vue"
  ],
+ "Ask each time (Get it back or Swap)": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Ask for the codec and settings each time": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Asking GitHub…": [
   "ui/src/components/LanguageSettings.vue"
  ],
+ "At least": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "At least one letter and one number": [
   "backend/security.py"
  ],
  "At most": [
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SongsView.vue"
  ],
  "At most {n} copy folders": [
@@ -861,8 +908,14 @@
  "Background": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Background FFmpeg uses up to {n} of {total} cores": [
+  "ui/src/views/TasksView.vue"
+ ],
  "Background of the \"removed from PMVHaven\" badge.": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Background work": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Backup": [
   "backend/library_mixins/scheduler_worker.py"
@@ -939,6 +992,9 @@
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
+ "Birthday": [
+  "backend/library_mixins/performers.py"
+ ],
  "Birthplace": [
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
@@ -983,6 +1039,15 @@
  "Brightness {percent}%": [
   "ui/src/components/VideoPlayer.vue"
  ],
+ "Bring back “{name}” and keep it instead of {kept}? {kept} is then merged into it: its playlists, favorites and watch history move over, and its files are deleted.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "Bring back “{name}” as a library video of its own, next to {kept}? The pair won't be shown as duplicates again.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "Brought back from its file": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "Browse the library": [
   "backend/permissions.py"
  ],
@@ -1016,7 +1081,8 @@
  "by {name}": [
   "ui/src/views/LibraryView.vue",
   "ui/src/views/PlaylistView.vue",
-  "ui/src/views/PlaylistsView.vue"
+  "ui/src/views/PlaylistsView.vue",
+  "ui/src/views/admin/FacesView.vue"
  ],
  "cache": [
   "ui/src/views/admin/BackupsView.vue"
@@ -1036,6 +1102,12 @@
  ],
  "can be made again, but it takes a while": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "can be made again; your face approvals are in the database anyway": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "can't be downloaded again": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Can't change the cache folder while a re-encode is in progress. Wait for it to finish or cancel it first.": [
   "backend/library_mixins/item_extras.py"
@@ -1119,6 +1191,12 @@
  ],
  "Capture stats snapshot": [
   "backend/library_mixins/scheduler_worker.py"
+ ],
+ "Career end": [
+  "backend/library_mixins/performers.py"
+ ],
+ "Career start": [
+  "backend/library_mixins/performers.py"
  ],
  "Category": [
   "ui/src/views/admin/LogsView.vue"
@@ -1223,6 +1301,9 @@
  "Checking the download and cache folders": [
   "backend/library_mixins/untracked_files.py"
  ],
+ "Checking the downloaded file: {title}": [
+  "backend/library_mixins/download_worker.py"
+ ],
  "Checking the file before re-encoding": [
   "ui/src/views/TasksView.vue"
  ],
@@ -1236,6 +1317,9 @@
   "backend/library_mixins/file_check.py"
  ],
  "Checking video files": [
+  "backend/library_mixins/file_check.py"
+ ],
+ "Checking video files: {title}": [
   "backend/library_mixins/file_check.py"
  ],
  "Checking what goes in and the free space": [
@@ -1273,6 +1357,9 @@
  ],
  "Choose a video file": [
   "ui/src/views/UploadView.vue"
+ ],
+ "Choose an empty folder: the photos go there, and only them": [
+  "backend/library_mixins/app_folders.py"
  ],
  "Chunk size (KB)": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -1365,6 +1452,9 @@
  "Combined": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "coming back — the swap finishes after its download": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "Coming up": [
   "ui/src/views/TasksView.vue"
  ],
@@ -1387,6 +1477,7 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Comparing": [
+  "backend/library_mixins/faces.py",
   "backend/library_mixins/scenes.py"
  ],
  "Comparing and applying changes": [
@@ -1455,6 +1546,9 @@
   "backend/library_mixins/performers.py",
   "backend/transcode.py"
  ],
+ "Converting a preview to H.264": [
+  "backend/library_mixins/item_extras.py"
+ ],
  "Converting for watching ({height}p): {title}": [
   "backend/transcode.py"
  ],
@@ -1487,6 +1581,9 @@
  ],
  "Copies elsewhere": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Copies removed as duplicates, newest first, with the video each one was merged into.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "Copy": [
   "ui/src/components/NotificationBell.vue",
@@ -1619,6 +1716,9 @@
  "Could not load the backups": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Could not load the faces": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Could not load the history": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
@@ -1741,7 +1841,9 @@
   "ui/src/components/dialogs/BulkEditDialog.vue",
   "ui/src/components/dialogs/EditDetailsDialog.vue",
   "ui/src/components/dialogs/PlaylistEditDialog.vue",
+  "ui/src/components/faces/FacesOnVideo.vue",
   "ui/src/views/admin/DuplicatesView.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/ServerSettingsView.vue",
   "ui/src/views/admin/SongsView.vue"
  ],
@@ -1775,6 +1877,7 @@
  "Could not start": [
   "ui/src/components/admin/PerformersPanel.vue",
   "ui/src/components/dialogs/SongsDialog.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SongsView.vue"
  ],
  "Could not start the conversion": [
@@ -1845,6 +1948,12 @@
  "Cover…": [
   "ui/src/views/PlaylistView.vue"
  ],
+ "CPU": [
+  "ui/src/views/TasksView.vue"
+ ],
+ "CPU share for background work": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "CPU use": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -1881,6 +1990,7 @@
   "ui/src/views/admin/UsersView.vue"
  ],
  "Creating a backup": [
+  "backend/backup.py",
   "backend/library_mixins/system_worker.py"
  ],
  "Creating…": [
@@ -1925,6 +2035,7 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Cup size": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/FilterPanel.vue",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
@@ -2153,10 +2264,14 @@
   "backend/library_mixins/core.py"
  ],
  "Died": [
+  "backend/library_mixins/performers.py",
   "ui/src/views/PerformerView.vue"
  ],
  "Differences found": [
   "ui/src/components/admin/SiteSyncPanel.vue"
+ ],
+ "different faces kept per video": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Direct": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -2172,6 +2287,9 @@
  "Discover a random video": [
   "ui/src/App.vue",
   "ui/src/components/AppSidebar.vue"
+ ],
+ "Disk": [
+  "ui/src/views/TasksView.vue"
  ],
  "Disk space is back ({percent}% free): downloads resume": [
   "backend/library_mixins/disk_guard.py"
@@ -2280,6 +2398,7 @@
   "ui/src/components/admin/FileCheckPanel.vue"
  ],
  "Downloading it again — see Tasks": [
+  "ui/src/components/admin/DuplicateHistory.vue",
   "ui/src/views/VideoView.vue"
  ],
  "Downloading now": [
@@ -2375,11 +2494,20 @@
  "Duplicate scan, merge and ignore duplicates": [
   "backend/permissions.py"
  ],
+ "Duplicate scan: comparing": [
+  "backend/library_mixins/duplicate_worker.py"
+ ],
+ "Duplicate scan: reading {title}": [
+  "backend/library_mixins/duplicate_worker.py"
+ ],
  "Duplicates": [
   "backend/permissions.py",
   "ui/src/lib/portalTabs.js",
   "ui/src/views/admin/DuplicatesView.vue",
   "ui/src/views/admin/MaintenanceView.vue",
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Duplicates → Merged. A removed copy comes back from its file when it's still in the download folder; otherwise it's downloaded again — only while the site still has it.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Duration": [
@@ -2509,6 +2637,7 @@
   "backend/i18n.py"
  ],
  "Enhanced": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/FilterPanel.vue",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/LibraryView.vue",
@@ -2539,6 +2668,7 @@
   "ui/src/views/TasksView.vue"
  ],
  "Ethnicity": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
@@ -2552,8 +2682,14 @@
  "Every action and everything the app's background jobs record, newest first. Click a row for the full entry.": [
   "ui/src/views/admin/LogsView.vue"
  ],
+ "Every background FFmpeg runs on the same cores, at low priority, so together they never use more than this.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Every day": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Every detail": [
+  "ui/src/components/SiteDifferences.vue"
  ],
  "Every few hours": [
   "ui/src/views/admin/SchedulerView.vue"
@@ -2654,10 +2790,44 @@
   "ui/src/lib/metadata.js"
  ],
  "Eyes": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/FilterPanel.vue",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
+ ],
+ "Face found when the detector is at least": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces": [
+  "ui/src/lib/portalTabs.js"
+ ],
+ "faces found": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "faces in the video that look like them": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces is off (Server Settings permission needed to switch it on).": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces is off: switch it on in the settings below.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces is switched off (Management → Faces → Settings)": [
+  "backend/routers/faces.py"
+ ],
+ "Faces smaller than": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Faces: OpenCV's YuNet face detector (MIT license) and SFace face recognizer (Apache-2.0 license), from the OpenCV Zoo.": [
+  "ui/src/views/HelpView.vue"
+ ],
+ "Faces: photos of {name}": [
+  "backend/library_mixins/faces.py"
+ ],
+ "Faces: {title}": [
+  "backend/library_mixins/faces.py"
  ],
  "Failed": [
   "ui/src/components/JobList.vue",
@@ -2873,6 +3043,9 @@
  "Find a tag": [
   "ui/src/views/admin/NamesView.vue"
  ],
+ "Find faces now": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Find now": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
@@ -2904,6 +3077,12 @@
  ],
  "Find the songs in videos, add or dismiss the suggestions": [
   "backend/permissions.py"
+ ],
+ "Finding faces": [
+  "backend/library_mixins/faces.py"
+ ],
+ "Finding faces — follow it on Tasks": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Finding shared scenes": [
   "backend/library_mixins/scenes.py"
@@ -3014,6 +3193,9 @@
  "Frames under the player": [
   "ui/src/views/SettingsView.vue"
  ],
+ "free": [
+  "ui/src/views/TasksView.vue"
+ ],
  "Free API key from https://www.virustotal.com (sign in → API key). Used to look up each uploaded file's fingerprint (SHA-256) — only the fingerprint is sent, never the file. Server Settings → Uploads → Fingerprint check.": [
   "backend/secrets_store.py"
  ],
@@ -3078,6 +3260,7 @@
   "ui/src/views/admin/SongsView.vue"
  ],
  "Gender": [
+  "backend/library_mixins/performers.py",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -3096,8 +3279,20 @@
  "Generate a new key? Anything using the current key (e.g. the userscript) must be updated.": [
   "ui/src/components/admin/CredentialsPanel.vue"
  ],
+ "Generated files": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Generated files (seekbar previews, video frames)": [
+  "backend/library_mixins/app_folders.py"
+ ],
  "Georgia,serif": [
   "ui/src/views/BlankView.vue"
+ ],
+ "Get it back": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "Get it back: keep both": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Get languages from GitHub": [
   "ui/src/components/LanguageSettings.vue"
@@ -3113,6 +3308,9 @@
  ],
  "Give it a name, an https:// upload address and the form's file field name (letters, numbers, _ - . [ ])": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "Give the full path of the folder": [
+  "backend/library_mixins/app_folders.py"
  ],
  "Give the playlist a name": [
   "backend/library_mixins/playlists.py"
@@ -3166,10 +3364,14 @@
  "groups": [
   "ui/src/views/admin/StatsView.vue"
  ],
+ "Groups you marked as not duplicates. Show again lets the next scan find them.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "Guide": [
   "ui/src/views/HelpView.vue"
  ],
  "Hair": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/FilterPanel.vue",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
@@ -3196,7 +3398,17 @@
  "Heard so far": [
   "ui/src/components/dialogs/SongsDialog.vue"
  ],
+ "Heavy background work takes turns instead of running all at once: steps that keep the CPU busy (seekbar previews, fingerprints, re-encodes, the duplicate scan, faces) one at a time, and steps that read or write whole video files one at a time, video by video, so long jobs share the computer and none waits for hours. While a video is converted for watching, new heavy steps wait. Downloads don't wait: the network and Downloads at once limit them. Tasks shows what each job waits for.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Heavy CPU steps at once": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Heavy disk steps at once": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Height": [
+  "backend/library_mixins/performers.py",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
  ],
@@ -3304,6 +3516,9 @@
  "Identical files": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
+ "in": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "In Filters, show each codec once — AV1, AVC, HEVC… — instead of every version (“AV1 (Main@L4.0)”, “AV1 (Main@L5.1)”…). Picking one finds all its versions.": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -3318,6 +3533,9 @@
  ],
  "in under a minute": [
   "ui/src/components/JobList.vue"
+ ],
+ "In use by: {who}": [
+  "ui/src/lib/turns.js"
  ],
  "In your Favorites": [
   "ui/src/components/VideoTable.vue",
@@ -3352,6 +3570,9 @@
  ],
  "Info helpers": [
   "ui/src/components/admin/AccessPanel.vue"
+ ],
+ "Inside the cache folder": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Install": [
   "ui/src/components/LanguageSettings.vue"
@@ -3452,6 +3673,9 @@
  "Its file is there -- use Repair / Update, or Check video files (thorough)": [
   "backend/library_mixins/file_check.py"
  ],
+ "Its file is used if it's still in the download folder; otherwise it's downloaded again (only if the site still has it).": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "its name doesn't have this video's id": [
   "backend/library_mixins/file_check.py"
  ],
@@ -3487,9 +3711,6 @@
  ],
  "Jobs finished / failed (scans, syncs, backups, performer matching)": [
   "ui/src/views/SettingsView.vue"
- ],
- "Jobs running now": [
-  "ui/src/views/TasksView.vue"
  ],
  "jump to that tenth of the video": [
   "ui/src/lib/panic.js"
@@ -3544,11 +3765,17 @@
   "ui/src/views/admin/BackupsView.vue",
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "kept (can be made again)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Kept 1, removed {n}": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "Kept 1, removed {n} — but {files} file(s) were in use and stayed on disk.": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "Kept free while a video is converted for watching": [
+  "ui/src/views/TasksView.vue"
  ],
  "Key accepted: VirusTotal answered (its test file is flagged, as it should be)": [
   "backend/upload_safety.py"
@@ -3608,6 +3835,9 @@
  ],
  "last run {time} ({status})": [
   "ui/src/components/admin/PerformersPanel.vue"
+ ],
+ "Last run {time}: {videos} videos read, {faces} faces, {suggested} new suggestions": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Last scan read {n} of {total} videos in {time}.": [
   "ui/src/views/admin/DuplicatesView.vue"
@@ -3670,6 +3900,9 @@
  ],
  "Library care": [
   "backend/permissions.py"
+ ],
+ "Library jobs": [
+  "ui/src/views/TasksView.vue"
  ],
  "Library repair (all videos)": [
   "backend/library_mixins/scheduler_worker.py"
@@ -3929,7 +4162,13 @@
   "backend/library_mixins/frames.py",
   "backend/library_mixins/storyboards.py"
  ],
+ "Making a preview: {title}": [
+  "backend/library_mixins/item_extras.py"
+ ],
  "Making audio playable": [
+  "backend/library_mixins/audio_fix.py"
+ ],
+ "Making audio playable: {name}": [
   "backend/library_mixins/audio_fix.py"
  ],
  "Making previews H.264": [
@@ -4024,6 +4263,7 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Measurements": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue"
  ],
@@ -4060,6 +4300,12 @@
  ],
  "Merge “{old}” into “{new}”? Every video with “{old}” gets “{new}” instead ({new} already has {n} videos).": [
   "ui/src/views/admin/NamesView.vue"
+ ],
+ "Merged": [
+  "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "merged into": [
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "merged into another video as its duplicate — not downloaded": [
   "ui/src/components/AddVideoDialog.vue"
@@ -4104,6 +4350,9 @@
  ],
  "Missing required permission: {permission}": [
   "backend/security.py"
+ ],
+ "Models: {files}, by OpenCV.": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Moderators": [
   "ui/src/components/admin/AccessPanel.vue"
@@ -4186,6 +4435,12 @@
  "Move up in the re-encode queue": [
   "ui/src/views/TasksView.vue"
  ],
+ "Move what's there": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Move what's there to {folder}?": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Move {name} earlier": [
   "ui/src/components/TabBar.vue"
  ],
@@ -4196,6 +4451,7 @@
   "ui/src/views/SettingsView.vue"
  ],
  "Moving files": [
+  "backend/library_mixins/app_folders.py",
   "backend/library_mixins/item_extras.py"
  ],
  "Moving speed (3D)": [
@@ -4206,6 +4462,9 @@
  ],
  "Moving videos to the new download folder": [
   "backend/library_mixins/item_extras.py"
+ ],
+ "Moving {what} to the new folder": [
+  "backend/library_mixins/app_folders.py"
  ],
  "Music": [
   "ui/src/components/admin/SpellingsPanel.vue",
@@ -4245,6 +4504,7 @@
   "ui/src/views/WallView.vue"
  ],
  "Name": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/admin/AccessPanel.vue",
   "ui/src/components/dialogs/PlaylistEditDialog.vue",
   "ui/src/views/PerformersView.vue",
@@ -4280,6 +4540,7 @@
   "ui/src/views/admin/NamesView.vue"
  ],
  "Nationality": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
@@ -4413,6 +4674,7 @@
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "No": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/admin/ProxyPanel.vue",
   "ui/src/views/PerformerView.vue",
@@ -4489,6 +4751,9 @@
  ],
  "no members": [
   "ui/src/components/admin/AccessPanel.vue"
+ ],
+ "No merged duplicates.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "No metadata available": [
   "backend/routers/library.py"
@@ -4648,6 +4913,9 @@
  "None of the site's frames could be downloaded": [
   "backend/video_frames.py"
  ],
+ "None yet.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "None — Search frame is hidden in the player.": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -4710,6 +4978,7 @@
   "backend/library_mixins/item_extras.py",
   "backend/library_mixins/reencode_worker.py",
   "backend/library_mixins/repair_worker.py",
+  "backend/routers/faces.py",
   "backend/routers/library.py",
   "backend/routers/system.py"
  ],
@@ -4781,6 +5050,13 @@
  "Not the same": [
   "ui/src/views/admin/NamesView.vue"
  ],
+ "Not them": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Not them ({n})": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "not there any more": [
   "backend/library_mixins/adopt.py"
  ],
@@ -4820,8 +5096,14 @@
  "Nothing is being worked on.": [
   "ui/src/views/admin/StatsView.vue"
  ],
+ "Nothing is overwritten: a file already there stays in the old folder.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Nothing is playing right now. Videos show up here as soon as someone plays one.": [
   "ui/src/views/NowPlayingView.vue"
+ ],
+ "Nothing marked as not duplicates.": [
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "Nothing matches.": [
   "ui/src/views/admin/NamesView.vue"
@@ -4840,6 +5122,9 @@
  ],
  "Nothing to save: no search, filters or sort in this view": [
   "ui/src/components/SavedSearches.vue"
+ ],
+ "Nothing waiting.": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Nothing watched in this range.": [
   "ui/src/views/admin/StatsView.vue"
@@ -5017,6 +5302,9 @@
  "Only the creator's name": [
   "ui/src/components/SearchHelp.vue"
  ],
+ "Only the differences": [
+  "ui/src/components/SiteDifferences.vue"
+ ],
  "Only the first {n} entries are listed": [
   "ui/src/components/admin/SiteSyncPanel.vue"
  ],
@@ -5167,6 +5455,9 @@
  "or drop it here": [
   "ui/src/views/UploadView.vue"
  ],
+ "or more": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Or one video's cover": [
   "ui/src/components/playlists/CoverDialog.vue"
  ],
@@ -5311,6 +5602,10 @@
  "performer photos": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Performer photos from the sites": [
+  "backend/library_mixins/app_folders.py",
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Performer profiles come from ThePornDB (API key in the {link1} tab). Matching status and names waiting for a pick: {link2}.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
@@ -5340,6 +5635,15 @@
  ],
  "Performers (ThePornDB)": [
   "ui/src/components/admin/PerformersPanel.vue"
+ ],
+ "Performers recognised in videos by their face: the faces in each video's seekbar previews, thumbnail and frames are compared with the photos of the performers in your library. Everything happens on this computer; nothing is sent anywhere. A match only shows on the video's and the performer's page once approved — the video's own details are never changed.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Performers whose face was found in this video's pictures (not listed in its details).": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
+ "performers with a usable photo": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Performers, tags and music on the video page and in the list view; performer and uploader names in related videos.": [
   "ui/src/views/SettingsView.vue"
@@ -5374,6 +5678,9 @@
  ],
  "photos": [
   "backend/activity.py"
+ ],
+ "Photos you added. They can't be downloaded again, so they're in every backup.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Pick": [
   "ui/src/components/admin/PerformersPanel.vue"
@@ -5413,9 +5720,13 @@
   "ui/src/lib/panic.js"
  ],
  "Piercings": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
+ ],
+ "pixels are left out": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "placeholders differ from the English": [
   "backend/i18n.py"
@@ -5561,6 +5872,7 @@
   "backend/library_mixins/duplicate_worker.py"
  ],
  "Possible duplicates": [
+  "ui/src/views/admin/DuplicatesView.vue",
   "ui/src/views/admin/StatsView.vue"
  ],
  "possible duplicates": [
@@ -5848,6 +6160,9 @@
  "Re-encoding {percent}%": [
   "ui/src/lib/format.js"
  ],
+ "Re-encoding {title}": [
+  "backend/library_mixins/reencode_worker.py"
+ ],
  "Re-packing into MP4…": [
   "ui/src/views/UploadView.vue"
  ],
@@ -5860,11 +6175,35 @@
  "read": [
   "backend/activity.py"
  ],
+ "Read again": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Read every video again": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Read new videos by themselves (after their seekbar previews / frames are made)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Read the frames under the player": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Read the logs": [
   "backend/permissions.py"
  ],
+ "Read the pictures of every video again? It takes a while; your decisions stay as they are.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Read the seekbar previews": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Read the thumbnail": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Read-only": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "Reading counts too. 1 for a hard disk; an SSD can take 2.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Reading each video's metadata file": [
   "backend/library_mixins/item_extras.py"
@@ -5875,14 +6214,33 @@
  "Reading frames": [
   "backend/library_mixins/scenes.py"
  ],
+ "Reading performer photos": [
+  "backend/library_mixins/faces.py"
+ ],
  "Reading upload dates": [
   "backend/library_mixins/core.py"
  ],
  "Reading videos": [
-  "backend/library_mixins/duplicate_worker.py"
+  "backend/library_mixins/duplicate_worker.py",
+  "backend/library_mixins/faces.py"
  ],
  "Reads the file through and decodes three short parts (a few seconds to a minute). A damaged file isn't re-encoded: it's reported, and the original stays. Re-encoding it a third time anyway uses the repair mode.": [
   "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "rebuildable data": [
+  "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Rebuildable data: shared scenes and faces (derived.db)": [
+  "backend/backup.py"
+ ],
+ "Recognise performers by their face": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Recognised by face": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
+ "Recognised by face in ({n})": [
+  "ui/src/components/faces/FaceVideos.vue"
  ],
  "Record to": [
   "ui/src/views/admin/ServerSettingsView.vue"
@@ -6034,7 +6392,8 @@
   "ui/src/views/admin/DuplicatesView.vue"
  ],
  "removed": [
-  "backend/activity.py"
+  "backend/activity.py",
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "Removed and deleted {n} files": [
   "ui/src/components/dialogs/RemoveDialog.vue"
@@ -6120,6 +6479,18 @@
  ],
  "Repair/Update queued": [
   "ui/src/lib/actions.js"
+ ],
+ "Repair: fingerprint of {title}": [
+  "backend/library_mixins/repair_worker.py"
+ ],
+ "Repair: preview of {title}": [
+  "backend/library_mixins/repair_worker.py"
+ ],
+ "Repair: thumbnail and preview of {title}": [
+  "backend/library_mixins/local_upload.py"
+ ],
+ "Repair: thumbnail of {title}": [
+  "backend/library_mixins/repair_worker.py"
  ],
  "repaired": [
   "backend/activity.py"
@@ -6289,9 +6660,6 @@
  "running": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
- "Running now": [
-  "ui/src/views/TasksView.vue"
- ],
  "running now": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
@@ -6357,6 +6725,7 @@
   "ui/src/components/dialogs/EditDetailsDialog.vue",
   "ui/src/components/dialogs/PlaylistDialog.vue",
   "ui/src/components/dialogs/PlaylistEditDialog.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SchedulerView.vue",
   "ui/src/views/admin/ServerSettingsView.vue",
   "ui/src/views/admin/SongsView.vue",
@@ -6387,6 +6756,7 @@
   "ui/src/components/admin/CredentialsPanel.vue",
   "ui/src/components/admin/ProxyPanel.vue",
   "ui/src/components/dialogs/PlaylistEditDialog.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/ServerSettingsView.vue",
   "ui/src/views/admin/SongsView.vue",
   "ui/src/views/admin/UsersView.vue"
@@ -6489,6 +6859,13 @@
   "ui/src/views/admin/SchedulerView.vue",
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Score {score}": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
+ "score {score}": [
+  "ui/src/components/faces/FacesOnVideo.vue",
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Search": [
   "backend/permissions.py",
   "ui/src/components/PerformerPicker.vue",
@@ -6586,6 +6963,15 @@
  ],
  "seekbar previews": [
   "ui/src/views/admin/BackupsView.vue"
+ ],
+ "Seekbar previews, video frames and the pieces of a video converted for watching — all made again when missing. Empty = inside the cache folder. A fast drive helps.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Seekbar previews: every": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Seekbar previews: {title}": [
+  "backend/library_mixins/storyboards.py"
  ],
  "Seizure warning": [
   "ui/src/lib/metadata.js"
@@ -6703,6 +7089,8 @@
  "Settings": [
   "ui/src/App.vue",
   "ui/src/components/AppSidebar.vue",
+  "ui/src/views/TasksView.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SongsView.vue"
  ],
  "Setup code": [
@@ -6710,6 +7098,9 @@
  ],
  "Setup has already been completed": [
   "backend/security.py"
+ ],
+ "Setup.exe brings them. Otherwise run this once in the app's folder (it downloads two files from OpenCV and checks them):": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "Several people on ThePornDB could be this performer — pick the right one.": [
   "ui/src/views/PerformerView.vue"
@@ -6723,12 +7114,21 @@
  "Shared scenes": [
   "ui/src/components/admin/SharedScenesPanel.vue"
  ],
+ "Shared scenes: comparing": [
+  "backend/library_mixins/scenes.py"
+ ],
+ "Shared scenes: reading {title}": [
+  "backend/library_mixins/scenes.py"
+ ],
  "Shared videos at least": [
   "ui/src/views/SettingsView.vue",
   "ui/src/views/WallView.vue"
  ],
  "Shares scenes with": [
   "ui/src/views/VideoView.vue"
+ ],
+ "Sharing the computer": [
+  "ui/src/views/TasksView.vue"
  ],
  "Sharper pictures use more memory and can make turning less smooth.": [
   "ui/src/views/SettingsView.vue"
@@ -6767,6 +7167,9 @@
  "Show a performer's aliases as their main name everywhere (filters, chips, suggestions, related videos). A wrong merge can be split on the profile page.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Show again": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "Show all {n}": [
   "ui/src/components/JobList.vue"
  ],
@@ -6795,6 +7198,7 @@
  ],
  "Show more ({n} left)": [
   "ui/src/views/PerformersView.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/NamesView.vue"
  ],
  "Show older entries": [
@@ -6999,6 +7403,9 @@
  "Someone else — split off": [
   "ui/src/views/PerformerView.vue"
  ],
+ "someone is watching a video that's being converted": [
+  "ui/src/lib/turns.js"
+ ],
  "Song — Artist": [
   "ui/src/components/songs/SongSuggestion.vue",
   "ui/src/views/UploadView.vue"
@@ -7120,6 +7527,9 @@
  "Step 2 of 2": [
   "ui/src/components/upload/PreviewStep.vue"
  ],
+ "Step {n} of {total}": [
+  "ui/src/components/UpgradingScreen.vue"
+ ],
  "step {step} of {steps}": [
   "ui/src/components/JobList.vue"
  ],
@@ -7136,6 +7546,7 @@
  "Stop": [
   "ui/src/components/JobList.vue",
   "ui/src/components/upload/PreviewStep.vue",
+  "ui/src/views/admin/FacesView.vue",
   "ui/src/views/admin/SchedulerView.vue"
  ],
  "Stop and remove this video from the library": [
@@ -7162,6 +7573,7 @@
  ],
  "Stopped by an error (see the log)": [
   "backend/library_mixins/adopt.py",
+  "backend/library_mixins/faces.py",
   "backend/library_mixins/frames.py",
   "backend/library_mixins/scenes.py",
   "backend/library_mixins/storyboards.py"
@@ -7197,10 +7609,25 @@
  "success": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "Suggest from a score of": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Sunday": [
   "ui/src/views/admin/SchedulerView.vue"
  ],
+ "sure (0.5–0.99)": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "SVT-AV1": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Swap": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "swap waiting": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "Swap: keep it instead of the other one": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Swipe up / down on the left for brightness and on the right for volume (iPhones and iPads don't let pages change the volume: use the buttons), or double-tap to skip back / forward. Outside fullscreen, double-tap always skips.": [
@@ -7213,6 +7640,9 @@
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Switch off": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
+ "Switching a merged pair": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Sync from files": [
@@ -7288,6 +7718,7 @@
   "ui/src/views/TasksView.vue"
  ],
  "Tattoos": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/views/PerformerView.vue",
   "ui/src/views/PerformersView.vue"
@@ -7333,6 +7764,9 @@
  ],
  "Text size": [
   "ui/src/views/SettingsView.vue"
+ ],
+ "th picture (1 = all)": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "That address isn't a picture ({type})": [
   "backend/safe_fetch.py"
@@ -7386,6 +7820,9 @@
  "That language isn't on GitHub": [
   "backend/routers/i18n.py"
  ],
+ "That match isn't there any more": [
+  "backend/routers/faces.py"
+ ],
  "That name isn't linked to anyone": [
   "backend/library_mixins/performers.py"
  ],
@@ -7413,8 +7850,14 @@
  "That video's own file is there -- nothing to link": [
   "backend/library_mixins/file_check.py"
  ],
+ "That's one of the app's other folders -- choose a folder of its own": [
+  "backend/library_mixins/app_folders.py"
+ ],
  "That's switched off in Server Settings": [
   "backend/routers/bulk.py"
+ ],
+ "That's the folder already in use": [
+  "backend/library_mixins/app_folders.py"
  ],
  "That's {n} downloads at the same time. More than 2 often gets downloads refused or slowed down by the site. Save anyway?": [
   "ui/src/components/admin/ProxyPanel.vue"
@@ -7471,6 +7914,9 @@
  "The browser must be one line": [
   "backend/routers/settings.py"
  ],
+ "the cache folder": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "The check is running already -- see Tasks": [
   "backend/routers/library.py"
  ],
@@ -7495,11 +7941,20 @@
  "The copy in {folder} doesn't match the backup (the disk may be failing)": [
   "backend/backup.py"
  ],
+ "the CPU": [
+  "ui/src/lib/turns.js"
+ ],
+ "the CPU and the disk": [
+  "ui/src/lib/turns.js"
+ ],
  "the database ({size}) and your settings, installed languages, own performer photos and playlist covers ({n} files)": [
   "ui/src/views/admin/BackupsView.vue"
  ],
  "The database and settings always; tick what else.": [
   "ui/src/views/admin/SchedulerView.vue"
+ ],
+ "the disk": [
+  "ui/src/lib/turns.js"
  ],
  "The disk the backups go to is almost full -- the backup was stopped": [
   "backend/backup.py"
@@ -7509,6 +7964,18 @@
  ],
  "The end of its video id was cut off with a long title (before 3.11.2), and no library video has an id starting that way — it cannot be looked up on the site": [
   "ui/src/views/admin/MaintenanceView.vue"
+ ],
+ "The face in the video": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "The face models are missing or damaged: {files}": [
+  "backend/routers/faces.py"
+ ],
+ "The face models aren't there": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "The face picture is made again at the next scan": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "The file couldn't be virus-scanned ({detail}), so it wasn't accepted.": [
   "backend/library_mixins/local_upload.py"
@@ -7590,14 +8057,23 @@
  "The log store is not running": [
   "backend/routers/logs.py"
  ],
+ "The new folder can't be inside the old one, or the other way round": [
+  "backend/library_mixins/app_folders.py"
+ ],
  "The new passwords don't match.": [
   "ui/src/views/SettingsView.vue"
  ],
  "The new preview:": [
   "ui/src/components/upload/PreviewStep.vue"
  ],
+ "The next scan can find them again": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
  "The one I watch most": [
   "ui/src/lib/wallPick.js"
+ ],
+ "the other one": [
+  "ui/src/components/admin/DuplicateHistory.vue"
  ],
  "The part size is 0 (Server Settings' size) or {min} to {max} GB": [
   "backend/backup_jobs.py"
@@ -7650,6 +8126,9 @@
  "The Scheduler job is missing — restart the app.": [
   "ui/src/components/admin/PerformersPanel.vue"
  ],
+ "The score is how alike two faces are (0–100). Faces from the same photo shoot score in the 60s and up; small, blurred or turned faces score lower, so check those. Changing what's read (the first settings) reads every video again at the next scan; changing the scores only compares again. Not them is never asked again for that video.": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "The server is low on disk space — uploads wait until there's room again": [
   "backend/library_mixins/local_upload.py"
  ],
@@ -7668,6 +8147,9 @@
  "The site didn't return tag votes, so tags were left as they are": [
   "ui/src/components/admin/SiteSyncPanel.vue"
  ],
+ "The site doesn't have it any more, and its file isn't in the download folder": [
+  "backend/library_mixins/dup_manager.py"
+ ],
  "The site doesn't have this video any more": [
   "backend/library_mixins/file_check.py"
  ],
@@ -7682,6 +8164,15 @@
  ],
  "The site's frames have no times": [
   "backend/video_frames.py"
+ ],
+ "The sites agree on every detail they share.": [
+  "ui/src/components/SiteDifferences.vue"
+ ],
+ "The sites compared": [
+  "ui/src/components/SiteDifferences.vue"
+ ],
+ "The sites differ": [
+  "ui/src/components/SiteDifferences.vue"
  ],
  "The small pictures above the player's seek bar when you point at it (or drag it on a phone): a frame every 2 seconds (less often in videos over ~13 minutes, at most 400 per video), kept in the cache folder. New videos get them by themselves; a video without them gets them the first time it's played. This makes them for the whole library at once, one video after the other at low priority — it can be stopped on Tasks.": [
   "ui/src/components/admin/StoryboardsPanel.vue"
@@ -7752,6 +8243,12 @@
  "The video file isn't there": [
   "backend/library_mixins/item_extras.py"
  ],
+ "the video it was merged into isn't in the library any more": [
+  "ui/src/components/admin/DuplicateHistory.vue"
+ ],
+ "The video it was merged into isn't in the library any more -- use Get it back instead": [
+  "backend/library_mixins/dup_manager.py"
+ ],
  "The video's length couldn't be read, so the clips can't be placed.": [
   "ui/src/components/upload/PreviewStep.vue"
  ],
@@ -7799,6 +8296,9 @@
  ],
  "ThePornDB": [
   "backend/secrets_store.py"
+ ],
+ "ThePornDB and stash-box photos. They can be downloaded again.": [
+  "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "ThePornDB didn't answer within {s} seconds ({n} tries). Raise the time to wait in Server Settings → Performers.": [
   "backend/tpdb.py"
@@ -8148,6 +8648,9 @@
  "Under the video": [
   "ui/src/views/SettingsView.vue"
  ],
+ "Undo": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Unexpected response from PMVHaven (HTTP {status})": [
   "backend/routers/credentials.py"
  ],
@@ -8163,6 +8666,7 @@
   "ui/src/views/admin/BackupsView.vue"
  ],
  "Unknown action": [
+  "backend/library_mixins/faces.py",
   "backend/routers/bulk.py"
  ],
  "Unknown backup part": [
@@ -8186,6 +8690,9 @@
  "Unknown field": [
   "backend/library_mixins/names.py",
   "backend/spellings.py"
+ ],
+ "Unknown folder": [
+  "backend/library_mixins/app_folders.py"
  ],
  "Unknown job type: {type}": [
   "backend/library_mixins/scheduler_worker.py"
@@ -8215,8 +8722,14 @@
   "backend/library_mixins/performers.py",
   "backend/stashbox.py"
  ],
+ "Unknown status": [
+  "backend/library_mixins/faces.py"
+ ],
  "Unknown upload service": [
   "backend/backup_jobs.py"
+ ],
+ "Unknown way to switch": [
+  "backend/library_mixins/dup_manager.py"
  ],
  "Unknown weekday: {day}": [
   "backend/library_mixins/scheduler_worker.py"
@@ -8227,7 +8740,7 @@
  "Unlink": [
   "ui/src/components/StashBoxPanel.vue"
  ],
- "Unlink {name} from {site}? Details and photos already copied stay; edit or remove them by hand.": [
+ "Unlink {name} from {site}? Details and photos copied as their own stay (edit or remove them by hand); the site's photos shown next to ThePornDB's go with the link.": [
   "ui/src/components/StashBoxPanel.vue"
  ],
  "Unreachable": [
@@ -8283,6 +8796,12 @@
  "Updates": [
   "ui/src/views/HelpView.vue"
  ],
+ "Upgrades of the library": [
+  "ui/src/views/HelpView.vue"
+ ],
+ "Upgrading PMV Nexus": [
+  "ui/src/components/UpgradingScreen.vue"
+ ],
  "Upload": [
   "ui/src/components/AppSidebar.vue",
   "ui/src/router.js",
@@ -8328,6 +8847,15 @@
  ],
  "Upload videos from their computer": [
   "backend/permissions.py"
+ ],
+ "Upload: converting {title}": [
+  "backend/library_mixins/local_upload.py"
+ ],
+ "Upload: re-packing {title}": [
+  "backend/library_mixins/local_upload.py"
+ ],
+ "Upload: thumbnail and preview of {title}": [
+  "backend/library_mixins/local_upload.py"
  ],
  "Upload: {title}": [
   "backend/library_mixins/local_upload.py"
@@ -8512,10 +9040,14 @@
   "ui/src/components/VideoFrames.vue",
   "ui/src/components/admin/FramesPanel.vue"
  ],
+ "Video frames: {title}": [
+  "backend/library_mixins/frames.py"
+ ],
  "video id cut off": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Video not found": [
+  "backend/routers/faces.py",
   "backend/routers/library.py",
   "backend/routers/songs.py",
   "ui/src/views/VideoView.vue"
@@ -8564,6 +9096,9 @@
  "Videos are already being added -- see Tasks": [
   "backend/library_mixins/adopt.py"
  ],
+ "Videos are being added from Untracked files -- try again when that's done": [
+  "backend/library_mixins/dup_manager.py"
+ ],
  "Videos around a performer": [
   "ui/src/views/SettingsView.vue"
  ],
@@ -8573,14 +9108,23 @@
  "Videos being played right now — see what others are into. It updates by itself; it never shows who is watching, where they are in the video or since when.": [
   "ui/src/views/NowPlayingView.vue"
  ],
+ "Videos being worked on": [
+  "ui/src/views/TasksView.vue"
+ ],
  "Videos converted at once (one per person).": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
  "Videos in the library": [
   "ui/src/views/PerformerView.vue"
  ],
+ "videos read": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Videos still waiting leave the queue; the ones being repaired now finish.": [
   "ui/src/components/JobList.vue"
+ ],
+ "Videos that don't list them, where their face was found and approved.": [
+  "ui/src/components/faces/FaceVideos.vue"
  ],
  "Videos that use the same footage, found by comparing the frames of their seekbar previews (black, white and nearly flat frames, the first and last seconds, and frames found in many videos — intros, logos — are left out). Shown on the video page, and they rank higher among related videos. It runs by itself after new seekbar previews are made; videos without seekbar previews aren't compared.": [
   "ui/src/components/admin/SharedScenesPanel.vue"
@@ -8665,6 +9209,9 @@
   "ui/src/components/JobList.vue",
   "ui/src/views/TasksView.vue"
  ],
+ "Waiting ({n})": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
  "Waiting for another scan to finish…": [
   "ui/src/components/dialogs/SongsDialog.vue"
  ],
@@ -8676,6 +9223,15 @@
  ],
  "Waiting for the song scan that's running": [
   "backend/library_mixins/songs.py"
+ ],
+ "waiting for you": [
+  "ui/src/views/admin/FacesView.vue"
+ ],
+ "Waiting for you:": [
+  "ui/src/components/faces/FacesOnVideo.vue"
+ ],
+ "Waiting for {what}": [
+  "ui/src/lib/turns.js"
  ],
  "Waiting in line…": [
   "ui/src/views/UploadView.vue"
@@ -8842,6 +9398,9 @@
  "Written as about {n} parts of at most {gb} GB each.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
+ "Written differently by the sites (a country code and a name): not compared": [
+  "ui/src/components/SiteDifferences.vue"
+ ],
  "Wrong password — try again.": [
   "ui/src/views/admin/BackupsView.vue"
  ],
@@ -8867,6 +9426,7 @@
   "ui/src/views/admin/StatsView.vue"
  ],
  "Yes": [
+  "backend/library_mixins/performers.py",
   "ui/src/components/PerformerDetailsForm.vue",
   "ui/src/components/admin/ProxyPanel.vue",
   "ui/src/views/PerformerView.vue",
@@ -8939,14 +9499,24 @@
  "Your FFmpeg has no {encoder} encoder — re-encodes to this codec will fail. Install a full FFmpeg build.": [
   "ui/src/views/admin/ServerSettingsView.vue"
  ],
+ "Your library is being moved to the new version's format. It can be used again as soon as this is done — leave the app running. A copy of the database was made first.": [
+  "ui/src/components/UpgradingScreen.vue"
+ ],
  "Your library is empty": [
   "ui/src/views/LibraryView.vue"
  ],
  "Your order (also: drag a tab).": [
   "ui/src/components/TabBar.vue"
  ],
+ "Your own performer photos": [
+  "backend/library_mixins/app_folders.py",
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "Your own picture": [
   "ui/src/components/playlists/CoverDialog.vue"
+ ],
+ "Your own picture: it can't be downloaded again": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "Your photo": [
   "ui/src/components/PerformerPhotos.vue"
@@ -9133,6 +9703,7 @@
   "ui/src/components/upload/ConvertStep.vue"
  ],
  "{moved} moved so far": [
+  "backend/library_mixins/app_folders.py",
   "backend/library_mixins/item_extras.py"
  ],
  "{ms} ms": [
@@ -9183,6 +9754,9 @@
  "{n} couldn't be read": [
   "ui/src/views/admin/DuplicatesView.vue"
  ],
+ "{n} details differ between the sites.": [
+  "ui/src/components/SiteDifferences.vue"
+ ],
  "{n} downloads at the same time — more than 2 will most likely cause problems (refused or slowed downloads).": [
   "ui/src/components/admin/ProxyPanel.vue"
  ],
@@ -9191,6 +9765,9 @@
  ],
  "{n} entries match": [
   "ui/src/views/admin/LogsView.vue"
+ ],
+ "{n} faces look like them": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "{n} favorites": [
   "ui/src/views/VideoView.vue"
@@ -9220,8 +9797,14 @@
  "{n} kept: {why}": [
   "ui/src/views/admin/MaintenanceView.vue"
  ],
+ "{n} left where they were": [
+  "ui/src/views/admin/ServerSettingsView.vue"
+ ],
  "{n} likes": [
   "ui/src/views/VideoView.vue"
+ ],
+ "{n} matches approved": [
+  "ui/src/views/admin/FacesView.vue"
  ],
  "{n} min": [
   "ui/src/components/DurationRange.vue",
@@ -9236,6 +9819,9 @@
  ],
  "{n} new": [
   "ui/src/views/admin/DuplicatesView.vue"
+ ],
+ "{n} of them are your own pictures, which can't be downloaded again.": [
+  "ui/src/views/admin/MaintenanceView.vue"
  ],
  "{n} of {total} videos not scanned yet": [
   "ui/src/views/admin/DuplicatesView.vue"
@@ -9290,6 +9876,9 @@
  ],
  "{n} songs so far": [
   "ui/src/components/dialogs/SongsDialog.vue"
+ ],
+ "{n} steps wait for their turn:": [
+  "ui/src/views/TasksView.vue"
  ],
  "{n} still in use": [
   "ui/src/views/admin/MaintenanceView.vue"
@@ -9421,6 +10010,7 @@
   "ui/src/views/admin/StatsView.vue"
  ],
  "{s} s": [
+  "ui/src/views/HelpView.vue",
   "ui/src/views/SettingsView.vue"
  ],
  "{s}s": [

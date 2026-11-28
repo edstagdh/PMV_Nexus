@@ -22,6 +22,7 @@ from typing import Optional
 from loguru import logger
 
 from ..i18n import L
+from ..resources import AUTO, resources
 from .. import activity, sources, video_frames
 
 
@@ -34,7 +35,7 @@ class FramesMixin:
 
     # ---------------------------------------------------------------- files
     def frames_root(self) -> Path:
-        return self.settings.cache_dir / video_frames.FOLDER
+        return self.settings.generated_dir / video_frames.FOLDER   # 3.12.0: Generated files folder
 
     def frames_folder(self, video_id: str) -> Path:
         return self.frames_root() / video_id
@@ -262,8 +263,9 @@ class FramesMixin:
                     if timeline and item.site != "local":
                         meta = await self._frames_from_site(item, timeline)
                     if meta is None:
-                        meta = await asyncio.to_thread(video_frames.from_video, item.video_path, self.frames_folder(video_id),
-                                                       lambda: self._fr_stop or video_id not in self._items)
+                        async with resources.use({"cpu"}, L("Video frames: {title}", title=item.title or video_id), AUTO):   # 3.12.0
+                            meta = await asyncio.to_thread(video_frames.from_video, item.video_path, self.frames_folder(video_id),
+                                                           lambda: self._fr_stop or video_id not in self._items)
                     state["done"] += 1
                     logger.info("Video frames for '{}' [{}]: {} from {}", item.title, video_id, len(meta["frames"]),
                                 "the site" if meta["source"] == "site" else "the file")
@@ -275,6 +277,8 @@ class FramesMixin:
                     logger.warning("Couldn't make video frames for '{}' [{}]: {}", item.title, video_id, exc)
                 finally:
                     state["current"] = None
+            if state["done"] and not self._fr_stop:
+                self.request_face_scan_auto()          # 3.12.0: the faces in them (when Faces is on)
             parts = [f"{state['done']} made"] + ([f"{state['failed']} failed (see the log)"] if state["failed"] else [])
             act.finish("cancelled" if self._fr_stop else ("failed" if state["failed"] and not state["done"] else "success"),
                        (f"Stopped by {act.stopped_by} · " if act.stopped_by else "") + ", ".join(parts))

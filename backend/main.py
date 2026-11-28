@@ -18,8 +18,10 @@ from .logging_setup import setup_logging
 from .security import AuthContext, ensure_bootstrap_admin, get_current_user, require_permission
 from .app_info import APP_VERSION
 from .hardening import SecurityMiddleware
+from .upgrades.gate import UpgradeGate
 from .routers import health, auth, me, users, settings, library, scheduler, stats, system, credentials, site_sync, events, logs, playlists, performers, notifications, songs, bulk, now_playing, extensions as extensions_routes
 from .routers import i18n as i18n_routes
+from .routers import faces as faces_routes
 from . import i18n
 from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -129,6 +131,7 @@ app.include_router(playlists.router)
 app.include_router(performers.router)
 app.include_router(notifications.router)
 app.include_router(songs.router)
+app.include_router(faces_routes.router)
 app.include_router(bulk.router)
 app.include_router(now_playing.router)
 app.include_router(extensions_routes.router)
@@ -140,6 +143,8 @@ extensions.load_all(app)
 app.add_middleware(i18n.LanguageMiddleware)
 # Every change made through the API is recorded in Admin -> Logs.
 app.add_middleware(ActionLogMiddleware)
+# 3.12.0: while long upgrade steps run, the API waits (backend/upgrades/gate.py).
+app.add_middleware(UpgradeGate)
 # Security headers, cross-site request refusal, body size cap (backend/hardening.py).
 # Added last = outermost: it also covers what the other middleware returns.
 app.add_middleware(SecurityMiddleware)

@@ -50,6 +50,7 @@ job's backups, never anything else in the folder).
 """
 from __future__ import annotations
 from .i18n import L
+from .resources import JOB, ThreadTurns
 from .split_file import SplitFile, base_of, part_path, parts_of
 
 import json
@@ -256,6 +257,7 @@ PARTS = {
     "frames": L("Video frames"),
     "storyboards": L("Seekbar previews"),
     "videos": L("The videos (the whole library)"),
+    "derived": L("Rebuildable data: shared scenes and faces (derived.db)"),   # 3.12.0
 }
 CACHE_PARTS = ("performer_photos", "thumbnails", "frames", "storyboards")  # what "include_cache" meant before
 _STORED = {".mp4", ".m4v", ".mkv", ".webm", ".mov", ".avi", ".webp", ".jpg", ".jpeg", ".png", ".gif", ".zip"}
@@ -265,7 +267,8 @@ SPACE_MARGIN = 200 * 1024 * 1024  # kept free on top of the estimate
 # 3.8.0: a letter per part for the backup's name, in this order (a new part gets the next
 # letter; a letter missing from an older name means "not included"). Database + settings are
 # always in, so they have none.
-PART_LETTERS = {"secrets": "a", "performer_photos": "b", "thumbnails": "c", "frames": "d", "storyboards": "e", "videos": "f"}
+PART_LETTERS = {"secrets": "a", "performer_photos": "b", "thumbnails": "c", "frames": "d", "storyboards": "e", "videos": "f",
+                "derived": "g"}
 
 
 def name_flags(parts) -> str:
@@ -337,19 +340,23 @@ def _collect(settings) -> dict[str, list[tuple[Path, str]]]:
         if p.is_file():
             always.append((p, "settings"))
     always += [(p, "settings") for p in sorted((ROOT_DIR / "data" / "languages").glob("*.json"))]
-    for folder in ("performer_photos", "playlist_covers"):  # can't be downloaded again
-        always += [(f, "photos") for f in sorted((data_dir / folder).glob("*")) if f.is_file()]
+    # can't be downloaded again: your own performer photos (3.12.0: their folder setting) and playlist covers
+    for folder in (settings.own_photos_dir, data_dir / "playlist_covers"):
+        always += [(f, "photos") for f in sorted(folder.glob("*")) if f.is_file()]
     secrets = [(p, "secrets") for p in (secrets_store.DB_FILE, secrets_store.KEY_FILE, ROOT_DIR / ".env") if p.is_file()]
     secrets += [(f, "secrets") for f in _files(settings.session_dir)]
     cache = settings.cache_dir
+    generated = settings.generated_dir   # 3.12.0: the cache folder unless it has its own
     return {
         "always": always,
         "secrets": secrets,
-        "performer_photos": [(f, "cache") for f in _files(data_dir / "performers")],
+        "performer_photos": [(f, "cache") for f in _files(settings.performer_photos_dir)],
         "thumbnails": [(f, "cache") for f in _files(cache, skip_dirs=(".storyboards", ".frames", ".transcode", ".incoming"))],
-        "frames": [(f, "cache") for f in _files(cache / ".frames")],
-        "storyboards": [(f, "cache") for f in _files(cache / ".storyboards")],
+        "frames": [(f, "cache") for f in _files(generated / ".frames")],
+        "storyboards": [(f, "cache") for f in _files(generated / ".storyboards")],
         "videos": [(f, "video") for f in _library_videos(settings)],
+        # 3.12.0: data/derived.db, copied consistently (SQLite's backup) when it's added
+        "derived": [(data_dir / "derived.db", "derived")] if (data_dir / "derived.db").is_file() else [],
     }
 
 
@@ -396,7 +403,7 @@ def plan_backup(settings, include=(), collected: Optional[dict] = None, dest: Op
     return {
         "always": {"database_bytes": db_size, "files": len(collected["always"]) + 1, "bytes": always + db_size,
                    "languages": sum(1 for f, _k in collected["always"] if f.parent.name == "languages"),
-                   "photos": sum(1 for f, _k in collected["always"] if f.parent.name == "performer_photos"),
+                   "photos": sum(1 for f, _k in collected["always"] if f.parent == settings.own_photos_dir),
                    "covers": sum(1 for f, _k in collected["always"] if f.parent.name == "playlist_covers")},
         "parts": parts, "include": sorted(include), "estimate_bytes": estimate, "needed_bytes": needed,
         "margin_bytes": SPACE_MARGIN,
@@ -468,6 +475,7 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
                         + (f" ({total:,} files)" if total else "")))
         progress(steps[i][0], done, total, step=i + 1, steps=len(steps), bytes_done=state["bytes"], bytes_total=total_bytes)
 
+    turns = ThreadTurns({"disk"}, L("Creating a backup"), JOB)   # 3.12.0: given back on any way out
     try:
         with tempfile.TemporaryDirectory() as tmp:
             report(0)
@@ -511,14 +519,29 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
                     files = steps[i][1]
                     report(i, 0, len(files))
                     for n, (f, kind) in enumerate(files, 1):
+                        turns.take()   # 3.12.0: the disk, in turns with other heavy work (backend/resources.py)
                         try:
-                            add(f, kind=kind, part=keys[i])
+                            if kind == "derived":   # 3.12.0: an open database -- a consistent copy, like library.db
+                                derived_copy = Path(tmp) / "derived.db"
+                                dsrc = sqlite3.connect(f"file:{f}?mode=ro", uri=True)
+                                ddst = sqlite3.connect(str(derived_copy))
+                                try:
+                                    dsrc.backup(ddst)
+                                finally:
+                                    ddst.close()
+                                    dsrc.close()
+                                add(f, derived_copy, kind=kind, part=keys[i])
+                            else:
+                                add(f, kind=kind, part=keys[i])
                         except FileNotFoundError:  # gone since it was counted (e.g. a preview remade)
                             continue
+                        finally:
+                            turns.pause()
                         if n % 25 == 0 or n == len(files) or kind == "video":
                             report(i, n, len(files))
                             check_space()
 
+                turns.done()
                 manifest = {
                     "app_version": APP_VERSION, "created_at": time.time(), "trigger": trigger,
                     "root": str(ROOT_DIR),  # where relative folders were, for finding the files on another computer (2.25.1)
@@ -550,6 +573,7 @@ def create_backup(settings, *, include=None, include_cache: bool = False, includ
                 for i, part in enumerate(parts, 1):
                     part.replace(part_path(target, i))
     except BaseException:
+        turns.done()
         partial.unlink(missing_ok=True)  # never leave half a backup behind
         for part in parts_of(partial):
             part.unlink(missing_ok=True)
@@ -1086,6 +1110,7 @@ def _apply(zip_path: Path, log, relocate: list[tuple[Path, Path]],
     with _open(zip_path, password) if password else _zip(zip_path) as zf:
         manifest = json.loads(_read(zf, MANIFEST))
         entries = manifest.get("entries", [])
+        has_derived = any(e.get("kind") == "derived" for e in entries)
         for n, entry in enumerate(entries, 1):
             if progress:
                 progress(n, len(entries))
@@ -1097,21 +1122,37 @@ def _apply(zip_path: Path, log, relocate: list[tuple[Path, Path]],
             try:
                 target.parent.mkdir(parents=True, exist_ok=True)
             except OSError:  # e.g. a drive this computer doesn't have
-                skipped += 1
-                unreachable.add(str(target.parent))
-                continue
+                if entry.get("kind") != "photos":
+                    skipped += 1
+                    unreachable.add(str(target.parent))
+                    continue
+                # 3.12.0: your own photos and covers can't be downloaded again: into the data
+                # folder's default place instead (the app finds them there by name)
+                default = ROOT_DIR / "data" / ("playlist_covers" if target.parent.name == "playlist_covers" else "performer_photos")
+                log(f"[restore] {target.parent} can't be reached here: {target.name} goes to {default}")
+                target = default / target.name
+                target.parent.mkdir(parents=True, exist_ok=True)
             if entry.get("kind") == "video" and target.is_file() and entry.get("size") == target.stat().st_size:
                 continue  # (3.7.0) the same video is already there
             keep_old = entry.get("kind") not in ("cache", "video")
             if target.exists() and keep_old:
                 shutil.move(str(target), str(target) + ".pre-restore")
-            if entry.get("kind") == "database":
+            if entry.get("kind") in ("database", "derived"):
                 # Keep the old WAL with the old database (SQLite pairs
                 # "<db>-wal" with "<db>"), so library.db.pre-restore is complete.
                 for suffix in ("-wal", "-shm"):
                     side = Path(str(target) + suffix)
                     if side.exists():
                         shutil.move(str(side), str(target) + ".pre-restore" + suffix)
+            if entry.get("kind") == "database" and not has_derived:
+                # 3.12.0: this computer's derived.db belongs to the database being replaced: set it
+                # aside (it's made again from the restored library), as derived.db.pre-restore
+                for suffix in ("", "-wal", "-shm"):
+                    side = target.parent / f"derived.db{suffix}"
+                    if side.exists():
+                        aside = Path(str(target.parent / "derived.db") + ".pre-restore" + suffix)
+                        aside.unlink(missing_ok=True)
+                        shutil.move(str(side), str(aside))
             with zf.open(entry["arc"]) as src, open(target, "wb") as dst:
                 shutil.copyfileobj(src, dst)
     log(f"[restore] {len(manifest.get('entries', [])) - skipped} file(s) written"

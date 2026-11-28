@@ -10,6 +10,7 @@ import time
 from loguru import logger
 
 from ..i18n import L
+from ..resources import JOB, resources
 from .. import backup, backup_jobs
 from ..notifications import notify
 from .. import activity
@@ -211,7 +212,8 @@ class SystemWorkerMixin:
             logger.info("Backup created: {} ({} bytes)", summary["name"], summary["size_bytes"])
             # Restore test right away: a backup that can't be restored isn't one.
             state.update(stage=L("Restore test"), done=None, total=None)
-            test = await asyncio.to_thread(backup.verify_backup, settings, summary["name"], on_test)
+            async with resources.use({"disk"}, L("Testing backup {name}", name=summary["name"]), JOB):   # 3.12.0
+                test = await asyncio.to_thread(backup.verify_backup, settings, summary["name"], on_test)
             summary["test"] = test
             act.summary += " · restore test passed" if test["ok"] else " · RESTORE TEST FAILED"
             problems: list[str] = []
@@ -308,7 +310,8 @@ class SystemWorkerMixin:
             state.update(stage=stage, done=done, total=total)
 
         async with activity.track("backup_test", L('Testing backup {name}', name=name), progress=lambda: dict(state)) as act:
-            result = await asyncio.to_thread(backup.verify_backup, settings, name, progress, password)
+            async with resources.use({"disk"}, L("Testing backup {name}", name=name), JOB):   # 3.12.0
+                result = await asyncio.to_thread(backup.verify_backup, settings, name, progress, password)
             act.summary = L('Restore test passed') if result["ok"] else "Restore test FAILED: " + ", ".join(
                 c["name"] for c in result["checks"] if not c["ok"])
         if not result["ok"]:

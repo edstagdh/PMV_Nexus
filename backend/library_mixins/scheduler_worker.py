@@ -31,6 +31,7 @@ from typing import Optional
 
 from loguru import logger
 
+from ..resources import resources
 from .. import activity, i18n
 from ..i18n import L
 from .core import JobBlockedError
@@ -410,6 +411,7 @@ class SchedulerWorkerMixin:
             "auto_duplicate_scan": bool(self._dup_trigger_task and not self._dup_trigger_task.done()
                                         and not self._duplicate_scan_running),
             "server_time": now,
+            "resources": resources.snapshot(),   # 3.12.0: who has the CPU / disk, who waits
         }
 
     def get_job_run_history(self, job_id: str, limit: int = 50) -> list[dict]:
